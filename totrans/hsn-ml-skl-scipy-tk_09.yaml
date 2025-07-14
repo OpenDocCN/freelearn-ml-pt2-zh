@@ -1,0 +1,1047 @@
+- en: Neural Networks – Here Comes Deep Learning
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is not uncommon to read news articles or encounter people who misuse the
+    term *deep learning* in place of *machine learning*. This is due to the fact that
+    this particular sub-field of machine learning has become very successful at solving
+    plenty of previously unsolvable image processing and natural language processing
+    problems. This success has caused many to confuse the child field with its parent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The term *deep learning* refers to deep **Artificial Neural Networks** (**ANNs**).
+    The latter concept comes in different forms and shapes. In this chapter, we are
+    going to cover one subset of **feedforward neural networks** known as the **Multilayer
+    Perceptron** (**MLP**). It is one of the most commonly used types and is implemented
+    by scikit-learn. As its name suggests, it is composed of multiple layers, and
+    it is a feedforward network as there are no cyclic connections between its layers.
+    The more layers there are, the deeper the network is. These deep networks can
+    exist in multiple forms, such as **MLP**, **Convolutional Neural Networks** (**CNNs**),
+    or **Long Short-Term Memory** (**LSTM**). The latter two are not implemented by
+    scikit-learn, yet this will not stop us from discussing the main concepts behind
+    CNNs and manually mimicking them using the tools from the scientific Python ecosystem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we are going to cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting to know MLP
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Classifying items of clothing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Untangling convolutions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: MLP regressors
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Getting to know MLP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When learning a new algorithm, you can get discouraged by the number of hyperparameters
+    and find it hard to decide where to start. Therefore, I suggest we start by answering
+    the following two questions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How has the algorithm been architected?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How does the algorithm train?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the following sections, we are going to answer both of these questions and
+    learn about the corresponding hyperparameters one by one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the algorithm's architecture
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Luckily, the knowledge we gained about linear models in[Chapter 3](f5590b35-517b-42bb-821f-66d4fdc8059a.xhtml),
+    *Making Decisions with Linear Equations*, will give us a good headstart here.
+    In brief, linear models can be outlined in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/360de1e7-1de9-4902-b4f3-5f7ed0243feb.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Each of the input features (x[i]) is multiplied by a weight (w[i]), and the
+    sum of these products is the output of the model (y). Additionally, we sometimes
+    add an extra bias (threshold), along with its weight. Nevertheless, one main problem
+    with linear models is that they are in fact linear (duh!). Furthermore, each feature
+    gets its own weight, regardless of its neighbors. This simple architecture prevents
+    the model from capturing any interactions between its features. So, you can stack
+    more layers next to each other, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/61f146e5-1b11-4dec-8157-9f62fd99efb5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This sounds like a potential solution; however, based on simple mathematical
+    derivations, these combinations of multiplications and summations can still be
+    reduced into a single linear equation. It is as if all these layers have no effect
+    at all. Therefore, to get to the desired effect, we want to apply non-linear transformations
+    after each summation. These non-linear transformations are known as activation
+    functions, and they turn the model to a non-linear one. Let''s see where they
+    fit into the model, then I will explain further:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3468d483-682c-4cbe-b87a-60d41ef47070.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This model has a single hidden layer with two hidden nodes, which are shown
+    inside the box. In practice, you may have multiple hidden layers with a number
+    of nodes. The aforementioned activation functions are applied at the outputs of
+    the hidden nodes. Here, we used a **R****ectified Linear Unit** (**ReLU**), it
+    is an activation function; for the negative values, it returns `0`, and it keeps
+    the positive values unchanged. In addition to the `relu`function, `identity`,
+    `logistic`, and `tanh` activation functions are also supported for the hidden
+    layers, and they are set using the `activation` hyperparameter. Here is how each
+    of these four activation functions look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d9b355fc-cc60-4a52-bf77-ce13c309b88d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As mentioned earlier, since the `identity` function keeps its inputs untouched
+    without any non-linear transformations, it is seldom used as it will end up reducing
+    the model into a simple linear one. It is also cursed by having a constant gradient,
+    which is not very helpful for the gradient descent algorithm used for training.
+    Therefore, the `relu` function is usually a good non-linear alternative. It is
+    the current default setting and is a good first choice; the `logistic` or the
+    `tanh` activation functions are the next alternative options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output layer also has its own activation function, but it serves a different
+    purpose. If you recall from [Chapter 3](f5590b35-517b-42bb-821f-66d4fdc8059a.xhtml),
+    *Making Decisions with Linear Equations,* we used the `logistic` function to turn
+    a linear regression into a classifier—that is, logistic regression. The output''s
+    activation function serves the exact same purpose here as well. This list has
+    the possible output activation functions and their corresponding use cases:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Identity function**: Set when doing regression using `MLPRegressor`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Logistic function**: Set when performing a binary classification using `MLPClassifier`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Softmax function**:**Set when using `MLPClassifier`to differentiate between
+    three or more classes**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**We do not set the output activation functions by hand; they are automatically
+    chosen based on whether`MLPRegressor` or`MLPClassifier`is*used and on the number
+    of classes available for the latter to classify.*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*If we look at the network architecture, it is clear that another important
+    hyperparameter to set is the number of hidden layers and the number of nodes in
+    each layer. This is set using the `hidden_layer_sizes`*hyperparameter, which accepts
+    tuples. To achieve the architecture in the previous figure—that is, one hidden
+    layer with two nodes—we will set `hidden_layer_sizes` to `2`. Setting it to `(10,
+    10, 5)` gives us three hidden layers; the first two have 10 nodes each, while
+    the third one has 5 nodes.*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*## Training the neural network'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"Psychologists tell us that in order to learn from experience, two ingredients
+    are necessary: frequent practice and immediate feedback."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Richard Thaler
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A big chunk of researchers'' time is spent on improving how their neural networks
+    train. This is also reflected in the number of hyperparameters related to the
+    training algorithms used. To better understand these hyperparameters, we need
+    to examine the following training workflow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Get a subset of the training samples.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Run them through the network and make predictions.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate the training loss by comparing the actual values and predictions.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Use the calculated loss to update the network weights.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Return to *step 1* to get more samples, and if all the samples are already used,
+    go through the training data over and over until the training process converges.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Going through these steps one by one, you can seethe need to set the size of
+    the training subset at the first stage. This is what the `batch_size`parameter
+    sets. As we will see in a bit, you can go from using one sample at a time to using
+    the entire training set all at once to anything in between. The first and second
+    steps are straightforward, but the third step dictates that we should know which
+    loss function to use. As for the available loss functions, we do not have much
+    choice when working with scikit-learn. A**log loss function**is selected for us
+    when performing classifications and**mean squared error**is what is available
+    for regression. The fourth step is the trickiest part with the most of hyperparameters
+    to set. We calculate the gradient of the loss function with respect to the network
+    weights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This gradient tells us the direction to move toward to decrease the loss function.
+    In other words, we use the gradient to update the weights in the hope that we
+    can iteratively decrease the loss function to its minimum. The logic responsible
+    for this operation is known as the solver. Solvers deserve their own separate
+    section, though, which will come in a bit. Finally, the number of times we go
+    through the training data over and over is called epochs and is set using the
+    `max_iter`hyperparameter. We also may decide to stop earlier (`early_stopping`)
+    if the model is not learning any more. The`validation_fraction`, `n_iter_no_change`,
+    and `tol`hyperparameters help us decide when to stop. More on how they work in
+    the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring the solvers
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'After calculating the loss function (also known as the cost or objective function),
+    we need to find the optimum network weights that minimize the loss function. In
+    the linear models from [Chapter 3](f5590b35-517b-42bb-821f-66d4fdc8059a.xhtml),
+    *Making Decisions with Linear Equations*, the loss functions were chosen to be
+    convex. A convex function, as seen in the following figure, has one minimum, which
+    is both its global minimum as well as its local one. This simplifies the solvers''
+    job when trying to optimize this function. In the case of non-linear neural networks,
+    the loss function is typically non-convex, which requires extra care during training,
+    hence more attention is given to the solvers here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a6203d0d-adb7-4a27-a8d4-b9b8619b9ce4.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The supported solvers for MLP can be grouped into **Limited Memory****Broyden–Fletcher–Goldfarb–Shanno**
+    (**LBFGS**) and **gradient descent** (**Stochastic Gradient Descent** (**SGD**)
+    and**Adam). In both variants, we want to pick a random point on the loss function,
+    calculate its slope (gradient), and use it to figure out in which direction we
+    should move next. Remember that in reality, we are dealing with way higher dimensions
+    than the two-dimensional graphs shown here. Furthermore, we cannot usually see
+    the entire graph as we can now:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '***   The **LBFGS** algorithm uses both the slope (first derivative) and the
+    rate of change of the slope (second derivative), which helps in providing better
+    coverage; however, it doesn''t scale well with the size of the training data.
+    It can be very slow to train, and so this algorithm is recommended for smaller
+    datasets, unless more powerful concurrent machines come to the rescue.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **gradient descent****algorithm relies on the first derivative only. So,
+    more effort is needed to help it move effectively. The calculated gradient is
+    combined with `learning_rate`. This controls how much it moves each time after
+    calculating the gradient. Moving too quickly may result in overshooting and missing
+    the local minimum, while moving too slowly may cause the algorithm not to converge
+    soon enough. We start our quest with a rate defined by `learning_rate_init`. If
+    we set `learning_rate='constant'`, the initial rate is kept unchanged throughout
+    the training process. Otherwise, we can set the rate to decrease with each step
+    (in scaling) or to only decrease whenever the model is not able to learn enough
+    anymore (adaptive).**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '***   **Gradient descent**can use the entire training data to calculate the
+    gradient, use a single sample at a time (`sgd`), or consume the data in small
+    subsets (mini-batch gradient descent). These choices are controlled by `batch_size`.
+    Having a dataset that cannot fit into memory may prevent us from using the entire
+    dataset at once, while using small batches may cause the loss function to fluctuate.
+    We will see this effect in practice in the next section.*   The problem with the
+    learning rate is that it doesn''t adapt to the shape of the curve, especially
+    as we are only using the first derivative here. We want to control the learning
+    speed, depending on how steep the curve at our feet is. One notable adjustment
+    to make the learning process smarter is the concept of `momentum`. This adapts
+    the learning process based on current and previous updates. The `momentum` is
+    enabled for the `sgd` solver by default, and its magnitude can be set using the
+    `momentum`hyperparameter. The`adam`solver incorporates this concept and combines
+    it with the ability to compute separate learning rates for each one of the network
+    weights. It is parameterized by `beta_1`and`beta_2`. They are usually kept at
+    their default values of `0.9` and `0.999`, respectively. The `adam`solver is the
+    default solver since it requires fewer tuning efforts compared to the `sgd` solver.
+    Nevertheless, the `sgd` solver can converge to better solutions if tuned correctly.*   Finally,
+    deciding when to stop the training process is another essential decision to make.
+    We loop over the data more than once, bounded by the `max_iter` setting. Yet,
+    we can stop before `max_iter` is reached if we feel that we aren''t learning enough.
+    We define how much learning is enough using `tol`, then we can stop the training
+    process right away or give it a few more chances (`n_iter_no_change`) before we
+    decide to stop it. Furthermore, we can set a separate fraction of the training
+    set aside (`validation_fraction`) and use it to evaluate our learning process
+    better. Then, if we set `early_stopping =True`, the training process will stop
+    once the improvement for the validation set does not meet the `tol`threshold for**`n_iter_no_change`epochs.****'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '****Now that we have a good high-level picture of how things work, I feel the
+    best way forward is to put all these hyperparameters into practice and see their
+    effect on real data. In the next section, we will load an image dataset and use
+    it to learn more about the aforementioned hyperparameters.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classifying items of clothing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this section, we are going to classify clothing items based on their images.
+    We are going to use a dataset release by Zalando. Zalando is an e-commerce website
+    based in Berlin. They released a dataset of 70,000 pictures of clothing items,
+    along with their labels. Each item belongs to one of the following 10 labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The data is published on the OpenML platform, so we can easily download it using
+    the built-in downloader in scikit-learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Downloading the Fashion-MNIST dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Each dataset on the OpenML platform has a specific ID. We can give this ID
+    to`fetch_openml()`to download the required dataset, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The class labels are given as numbers. To extract their names, we can parse
+    the following line from the description, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also create a function similar to the one we created in [Chapter 5](b95b628d-5913-477e-8897-989ce2afb974.xhtml),
+    *Image Processing with Nearest Neighbors,* to display the images in the dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The previous function expects an image and a target label in addition to the
+    `matplotlib` axis to display the image on. We are going to see how to use it in
+    the upcoming sections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing the data for classification
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When developing a model and optimizing its hyperparameters, you will need to
+    run it over and over multiple times. Therefore, it is advised that you start working
+    with a smaller dataset to minimize the training time. Once you reach an acceptable
+    model, you can then add more data and do your final hyperparameter-tuning. Later
+    on, we will see how to tell whether the data at hand is enough and whether more
+    samples are needed; but for now, let's stick to a subset of 10,000 images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I deliberately avoided setting any random states when sampling from the original
+    dataset and when splitting the sampled data into a training and a test set. By
+    not setting a random state, you should expect the final results to vary from one
+    run to the other. I made this choice since my main objective here is to focus
+    on the underlying concepts, and I did not want you to obsess over the final results.
+    In the end, the data you will deal with in real-life scenarios will vary from
+    one problem to the other, and we have already learned in previous chapters how
+    to better understand the boundaries of our model's performance via cross-validation.
+    So, in this chapter, as in many other chapters in this book, don't worry too much
+    if the mentioned model's accuracy numbers, coefficients, or learning behavior
+    vary slightly from yours.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will use the`train_test_split()` function twice. Initially, we will use
+    it for sampling. Afterward, we will reuse it for its designated purpose of splitting
+    the data into training and test sets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The pixels here take values between `0` and `255`. Usually, this is fine; however,
+    the solvers we will use converge better when the data is put into tighter ranges.`MinMaxScaler`
+    is going to help us achieve this, as can be seen in the following code, whereas
+    `StandardScaler` is also an option:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can now translate the numerical labels into names using the function we
+    created in the previous section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If your original labels came in as strings, you can use `LabelEncoder` to convert
+    them into numerical values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, let''s use the following code to see how the images look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we see 10 random images alongside their labels. We loop over 10 random
+    images and use the display function we created earlier to display them next to
+    each other:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/80f63e13-3b73-4a80-acc6-045da971f865.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now that the data is ready, it is time to see the effect of the hyperparameters
+    in practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Experiencing the effects of the hyperparameters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: After the neural network is trained, you can check its weights (`coefs_`), intercepts
+    (`intercepts_`), and the final value of the loss function (`loss_`). One additional
+    piece of information is the computed loss after each epoch (`loss_curve_`). This
+    trace of calculated losses is very useful for the learning process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we train a neural network with two hidden layers of 100 nodes each, and
+    we set the maximum number of epoch to `500`. We leave all the other hyperparameters
+    to their default values for now:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After the network is trained, we can plot the loss curve using the following
+    line of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This gives us the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/546e0a22-d910-4e30-920a-e1bd13a308ef.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Despite the fact that the algorithm was told to continue learning for up to
+    `500` epochs, it stopped after the 107^(th) epoch. The default value for `n_iter_no_change`
+    is `10` epochs. This means that the learning rate was not improving enough since
+    the 97^(th) epoch, and so the network came to a halt 10 epochs later. Keep in
+    mind that `early_stopping` is set to `False` by default, which means that this
+    decision was made regardless of the `10%` validation set that was set aside by
+    default. If we want to use the validation set for the early stopping decision,
+    we should set `early_stopping=True`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Learning not too quickly and not too slowly
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'As mentioned earlier, the gradient of the loss function (*J*) with respect
+    to the weights (*w*) is used to update the network''s weights. The updates are
+    done according to the following equation, where *lr* is the learning rate:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2443e935-17a8-4772-b7b0-f37c0e36e430.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: You might wonder about the need for a learning rate; why don't we just use the
+    gradient as it is by setting *lr = 1*? In this section, we are going to answer
+    this question by witnessing the effect of the learning rate on the training process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another hidden gem in the MLP estimator is`validation_scores_`. Like `loss_curve_`,
+    this one is also not documented, and its interface may change with future releases.
+    In the case of `MLPClassifier`, `validation_scores_` keeps track of the classifier's
+    accuracy on the validation set, whereas for`MLPRegressor`, it keeps track of the
+    regressor's R² score instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are going to use the validation score (`validation_scores_`) to see the effect
+    of the different learning rates. Since these scores are stored only when `early_stopping`
+    is set to `True` and we do not want to stop early, we will also set `n_iter_no_change`to
+    be the same value as`max_iter`to cancel the early stopping effect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The default learning rate is`0.001`, and it stays constant during the training
+    process by default. Here, we are going to take an even smaller subset of the training
+    data—1,000 samples—and try different learning rates from`0.0001`to`1`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following graphs compare the progress of the validation scores for the
+    different learning rates. The code used for formatting the axes was omitted for
+    brevity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2c4f4fc2-45f2-4095-9a26-86b990738610.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As we can see, when setting the learning rate to `1`, the network wasn't able
+    to learn and the accuracy score was stuck around 10%. This is because the bigger
+    steps taken to update the weights caused the gradient descent to overshoot and
+    miss the local minima. Ideally, we want the gradient descent to move wisely over
+    the curve; it shouldn't rush and miss the optimum solutions. On the other hand,
+    we can see that a very slow learning rate, `0.0001`, caused the network to take
+    forever to train. It's clear that `120` epochs wasn't enough, then, and more epochs
+    were needed. For this example, a learning rate of `0.01` looks like a good balance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The concept of learning rate is commonly used in iterative methods to prevent
+    overshooting. It might have different names and different justifications, but
+    in essence, it serves the same purpose. For example, in the **reinforcement learning**
+    field, the **discount factor** in the **Bellman equation** might resemble the
+    learning rate here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Picking a suitable batch size
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'When dealing with massive training data, you don''t want to use it all at once
+    when calculating the gradient, especially when it is not possible to fit this
+    data in memory. Using the data in small subsets is something we can configure.
+    Here, we are going to try different batch sizes while keeping everything else
+    constant. Keep in mind that with`batch_size`set to `1`, the model is going to
+    be very slow as it updates its weights after each training instance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This figure gives us a visual comparison between the four batch size settings
+    and their effects. Parts of the formatting code were omitted for brevity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6ade3c82-da3d-46fa-9ecb-48a266a7efa1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: You can see why the use of mini-batch gradient descent is becoming the norm
+    among practitioners, not only because of the memory constraints but also because
+    smaller batches helped our model here learn better. This final outcome was achieved
+    despite the higher fluctuations in the validation scores for the smaller batch
+    sizes. On the other hand, setting `batch_size` to `1` slows down the learning
+    process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So far, we have tweaked multiple hyperparameters and witnessed their effects
+    on the training process. In addition to these hyperparameters, two additional
+    questions are still waiting for answers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How many training samples are enough?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How many epochs are enough?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Checking whether more training samples are needed
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We want to compare when the entire training sample (100%) is used when 75%,
+    50%, 25%, 10%, and 5% of it is used. The`learning_curve`function is useful for
+    this comparison. It uses cross-validation to calculate the average training and
+    test scores for the different sample sizes. Here, we are going to define the different
+    sampling ratios and specify that three-fold cross-validation is needed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When done, we can use the following code to plot the progress of the training
+    and test scores with an increase in the sample size:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting graphs show the increase in the classifier''s accuracy with more
+    training data. Notice how the training score is constant, while the test score
+    is what we really care about, and it seems to saturate after a certain amount
+    of data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/556e220c-917d-4989-8626-32b5f245f67a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Earlier in this chapter, we took a sample of 10,000 images out of the original
+    70,000 images. We then split it into 8,000 for training and 2,000 for testing.
+    From the learning curve graph, we can see that it is possible to settle for an
+    even smaller training set. Somewhere after 2,000 the additional samples don't
+    add much value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Usually, we want to use as many data samples as we have to train our models.
+    Nevertheless, when tuning the model's hyperparameters, you need to compromise
+    and use a smaller sample to speed up the development process. Once that's done,
+    it is then advised to train the final model on the entire dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Checking whether more epochs are needed
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'This time, we are going to use the `validation_curve` function. It works in
+    a similar fashion to the `learning_curve` function, but rather than comparing
+    the different training sample sizes, it compares the different hyperparameter
+    settings. Here, we will see the effect of using different values for `max_iter`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the training and test scores, we can plot them as we did in the previous
+    section to get the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/58a6a67e-9f20-48a1-b3d2-e96329b83132.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this example, we can see that the test score stopped improving roughly after
+    `25` epochs. The training score continued to improve beyond that until it reached
+    100%, which is a symptom of overfitting. In practice, we may not need this graph
+    as we use the `early_stopping`, `tol`, and `n_iter_no_change` hyperparameters
+    to stop the training process once we have learned enough and before we overfit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choosing the optimum architecture and hyperparameters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: So far, we haven't talked about the network architecture. How many layers should
+    we have and how many nodes should we put in each layer? We also haven't compared
+    the different activation functions. As you can see, there are plenty of hyperparameters
+    to choose from. Previously in this book, we mentioned tools such as `GridSearchCV`
+    and `RandomizedSearchCV` that help you pick the best hyperparameters. These are
+    still good tools to use, but they can be too slow if we decide to use them to
+    tune every possible value for every parameter we have. They can also become too
+    slow when used with too many training samples or for too many epochs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The tools we have seen in the previous sections should help us find our needle
+    in a slightly smaller haystack by ruling out some hyperparameter ranges. They
+    will also allow us to stick to smaller datasets and for shorter training times.
+    Then, we can effectively use `GridSearchCV` and`RandomizedSearchCV`to fine-tune
+    our neural network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parallelism is also advised where possible. `GridSearchCV` and**`RandomizedSearchCV`
+    allow us to use the different processors on our machines to train multiple models
+    at the same time. We can achieve that via the `n_jobs` setting. This means that
+    you can significantly speed up the hyperparameter-tuning process by using machines
+    with a high number of processors. As for the data size, since we are going to
+    perform k-fold cross-validation and the training data will be split further down,
+    we should add more data than the amount estimated in the previous section. Now,
+    without further ado, let's use`GridSearchCV` to tune our network:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**[PRE16]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It ran for 14 minutes on four CPUs, and the following hyperparameters were
+    picked:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Activation**: `relu`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Hidden layer sizes**: `(500, 100)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Initial learning rate**: `0.01`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Solver**: `adam`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The selected model achieved a **micro F-score** of **85.6%** on the test set.
+    By using the `precision_recall_fscore_support` function, you can see in more detail
+    which classes were easier to predict than others:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f4e18add-f143-458a-893f-b185ce43422a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Ideally, we should retrain again using the entire training set, but I've left
+    this for now. In the end, developing an optimum neural network is usually seen
+    as a mixture of art and science. Nevertheless, knowing your hyperparameters and
+    how to measure their effects should make it a straightforward endeavor. Then,
+    tools such as `GridSearchCV` and `RandomizedSearchCV` are at your disposal for
+    automating parts of the process. Automation trumps dexterity many times.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before moving on to the next topic, I'd like to digress a bit and show you how
+    to build your own activation function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding your own activation function
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'One common problem with many activation functions is the vanishing gradient
+    problem. If you look at the curves for the `logistic` and `tanh` activation functions,
+    you can see that for high positive and negative values, the curve is almost horizontal.
+    This means that the gradient of the curve is almost constant for these high values.
+    This hinders the learning process. The `relu` activation function tried to solve
+    this problem for one part but failed to deal with it for the negative values.
+    This drove the researchers to keep proposing different activations functions.
+    Here, we are going to compare the **ReLU** activation to a modified version of
+    it, **Leaky ReLU**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/18e43923-6e2d-415a-b2a7-bc78953f2730.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As you can see in the **Leaky ReLU** example, the line is not constant for
+    the negative values anymore, but rather, decreasing at a small rate. To add **Leaky
+    ReLU**, I had to look for how the `relu` function is built in scikit-learn and
+    shamelessly modify the code for my needs. There are basically two methods to build.
+    The methods are used in the forward path and just apply the activation function
+    on its inputs, while the second method applies the derivative of the activation
+    function to the calculated error. Here are the two existing methods for `relu`,
+    after I slightly modified the code for brevity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the first method, NumPy's `clip()` method is used to set the negative values
+    to `0`. Since the `clip` method requires both the lower- and upper-bounds, the
+    cryptic part of the code just gets the maximum values of this data type to set
+    it as the upper-bound. The second method takes the output of the activation function
+    (`Z`), as well as the calculated error (`delta`). It is supposed to multiply the
+    error by the gradient of the activation's output. Nevertheless, for this particular
+    activation function, the gradient is `1` for positive values and `0` for the negative
+    values. So, the error was set to `0` for the negative values—that is, it was set
+    to `0` whenever `relu` returned `0`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`leaky_relu` keeps the positive values unchanged and multiplies the negative
+    values by a small value, `0.01`. Now, all we need to do is to build out new methods
+    using this information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Recall that the slope for `leaky_relu` is `1` for the positive values and is
+    equal to the `leaky_relu_slope` constant for the negative values. That''s why
+    we multiplied the deltas where `Z` is negative by `leaky_relu_slope`. Now, before
+    using our new methods, we have to inject them into the scikit-learn''s code base,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, you can just use `MLPClassifier` as if it were there from the beginning:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Hacking libraries like these forces us to read its source code and understand
+    it better. It also shows the value of open source, where you are not bounded by
+    what is already there. In the next section, we are going to continue hacking and
+    build our own convolutional layers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Untangling the convolutions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"Look deep into nature, and then you will understand everything better"'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Albert Einstein
+  prefs: []
+  type: TYPE_NORMAL
+- en: No chapter about the use of neural networks to classify images is allowed to
+    end without touching on CNNs. Despite the fact that scikit-learn does not implement
+    convolutional layers, we can still understand the concept and see how it works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start with the following *5* x *5* image and see how to apply a convolutional
+    layer to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: In natural language processing, words usually serve as a middle ground between
+    characters and entire sentences when it comes to feature extraction. In this image,
+    maybe smaller patches serve as better units of information than a separate pixel.
+    The objective of this section is to find ways to represent these small *2 x 2*,
+    *3 x 3*, or *N x N* patches in an image. We can start with averages as summaries.
+    We can basically take the average of each *3 x 3* patch by multiplying each pixel
+    in it by 1, and then dividing the total by 9; there are 9 pixels in the patch.
+    For the pixels on the edges, as they don't have neighbors in all directions, we
+    can pretend that there is an extra 1-pixel border around the image where all pixels
+    are set to 0\. By doing so, we get another *5 x 5* array.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This kind of operation is known as **convolutions**, and **SciPy** provides
+    a way of doing it. The *3 x 3* all-ones matrix used and is also known as the kernel
+    or weights. Here, we specify the all-ones kernel and divide by 9 later. We also
+    specify the need for an all-zeros border by setting`mode` to `constant` and `cval`
+    to `0`, as you can see in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is a comparison between the original image and the output of the convolution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0d901206-8df7-41d1-86c1-e1d2b9dc94ee.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Calculating the mean gave us a blurred version of the original image, so next
+    time you need to blur an image, you know what to do. Multiplying each pixel by
+    a certain weight and calculating the sum of these products sounds like a linear
+    model. Furthermore, we can think of averages as linear models where all weights
+    are set to ![](img/f1e2a388-dfb2-4f7a-ba68-5bd41656920e.png). So, you may say
+    that we are building mini-linear models for each patch of the image. Keep this
+    analogy in mind, but for now, we have to set the model's weights by hand.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While each patch gets the exact same linear model as the others, there is nothing
+    stopping the pixels within each patch from being multiplied by different weights.
+    In fact, different kernels with different weights give different effects. In the
+    next section, we are going to witness the effect of the different kernels on our
+    **Fashion-MNIST** dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extracting features by convolving
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Rather than dealing with the images one by one, we can tweak the code to convolve
+    over multiple images at once. The images in our Fashion-MNIST dataset are flattened,
+    so we need to reshape them into *28* x *28* pixels each. Then, we convolve using
+    the given kernel, and finally, make sure that all pixel values are between `0`
+    and `1` using our favorite `MinMaxScaler` parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we can use it as our training and test data, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here are few kernels: the first one is used to sharpen an image, then comes
+    a kernel to emphasize vertical edges, while the last one emphasizes the horizontal
+    ones:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Sharpen**: `[[0,-1,0], [-1,5,-1], [0,-1,0]]`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**V-edge**: `[[-1,0,1], [-2,0,2], [-1,0,1]]`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**H-edge**: `[[-1,-2,-1], [0,0,0], [1,2,1]]`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Giving those kernels to the convolve function we have just created will give
+    us the following effects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/19a88a69-803a-46a5-870e-471a223e3b9b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: You can find more kernels on the internet, or you can try your own and see the
+    effects they make. The kernels are also intuitive; the sharpening kernel clearly
+    gives more weight to the central pixels versus its surroundings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each of the different convolutional transformations captures certain information
+    from our images. We can thussee them as a feature engineering layer, where we
+    extract features to feed to our classifier. Nevertheless, the size of our data
+    will grow with each additional convolutional transformation we append to our data.
+    In the next section, we will see how to deal with this issue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reducing the dimensionality of the data via max pooling
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Ideally, we would like to feed the outputs from more than one of the previous
+    convolutional transformations into our neural network. Nevertheless, if our images
+    are made of 784 pixels, then concatenating the outputs of just three convolutional
+    functions will result in 2,352 features, *784 x 3*. This will slow down our training
+    process, and as we have learned earlier in this book, the more features are not
+    always the merrier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To shrink an image to one-quarter of its size—that is, half its width and half
+    its height—you can divide it into multiple *2 x 2* patches, then take the maximum
+    value in each of these patches to represent the entire patch. This is exactly
+    what **max pooling** does. To implement it, we need to install another library
+    called `scikit-image` using `pip` in your computer terminal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we can create our max pooling function, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can then apply it to the outputs of one of the convolutions, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Applying max pooling on *5 x 5* patches will reduce the size of our data from
+    *28 x 28* to *6 x 6*, which is less than 5% of its original size.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Putting it all together
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The `FeatureUnion` pipeline in scikit-learn can combine the output of multiple
+    transformers. In other words, if scikit-learn had transformers that could convolve
+    over images and max pool the output of these convolutions, you would have been
+    able to combine the outputs of more than one of these transformers, each with
+    its specific kernel. Luckily, we can build this transformer ourselves and combine
+    their outputs via `FeatureUnion`. We just need them to provide the fit, transform,
+    and fit_transform methods, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can specify the kernel to use at the initialization step. You can also
+    skip the max pooling part by setting `max_pool` to `False`. Here, we define our
+    three kernels and combine their outputs while pooling each *4 x 4* patch in our
+    images:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we can use the output of the `FeatureUnion` pipeline into our neural
+    network, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: This network achieved a **micro F-score** of **79%**. You may try adding more
+    kernel and tune the network's hyperparameters and see whether we can achieve a
+    better score than the one we got without the convolutions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We had to set the kernel weights of the convolutions by hand. We then displayed
+    their outputs to see whether they make intuitive sense and hope they will improve
+    our model's performance when used. This doesn't sound like a real data-driven
+    approach. You would ideally want the weights to be learned from the data. That's
+    exactly what the real CNNs do. I would suggest you look into TensorFlow and PyTorch
+    for their CNN implementations. It would be nice if you could compare their accuracy
+    to the model we have built here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MLP regressors
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As well as `MLPClassifier`, there is its regressor sibling,`MLPRegressor`. The
+    two share an almost identical interface.The main difference between the two is
+    the loss functions used by each of them and the activation functions of the output
+    layer. The regressor optimizes a squared loss, and the last layer is activated
+    by an identity function. All other hyperparameters are the same, including the
+    four activation options for the hidden layers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both estimators have a `partial_fit()`method. You can use it to update the model
+    once you get a hold of additional training data after the estimator has already
+    been fitted.`score()`in `MLPRegressor`calculates the regressor's**R*²,* as opposed
+    to the classifier's accuracy, which is calculated by`MLPClassifier`*.***
+  prefs: []
+  type: TYPE_NORMAL
+- en: '****# Summary'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have now developed a good understanding of ANNs and their underlying technologies.
+    I'd recommend libraries suchas TensorFlow and PyTorch for more complex architecture
+    and for scaling up the training process on GPUs. However, you have a good headstart
+    already. Most of the concepts discussed here are transferable to any other library.
+    You will be using more or less the same activation functions and the same solvers,
+    as well as most of the other hyperparameters discussed here. scikit-learn's implementation
+    is still good for prototyping and for cases where we want to move beyond linear
+    models without the need for too many hidden layers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, the solvers discussed here, such as gradient descent, are so ubiquitous
+    in the field of machine learning, and so understanding their concepts is also
+    helpful for understanding other algorithms that aren't neural networks. We saw
+    earlier how gradient descent is used in training linear and logistic regressors
+    as well as support vector machines. We are also going to use them with the gradient
+    boosting algorithms we will look at in the next chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Concepts such as the learning rate and how to estimate the amount of training
+    data needed are good to have at your disposal, regardless of what algorithm you
+    are using. These concepts were easily applied here, thanks to the helpful tools
+    provided by scikit-learn. I sometimes find myself using scikit-learn's tools even
+    when I'm not building a machine learning solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If ANNs and deep learning are the opium of the media, then ensemble algorithms
+    are the bread and butter for most practitioners when solving any business problem
+    or when competing for a $10,000 prize on Kaggle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we are going to learn about the different ensemble methods
+    and their theoretical background, and then get our hands dirty fine-tuning their
+    hyperparameters.****************
+  prefs: []
+  type: TYPE_NORMAL

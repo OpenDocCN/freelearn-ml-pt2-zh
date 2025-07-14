@@ -1,0 +1,1235 @@
+- en: '14'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Building an Image Search Engine Using CLIP: a Multimodal Approach'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we focused on Transformer models such as BERT and GPT,
+    leveraging their capabilities for sequence learning tasks. In this chapter, we’ll
+    explore a multimodal model, which seamlessly connects visual and textual data.
+    With its dual encoder architecture, this model learns the relationships between
+    visual and textual concepts, enabling it to excel in tasks involving image and
+    text. We will delve into its architecture, key components, and learning mechanisms,
+    leading to a practical implementation of the model. We will then build a multimodal
+    image search engine with text-to-image and image-to-image capabilities. To top
+    it all off, we will tackle an awesome zero-shot image classification project!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will cover the following topics in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing the CLIP model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Getting started with the dataset
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Architecting the CLIP model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finding images with words
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introducing the CLIP model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have explored computer vision in *Chapter 11*, *Categorizing Images of Clothing
+    with Convolutional Neural Networks*, and NLP in *Chapter 12*, *Making Predictions
+    with Sequences Using Recurrent Neural Networks*, and *Chapter 13*, *Advancing
+    Language Understanding and Generation with the Transformer Models*. In this chapter,
+    we will delve into a model that bridges the realms of computer vision and NLP,
+    the **Contrastive Language–Image Pre-Training** (**CLIP**) model developed by
+    OpenAI. Unlike traditional models that are specialized for either computer vision
+    or natural language processing, CLIP is trained to understand both **modalities**
+    (image and text) in a unified manner. Hence, CLIP excels at understanding and
+    generating relationships between images and natural language.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A modality in ML/AI is a specific way of representing information. Common modalities
+    include text, images, audio, video, and even sensor data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Excited to delve into the workings of CLIP? Let’s explore and discover more
+    about how it works!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the mechanism of the CLIP model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'CLIP is designed to learn representations of images and corresponding textual
+    descriptions simultaneously. The model learns to associate similar pairs and disassociate
+    dissimilar pairs of images and text. Its unique architecture (see *Figure 14.1*
+    below) enables it to develop semantic connections between images and their textual
+    descriptions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_14_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.1: CLIP architecture (image based on Figure 1 in “Learning Transferable
+    Visual Models From Natural Language Supervision”: [https://arxiv.org/pdf/2103.00020.pdf](https://arxiv.org/pdf/2103.00020.pdf))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, it utilizes a dual-encoder architecture that integrates both
+    vision and text encoder. The output from the vision encoder and the output from
+    the text encoder are projected into a shared space. It then evaluates the placement
+    of these image-text pairs based on their similarity. This shared semantic space
+    allows CLIP to perform various vision-language tasks, such as image classification,
+    object detection, and image retrieval.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here are the key components of the CLIP model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Vision encoder
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The vision encoder (also called image encoder) in CLIP is responsible for processing
+    and encoding image inputs. It is typically implemented as a **CNN**. Recall that
+    CNNs are well suited for image-related tasks, as they can effectively capture
+    hierarchical features in images. The output of the vision encoder for an input
+    image is a fixed-size vector representation. The embedding vector captures the
+    semantic content of the image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are two main architectures used for the vision encoder. The first version
+    is a modified **ResNet mode** based on the ResNet-50 model. Additionally, the
+    average pooling layer is substituted with an attention pooling mechanism. This
+    attention pooling is realized as a single layer of multi-head attention, with
+    the query conditioned on the recently introduced **Vision Transformer** (`https://huggingface.co/google/vit-base-patch16-224`).
+    It includes an additional normalization layer just before the Transformer as the
+    only adjustment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is important to note that the generated visual embeddings exist in **a shared
+    space** with embeddings from the text encoder. This shared space projection enables
+    direct comparisons between visual and textual representations. If an image and
+    a textual description are semantically related, they would be mapped to closer
+    points in this space. For example, an image of a cat and the corresponding text
+    “a fluffy cat” would be close together in this space, indicating their semantic
+    similarity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The vision encoder is pre-trained on a large and diverse dataset containing
+    images and their associated textual descriptions. For example, OpenAI mentioned
+    in the CLIP paper ([https://openai.com/index/clip](https://openai.com/index/clip))
+    that their model was trained on a collection of 400 million image-text pairs obtained
+    from crawling the internet. The pre-training process allows the vision encoder
+    to learn rich and generalized visual representations. Furthermore, the learned
+    representations are task-agnostic. Hence, we can fine-tune a CLIP model for a
+    wide range of text-image applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Text encoder
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Similarly, the text encoder is responsible for processing and encoding textual
+    inputs. The process begins with tokenization. The tokenized text is then passed
+    through an embedding layer and converted into a fixed-size high-dimensional vector.
+    Additionally, to preserve important sequential information in the text, we add
+    **positional encoding** to the embeddings. The resulting embeddings can capture
+    the semantic content of the text.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The text encoder is implemented as a Transformer with a particular architecture.
+    For instance, the OpenAI team utilized a 12-level, 512-wide model with 8 attention
+    heads and 63 million parameters in total, and its maximum sequence length was
+    restricted to 76.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As mentioned earlier, the text embeddings are in a shared space with the embeddings
+    from the vision encoder. This allows direct comparisons between visual and textual
+    inputs and cross-modal understanding. Similarly, pre-training on a diverse dataset
+    enables the model to learn generalizable contextual understanding from various
+    linguistic contexts. The text encoder can be fine-tuned for various downstream
+    tasks in collaboration with the vision encoder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Contrastive learning
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Contrastive learning is the training strategy in CLIP. It teaches the model
+    to differentiate between similar and dissimilar image-text pairs. During training,
+    CLIP is presented with positive and negative image-text pairs. A positive pair
+    consists of an image and description that are semantically related. On the other
+    hand, a negative pair is formed by combining an image with a randomly chosen description,
+    creating mismatches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Contrastive learning focuses on bringing embeddings of positive pairs closer
+    together in the shared embedding space, while pushing embeddings of negative pairs
+    further apart. This separation is achieved through a **contrastive loss function**.
+    Let’s break down the contrastive loss calculation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Embedding generation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Given *N* images *I* and the corresponding text descriptions *T*, the CLIP model
+    first creates image embeddings ![](img/B21047_14_001.png) and text embeddings
+    ![](img/B21047_14_002.png) using its dual encoder (vision encoder and text encoder)
+    architecture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarity matrix calculation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Since embeddings ![](img/B21047_14_001.png)`and` ![](img/B21047_14_002.png)
+    are in the same space, we can calculate pair-wise similarities *S*. For image
+    *i* and text *j*, their similarity ![](img/B21047_14_005.png) is the cosine similarity
+    image embedding ![](img/B21047_14_006.png) and text embedding ![](img/B21047_14_007.png):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_14_008.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, ![](img/B21047_14_009.png). The goal is to maximize the similarity of
+    image and text embeddings for *N* positive pairs, while minimizing the similarity
+    for the embeddings of *N*² − *N* negative pairings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Target matrix creation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we construct `the target ("ideal")` matrix *Y* `for learning.` `Here,`
+    ![](img/B21047_14_010.png) if image *i* and text *j* are a `positive` pair (diagonal
+    elements); ![](img/B21047_14_011.png) for all other pairs (off-diagonal elements).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Cross-entropy loss computation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'With the similarity matrix *S* and target matrix *Y*, we then compute the cross-entropy
+    loss for both image and text modalities. Here is the loss for image alignment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_14_012.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: It measures how well the model predicts the correct image given a text description.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The loss for text alignment, measuring how well the model predicts the correct
+    description given an image, is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_14_013.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Final loss computation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The contrastive loss is the average of the image-based loss and the text-based
+    loss:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_14_014.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: During training, the model’s parameters are updated to minimize the contrastive
+    loss function. This drives the model to learn embeddings that align correctly
+    paired images and text, while pushing apart mismatched pairs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The contrastive learning objective contributes to effective cross-modal retrieval
+    and understanding. Along with the dual-encoder architecture, a pre-trained CLIP
+    model can perform various downstream image-text tasks without task-specific retraining.
+    So what are those typical applications and scenarios? Let’s see next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring applications of the CLIP model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this section, we will explain some common applications and use cases for
+    the CLIP model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Zero-shot image classification
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In a zero-shot learning setup, CLIP is presented with a task it has not been
+    explicitly trained on. For instance, it might be asked to classify images into
+    unseen categories, or to generate descriptions for images without having seen
+    similar examples during pre-training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first zero-shot application is image classification based on textual descriptions.
+    We don’t need to perform any task-specific training thanks to the model’s pre-trained
+    knowledge. The model can categorize the images based on their alignment with the
+    descriptions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, given three unseen images (*Image 1*: a photo of a red vintage
+    car on a city street; *Image 2*: a painting depicting a red car in an urban setting;
+    *Image 3*: a cartoon illustration of a city with a red car), we pass the query
+    text “A vintage red car parked on a city street” to the CLIP model. It may correctly
+    rank *Image 1* as the most relevant to the query, with a red vintage car on a
+    city street. *Image 3* may be ranked the least relevant due to its cartoon style,
+    which is least aligned with the query.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The zero-shot learning capability makes CLIP useful for tasks where labeled
+    examples are scarce or even unavailable. We’ve seen it can categorize images even
+    for categories never seen during pre-training. In the next section, we will use
+    it for zero-shot text classification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Zero-shot text classification
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Similarly, CLIP can classify new textual descriptions based on images. In zero-shot
+    setting, we don’t need to provide labeled examples for fine-tuning. The model
+    can categorize text inputs based on their alignment with the images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, given a query image of a mountain landscape and three potential
+    descriptions (*Text 1*: “A view of a serene mountain range,” *Text 2*: “The majestic
+    peaks and valleys of the mountains,” and *Text 3*: “Hiking trails in mountainous
+    regions.”), the CLIP model may score *Text 1* the most relevant due to its highest
+    alignment with the query image.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ve talked about CLIP for zero-shot image and text classification. In fact,
+    we can extend it to content retrieval. Let’s see the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image and text retrieval
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: CLIP can be used to retrieve images relevant to a given text query, and vice
+    versa,
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, in image retrieval, we pass the text query “playful puppies” to
+    an image search engine. The CLIP model retrieves images that best match the description
+    of playful puppies. It also ranks them based on their alignment with the text
+    query. Similarly, CLIP can also be used to retrieve and rank captions for images
+    that accurately describe their content.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ve demonstrated CLIP’s cross-modal retrieval abilities. In the next section,
+    let’s look at its adoption in cross-modal generation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image and text generation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Beyond retrieving from the existing content pool, we can use CLIP to generate
+    images based on textual prompts or to provide textual descriptions for images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For instance, we can generate artistic images by giving the CLIP model a prompt
+    like “a surreal painting of a robot riding a bicycle.” We can also ask the CLIP
+    model to describe a picture of a modern kitchen. It may answer with “A contemporary
+    kitchen design.”
+  prefs: []
+  type: TYPE_NORMAL
+- en: In fact, CLIP can answer many questions about the given images, beyond just
+    providing descriptions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visual question answering (VQA)
+  prefs: []
+  type: TYPE_NORMAL
+- en: CLIP can be adapted for visual question-answering tasks. It can be used to answer
+    questions about images based on its knowledge of both visual and textual modalities.
+    For example, we can use the model to answer questions like “What kind of animal
+    is this?” or “How many people are in the photo?”
+  prefs: []
+  type: TYPE_NORMAL
+- en: Transfer learning
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Finally, we can fine-tune CLIP on specific downstream tasks, such as object
+    detection, sentiment analysis, and custom classification tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: During pre-training, the CLIP model gains a generalized understanding across
+    modalities from a diverse range of images and text. Leveraging transfer learning,
+    we don’t need to perform extensive task-specific training. It can be adopted for
+    a wide range of vision and NLP applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Excited to start implementing CLIP? Let’s begin by delving into the dataset
+    containing images and captions that we’ll use for the training process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting started with the dataset
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We are going to use the `Flickr8k` dataset ([https://hockenmaier.cs.illinois.edu/8k-pictures.html](https://hockenmaier.cs.illinois.edu/8k-pictures.html)),
+    created by M. Hodosh, P. Young, and J. Hockenmaier, described in *Framing Image
+    Description as a Ranking Task: Data, Models and Evaluation Metrics*, *Journal
+    of Artificial Intelligence Research*, Volume 47, pages 853–899 ([https://www.jair.org/index.php/jair/article/view/10833/25855](https://www.jair.org/index.php/jair/article/view/10833/25855)).
+    It is commonly employed in various computer vision tasks, particularly image captioning.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `Flickr8k` dataset contains 8,000 images collected from the Flickr photo-sharing
+    website. These images cover a diverse range of scenes, objects, and activities.
+    Each image in the dataset is associated with five English sentences. These sentences
+    serve as captions and provide textual descriptions of the image content.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One common use of the `Flickr8k` dataset is image captioning, where the goal
+    is to train models to generate human-like captions for images. The `Flickr8k`
+    dataset is often used by researchers and practitioners as a benchmark for image
+    captioning models. It allows us to evaluate the ability of models to understand
+    and describe visual content in natural language.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is also an extended version called `Flickr30k`, which contains 30,000
+    images with corresponding captions. The larger dataset provides a more extensive
+    and diverse set of images for training and evaluation, but it consumes more computational
+    resources. So we will focus on the `Flickr8k` dataset in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obtaining the Flickr8k dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To obtain the `Flickr8k` dataset, simply submit a request at [https://illinois.edu/fb/sec/1713398](https://illinois.edu/fb/sec/1713398).
+    Upon request, dataset links will be emailed to you. One of the links will lead
+    you to a downloadable file, `Flickr8k_Dataset.zip`, from which you can extract
+    8,091 image files. Another link will direct you to a downloadable file called
+    `Flickr8k_text.zip`. We will use the extracted file `Flickr8k.token.txt`, which
+    contains the raw captions of the `Flickr8`k dataset. The first column is in the
+    format of “image path # caption number,” and the second column is the corresponding
+    caption.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The dataset is also available on Kaggle, such as [https://www.kaggle.com/datasets/adityajn105/flickr8k/data](https://www.kaggle.com/datasets/adityajn105/flickr8k/data).
+    The `captions.txt` file contains information mirroring that of the `Flickr8k.token.txt`
+    file, but it is easier to use, as the first column contains only the image paths.
+    For simplicity, we will use the `captions.txt` file instead of the original `Flickr8k.token.txt`
+    file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loading the Flickr8k dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'After extracting all the images from `Flickr8k_Dataset.zip` and getting the
+    caption text file ready, we can now load the `Flickr8k` dataset into a custom
+    PyTorch Dataset object. Follow the steps below:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we import the necessary packages:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, the `Image` package will be used to load the image files.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We then set the image directory and the caption file path as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, we put all the extracted images in the `flickr8k/Flicker8k_Dataset` folder
+    and the `captions.txt` file in the same root directory, `flickr8k`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we load the `DistilBRET` tokenizer as we did in the previous chapter,
+    *Advancing Language Understanding and Generation with the Transformer Models*:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, we create a custom PyTorch Dataset class for the `Flickr8k` dataset, as
+    follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Upon initialization, we define a`n` image transformation function using the
+    `transforms` module from `torchvision`, including resizing the images to (224,
+    224) pixels and converting them to tensors; we read the caption file line by line,
+    extract image paths and captions, and store them in the `image_paths` and `captions`
+    lists. The captions are tokenized and encoded using the given tokenizer, with
+    options for truncation, padding, and a maximum length of 200 tokens. Results are
+    stored in `caption_encodings`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Upon retrieving an item from the dataset, the tokenized and encoded captions
+    are stored in the `item` object along with the original caption. The image at
+    the corresponding index is also loaded, transformed, and added to the `item`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We initiate an instance of the custom `Dataset` class, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Take a look at one data sample:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The caption is `A child in a pink dress is climbing up a set of stairs in an
+    entryway`*.* Let’s display the image itself using the following script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![](img/B21047_14_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.2: Image of the Flickr8k data sample (photo by Rick & Brenda Beerhorst,
+    Flickr: [https://www.flickr.com/photos/studiobeerhorst/1000268201/](https://www.flickr.com/photos/studiobeerhorst/1000268201/))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last step of data preparation is to create a `DataLoader` object to handle
+    batching and shuffling. We set the batch size to 32 and initiate a `DataLoader`,
+    based on the previously created dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now that the dataset is prepared, let’s proceed to develop the CLIP model in
+    the following section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Architecting the CLIP model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The vision encoder and text encoder are the two main components of the CLIP
+    model. We will start with the vision encoder.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Vision encoder
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Implementing the vision encoder is quite straightforward. We leverage the PyTorch
+    `vision` library, which provides access to various pre-trained image models, including
+    `ResNets` and `VisionTransformer`. Here, we opt for ResNet50 as our vision encoder
+    as an example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The vision encoder ensures each image is encoded into a fixed-size vector,
+    with the dimensionality matching the model’s output channels (in the case of ResNet50,
+    the vector size is `2048`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Upon initialization, we load the pre-trained ResNet50 model. Then, we remove
+    the final classification layer, as we are using the ResNet50 model as a feature
+    extractor instead of a classifier. Here, we freeze the model’s parameters by setting
+    their `requires_grad` trainable attribute to false. You can also fine-tune the
+    pre-trained ResNet50 model component by making the parameters trainable. The `forward`
+    method is used to extract image embeddings from input images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We just implemented the `VisionEncoder` module based on the pre-trained ResNet50
+    model. We use the model’s hidden layer output as the fixed-size vector representation
+    for each image. Since we ignore its final classification layer, the ResNet50 model
+    in this case is used as an image feature extractor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will continue with the text encoder module next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Text encoder
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For simplicity, we will employ DistilBERT as the text encoder. We extract the
+    complete representation of a sentence by utilizing the final representations of
+    the `[CLS]` token. The expectation is that this representation captures the overall
+    meaning of the sentence (the image caption in this case). Conceptually, this is
+    similar to the process applied to images, where they are transformed into fixed-size
+    vectors. For DistilBERT (and BERT as well), each token’s output representation
+    is a vector with a size of `768`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We implement the text encoder using the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Upon initialization, we first load a pre-trained DistilBERT model from the Hugging
+    Face Transformers library. Then, we freeze the parameters of the DistilBERT model
+    by setting `requires_grad` to `False` for all parameters. Again, you can also
+    fine-tune the pre-trained DistilBERT model by making the parameters trainable.
+    In the forward pass, we feed the input into the DistilBERT model and extract the
+    last hidden state from the model’s outputs. Finally, we return the vector corresponding
+    to the [`CLS`] token, as the embedding representation of the input caption.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We just implemented the `TextEncoder` module to encode textual input using the
+    DistilBERT model. It uses the `[CLS]` token representation as the fixed-size vector
+    representation of the input text sequence. Similar to what we did in the vision
+    encoder for simplicity, we freeze the parameters in the DistilBERT model and use
+    it as a text feature extractor without further training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Projection head for contrastive learning
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Having encoded both images and texts into fixed-size vectors (2,048 for images
+    and 768 for text), the next step is to project them into a shared space. This
+    process enables the comparison of image and text embedding vectors. We can later
+    train the CLIP model to distinguish between relevant and non-relevant image-text
+    pairs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We develop the following head projection module to transform the initial 2,048-dimensional
+    image vectors or 768-dimensional text vectors into a shared 256-dimensional space:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we first create a linear projection layer to transform input vectors from
+    the size of `embedding_dim` to `projection_dim`. We then apply the **Gaussian
+    Error Linear Unit** (**GELU**) activation function to introduce non-linearity.
+    We add another fully connected layer and incorporate a dropout layer for regularization.
+    Finally, we apply layer normalization for more efficient training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'GELU is an activation function that introduces non-linearity into neural networks.
+    It is defined as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_14_015.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Compared to ReLU, GELU is much more complex (as you can see) and, hence, has
+    smoother gradients. Also, GELU tends to perform better than ReLU in deeper or
+    more complex networks. However, ReLU remains popular due to its simplicity and
+    effectiveness in many scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Best Practice**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Layer normalization is used in deep neural networks to normalize the inputs
+    of a layer. It aims to improve training stability and model generalization. Unlike
+    batch normalization, which normalizes across the entire batch of data, layer normalization
+    normalizes across the features for each individual data sample.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For each data point, layer normalization is applied independently across the
+    features. Hence, layer normalization is beneficial for training with small mini-batches
+    or online training, while batch normalization is more suitable for large batches
+    or large datasets. They are both valuable techniques for stabilizing training
+    in DL. You can choose one based on factors like dataset size and batch size.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this context, `embedding_dim` represents the size of the input vectors (2,048
+    for images and 768 for text), while `projection_dim` denotes the size of the output
+    vectors, 256 in our case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In summary, this projection head module is designed to transform both input
+    image and text representation vectors into the same lower-dimensional space. As
+    well as using linear projection, we add non-linearity and employ regularization
+    techniques, such as dropout and layer normalization. The resulting projected vectors
+    will become the building blocks for contrastive learning. Let’s figure out how
+    they are used to learn semantical relationships between images and text in the
+    next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CLIP model
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'This section is where the real excitement unfolds! We utilize the previously
+    constructed modules to implement the primary CLIP model, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The initialization is self-explanatory, where we create instances of the `VisionEncoder`
+    and `TextEncoder` for images and text, respectively, and their corresponding head
+    projection `ProjectionHead` instances. In the forward pass, we encode the input
+    images into fixed-size vectors using the vision encoder, and we encode the input
+    texts using the text encoder. Recall that the output size for encoded image and
+    text vectors is 2,048 and 768, respectively. Subsequently, we employ separate
+    projection modules to project the encoded vectors into a shared space, as previously
+    mentioned. In this shared space, both encodings assume a similar shape (256 in
+    our case). Following this, we compute the contrastive loss. Here are the details:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we calculate the similarity between text and image embeddings using matrix
+    multiplication (`text_embeddings @ image_embeddings.T`). Here, the `@` operator
+    in PyTorch performs matrix multiplication, or dot product in this context, and
+    `.T` is the transpose operation that we discussed previously. Recall that in linear
+    algebra, calculating the dot product is a common method to gauge the similarity
+    between two vectors. A higher result suggests greater similarity.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we compute the similarities between image embeddings themselves, and the
+    similarities between text respectively.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We then combine the image and text similarities to create target distributions.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We calculate the cross-entropy loss between the predicted logits and target
+    distributions for both images and texts.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, we compute the final contrastive loss as the average of the image and
+    text losses.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We just developed a module to train the CLIP model using a contrastive loss.
+    The model takes a batch containing both image and text data, encodes them, and
+    then projects them into a shared space. It then calculates the similarities and
+    computes the contrastive loss. The goal is to bring similar pairs of image and
+    text representations closer together and push dissimilar pairs further apart.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that all the modules are prepared, it’s time to commence training the CLIP
+    model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding images with words
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we will first train a CLIP model that we implemented in the
+    previous sections. We will then use the trained model to retrieve images given
+    a query. Finally, we will use a pre-trained CLIP model to perform image searches
+    and zero-shot predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training a CLIP model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s train a CLIP model in the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we create a CLIP model and move it to system device (either a GPU or
+    CPU):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we initialize an Adam optimizer to train the model and set the learning
+    rate:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As we did in previous chapters, we define the following training function to
+    update the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We train the model for three epochs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The training completes after three epochs. Now, let’s proceed to conduct an
+    image search using the trained CLIP model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obtaining embeddings for images and text to identify matches
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To find matching images for a text query (or vice versa), the key process involves
+    obtaining the projected embeddings for both the image candidates and the text
+    query. The goal is to fetch the image that achieves the highest similarity score
+    between its embedding and the text embedding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For illustrative purposes, we’ll utilize a single batch of image data as the
+    pool of image candidates. Let’s explore the steps involved in searching for the
+    pertinent image within this sample pool:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we sample a batch of 32 data points from the `data_loader`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we compute the projected embeddings for the sampled images using the
+    previously trained CLIP model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We now define the image search function, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, we first compute the projected text embeddings for a given text query.
+    Next, we compute the dot product similarity between the text embedding and the
+    precomputed image embeddings for each image candidate. We retrieve the top-n indices
+    corresponding to the highest similarity scores. Don’t forget to set the trained
+    model to evaluation mode, indicating that no gradients should be computed during
+    inference.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s observe its performance now! First, we search for “`a running dog`" using
+    the image search function we just defined and display the search results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following screenshot shows the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_14_03.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.3: Retrieved images for the query “a running dog” (Top photo by Ron
+    Mandsager, Flickr: [https://www.flickr.com/photos/remandsager/3540416981/](https://www.flickr.com/photos/remandsager/3540416981/);
+    bottom photo by Rob Burns-Sweeney, Flickr: [https://www.flickr.com/photos/mulberryphotographic/3368207495/](https://www.flickr.com/photos/mulberryphotographic/3368207495/))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The two retrieved images are highly pertinent to the query.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s try another query, “`kids jumping into a pool`", before we end this section:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following screenshot shows the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_14_04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.4: Retrieved image for the query “kids jumping into a pool” (photo
+    by Alecia, Flickr: [https://www.flickr.com/photos/jnjsmom2007/2602415701/](https://www.flickr.com/photos/jnjsmom2007/2602415701/))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The retrieved image is exactly what we are looking for.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The CLIP model we implemented employs the pre-trained ResNet50 model as the
+    vision encoder and the pre-trained DistilBERT model as the text encoder. Remember
+    that we kept the parameters frozen for both ResNet50 and DistilBERT, utilizing
+    them as image and text feature extractors. If desired, you can fine-tune these
+    models by allowing their parameters to be trainable. This will be the exercise
+    for this chapter. We trained our CLIP model using the `Flickr8k` dataset and performed
+    image searches as a performance evaluation. Starting from the next section, we
+    will use the pre-trained CLIP model, which learns from a much larger and more
+    diverse dataset to perform image search, image-to-image search, and zero-shot
+    prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image search using the pre-trained CLIP model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A popular library SentenceTransformers ([https://www.sbert.net/index.html](https://www.sbert.net/index.html))
+    offers a wrapper for the OpenAI CLIP model. The `SentenceTransformer` package
+    is developed for sentence and text embeddings. It provides pre-trained models
+    to encode sentences into high-dimensional vectors in a semantic space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s perform the following tasks to search images, using a pre-trained CLIP
+    model from `SentenceTransformer`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First things first, install the `SentenceTransformers` library using the following
+    command:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: or
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Import the `SentenceTransformers` library and load the pre-trained CLIP model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, we use the **Vision Transformer** (**ViT**)-based CLIP model. The “`B-32`"
+    designation refers to the size of the ViT model, which means it has 32 times more
+    parameters than the base ViT model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we need to compute the image embeddings for all the `Flickr8k` image
+    candidates using the CLIP model we just loaded:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The `model.encode()` method can take in text or images and generate corresponding
+    embeddings. Here, we store all the resulting image embeddings in `all_image_embeddings`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similar to what we did in the previous section, we define the image search
+    function as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, we use the `model.encode()` method again to obtain the embeddings for
+    the given query. We employ the `util.semantic_search` utility function to fetch
+    the top k images for the given text query, based on the similarities of their
+    embeddings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s search for “`a swimming dog`", using the image search function we
+    just defined, and display the search results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The following screenshot shows the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_14_05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.5: Retrieved image for the query “a swimming dog” (photo by Julia,
+    Flickr: [https://www.flickr.com/photos/drakegsd/408233586/](https://www.flickr.com/photos/drakegsd/408233586/))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is very accurate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can go beyond a text-to-image search and perform an **image-to-image** search:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We will take a random image, `240696675_7d05193aa0.jpg`, as the query image,
+    feed it to the image search function, and display the retrieved images that follow
+    the query image:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that we skip the first retrieved image because it is the query image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following screenshot shows the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_14_06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 14.6: Query image and similar images (top photo by Rose, Flickr: [https://www.flickr.com/photos/rosespics/240696675/](https://www.flickr.com/photos/rosespics/240696675/);
+    middle photo by Mark Dowling, Flickr: [https://www.flickr.com/photos/markdowlrods/421932359/](https://www.flickr.com/photos/markdowlrods/421932359/);
+    bottom photo by Rob, Flickr: [https://www.flickr.com/photos/mind_the_goat/3419634480/](https://www.flickr.com/photos/mind_the_goat/3419634480/))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that the retrieved images are highly similar to the query image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The pre-trained CLIP model excels in both text-to-image and image-to-image search
+    tasks. Notably, the model may not have been specifically trained on the `Flickr8k`
+    dataset, but it performs well in zero-shot learning, as you saw in this section.
+    Finally, let’s take a look at another example of zero-shot prediction – classifying
+    the CIFAR-100 dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Zero-shot classification
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the final part of this chapter, we will utilize the CLIP model to classify
+    the `CIFAR-100` dataset. Both `CIFAR-10` and `CIFAR-100` ([https://www.cs.toronto.edu/~kriz/cifar.html](https://www.cs.toronto.edu/~kriz/cifar.html))
+    are labeled subsets derived from the 80 Million Tiny Images dataset, a collection
+    curated by Alex Krizhevsky, Vinod Nair, and Geoffrey Hinton. The `CIFAR-100` dataset
+    comprises 60,000 32x32 color images. These images are categorized into 100 classes,
+    with each class containing exactly 600 images. We can load the dataset directly
+    from PyTorch, which includes 50,000 images for training and 10,000 images for
+    testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s perform the following tasks to classify the `CIFAR-100` dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Firstly, we load the `CIFAR-100` dataset from PyTorch:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, we only load the testing subset with 10,000 samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Examine the classes of the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: There are 100 classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start with one sample:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We will see if we can classify it correctly as a “`mountain`.”
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We then generate the image embeddings for the selected data sample using the
+    pre-trained CLIP model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, here’s the clever approach. We consider each of the 100 classes as a textual
+    description, and our goal is to find the most appropriate description for a given
+    image, in order to classify it. Therefore, we must generate text embeddings for
+    each of the 100 classes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Let’s search for the best class text description for the given image, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We can correctly predict the right class for the sample image. What about the
+    whole dataset? Let’s evaluate its performance in the next steps.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, we compute the image embeddings for all images in the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We also record the true class information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we search for the best class text description for each of the images:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we evaluate the classification accuracy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: We attain a classification accuracy of 55% on the 100-class CIFAR dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This project demonstrates how CLIP can be used for zero-shot classification.
+    The model predicts the textual labels for images without having seen specific
+    image-label pairs during training. Feel free to adjust the textual descriptions
+    and images based on your specific use case. For example, you may group several
+    similar fine classes into one coarse class, such as “`boy`,” “`girl`,” “`man`,”
+    and “`woman`" into “`people`.”
+  prefs: []
+  type: TYPE_NORMAL
+- en: Zero-shot classification using CLIP is powerful, but its performance is limited
+    by training data used in a pre-trained model. Intuitively, this can be improved
+    by leveraging pre-trained models on larger datasets. Another approach is knowledge
+    distillation, which transfers knowledge from a complex and high-performance model
+    to a smaller and faster model. You can read more about knowledge distillation
+    in *Distilling the Knowledge in a Neural Network* (2015) by Geoffrey Hinton, Oriol
+    Vinyals, and Jeff Dean ([https://arxiv.org/abs/2006.05525](https://arxiv.org/abs/2006.05525)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter introduced CLIP, a powerful DL model designed for cross-modal tasks,
+    such as finding relevant images based on textual queries or vice versa. We learned
+    that the model’s dual encoder architecture and contrastive learning mechanism
+    enable it to understand both images and text in a shared space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We implemented our customized versions of CLIP models, using the DistilBERT
+    and ResNet50 models. Following an exploration of the `Flickr8k` dataset, we built
+    a CLIP model and explored its capabilities in text-to-image and image-to-image
+    searches. CLIP excels at zero-shot transfer learning. We showcased this by using
+    a pre-trained CLIP model for image search and `CIFAR-100` classification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next chapter, we will focus on the third type of machine learning problem:
+    reinforcement learning. You will learn how the reinforcement learning model learns
+    by interacting with the environment to reach its learning goal.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exercises
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Fine-tune the pre-trained ResNet50 and DistilBERT models employed in our self-implemented
+    CLIP model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Can you perform zero-shot classification on the 10-class `CIFAR-10` dataset?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Fine-tune the CLIP model using the training set of the `CIFAR-100` dataset,
+    and see if you can get better performance on the test set.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: References
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '*Learning Transferable Visual Models From Natural Language Supervision*, by
+    Alec Radford et al.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`Flickr8k` dataset: *Framing Image Description as a Ranking Task: Data, Models
+    and Evaluation Metrics*, *Journal of Artificial Intelligence Research*, Volume
+    47, pages 853–899'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`CIFAR-100` dataset: *Learning Multiple Layers of Features from Tiny Images*,
+    Alex Krizhevsky, 2009.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Join our book’s Discord space
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Join our community’s Discord space for discussions with the authors and other
+    readers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.link/yuxi](https://packt.link/yuxi)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/QR_Code1878468721786989681.png)'
+  prefs: []
+  type: TYPE_IMG

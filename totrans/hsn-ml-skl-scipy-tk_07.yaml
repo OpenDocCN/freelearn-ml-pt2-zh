@@ -1,0 +1,1137 @@
+- en: Classifying Text Using Naive Bayes
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"Language is a process of free creation; its laws and principles are fixed,
+    but the manner in which the principles of generation are used is free and infinitely
+    varied. Even the interpretation and use of words involves a process of free creation."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Noam Chomsky
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Not all information exists in tables. From Wikipedia to social media, there
+    are billions of written words that we would like our computers to process and
+    extract bits of information from. The sub-field of machine learning that deals
+    with textual data goes by names such as **Text Mining** and **Natural Language
+    Processing** (**NLP**). These different names reflect the fact that the field
+    inherits from multiple disciplines. On the one hand, we have computer science
+    and statistics, and on the other hand, we have linguistics. I''d argue that the
+    influence of linguistics was stronger when the field was at its infancy, but in
+    later stages, practitioners came to favor mathematical and statistical tools,
+    as they require less human intervention and can get away without humans manually
+    codifying linguistic rules into the algorithms:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"Every time I fire a linguist, the performance of our speech recognition system
+    goes up."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Fred Jelinek
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having said that, it is essential to have a basic understanding of how things
+    have progressed over time and not jump to the bleeding-edge solutions right away.
+    This enables us to pick our tools wisely while being aware of the tradeoffs we
+    are making. Thus, we will start this chapter by processing textual data and presenting
+    it to our algorithms in formats they understand. This preprocessing stage has
+    an important effect on the performance of the downstream algorithms. Therefore,
+    I will make sure to shed light on the pros and cons of each method explained here.
+    Once the data is ready, we will use a **Naive Bayes** classifier to detect the
+    sentiment of different Twitter users based on the messages they send to multiple
+    airway services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, the following topics will be covered:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Splitting sentences into tokens
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Token normalization
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using bag of words to represent tokens
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using n-grams to represent tokens
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using Word2Vec to represent tokens
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Text classification with a Naive Bayes classifier
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Splitting sentences into tokens
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"A word after a word after a word is power."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Margaret Atwood
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, the data we have dealt with has either been table data with columns
+    as features or image data with pixels as features. In the case of text, things
+    are less obvious. Shall we use sentences, words, or characters as our features?
+    Sentences are very specific. For example, it is very unlikely to have the exact
+    same sentence appearing in two or more Wikipedia articles. Therefore, if we use
+    sentences as features, we will end up with tons of features that do not generalize
+    well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Characters, on the other hand, are limited. For example, there are only 26 letters
+    in the English language. This small variety is likely to limit the ability of
+    the separate characters to carry enough information for the downstream algorithms
+    to extract. As a result, words are typically used as features for most tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Later in this chapter, we will see that fairly specific tokens are still possible,
+    but let's stick to words as features for now. Finally, we do not want to limit
+    ourselves to dictionary words; Twitter hashtags, numbers, and URLs can also be
+    extracted from text and treated as features. That's why we prefer to use the term
+    *token* instead *word*, since it is more generic. The process where a stream of
+    text is split into tokens is called tokenization, and we are going to learn about
+    that in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tokenizing with string split
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Different tokenization methods lead to different results. To demonstrate these
+    differences, let's take the following three lines of text and see how can we tokenize
+    them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here I write the lines of text as strings and put them into a list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'One obvious way to do this is to use Python''s built-in `split()` method as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When no parameters are given, `split()` uses white spaces to split strings
+    based on. Thus, we get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: You may notice that the punctuation was kept as part of the tokens. The question
+    mark was left at the end of `tokenize`, and the period remained attached to `boss`.
+    The hashtag is made of two words, but since there are no spaces between them,
+    it was kept as a single token along with its leading hash sign.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tokenizing using regular expressions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We may also use regular expressions to treat sequences of letters and numbers
+    as tokens, and split our sentences accordingly. The pattern used here, `"\w+"`,
+    refers to any sequence of one or more alphanumeric characters or underscores.
+    Compiling our patterns gives us a regular expression object that we can use for
+    matching. Finally, we loop over each line and use the regular expression object
+    to split it into tokens:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This gives us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, the punctuation has been removed, but the URL has been split into four
+    tokens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scikit-learn uses regular expressions for tokenization by default. However,
+    the following pattern, `r"(?u)\b\w\w+\b"`, is used instead of `r"\w+"`. This pattern
+    ignores all punctuation and words shorter than two letters. So, the "a" token
+    would be omitted. You can still overwrite the default pattern by providing your
+    custom one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using placeholders before tokenizing
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To deal with the previous problem, we may decide to replace the numbers, URLs,
+    and hashtags with placeholders before tokenizing our sentences. This is useful
+    if we don''t really care to differentiate between their content. A URL may be
+    just a URL to me, regardless of where it leads to. The following function converts
+    its input into lower case, then replaces any URL it finds with a `_url_` placeholder.
+    Similarly, it converts the hashtags and numbers into their corresponding placeholders.
+    Finally, the input is split based on white spaces, and the resulting tokens are
+    returned:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This gives us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, the new placeholder tells us that a URL existed in the second
+    sentence, but it doesn't really care where the URL links to. If we have another
+    sentence with a different URL, it will just get the same placeholder as well.
+    The same goes for the numbers and hashtags.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Depending on your use case, this may not be ideal if your hashtags carry information
+    that you would not like to lose. Again, this is a tradeoff you have to make based
+    on your use case. Usually, you can intuitively tell which technique is more suitable
+    for the problem at hand, but sometimes evaluating a model after multiple tokenization
+    techniques can be the only way to tell which one is more suitable. Finally, in
+    practice, you may use libraries such as **NLTK** and **spaCy** to tokenize your
+    text. They already have the necessary regular expressions under the hood. We will
+    be using spaCy later on in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note how I converted the sentence into lower case before processing it. This
+    is called normalization. Without normalization, a capitalized word and a lowercase
+    version of it will be seen as two different tokens. This is not ideal, since *Boy*
+    and *boy* are conceptually the same, hence normalization is usually required.
+    Scikit-learn converts input text to lower case by default.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Vectorizing text into matrices
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In text mining, a dataset is usually called a **corpus**. Each data sample in
+    it is usually called a **document**. Documents are made of **tokens**, and a set
+    of distinct tokens is called a **vocabulary**. Putting this information into a
+    matrix is called **vectorization**. In the following sections, we are going to
+    see the different kinds of vectorizations that we can get.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Vector space model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We still miss our beloved feature matrices, where we expect each token to have
+    its own column and each document to be represented by a separate row. This kind
+    of representation for textual data is known as the **vecto****r****space mo****del**.
+    From a linear-algebraic point of view, the documents in this representation are
+    seen as vectors (rows), and the different terms are the dimensions of this space
+    (columns), hence the name vector space model. In the next section, we will learn
+    how to vectorize our documents.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bag of words
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We need to convert the documents into tokens and put them into the vector space
+    model. `CountVectorizer` can be used here to tokenize the documents and put them
+    into the desired matrix. Here, we are going to use it with the help of the tokenizer
+    we created in the previous section. As usual, we import and initialize `CountVectorizer`,
+    and then we use its `fit_transform` method to convert our documents. We also specified
+    that we want to use the tokenizer we built in the previous section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Most of the cells in the returned matrix are zeros. To save space, it is saved
+    as a sparse matrix; however, we can turn it into a dense matrix using its `todense()`
+    method. The vectorizer holds the set of encountered vocabulary, which can be retrieved
+    using `get_feature_names()`. Using this information, we can convert `x` into a
+    DataFrame as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This gives us the following matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d6c4ca9d-16c6-4fef-9180-13492778d67f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Each cell contains the number of times each token appears in each document.
+    However, the vocabulary does not follow any order; therefore, it is not possible
+    to tell the order of the tokens in each document from this matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Different sentences, same representation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Take these two sentences with opposite meanings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we use the count vectorizer to represent them, we will end up with the following
+    matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2f1e5f0c-b2aa-4795-b849-0fe56cb9ca8a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see, the order of the tokens in the sentences is lost. That is why
+    this method is known as **bag of words** – the result is like a bag that words
+    are just put into without any order. Obviously, this makes it impossible to tell
+    which of the two people is happy and which is not. To fix this problem, we may
+    need to use **n-grams**, as we will do in the following section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: N-grams
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Rather than treating each term as a token, we can treat the combinations of
+    each two consecutive terms as a single token. All we have to do is to set `ngram_range`
+    in `CountVectorizer` to `(2,2)`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using similar code to that used in the previous section, we can put the resulting
+    `x` into a DataFrame and get the following matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2c2c898e-bdec-4f61-ab94-ef3bbe0bdc6b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now we can tell who is happy and who is not. When using word pairs, this is
+    known as **bigrams**. We can also do 3-grams (with three consecutive words), 4-grams,
+    or any other number of grams. Setting `ngram_range` to (1,1) takes us back to
+    the original representation where each separate word is a token, which is **unigrams**.
+    We can also mix unigrams with bigrams by setting `ngram_range`**to (1,2). In brief,
+    this range tells the tokenizer the minimum and maximum values for*n* to use in
+    our n-grams.**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**If you set *n* to a high value – say, 8 – this means that sequences of eight
+    words are treated as tokens. Now, how likely do you think it is that a sequence
+    of eight words will appear more than once in your dataset? Most likely, you will
+    see it once in your training set and never again into the test set. That''s why
+    *n* is usually set to something between 2 and 3, with some unigrams also being
+    used to capture rare words.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using characters instead of words
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Up until now, words have been the atoms of our textual universe. However, some
+    situations may require us to tokenize our documents based on characters instead.
+    In situations where word boundaries are not clear, such as in hashtags and URLs,
+    the use of characters as tokens may help. Natural languages tend to have different
+    frequencies for their characters. The letter **e** is the most commonly used character
+    in the English language, and character combinations such as **th**, **er**, and
+    **on** are also very common. Other languages, such as French and Dutch, have different
+    character frequencies. If our aim is to classify documents based on their languages,
+    the use of characters instead of words can come in handy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The very same `CountVectorizer` can help us tokenize our documents into characters.
+    We can also combine this with the `n-grams` setting to get subsequences within
+    words, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can put the resulting `x` into a DataFrame, as we did earlier, to get the
+    following matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ea3c937d-0287-467f-8625-0844a79f8a9a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: All our tokens are made of four characters now. Whitespaces are also treated
+    as characters, as you can see. With characters, it is more common to go for higher
+    values of *n*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Capturing important words with TF-IDF
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Another discipline that we borrow lots of ideas from here is the **information
+    retrieval** field. It's the field responsible for the algorithms that run search
+    engines such as Google, Bing, and DuckDuckGo.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, take the following quotation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"From a linguistic point of view, you can''t really take much objection to
+    the notion that a show is a show is a show."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Walter Becker
+  prefs: []
+  type: TYPE_NORMAL
+- en: The word **linguistic** and the word **that** both appeared exactly once in
+    the previous quotation. Nevertheless, we would only worry about the word **linguistic**,
+    not the word **that**, if we were searching for this quotation on the internet.
+    We know that it is more significant, although it appeared only once, just as many
+    times as **that**. The word **show** appeared three times. From a count vectorizer's
+    point of view, it should carry three times more information than the word **linguistic**.
+    I assume you also disagree with the vectorizer about that. Those issues are fundamentally
+    the raison d'être of **Term Frequency**-**Inverse Document Frequency***(**TF-IDF**).
+    The IDF part not only involves weighting the value of the words based on how frequently
+    they appear in a certain document, but also discounting weights from them if they
+    happen to be very common in other documents. The word **that** is so common across
+    other documents that it shouldn't be given as much value as **linguistic**. Furthermore,
+    IDF uses a logarithmic scale to better represent the information a word carries
+    based on its frequency in a document.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Let''s use the following three documents to demonstrate how TF-IDF works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`TfidfVectorizer` has an almost identical interface to that of`CountVectorizer`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is a comparison for the outputs of the two vectorizers side by side:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/224edc67-6a5f-4823-bfe1-b259b922069c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see, unlike in `CountVectorizer`, not all words were treated equally
+    by `TfidfVectorizer`. More emphasis was given to the fruit names compared to the
+    other, less informative words that happened to appear in all three sentences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both `CountVectorizer` and**`TfidfVectorizer`**have a parameter called `stop_words`.
+    It can be used to specify tokens to be ignored. You can provide your own list
+    of less informative words, such as **a**, **an**, and **the**. You can also provide
+    the `english`*keyword to specify the common stop words in the English language.
+    Having said that, it is important to note that some words can be informative for
+    one task but not for another. Furthermore, IDF usually does what you need it to
+    do automatically and gives low weights to non-informative words. That is why I
+    usually prefer not to manually remove stop words, instead trying things such as
+    `TfidfVectorizer`, feature selection, and regularization**first.*******
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*******Besides its original use case,`TfidfVectorizer` is commonly used as
+    a preprocessing step for text classification. Nevertheless, it usually gives good
+    results when longer documents are to be classified. For short documents, it may
+    produce noisy transformation, and it is advised to give`CountVectorizer` a try
+    in such cases.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a basic search engine, when someone types a query, it gets converted into
+    the same vector space where all the documents to be searched exist, using TF-IDF.
+    Once the search query and the documents exist as vectors in the same space, a
+    simple distance measure such as cosine distance can be used to find the closest
+    documents to the query. Modern search engines vary from this basic idea, but it
+    is a good base to build your understanding of information retrieval on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Representing meanings with word embedding
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As documents are collections of tokens, their vector representations are basically
+    the sum of the vectors of the tokens they contain. As we have seen earlier, the
+    **I like apples** document was represented by `CountVectorizer` using the vector
+    [1,1,1,0,0]:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7838de63-46e3-4cae-84cc-810e05362a52.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: From this representation, we can also deduce that the terms **I**, **like**,
+    **apples**, and **oranges** are represented by the following four five-dimensional
+    vectors, [0,1,0,0,0], [0,0,1,0,0], [1,0,0,0,0], and [0,0,0,1,0]. We have a five-dimensional
+    space, given our vocabulary of five terms. Each term has a magnitude of 1 in one
+    dimension and 0 in the other four dimensions. From a linear algebraic point of
+    view, all five terms are orthogonal (perpendicular) to each other. Nevertheless,
+    **apples**, **pears**, and **oranges** are all fruits, and conceptually they have
+    some similarity that was not captured by this model. Therefore, we would ideally
+    like to represent them with vectors that are closer to each other, unlike these
+    orthogonal vectors. The same issue here applied to `TfidfVectorizer`, by the way***.***
+    This was the driver for researchers to come up with better representations, and
+    word embedding is the coolest kid on the natural language processing block nowadays,
+    as it tries to capture meaning better than traditional vectorizers. In the next
+    section, we will get to know one popular embedding technique, Word2Vec.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Word2Vec
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Without getting into the details too much, Word2Vec uses neural networks to
+    predict words from their context, that is, from their surrounding words. By doing
+    so, it learns better representations for the different words, and these representations
+    incorporate the meanings of the words they represent. Unlike the previously mentioned
+    vectorizers, the dimensionality of the word representation is not directly linked
+    to the size of our vocabulary. We get to choose the length of our embedding vectors.
+    Once each word is represented by a vector, the document's representation is usually
+    the summation of all the vectors of its words. Averaging is also an option instead
+    of summation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since the size of our vectors is independent of the size of the vocabulary of
+    the documents we are dealing with, researchers can reuse a pre-trained Word2Vec
+    model that wasn't made specifically for their particular problem. This ability
+    to re-use pre-trained models is known as transfer learning. Some researchers can
+    train an embedding on a huge amount of documents using expensive machines and
+    release the resulting vectors for the entire world to use. Then, the next time
+    we deal with a specific natural language processing task, all we need to do is
+    to get these vectors and use them to represent our new documents. spaCy ([https://spacy.io/](https://spacy.io/))
+    is an open source software library that comes with word vectors for different
+    languages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following few lines of code, we will install spaCy, download its language
+    model data, and use it to convert words into vectors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To use spaCy, we can install the library and download its pre-trained models
+    for the English language by running the following commands in our terminal:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we can assign the downloaded vectors to our five words as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is the representation for **apples**:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: I promised you that the representations for **apples**, **oranges**, and **pears**
+    would not be orthogonal as in the case with `CountVectorizer`. However, with 300
+    dimensions, it is hard for me to visually prove that. Luckily, we have already
+    learned how to calculate the cosine of the angle between two vectors. Orthogonal
+    vectors should have 90^o angles between them, whose cosines are equal to 0\. The
+    cosine for the zero angle between two vectors going in the exact same direction
+    is 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we calculate the cosine between all the five vectors we got from spaCy.
+    I used some pandas and seaborn styling to make the numbers clearer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, I showed the results in the following DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/54477c03-db2a-4444-8191-78cc4fc479e5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Clearly, the new representation understands that fruit names are more similar
+    to each other than they are to words such as **I** and **like**. It also considered
+    **apples** and **pears** to be very similar to each other, as opposed to **oranges**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may have noticed that Word2Vec suffers from the same problem as unigrams;
+    words are encoded without much attention being paid to their context. The representation
+    for the word "book" in "I will read a book" is the same as its representation
+    in "I will book a flight." That's why newer techniques, such as **Embeddings from
+    Language Models** (**ELMo**), **Bidirectional Encoder Representations from Transformers**
+    (**BERT**) and OpenAI's recent **GPT-3** are gaining more popularity nowadays
+    as they respect the words' context. I expect them to be included in more libraries
+    soon for anyone to easily use them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The embedding concept is recycled and reused by machine learning practitioners
+    everywhere nowadays. Apart from its use in natural language processing, it is
+    used for feature reduction and in recommendation systems. For instance, every
+    time a customer adds an item to their online shopping cart, if we treat the cart
+    as a sentence and the items as words, we end up with item embeddings (**Item2Vec**).
+    These new representations for the items can easily be plugged into a downstream
+    classifier or a recommender system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before moving to text classification, we need to stop and spend some time first
+    to learn about the classifier we are going to use – the **Naive Bayes classifier**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding Naive Bayes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The Naive Bayes classifier is commonly used in classifying textual data. In
+    the following sections, we are going to see its different flavors and learn how
+    to configure their parameters. But first, to understand the Naive Bayes classifier,
+    we need to first go through Thomas Bayes' theorem, which he published in the 18^(th)
+    century.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Bayes rule
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When talking about classifiers, we can describe the probability of a certain
+    sample belonging to a certain class using conditional probability, *P(y|x)*. This
+    is the probability of a sample belonging to class *y* given its features, *x*.
+    The pipe sign (|) is what we use to refer to conditional probability, that is,
+    *y* given *x*. The Bayes rule is capable of expressing this conditional probability
+    in terms of *P(x|y)*, *P(x)*, and *P(y)*, using the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5af08cd0-2cfe-4726-95b2-787a4098441d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Usually, we ignore the denominator part of the equation and convert it into
+    a proportion as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/82a8bcff-9301-4949-8174-c274048cad51.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The probability of a class, *P(y)*, is known as the prior probability. It's
+    basically the number of samples that belong to a certain class out of all training
+    samples. The conditional probability, *P(x|y)*, is known as the likelihood. It's
+    what we calculate from the training samples. Once the two probabilities are known
+    at training time, we can use them to predict the chance of a new sample belonging
+    to a certain class at prediction time, *P(y|x)*, also known as the posterior probability.
+    Calculating the likelihood part of the equation is not as simple as we expect.
+    So, in the next section, we are going to discuss the assumption we can make to
+    ease this calculation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calculating the likelihood naively
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A data sample is made of multiple features, which means that in reality, the
+    *x* part of *P(x|y)* is made of *x[1]*, *x[2]*, *x[3]*, .... *x[k]*, where *k*
+    is the number of features. Thus, the conditional probability can be expressed
+    as *P(x[1], x[2], x[3], .... x[k]|y)*. In practice, this means that we need to
+    calculate this conditional probability for all possible combinations of *x*. The
+    main drawback of this is the lack of generalization of our models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s use the following toy example to make things clearer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Text** | **Does the text suggest that the writer likes fruit?** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| I like apples | Yes |'
+  prefs: []
+  type: TYPE_TB
+- en: '| I like oranges | Yes |'
+  prefs: []
+  type: TYPE_TB
+- en: '| I hate pears | No |'
+  prefs: []
+  type: TYPE_TB
+- en: If the previous table is our training data, the likelihood probability, *P(x|y)*,
+    for the first sample is the probability of seeing the three words **I**, **like**,
+    and **apples** together, given the target, **Yes**. Similarly, for the second
+    sample, it is the probability of seeing the three words **I**, **like**, and **oranges**
+    together, given the target, **Yes**. The same goes for the third sample, where
+    the target is **No** instead of **Yes**. Now, say we are given a new sample, **I
+    hate apples**. The problem is that we have never seen these three words together
+    before. You might say, "But we've seen each individual word of the sentence before,
+    just separately!" That's correct, but our formula only cares about combinations
+    of words. It cannot learn anything from each separate feature on its own.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may recall from [Chapter 4](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=27&action=edit),
+    *Preparing Your Data*, that *P(x[1], x[2], x[3], .... x[k]|y)* can only be expressed
+    as *P(x[1]|y)* P(x[2]|y)x[3]* .. * P(x[k]|y)* if *x[1], x[2], x[3], .... x[k]*
+    are independent. Their independence is not something we can be sure of, yet we
+    still make this naive assumption in order to make the model more generalizable.
+    As a result of this assumption and dealing with separate words, we can now learn
+    something about the phrase **I hate apples**, despite not seeing it before. This
+    naive yet useful assumption of independence is what gave the classifier's name
+    its "naive" prefix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Naive Bayes implementations
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In scikit-learn, there are various Naive Bayes implementations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **multinomial Naive Bayes** classifier is the most commonly used implementation
+    for text classification. Its implementation is most similar to what we saw in
+    the previous section.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The **Bernoulli Naive Bayes****classifier assumes the features to be binary.
+    Rather than counting how many times a term appears in each document, in the Bernoulli
+    version, we only care whether a term exists or not. The way the likelihood is
+    calculated explicitly penalizes the non-occurrence of the terms in the documents,
+    and it might perform better on some datasets, especially those with shorter documents.**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '***   **Gaussian Naive Bayes** is used with continuous features. It assumes
+    the features to be normally distributed and calculates the likelihood probabilities
+    using maximum likelihood estimation. This implementation is useful for other cases
+    aside from text analysis.**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Furthermore, you can also read about two other implementations, **complement
+    Naive Bayes** and **categorical Naive Bayes**, in the scikit-learn user guide
+    ([https://scikit-learn.org/stable/modules/naive_bayes.html](https://scikit-learn.org/stable/modules/naive_bayes.html)).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additive smoothing
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When a term not seen during training appears during prediction, we set its probability
+    to 0\. This sounds logical, yet it is a problematic decision to make given our
+    naive assumption. Since *P(x[1], x[2], x[3], .... x[k]|y)* is equal to *P(x[1]|y)*
+    P(x[2]|y)*P(x[3]|y) * .. * P(x[k]|y),* setting the conditional probability for
+    any term to zero will set the entire *P(x[1], x[2], x[3], .... x[k]|y)* to zero
+    as a result. To avoid this problem, we pretend that a new document that contains
+    the whole vocabulary was added to each class. Conceptually, this new hypothetical
+    document takes a portion of the probability mass assigned to the terms we have
+    seen and reassigns it to the unseen terms. The `alpha` parameter controls how
+    much of the probability mass we want to reassign to the unseen terms. Setting
+    `alpha` to 1 is called **Laplace smoothing**, while setting it to values between
+    0 and 1 is called **Lidstone****smoothing**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'I find myself using Laplace smoothing a lot when calculating ratios. In addition
+    to preventing us from dividing by zero, it also helps to deal with uncertainties.
+    Let me explain further using the following two examples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Example 1**: 10,000 people saw a link, and 9,000 of them clicked on it. We
+    can obviously estimate the click-through rate to be 90%.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Example 2**: If our data has only one person, and that person saw the link
+    and clicked on it, would we be confident enough to say that the click-through
+    rate was 100%?'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the previous examples, if we pretended that there were two additional users,
+    where only one of them clicked on the link, the click-through rate in the first
+    example would become 9,001 out of 10,002, which is still almost 90%. In the second
+    example, though, we would be dividing 2 by 3, which would leave 60%, instead of
+    the 100% calculated earlier. Laplace smoothing and Lidstone smoothing can be linked
+    to the Bayesian way of thinking. Those two users, where 50% of them clicked on
+    the link, are our prior belief. Initially, we do not know much, so we assume a
+    50% click-through rate. Now, in the first example, we have enough data to overrule
+    this prior belief, while in the second case, the fewer data points were only able
+    to move the prior so much.
+  prefs: []
+  type: TYPE_NORMAL
+- en: That's enough theory for now – let's use everything we have learned so far to
+    tell whether some reviewers are happy about their movie-watching experience or
+    not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classifying text using a Naive Bayes classifier
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we are going to get a list of sentences and classify them based
+    on the user's sentiment. We want to tell whether the sentence carries a positive
+    or a negative sentiment. *Dimitrios Kotzias et al* created this dataset for their
+    research paper, *From Group to Individual Labels using Deep Features*. They collected
+    a list of random sentences from three different websites, where each sentence
+    is labeled with either 1 (positive sentiment) or 0 (negative sentiment).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In total, there are 2,745 sentences in the data set. In the following sections,
+    we are going to download the dataset, preprocess it, and classify the sentences
+    in it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Downloading the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You can just open the browser, download the CSV files into a local folder, and
+    use pandas to load the files into DataFrames. However, I prefer to use Python
+    to download the files, rather than the browser. I don't do this out of geekiness,
+    but to ensure the reproducibility of my entire process by putting it into code.
+    Anyone can just run my Python code and get the same results, without having to
+    read a lousy documentation file, find a link to the compressed file, and follow
+    the instructions to get the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the steps to download the data we need:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let''s create a folder to store the downloaded data into it. The following
+    code checks whether the required folder exists or not. If it is not there, it
+    creates it into the current working directory:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then we need to install the `requests` library using `pip`, as we will use
+    it to download the data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we download the compressed data as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we can uncompress the data and store it into the data folder we have just
+    created. We will be using the `zipfile` module to uncompress our data. The `ZipFile`
+    method expects to read a file object. Thus, we use `BytesIO` to convert the content
+    of the response into a file-like object. Then we extract the content of the zip
+    file into our folder as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that our data is written into 3 separate files in our data folder, we can
+    load each one of the 3 files into a separate data frame. Then, we can combine
+    the 3 data frames into a single data frame as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can display the distribution of the sentiment labels using the following
+    code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we can see, the two classes are more or less equal. It is a good practice
+    to check the distribution of your classes before running any classification task:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2a79736b-17ac-4eb2-bed3-ed7cbe53ea12.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can also display a few sample sentences using the following code, after
+    tweaking pandas'' settings to display more characters per cell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'I set the `random_state` to an arbitrary value to make sure we both get the
+    same samples as below:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/62567e34-644b-408c-bb6c-8ef36434604f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Preparing the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now we need to prepare the data for our classifier to use it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As we usually do, we start by splitting the DataFrame into training and testing
+    sets. I kept 40% of the data set for testing, and also set `random_state` to an
+    arbitrary value to make sure we both get the same random split:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then we get our labels from the sentiment column as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As for the textual features, let''s convert them using `CountVectorizer`. We
+    will include unigrams as well as bigrams and trigrams. We can also ignore rare
+    words by setting `min_df` to `3` to exclude words appearing in fewer than three
+    documents. This is a useful practice for removing spelling mistakes and noisy
+    tokens. Finally, we can strip accents from letters and convert them to `ASCII`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the end, we can use the Naive Bayes classifier to classify our data. We
+    set `fit_prior=True` for the model to use the distribution of the class labels
+    in the training data as its prior:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: This time, our old good accuracy score may not be informative enough. We want
+    to know how accurate we are per class. Furthermore, depending on our use case,
+    we may need to tell whether the model was able to identify all the negative tweets,
+    even if it did that at the expense of misclassifying some positive tweets. To
+    be able to get this information, we need to use the `precision` and `recall` scores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Precision, recall, and F1 score
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Out of the samples that were assigned to the positive class, the percentage
+    of them that were actually positive is the**precision** of this class. For the
+    positive tweets, the percentage of them that the classifier correctly predicted
+    to be positive is the **recall** for this class. As you can see, the precision
+    and recall are calculated per class. Here is how we formally express the **precision
+    score** in terms of true positives and false positives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/eeb004df-1cbb-438e-9d77-7389cd083b56.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The **recall score** is expressed in terms of true positives and false negatives*:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c8d8af97-42d7-4c94-a66d-33da59706fa2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To summarize the two previous scores into one number, the *F[1] score* can
+    be used. It combines the precision and recall scores using the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/bb6db0cd-d232-4b46-b24b-27bfe55625de.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here we calculate the three aforementioned metrics for our classifier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To make it clear, I put the resulting metrics into the following table. Keep
+    in mind that the support is just the number of samples in each class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a748541e-1612-4be1-863d-635d2eee912e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We have equivalent scores given that the sizes of the two classes are almost
+    equal. In cases where the classes are imbalanced, it is more common to see one
+    class achieving a higher precision or a higher recall compared to the other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since these metrics are calculated per class label, we can also get their macro
+    averages. For this example here, the macro average precision score will be the
+    average of **0.81**, and **0.77**, which is **0.79**. A micro average, on the
+    other hand, calculates these scores globally based on the overall number of true
+    positive, false positive, and false negative samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pipelines
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the previous chapters, we used a grid search to find the optimal hyperparameters
+    for our estimators. Now, we have multiple things to optimize at once. One the
+    one hand, we want to optimize the Naive Bayes hyperparameters, but on the other
+    hand, we also want to optimize the parameters of the vectorizer used at the preprocessing
+    step. Since a grid search expects one object only, scikit-learn provides a `pipeline`
+    wrapper where we can combine multiple transformers and estimators into one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As the name suggests, the pipeline is made of a set of sequential steps. Here
+    we start with `CountVectorizer` and have `MultinomialNB` as the second and final
+    step:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: All objects but the one in the last step are expected to be `transformers`;
+    that is, they should have the `fit`, `transform`, and `fit_transform` methods.
+    The object in the last step is expected to be `estimator`, meaning it should have
+    the `fit` and `predict` methods. You can also build your custom transformers and
+    estimators and use them in the pipeline as long as they have the expected methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have our pipeline ready, we can plug it into `GridSearchCV` to find
+    the optimal hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Optimizing for different scores
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '"What gets measured gets managed."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Peter Drucker
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we used `GridSearchCV` before, we did not specify which metric we want
+    to optimize our hyperparameters for. The classifier's accuracy was used by default.
+    Alternatively, you can also choose to optimize your hyperparameters for the precision
+    score or the recall score. We will set our grid search here to optimize for the
+    macro precision score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start by setting the different hyperparameters that we want to search within.
+    Since we are using a pipeline here, we prefix each hyperparameter with the name
+    of the step it is designated for, in order for the pipeline to assign the parameter
+    to the correct step:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: By default, the priors, `P(y)`, in the Bayes rule are set based on the number
+    of samples in each class. However, we can set them to be constant for all classes
+    by setting `fit_prior=False`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we run `GridSearchCV` while letting it know that we care about precision
+    the most:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This gives us the following hyperparameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ngram_range`: (1, 3)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`alpha`: 1'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`fit_prior`: False'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We get a macro precision of 80.5% and macro recall of 80.5%.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Due to the balanced class distributions, it was expected for the prior not to
+    add much value. We also get similar precision and recall scores. Thus, it doesn't
+    make sense now to re-run the grid search again for an optimized recall. We will
+    most likely get identical results anyway. Nevertheless, things will likely be
+    different when you deal with highly imbalanced classes, and you want to maximize
+    the recall of one class at the expense of the others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we are going to use word embeddings to represent our tokens.
+    Let's see if this form of transfer learning will help our classifier perform better.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a custom transformer
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before ending this chapter, we can also create a custom transformer based on
+    the `Word2Vec` embedding and use it in our classification pipeline instead of
+    `CountVectorizer`. In order to be able to use our custom transformer in the pipeline,
+    we need to make sure it has `fit`, `transform`, and `fit_transform` methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is our new transformer, whichwe will call `WordEmbeddingVectorizer`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `fit` method here is impotent—it does not do anything since we are using
+    a pre-trained model from spaCy. We can use the newly created transformer as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: Instead of the Naive Bayes classifier, we can also use this transformer with
+    other classifiers, such as `LogisticRegression` or `Multi-layer Perceptron`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `apply` function in pandas can be slow, especially when dealing with high
+    volumes of data. I like to use a library called `tqdm`, which allows me to replace
+    the `apply()` method with `progress_apply()`, which then displays a progress bar
+    while running. All you have to do after importing the library is run `tqdm.pandas()`;
+    this adds the `progress_apply()` method to the pandas Series and DataFrame objects.
+    Fun fact: the word `tqdm`means *progress* in Arabic.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Personally, I find the field of natural language processing very exciting. The
+    vast majority of our knowledge as humans is contained in books, documents, and
+    web pages. Knowing how to automatically extract this information and organize
+    it with the help of machine learning is essential to our scientific progress and
+    endeavors in automation. This is why multiple scientific fields, such as information
+    retrieval, statistics, and linguistics, borrow ideas from each other and try to
+    solve the same problem from different angles. In this chapter, we also borrowed
+    ideas from all these fields and learned how to represent textual data in formats
+    suitable to machine learning algorithms. We also learned about the utilities that
+    scikit-learn provides to aid in building and optimizing end-to-end solutions.
+    We also encountered concepts such as transfer learning, and we were able to seamlessly
+    incorporate spaCy's language models into scikit-learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the next chapter, we are going to deal with slightly advanced topics. In
+    the next chapter, we will learn about artificial neural networks (multi-layer
+    perceptron). This is a very hot topic nowadays, and understanding its main concepts
+    helps anyone who wants to get deeper into deep learning. Since neural networks
+    are commonly used in image processing, we will seize the opportunity to build
+    on what we learned in [Chapter 5](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=28&action=edit),
+    Image Processing with Nearest Neighbors and expand our image processing knowledge
+    even further.************
+  prefs: []
+  type: TYPE_NORMAL

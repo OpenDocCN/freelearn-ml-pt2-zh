@@ -1,0 +1,1397 @@
+- en: Chapter 5
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Comparing Models
+  prefs: []
+  type: TYPE_NORMAL
+- en: A map is not the territory it represents, but, if correct, it has a similar
+    structure to the territory. – Alfred Korzybski
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Models should be designed as approximations to help us understand a particular
+    problem or a class of related problems. Models are not designed to be verbatim
+    copies of the *real world*. Thus, all models are wrong in the same sense that
+    maps are not the territory. But not all models are equally wrong; some models
+    will be better than others at describing a given problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the previous chapters, we focused our attention on the inference problem,
+    that is, how to learn the values of parameters from data. In this chapter, we
+    are going to focus on a complementary problem: how to compare two or more models
+    for the same data. As we will learn, this is both a central problem in data analysis
+    and a tricky one. In this chapter, we are going to keep examples super simple,
+    so we can focus on the technical aspects of model comparison. In the forthcoming
+    chapters, we are going to apply what we learn here to more complex examples.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will explore the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Overfitting and underfitting
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Information criteria
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cross-validation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Bayes factors
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 5.1 Posterior predictive checks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We have previously introduced and discussed posterior predictive checks as a
+    way to assess how well a model explains the data used to fit a model. The purpose
+    of this type of testing is not to determine whether a model is incorrect; we already
+    know this! The goal of the exercise is to understand how well we are capturing
+    the data. By performing posterior predictive checks, we aim to better understand
+    the limitations of a model. Once we understand the limitations, we can simply
+    acknowledge them or try to remove them by improving the model. It is expected
+    that a model will not be able to reproduce all aspects of a problem and this is
+    usually not a problem as models are built with a purpose in mind. As different
+    models often capture different aspects of data, we can compare models using posterior
+    predictive checks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at a simple example. We have a dataset with two variables, `x` and
+    `y`. We are going to fit these data with a linear model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![y = 𝛼 + 𝛽x ](img/file139.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We will also fit the data using a quadratic model, that is, a model with one
+    more term than the linear model. For this extra term, we just take *x* to the
+    power of 2 and add a *β* coefficient:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![y = 𝛼 + 𝛽0x + 𝛽1x2 ](img/file140.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can write these models in PyMC as usual; refer to the following code block.
+    The only difference from all previous models we have seen so far is that we pass
+    the argument `idata_kwargs="log_likelihood": True` to `pm.sample`. This extra
+    step will store the log-likelihood in the `InferenceData` object, and we will
+    use this info later:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 5.1**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Figure [5.1](#x1-96028r1)* shows the mean fit from both models. Visually,
+    both models seem to provide a reasonable fit to the data. At least for me, it
+    is not that easy to see which model is best. What do you think?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file141.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.1**: Mean fit for `model_l` (linear) and `model_q` (quadratic)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To gain further insights, we can do a posterior predictive check. *Figure [5.2](#x1-96030r2)*
+    shows KDEs for the observed and predicted data. Here, it is easy to see that `model_q`,
+    the quadratic model, provides a better fit to the data. We can also see there
+    is a lot of uncertainty, in particular at the tails of the distributions. This
+    is because we have a small number of data points.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file142.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.2**: Posterior predictive checks for `model_l` and `model_q` created
+    with the `az.plot_ppc` function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Posterior predictive checks are a very versatile idea. We can compare observed
+    and predicted data in so many ways. For instance, instead of comparing the densities
+    of the distributions, we can compare summary statistics. In the top panel of *Figure
+    [5.3](#x1-96032r3)*, we have the distributions of means for both models. The dot
+    over the x axis indicates the observed value. We can see that both models capture
+    the mean very well, with the quadratic model having less variance. That both models
+    capture the mean very well is not surprising as we are explicitly modeling the
+    mean. In the bottom panel, we have the distributions of the interquartile range.
+    This comparison favors the linear model instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file143.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.3**: Posterior predictive checks for `model_l` and `model_q` created
+    with the `az.plot_bpv` function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In general, a statistic that is *orthogonal* to what the model is explicitly
+    modeling will be more informative for evaluating the model. When in doubt, it
+    may be convenient to evaluate more than one statistic. A useful question is to
+    ask yourself what aspects of the data you are interested in capturing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To generate *Figure [5.3](#x1-96032r3)*, we used the `az.plot_bpv` ArviZ function.
+    An excerpt of the full code to generate that figure is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 5.2**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that we use the `kind="t_stat"` argument to indicate that we are going
+    to use a summary statistic. We can pass a string as in `t_stat="mean"`, to indicate
+    that we want to use the mean as the summary statistic. Or, we can use a user-defined
+    function, as in `t_stat=iqr`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may have noticed that *Figure [5.3](#x1-96032r3)* also includes a legend
+    with `bpv` values. **bpv** stands for Bayesian p-value. This is a numerical way
+    of summarizing a comparison between simulated and observed data. To obtain them,
+    a summary statistic *T* is chosen, such as the mean, median, standard deviation,
+    or whatever you may think is worth comparing. Then *T* is calculated for the observed
+    data *T*[obs] and for the simulated data *T*[sim]. Finally, we ask ourselves the
+    question ”what is the probability that *T*[sim] is less than or equal to *T*[obs]?”.
+    If the observed values agree with the predicted ones, the expected value will
+    be 0.5\. In other words, half of the predictions will be below the observations
+    and half will be above. This quantity is known as the **Bayesian** **p-value**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Bayesian p-value ≜ p(Tsim ≤ Tobs | ˜Y) ](img/file144.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: There is yet another way to compute a Bayesian p-value. Instead of using a summary
+    statistic, we can use the entire distribution. In this case, we can ask ourselves
+    the question ”what is the probability of predicting a lower or equal value for
+    **each observed value**?”. If the model is well calibrated, these probabilities
+    should be the same for all observed values. Because the model is capturing all
+    observations equally well, we should expect a Uniform distribution. ArviZ can
+    help us with the computations; this time we need to use the `az.plot_bpv` function
+    with the `kind="p_value"` argument (which is the default). *Figure [5.4](#x1-96050r4)*
+    shows the results of this calculation. The white line indicates the expected Uniform
+    distribution and the gray band shows the expected deviation given the finite size
+    of the sample. It can be seen that these models are very similar.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file145.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.4**: Posterior predictive checks for `model_l` and `model_q` created
+    with the `az.plot_bpv` function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Not Those p-values
+  prefs: []
+  type: TYPE_NORMAL
+- en: For those who are familiar with p-values and their use in frequentist statistics,
+    there are a couple of clarifications. What is *Bayesian* about these p-values
+    is that we are NOT using a sampling distribution but the posterior predictive
+    distribution. Additionally, we are not doing a null hypothesis test, nor trying
+    to declare that a difference is ”significant.” We are simply trying to quantify
+    how well the model explains the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Posterior predictive checks provide a very flexible framework for evaluating
+    and comparing models, either using plots or numerical summaries such as Bayesian
+    p-values, or a combination of both. The concept is general enough to allow an
+    analyst to use their imagination to find different ways to explore the model’s
+    predictions and use the ones that best suit their modeling goals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following sections, we will explore other methods for comparing models.
+    These new methods can be used in combination with posterior predictive checks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.2 The balance between simplicity and accuracy
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When choosing between alternative explanations, there is a principle known as
+    Occam’s razor. In very general terms, this principle establishes that given two
+    or more equivalent explanations for the same phenomenon, the simplest is the preferred
+    explanation. A common criterion of simplicity is the number of parameters in a
+    model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are many justifications for this heuristic. We are not going to discuss
+    any of them; we are just going to accept them as a reasonable guide.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another factor that we generally have to take into account when comparing models
+    is their accuracy, that is, how good a model is at fitting the data. According
+    to this criterion, if we have two (or more) models and one of them explains the
+    data better than the other, then that is the preferred model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Intuitively, it seems that when comparing models, we tend to prefer those that
+    best fit the data and those that are simple. But what should we do if these two
+    principles lead us to different models? Or, more generally, is there a quantitative
+    way to balance both contributions? The short answer is yes, and in fact, there
+    is more than one way to do it. But first, let’s see an example to gain intuition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.2.1 Many parameters (may) lead to overfitting
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '*Figure [5.5](#x1-98002r5)* shows three models with an increasing number of
+    parameters. The first one (order 0) is just a constant value: whatever the value
+    of *X*, the model always predicts the same value for *Y* . The second model (order
+    1) is a linear model, as we saw in *Chapter [4](CH04.xhtml#x1-760004)*. The last
+    one (order 5) is a polynomial model of order 5\. We will discuss polynomial regression
+    in more depth in *Chapter [6](CH06.xhtml#x1-1200006)*, but for the moment, we
+    just need to know that the core of the model has the form *α* + *β*[0]*x* + *β*[0]*x*²
+    + *β*[0]*x*³ + *β*[0]*x*⁴ + *β*[0]*x*⁵.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file146.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.5**: Three models for a simple dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Figure [5.5](#x1-98002r5)*, we can see that the increase in the complexity
+    of the model (number of parameters) is accompanied by a greater accuracy reflected
+    in the coefficient of determination *R*². This is a way to measure the fit of
+    a model (for more information, please read [https://en.wikipedia.org/wiki/Coefficient_of_determination](https://en.wikipedia.org/wiki/Coefficient_of_determination)).
+    In fact, we can see that the polynomial of order 5 fits the data perfectly, obtaining
+    *R*² = 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why can the polynomial of order 5 capture the data without errors? The reason
+    is that we have the same number of parameters as data, that is, six. Therefore,
+    the model is simply acting as an alternative way of expressing the data. The model
+    is not learning patterns about the data, it is memorizing the data! This can be
+    problematic. The easier way to notice this is by thinking about what will happen
+    to a model that memorizes data when presented with new, unobserved data. What
+    do you think will happen?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Well, the performance is expected to be bad, like someone who just memorizes
+    the questions for an exam only to find the questions have been changed at the
+    last minute! This situation is represented in *Figure [5.6](#x1-98004r6)*; here,
+    we have added two new data points. Maybe we got the money to perform a new experiment
+    or our boss just sent us new data. We can see that the model of order 5, which
+    was able to exactly fit the data, now has a worse performance than the linear
+    model, as measured by *R*². From this simple example, we can see that a model
+    with the best fit is not always the ideal one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file147.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.6**: Three models for a simple dataset, plus two new points'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Loosely speaking, when a model fits the dataset used to learn the parameters
+    of that model very well but fits new datasets very poorly, we have overfitting.
+    This is a very common problem when analyzing data. A useful way to think about
+    overfitting is to consider a dataset as having two components: the signal and
+    the noise. The signal is what we want to capture (or learn) from the data. If
+    we use a dataset, it is because we believe there is a signal there, otherwise
+    it will be an exercise in futility. Noise, on the other hand, is not useful and
+    is the product of measurement errors, limitations in the way the data was generated
+    or captured, the presence of corrupted data, etc. A model overfits when it is
+    so flexible (for a dataset) that it is capable of learning noise. This has the
+    consequence that the signal is hidden.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a practical justification for Occam’s razor, and also a warning that,
+    at least in principle, it is always possible to create a model so complex that
+    it explains all the details in a dataset, even the most irrelevant ones — like
+    the cartographers in Borges’ tale, who crafted a map of the Empire as vast as
+    the Empire itself, perfectly replicating every detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.2.2 Too few parameters lead to underfitting
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Continuing with the same example but at the other extreme of complexity, we
+    have the model of order 0\. This model is simply a Gaussian disguised as a linear
+    model. This model is only capable of capturing the value of the mean of *Y* and
+    is therefore totally indifferent to the values of *X*. We say that this model
+    has underfitted the data. Models that underfit can also be misleading, especially
+    if we are unaware of it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.3 Measures of predictive accuracy
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: ”Everything should be made as simple as possible, but not simpler” is a quote
+    often attributed to Einstein. As in a healthy diet, when modeling, we have to
+    maintain a balance. Ideally, we would like to have a model that neither underfits
+    nor overfits the data. We want to somehow balance simplicity and goodness of fit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the previous example, it is relatively easy to see that the model of order
+    0 is too simple, while the model of order 5 is too complex. In order to get a
+    general approach that will allow us to rank models, we need to formalize our intuition
+    about this balance of simplicity and accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s look at a couple of terms that will be useful to us:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Within-sample accuracy**: The accuracy is measured with the same data used
+    to fit the model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Out-of-sample accuracy**: The accuracy measured with data not used to fit
+    the model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The within-sample accuracy will, on average, be greater than the out-of-sample
+    accuracy. That is why using the within-sample accuracy to evaluate a model, in
+    general, will lead us to think that we have a better model than we really have.
+    Using out-of-sample accuracy is therefore a good idea to avoid fooling ourselves.
+    However, leaving data out means we will have less data to inform our models, which
+    is a luxury we generally cannot afford. Since this is a central problem in data
+    analysis, there are several proposals to address it. Two very popular approaches
+    are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Information criteria**: This is a general term that’s used to refer to various
+    expressions that approximate out-of-sample accuracy as in-sample accuracy plus
+    a term that penalizes model complexity.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Cross-validation**: This is an empirical strategy based on dividing the available
+    data into separate subsets that are alternatively used to fit and evaluate the
+    models.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let’s look at both of those approaches in more detail in the following sections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.3.1 Information criteria
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Information criteria are a collection of closely related tools used to compare
+    models in terms of goodness-of-fit and model complexity. In other words, the information
+    criteria formalize the intuition that we developed at the beginning of the chapter.
+    The exact way in which these quantities are derived has to do with a field known
+    as Information Theory ([[MacKay](Bibliography.xhtml#Xmackay_2003), [2003](Bibliography.xhtml#Xmackay_2003)]),
+    which is fun, but we will pursue a more intuitive explanation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One way to measure how well a model fits the data is to calculate the root
+    mean square error between the data and the predictions made by the model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ n 1-∑ 2 n (yi − E(yi | θ)) i=1 ](img/file148.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: E(*y*[*i*]|*θ*) is the predicted value given the estimated parameters. It is
+    important to note that this is essentially the average of the squared difference
+    between the observed and predicted data. Taking the square of the errors ensures
+    that the differences do not cancel out and emphasizes large errors compared to
+    other alternatives such as calculating the absolute value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The root mean square error may be familiar to you. It is a very popular measure
+    – so popular that we may have never spent time thinking about it. But if we do,
+    we will see that, in principle, there is nothing special about it and we could
+    well devise other similar expressions. When we adopt a probabilistic approach,
+    as we do in this book, a more general (and *natural*) expression is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![∑n log p(yi | θ) i=1 ](img/file149.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: That is, we compute the likelihood for each of the *n* observations. We take
+    the sum instead of the product because we are working with logarithms. Why do
+    we say this is *natural*? Because we can think that, when choosing a likelihood
+    for a model, we are implicitly choosing how we want to penalize deviations between
+    the data and predictions. In fact, when *p*(*y*[*i*]|*θ*) is a Gaussian, then
+    the above expression will be proportional to the root mean square error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s shift our focus to a detailed exploration of a few specific information
+    criteria.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Akaike Information Criterion
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: '**Akaike Information Criterion** (**AIC**) is a well-known and widely used
+    information criterion outside the Bayesian universe and is defined as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ∑n ˆ AIC = − 2 log p(yi |θmle)+ 2k i=1 ](img/file150.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '*k* is the number of model parameters and ![](img/hat_theta.png)[*mle*] is
+    the maximum likelihood estimate for *θ*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Maximum likelihood estimation is common practice for non-Bayesians and is, in
+    general, equivalent to Bayesian **maximum a posteriori** (**MAP**) estimation
+    when *flat* priors are used. It is important to note that ![](img/hat_theta.png)[*mle*]
+    is a point estimate and not a distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The factor −2 is just a constant, and we could omit it but usually don’t. What
+    is important, from a practical point of view, is that the first term takes into
+    account how well the model fits the data, while the second term penalizes the
+    complexity of the model. Therefore, if two models fit the data equally well, AIC
+    says that we should choose the model with the fewest parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AIC works fine in non-Bayesian approaches but is problematic otherwise. One
+    reason is that it does not use the posterior distribution of *θ* and therefore
+    discards information. Also, AIC, from a Bayesian perspective, assumes that priors
+    are *flat* and therefore AIC is incompatible with informative and slightly informative
+    priors like those used in this book. Also, the number of parameters in a model
+    is not a good measure of the model’s complexity when using informative priors
+    or structures like hierarchical structures, as these are ways of reducing the
+    effective number of parameters, also known as *regularization*. We will return
+    to this idea of regularization later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Widely applicable information criteria
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: '**Widely applicable information criteria** (**WAIC**) is something like the
+    Bayesian version of AIC. It also has two terms, one that measures how good the
+    fit is and the other that penalizes complex models. But WAIC uses the full posterior
+    distribution to estimate both terms. The following expression assumes that the
+    posterior distribution is represented as a sample of size *S* (as obtained from
+    an MCMC method):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ( ) ∑n 1 ∑S s ∑ n ( S s) W AIC = − 2 log S- p(yi | θ ) + 2 Vs=1logp(yi |
+    θ) i s=1 i ](img/file151.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The first term is similar to the Akaike criterion, except it is evaluated for
+    all the observations and all the samples of the posterior. The second term is
+    a bit more difficult to justify without getting into technicalities. But it can
+    be interpreted as the effective number of parameters. What is important from a
+    practical point of view is that WAIC uses the entire posterior (and not a point
+    estimate) for the calculation of both terms, so WAIC can be applied to virtually
+    any Bayesian model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other information criteria
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Another widely used information criterion is the **Deviance Information** **Criterion**
+    (**DIC**). If we use the *bayes-o-meter*^(TM), DIC is more Bayesian than AIC but
+    less than WAIC. Although still popular, WAIC and mainly LOO (see the next section)
+    have been shown to be more useful both theoretically and empirically than DIC.
+    Therefore, we do not recommend its use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another widely used criterion is **Bayesian Information Criteria** (**BIC**).
+    Like logistic regression and my mother’s *dry soup*, this name can be misleading.
+    BIC was proposed as a way to correct some of the problems with AIC and the authors
+    proposed a Bayesian justification for it. But BIC is not really Bayesian in the
+    sense that, like AIC, it assumes flat priors and uses maximum likelihood estimation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But more importantly, BIC differs from AIC and WAIC in its objective. AIC, WAIC,
+    and LOO (see next section) try to reflect which model generalizes better to other
+    data (predictive accuracy), while BIC tries to identify which is the *correct*
+    model and therefore is more related to Bayes factors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.3.2 Cross-validation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Cross-validation is a simple and, in most cases, effective solution for comparing
+    models. We take our data and divide it into K slices. We try to keep the slices
+    more or less the same (in size and sometimes also in other characteristics, such
+    as the number of classes). We then use K-1 slices to train the model and slice
+    to test it. This process is the systematically repeated omission, for each iteration,
+    of a different slice from the training set and using that slice as the evaluation
+    set. This is repeated until we have completed K fit-and-evaluation rounds, as
+    can be seen in *Figure [5.7](#x1-105004r7)*. The accuracy of the model will be
+    the average over the accuracy for each of the K rounds. This is known as K-fold
+    cross-validation. Finally, once we have performed cross-validation, we use all
+    the data for one last fit and this is the model that is used to make predictions
+    or for any other purpose.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file152.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.7**: K-fold cross-validation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When K equals the number of data points, we get what is known as **leave-one-out
+    cross-validation** (**LOOCV**), meaning we fit the model to all but one data point
+    each time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cross-validation is a routine practice in machine learning, and we have barely
+    described the most essential aspects of this practice. There are many other variants
+    of the schema presented here. For more information, you can read [James et al.](Bibliography.xhtml#Xjames_2023) [[2023](Bibliography.xhtml#Xjames_2023)]
+    or [Raschka et al.](Bibliography.xhtml#Xraschka_2022) [[2022](Bibliography.xhtml#Xraschka_2022)].
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cross-validation is a very simple and useful idea, but for some models or for
+    large amounts of data, the computational cost of cross-validation may be beyond
+    our means. Many people have tried to find simpler quantities to calculate, like
+    Information Criteria. In the next section, we discuss a method to approximate
+    cross-validation from a single fit to all the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Approximating cross-validation
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Cross-validation is a nice idea, but it can be expensive, particularly variants
+    like leave-one-out-cross-validation. Luckily, it is possible to approximate it
+    using the information from a single fit to the data! The method for doing this
+    is called ”Pareto smooth importance sampling leave-one-out cross-validation.”
+    The name is so long that in practice we call it LOO. Conceptually, what we are
+    trying to calculate is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ n ∫ ∑ ELPDLOO -CV = log p(yi | θ) p(θ | y−i)dθ i=1 ](img/file153.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This is the Expected Log-Pointwise-predictive Density (ELPD). We add the subscript
+    *LOO-CV* to make it explicit we are computing the ELPD using leave-one-out cross-validation.
+    The [−*i*] means that we leave the observation *i* out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This expression is very similar to the one for the posterior predictive distribution.
+    The difference is that, now, we want to compute the posterior predictive distribution
+    for observation *y*[*i*] from a posterior distribution computed without the observation
+    *y*[*i*]. The first approximation we take is to prevent the explicit computation
+    of the integral by taking samples from the posterior distribution. Thus, we can
+    write:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ n ( s ) ∑ ( 1-∑ j ) log S p(yi | θ−i) i j ](img/file154.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, the sum is over *S* posterior samples. We have been using MCMC samples
+    in this book a lot. So, this approximation should not sound unfamiliar to you.
+    The tricky part comes next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is possible to approximate ![](img/Formula_03.PNG) using importance sampling.
+    We are not going to discuss the details of that statistical method, but we are
+    going to see how importance sampling is a way of approximating a target distribution
+    by re-weighting values obtained from another distribution. This method is useful
+    when we do not know how to sample from the target distribution but we know how
+    to sample from another distribution. Importance sampling works best when the known
+    distribution is *wider* than the target one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our case, the known distribution, once a model has been fitted, is the log-likelihood
+    for all the observations. And we want to approximate the log-likelihood if we
+    had dropped one observation. For this, we need to estimate the ”importance” (or
+    weight) that each observation has in determining the posterior distribution. The
+    ”importance” of a given observation is proportional to the effect the variable
+    will produce on the posterior if removed. Intuitively, a relatively unlikely observation
+    is more important (or carries more weight) than an expected one. Luckily, these
+    weights are easy to compute once we have computed the posterior distribution.
+    In fact, the weight of the observation *i* for the *s* posterior sample is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ 1 ws = -------- p(yi | θs) ](img/file155.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This *w*[*s*] may not be reliable. The main issue is that sometimes a few *w*[*s*]
+    could be so large that they dominate our calculations, making them unstable. To
+    tame these crazy weights, we can use Pareto smoothing. This solution consists
+    of replacing some of these weights with weights obtained from fitting a Pareto
+    distribution. Why a Pareto distribution? Because the theory indicates that the
+    weights should follow this distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, for each observation, *y*[*i*], the largest weights are used to estimate
+    a Pareto distribution, and that distribution is used to replace those weights
+    with ”smoothed” weights. This procedure gives robustness to the estimation of
+    the ELPD and also provides a way to diagnose the approximation, i.e., to get a
+    warning that the LOO method may be failing. For this, we need to pay attention
+    to the values of *k*, which is a parameter of the Pareto distribution. Values
+    of *k* greater than 0.7 indicate that we may have very influential observations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.4 Calculating predictive accuracy with ArviZ
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Fortunately, calculating WAIC and LOO with ArviZ is very simple. We just need
+    to be sure that the Inference Data has the log-likelihood group. When computing
+    a posterior with PyMC, this can be achieved by doing `pm.sample(idata_kwargs="log_likelihood":
+    True)`. Now, let’s see how to compute LOO:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 5.3**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The output of `az.loo` has two sections. In the first section, we get a table
+    with two rows. The first row is the ELPD (`elpd_loo`) and the second one is the
+    effective number of parameters (`p_loo`). In the second section, we have the Pareto
+    k diagnostic. This is a measure of the reliability of the LOO approximation. Values
+    of k greater than 0.7 indicate that we possibly have very influential observations.
+    In this case, we have 33 observations and all of them are good, so we can trust
+    the approximation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To compute WAIC, you can use `az.waic`; the output will be similar, except
+    that we will not get the Pareto k diagnostic, or any similar diagnostics. This
+    is a downside of WAIC: we do not get any information about the reliability of
+    the approximation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we compute LOO for the quadratic model, we will get a similar output, but
+    the ELPD will be higher (around -4), indicating that the quadratic model is better.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Values of ELPD are not that useful by themselves and must be interpreted in
+    relation to other ELPD values. That is why ArviZ provides two helper functions
+    to facilitate this comparison. Let’s look at `az.compare` first:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 5.4**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: '|  | **rank** | **elpd_loo** | **p_loo** | **elpd_diff** | **weight** | **se**
+    | **dse** | **warning** | **scale** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **model_q** | 0 | -4.6 | 2.68 | 0 | 1 | 2.36 | 0 | False | log |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **model_l** | 1 | -14.3 | 2.42 | 9.74 | 3.0e-14 | 2.67 | 2.65 | False | log
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: 'In the rows, we have the compared models, and in the columns, we have:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`rank`: The order of the models (from best to worst).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`elpd_loo`: The point estimate of the ELPD'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`p_loo`: The effective numbers parameters.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`elpd_diff`: The difference between the ELPD of the best model and the other
+    models.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`weight`: The relative weight of each model. If we wanted to make predictions
+    by combining the different models instead of choosing just one, this would be
+    the weight that we should assign to each model. In this case, we see that the
+    polynomial model takes all the weight.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`se`: The standard error of the ELPD.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`dse`: The standard error of the differences.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`warning`: A warning about high k values.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`scale`: The scale on which the ELPD is calculated.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The other helper function provided by ArviZ is `az.compareplot`. This function
+    provides similar information to `az.compare`, but graphically. *Figure [5.8](#x1-107011r8)*
+    shows the output of this function. Notice that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The empty circles represent the ELPD values and the black lines are the standard
+    error.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The highest value of the ELPD is indicated with a vertical dashed gray line
+    to facilitate comparison with other values.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For all models except *the best*, we also get a triangle indicating the value
+    of the ELPD difference between each model and the *best* model. The gray error
+    bar indicates the standard error of the differences between the point estimates.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![PIC](img/file156.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.8**: Output of `az.compareplot(cmp_df)`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The easiest way to use LOO (or WAIC) is to choose a single model. Just choose
+    the model with the highest ELPD value. If we follow this rule, we will have to
+    accept that the quadratic model is the best. Even if we take into account the
+    standard errors, we can see that they do not overlap. This gives us some certainty
+    that indeed the models are *different enough* from each other. If instead, the
+    standard errors overlap, we should provide a more nuanced answer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.5 Model averaging
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Model selection is attractive for its simplicity, but we might be missing information
+    about uncertainty in our models. This is somewhat similar to calculating the full
+    posterior and then just keeping the posterior mean; this can lead us to be overconfident
+    about what we think we know.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An alternative is to select a single model but to report and analyze the different
+    models together with the values of the calculated information criteria, their
+    standard errors, and perhaps also the posterior predictive checks. It is important
+    to put all these numbers and tests in the context of our problem so that we and
+    our audience can get a better idea of the possible limitations and shortcomings
+    of the models. For those working in academia, these elements can be used to add
+    elements to the discussion section of a paper, presentation, thesis, etc. In industry,
+    this can be useful for informing stakeholders about the advantages and limitations
+    of models, predictions, and conclusions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another possibility is to average the models. In this way, we keep the uncertainty
+    about the goodness of fit of each model. We then obtain a meta-model (and meta-predictions)
+    using a weighted average of each model. ArviZ provides a function for this task,
+    `az.weight_predictions`, which takes as arguments a list of InferenceData objects
+    and a list of weights. The weights can be calculated using the `az.compare` function.
+    For example, if we want to average the two models we have been using, we can do
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 5.5**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Figure [5.9](#x1-108006r9)* shows the results of this calculation. The light
+    gray dashed line is the weighted average of the two models, the black solid line
+    is the linear model, and the gray solid line is the quadratic one.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file157.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.9**: Weighted average of the linear and quadratic models'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are other ways to average models, such as explicitly building a meta-model
+    that includes all models of interest as particular cases. For example, an order
+    2 polynomial contains a linear model as a particular case, or a hierarchical model
+    is the continuous version between two extremes, a grouped model and an ungrouped
+    model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.6 Bayes factors
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An alternative to LOO, cross-validation, and information criteria is Bayes factors.
+    It is common for Bayes factors to show up in the literature as a Bayesian alternative
+    to frequentist hypothesis testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The *Bayesian way* of comparing *k* models is to calculate the **marginal**
+    **likelihood** of each model *p*(*y*|*M*[*k*]), i.e., the probability of the observed
+    data *Y* given the model *M*[*k*]. The marginal likelihood is the normalization
+    constant of Bayes’ theorem. We can see this if we write Bayes’ theorem and make
+    explicit the fact that all inferences depend on the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![p(θ | Y,Mk ) = p(Y-| θ,Mk-)p(θ-| Mk-) p(Y | Mk ) ](img/file158.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: where, *y* is the data, *θ* is the parameters, and *M*[*k*] is a model out of
+    *k* competing models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If our main objective is to choose only one model, the *best* from a set of
+    models, we can choose the one with the largest value of *p*(*y*|*M*[*k*]). This
+    is fine if we assume that all models have the same prior probability. Otherwise,
+    we must calculate:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![p(Mk | y) ∝ p(y | Mk )p(Mk ) ](img/file159.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If, instead, our main objective is to compare models to determine which are
+    more likely and to what extent, this can be achieved using the Bayes factors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![BF01 = p(y | M0-) p(y | M1 ) ](img/file160.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: That is the ratio between the marginal likelihood of two models. The higher
+    the value of *BF*[01], the *better* the model in the numerator (*M*[0] in this
+    example). To facilitate the interpretation of the Bayes factors, and to put numbers
+    into words, Harold Jeffreys proposed a scale for their interpretation, with levels
+    of *support* or *strength* (see *Table [5.1](#x1-109004r1)*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Bayes Factor** | **Support** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1–3 | Anecdotal |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3–10 | Moderate |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 10–30 | Strong |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 30–100 | Very Strong |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *>*100 | Extreme |'
+  prefs: []
+  type: TYPE_TB
+- en: '**Table 5.1**: Support for model *M*[0], the one in the numerator'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep in mind that if you get numbers below 1, then the support is for *M*[1],
+    i.e., the model in the denominator. Tables are also available for those cases,
+    but notice that you can simply take the inverse of the obtained value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is very important to remember that these rules are just conventions – simple
+    guides at best. Results should always be put in the context of our problems and
+    should be accompanied by enough detail so that others can assess for themselves
+    whether they agree with our conclusions. The proof necessary to ensure something
+    in particle physics, or in court, or to decide to carry out an evacuation in the
+    face of a looming natural catastrophe is not the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.6.1 Some observations
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We will now briefly discuss some key facts about the marginal likelihood:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The good: Occam’s razor included. Models with lots of parameters have a higher
+    penalty than models with few parameters. The intuitive reason is that the greater
+    the number of parameters, the more the prior *extends* with respect to the likelihood.
+    An example where it is easy to see this is with nested models: for example, a
+    polynomial of order 2 ”contains” the models polynomial of order 1 and polynomial
+    of order 0.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The bad: For many problems, the marginal likelihood cannot be calculated analytically.
+    Also, approximating it numerically is usually a difficult task that in the best
+    of cases requires specialized methods and, in the worst case, the estimates are
+    either impractical or unreliable. In fact, the popularity of the MCMC methods
+    is that they allow obtaining the posterior distribution without the need to calculate
+    the marginal likelihood.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The ugly: The marginal likelihood depends *very sensitively* on the prior distribution
+    of the parameters in each model *p*(*θ*[*k*]|*M*[*k*]).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is important to note that the *good* and the *ugly* points are related. Using
+    marginal likelihood to compare models is a good idea because it already includes
+    a penalty for complex models (which helps us prevent overfitting), and at the
+    same time, a change in the prior will affect the marginal likelihood calculations.
+    At first, this sounds a bit silly; we already know that priors affect calculations
+    (otherwise we could just avoid them). But we are talking about changes in the
+    prior that would have a small effect in the posterior but a great impact on the
+    value of the marginal likelihood.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The use of Bayes factors is often a watershed among Bayesians. The difficulty
+    of its calculation and the sensitivity to the priors are some of the arguments
+    against it. Another reason is that, like p-values and hypothesis testing in general,
+    Bayes factors favor dichotomous thinking over the estimation of the ”effect size.”
+    In other words, instead of asking ourselves questions like: How many more years
+    of life can a cancer treatment provide? We end up asking if the difference between
+    treating and not treating a patient is ”statistically significant.” Note that
+    this last question can be useful in some contexts. The point is that in many other
+    contexts, this type of question is not the question that interests us; we’re only
+    interested in the one that we were taught to answer.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.6.2 Calculation of Bayes factors
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As we have already mentioned, marginal likelihood (and the Bayes factors derived
+    from it) is generally not available in closed form, except for some models. For
+    this reason, many numerical methods have been devised for its calculation. Some
+    of these methods are so simple and naive ( [https://radfordneal.wordpress.com/2008/08/17/the-harmonic-mean-of-the-likelihood-worst-monte-carlo-method-ever](https://radfordneal.wordpress.com/2008/08/17/the-harmonic-mean-of-the-likelihood-worst-monte-carlo-method-ever))
+    that they work very poorly in practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Analytically
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'For some models, such as the BetaBinomial model, we can calculate the marginal
+    likelihood analytically. If we write this model as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|  | *θ* ∼ *Beta*(**α*,*β**) |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '|  | *y* ∼ *Bin*(*n* = 1*,p* = *θ*) |  |'
+  prefs: []
+  type: TYPE_TB
+- en: 'then the marginal likelihood will be:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ (n) B (𝛼+ h, 𝛽 + n − h) p(y) = ------------------- h B (𝛼,𝛽) ](img/file161.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '*B* is the beta function (not to be confused with the *Beta* distribution),
+    *n* is the number of attempts, and *h* is the success number.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since we only care about the relative value of the marginal likelihood under
+    two different models (for the same data), we can omit the binomial coefficient
+    ![(n) h](img/file162.jpg), so we can write:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ B (𝛼 + h, 𝛽 + n − h) p(y) ∝ ------B-(𝛼,-𝛽)------ ](img/file163.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This expression has been coded in the next code block but with a twist. We will
+    use the `betaln` function, which returns the natural logarithm of the `beta` function,
+    it is common in statistics to do calculations on a
+  prefs: []
+  type: TYPE_NORMAL
+- en: logarithmic scale. This reduces numerical problems when working with probabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 5.6**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Our data for this example consists of 100 coin tosses and the same number of
+    heads and tails. We will compare two models, one with a Uniform prior and one
+    with a *more concentrated* prior around *θ* = 0*.*5:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 5.7**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Figure [5.10](#x1-112026r10)* shows the two priors. The Uniform prior is the
+    black line, and the peaked prior is the gray line.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file164.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.10**: Uniform and peaked priors'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can calculate the marginal likelihood for each model and the Bayes
+    factor, which turns out to be 5:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 5.8**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We see that the model with the prior beta(30*,*30), more concentrated, has ≈
+    5 times more support than the model with the beta(1*,*1). This is to be expected
+    since the prior for the first case is concentrated around *θ* = 0*.*5 and the
+    data *Y* have the same number of heads and tails, that is, they agree with a value
+    of *θ* around 0.5.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sequential Monte Carlo
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The **Sequential Monte Carlo** (**SMC**) method is a sampling method that works
+    by progressing through a series of successive stages that bridge one distribution
+    that is easy to sample from and the posterior of interest. In practice, the starting
+    distribution is usually the prior. A byproduct of the SMC sampler is the estimate
+    of the marginal likelihood.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 5.9**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we can see from the preceding code block, SMC also gives us a Bayes factor
+    of 5, the same answer as the analytical calculation! The advantage of using SMC
+    to calculate marginal likelihood is that we can use it for a wider range of models
+    since we no longer need to know an expression in closed form. The price we pay
+    for this flexibility is a higher computational cost. Also, keep in mind that SMC
+    (with an independent Metropolis-Hastings kernel, as implemented in PyMC) is not
+    as efficient as NUTS. As the dimensionality of the problem increases, a more precise
+    estimate of the posterior and the marginal likelihood will require a larger number
+    of samples of the posterior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log Space
+  prefs: []
+  type: TYPE_NORMAL
+- en: In computational statistics, we usually perform computations in log space. This
+    helps provide numerical stability and computational efficiency, among other things.
+    See, for example, the preceding code block; you can see that we calculated a difference
+    (instead of a division) and then we took the exponential before returning the
+    result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Savage–Dickey ratio
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'For the above examples, we have compared two BetaBinomial models. We could
+    have compared two completely different models, but there are times when we want
+    to compare a null hypothesis `H_0` (or null model) against an alternative *H_1*
+    hypothesis. For example, to answer the question ”Is this coin biased?”, we could
+    compare the value *θ* = 0*.*5 (representing no bias) with the output of a model
+    in which we allow *θ* to vary. For this type of comparison, the null model is
+    nested within the alternative, which means that the null is a particular value
+    of the model we are building. In those cases, calculating the Bayes factor is
+    very easy and does not require any special methods. We only need to compare the
+    prior and posterior evaluated at the null value (for example, *θ* = 0*.*5) under
+    the alternative model. We can see that this is true from the following expression:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ p(y | H )p(θ = 0.5 | y, H ) BF01 = ------0---------------1- p(y | H1 ) p(θ
+    = 0.5 | H1 ) ](img/file165.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This is true only when *H*[0] is a particular case of *H*[1], ([https://statproofbook.github.io/P/bf-sddr](https://statproofbook.github.io/P/bf-sddr)).
+    Next, let’s do it with PyMC and ArviZ. We only need to sample the prior and posterior
+    for a model. Let’s try the BetaBinomial model with a Uniform prior:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 5.10**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The result is shown in *Figure [5.11](#x1-114012r11)*. We can see one KDE for
+    the prior (black) and one for the posterior (gray). The two black dots show that
+    we evaluated both distributions at the value 0.5\. We can see that the Bayes factor
+    in favor of the null hypothesis, `BF_01`, is ≈ 8, which we can interpret as *moderate
+    evidence* in favor of the null hypothesis (see *Table [5.1](#x1-109004r1)*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file166.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.11**: Bayes factor for the BetaBinomial model with Uniform prior'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we have already discussed, the Bayes factors measure which model, as a whole,
+    is better at explaining the data. This includes the prior, even if the prior has
+    a relatively low impact on the computation of the posterior. We can also see this
+    prior effect by comparing a second model to the null model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If, instead, our model were a BetaBinomial with a Beta prior (30, 30), the
+    `BF_01` would be lower (*anecdotal* on the Jeffrey scale). This is because, according
+    to this model, the value of *θ* = 0*.*5 is much more likely a priori than for
+    a Uniform prior, and therefore the prior and posterior will be much more similar.
+    That is, it is not very *surprising* to see that the posterior is concentrated
+    around 0.5 after collecting data. Don’t just believe me, let’s calculate it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 5.11**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Figure [5.12](#x1-114022r12)* shows the result. We can see that the `BF_01`
+    is ≈ 1*.*6, which we can interpret as *anecdotal evidence* in favor of the null
+    hypothesis (see the Jeffreys’ scale, discussed earlier).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file167.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.12**: Bayes factor for the BetaBinomial model with peaked prior'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.7 Bayes factors and inference
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: So far, we have used Bayes factors to judge which model seems to be better at
+    explaining the data, and we found that one of the models is ≈ 5 times *better*
+    than the other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But what about the posterior we get from these models? How different are they?
+    *Table [5.2](#x1-115002r2)* summarizes these two posteriors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|  | **mean** | **sd** | **hdi_3%** | **hdi_97%** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **uniform** | 0.5 | 0.05 | 0.4 | 0.59 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **peaked** | 0.5 | 0.04 | 0.42 | 0.57 |'
+  prefs: []
+  type: TYPE_TB
+- en: '**Table 5.2**: Statistics for the models with uniform and peaked priors computed
+    using the ArviZ summary function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can argue that the results are quite similar; we have the same mean value
+    for *θ* and a slightly wider posterior for `model_0`, as expected since this model
+    has a wider prior. We can also check the posterior predictive distribution to
+    see how similar they are (see *Figure [5.13](#x1-115004r13)*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file168.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 5.13**: Posterior predictive distributions for models with uniform
+    and peaked priors'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, the observed data is more consistent with `model_1`, because
+    the prior is concentrated around the correct value of *θ*, while `model_0`, assigns
+    the same probability to all possible values of *θ*. This difference between the
+    models is captured by the Bayes factor. We could say that the Bayes factors measure
+    which model, as a whole, is better for explaining the data. This includes the
+    details of the prior, no matter how similar the model predictions are. In many
+    scenarios, this is not what interests us when comparing models, and instead, we
+    prefer to evaluate models in terms of how similar their predictions are. For those
+    cases, we can use LOO.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.8 Regularizing priors
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Using informative and weakly informative priors is a way of introducing bias
+    in a model and, if done properly, this can be really good because bias prevents
+    overfitting and thus contributes to models being able to make predictions that
+    generalize well. This idea of adding a bias element to reduce generalization errors
+    without affecting the ability of the model to adequately model a problem is known
+    as **regularization**. This regularization often takes the form of a term penalizing
+    certain values for the parameters in a model, like too-big coefficients in a regression
+    model. Restricting parameter values is a way of reducing the data a model can
+    represent, thus reducing the chances that a model will capture noise instead of
+    the signal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This regularization idea is so powerful and useful that it has been discovered
+    several times, including outside the Bayesian framework. For regression models,
+    and outside Bayesian statistics, two popular regularization methods are ridge
+    regression and lasso regression. From the Bayesian point of view, ridge regression
+    can be interpreted as using Normal distributions for the *β* coefficients of a
+    linear model, with a small standard deviation that pushes the coefficients toward
+    zero. In this sense, we have been doing something very close to ridge regression
+    for every single linear model in this book (except the examples in this chapter
+    that use SciPy!).
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, lasso regression can be interpreted from a Bayesian point
+    of view as the MAP of the posterior computed from a model with Laplace priors
+    for the *β* coefficients. The Laplace distribution looks similar to the Gaussian
+    distribution but with a sharp peak at zero. You can also interpret it as two *back-to-back*
+    Exponential distributions (try `pz.Laplace(0, 1).plot_pdf()`). The Laplace distribution
+    concentrates its probability mass much closer to zero compared to the Gaussian
+    distribution. The idea of using such a prior is to provide both regularization
+    and variable selection. The idea is that since we have this peak at zero, we expect
+    the prior distribution to induce sparsity, that is, we create a model with a lot
+    of parameters and the prior will automatically make most of them zero, keeping
+    only the relevant variables contributing to the output of the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Unfortunately, contrary to ridge regression, this idea does not directly translate
+    from the frequentist realm to the Bayesian one. Nevertheless, there are Bayesian
+    priors that can be used for inducing sparsity and performing variable selection,
+    like the horseshoe prior. If you want to learn more about the horseshoe and other
+    shrinkage priors, you may find the article by [Piironen and Vehtari](Bibliography.xhtml#XPiironen2017) [[2017](Bibliography.xhtml#XPiironen2017)]
+    at [https://arxiv.org/abs/1707.01694](https://arxiv.org/abs/1707.01694) very interesting.
+    In the next chapter, we will discuss more about variable selection. Just one final
+    note: it is important to notice that the classical versions of ridge and lasso
+    regressions correspond to single-point estimates, while the Bayesian versions
+    yield full posterior distributions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.9 Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this chapter, we have seen how to compare models using posterior predictive
+    checks, information criteria, approximated cross-validation, and Bayes factors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Posterior predictive check is a general concept and practice that can help us
+    understand how well models are capturing different aspects of the data. We can
+    perform posterior predictive checks with just one model or with many models, and
+    thus we can use it as a method for model comparison. Posterior predictive checks
+    are generally done via visualizations, but numerical summaries like Bayesian values
+    can also be helpful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Good models have a good balance between complexity and predictive accuracy.
+    We exemplified this feature by using the classical example of polynomial regression.
+    We discussed two methods to estimate the out-of-sample accuracy without leaving
+    data aside: cross-validation and information criteria. From a practical point
+    of view, information criteria is a family of theoretical methods looking to balance
+    two contributions: a measurement of how well a model fits the data and a penalization
+    term for complex models. We briefly discussed AIC, for its historical importance,
+    and then WAIC, which is a better method for Bayesian models as it takes into account
+    the entire posterior distribution and uses a more sophisticated method to compute
+    the effective number of parameters.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also discussed cross-validation, and we saw we can approximate leave-one-out
+    cross-validation using LOO. Both WAIC and LOO tend to produce very similar results,
+    but LOO can be more reliable. So we recommend its use. Both WAIC and LOO can be
+    used for model selection and model averaging. Instead of selecting a single best
+    model, model averaging is about combining all available models by taking a weighted
+    average of them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A different approach to model selection, comparison, and model averaging is
+    Bayes factors, which are the ratio of the marginal likelihoods of two models.
+    Bayes factor computations can be really challenging. In this chapter, we showed
+    two routes to compute them with PyMC and ArviZ: using the sampling method known
+    as Sequential Monte Carlo and using the Savage–Dickey ratio. The first method
+    can be used for any model as long as Sequential Monte Carlo provides a good posterior.
+    With the current implementation of SMC in PyMC, this can be challenging for high-dimensional
+    models or hierarchical models. The second method can only be used when the null
+    model is a particular case of the alternative model. Besides being computationally
+    challenging, Bayes factors are problematic to use given that they are very (overly)
+    sensitive to prior specifications.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have shown that Bayes factors and LOO/WAIC are the answers to two related
+    but different questions. The former is focused on identifying the right model
+    and the other is on identifying the model with lower generalization loss, i.e.,
+    the model making the best predictions. None of these methods are free of problems,
+    but WAIC, and in particular LOO, are much more robust than the others in practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5.10 Exercises
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This exercise is about regularization priors. In the code that generates the
+    `x_c, y_c` data (see [https://github.com/aloctavodia/BAP3](https://github.com/aloctavodia/BAP3)),
+    change `order=2` to another value, such as `order=5`. Then, fit `model_q` and
+    plot the resulting curve. Repeat this, but now using a prior for *β* with `sd=100`
+    instead of `sd=1` and plot the resulting curve. How do the curves differ? Try
+    this out with `sd=np.array([10, 0.1, 0.1, 0.1, 0.1])`, too.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Repeat the previous exercise but increase the amount of data to 500 data points.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Fit a cubic model (order 3), compute WAIC and LOO, plot the results, and compare
+    them with the linear and quadratic models.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Use `pm.sample_posterior_predictive()` to rerun the PPC example, but this time,
+    plot the values of `y` instead of the values of the mean.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Read and run the posterior predictive example from PyMC’s documentation at [https://www.pymc.io/projects/docs/en/stable/learn/core_notebooks/posterior_predictive.html](https://www.pymc.io/projects/docs/en/stable/learn/core_notebooks/posterior_predictive.html).
+    Pay special attention to the use of shared variables and `pm.MutableData`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Go back to the code that generated *Figure [5.5](#x1-98002r5)* and *Figure [5.6](#x1-98004r6)*
+    and modify it to get new sets of six data points. Visually evaluate how the different
+    polynomials fit these new datasets. Relate the results to the discussions in this
+    book.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Read and run the model averaging example from PyMC’s documentation at [https://www.pymc.io/projects/examples/en/latest/diagnostics_and_criticism/model_averaging.html](https://www.pymc.io/projects/examples/en/latest/diagnostics_and_criticism/model_averaging.html).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Compute the Bayes factor for the coin problem using a uniform prior, Beta(1,
+    1), and priors such as Beta(0.5, 0.5). Set 15 heads and 30 coins. Compare this
+    result with the inference we got in the first chapter of this book.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Repeat the last example where we compare Bayes factors and Information Criteria,
+    but now reduce the sample size.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Join our community Discord space
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Join our Discord community to meet like-minded people and learn alongside more
+    than 5000 members at: [https://packt.link/bayesian](https://packt.link/bayesian)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1.png)'
+  prefs: []
+  type: TYPE_IMG

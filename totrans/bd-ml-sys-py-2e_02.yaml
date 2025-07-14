@@ -1,0 +1,825 @@
+- en: Chapter 2. Classifying with Real-world Examples
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The topic of this chapter is **classification**. You have probably already
+    used this form of machine learning as a consumer, even if you were not aware of
+    it. If you have any modern e-mail system, it will likely have the ability to automatically
+    detect spam. That is, the system will analyze all incoming e-mails and mark them
+    as either spam or not-spam. Often, you, the end user, will be able to manually
+    tag e-mails as spam or not, in order to improve its spam detection ability. This
+    is a form of machine learning where the system is taking examples of two types
+    of messages: spam and ham (the typical term for "non spam e-mails") and using
+    these examples to automatically classify incoming e-mails.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The general method of classification is to use a set of examples of each class
+    to learn rules that can be applied to new examples. This is one of the most important
+    machine learning modes and is the topic of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with text such as e-mails requires a specific set of techniques and
+    skills, and we discuss those in the next chapter. For the moment, we will work
+    with a smaller, easier-to-handle dataset. The example question for this chapter
+    is, "Can a machine distinguish between flower species based on images?" We will
+    use two datasets where measurements of flower morphology are recorded along with
+    the species for several specimens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will explore these small datasets using a few simple algorithms. At first,
+    we will write classification code ourselves in order to understand the concepts,
+    but we will quickly switch to using scikit-learn whenever possible. The goal is
+    to first understand the basic principles of classification and then progress to
+    using a state-of-the-art implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Iris dataset
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The Iris dataset is a classic dataset from the 1930s; it is one of the first
+    modern examples of statistical classification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The dataset is a collection of morphological measurements of several Iris flowers.
+    These measurements will enable us to distinguish multiple species of the flowers.
+    Today, species are identified by their DNA fingerprints, but in the 1930s, DNA's
+    role in genetics had not yet been discovered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following four attributes of each plant were measured:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: sepal length
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: sepal width
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: petal length
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: petal width
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In general, we will call the individual numeric measurements we use to describe
+    our data **features**. These features can be directly measured or computed from
+    intermediate data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This dataset has four features. Additionally, for each plant, the species was
+    recorded. The problem we want to solve is, "Given these examples, if we see a
+    new flower out in the field, could we make a good prediction about its species
+    from its measurements?"
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is the **supervised learning** or **classification** problem: given labeled
+    examples, can we design a rule to be later applied to other examples? A more familiar
+    example to modern readers who are not botanists is spam filtering, where the user
+    can mark e-mails as spam, and systems use these as well as the non-spam e-mails
+    to determine whether a new, incoming message is spam or not.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Later in the book, we will look at problems dealing with text (starting in the
+    next chapter). For the moment, the Iris dataset serves our purposes well. It is
+    small (150 examples, four features each) and can be easily visualized and manipulated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualization is a good first step
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Datasets, later in the book, will grow to thousands of features. With only four
+    in our starting example, we can easily plot all two-dimensional projections on
+    a single page. We will build intuitions on this small example, which can then
+    be extended to large datasets with many more features. As we saw in the previous
+    chapter, visualizations are excellent at the initial exploratory phase of the
+    analysis as they allow you to learn the general features of your problem as well
+    as catch problems that occurred with data collection early.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Each subplot in the following plot shows all points projected into two of the
+    dimensions. The outlying group (triangles) are the Iris Setosa plants, while Iris
+    Versicolor plants are in the center (circle) and Iris Virginica are plotted with
+    *x* marks. We can see that there are two large groups: one is of Iris Setosa and
+    another is a mixture of Iris Versicolor and Iris Virginica.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Visualization is a good first step](img/2772OS_02_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the following code snippet, we present the code to load the data and generate
+    the plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Building our first classification model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If the goal is to separate the three types of flowers, we can immediately make
+    a few suggestions just by looking at the data. For example, petal length seems
+    to be able to separate Iris Setosa from the other two flower species on its own.
+    We can write a little bit of code to discover where the cut-off is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Therefore, we can build a simple model: if the petal length is smaller than
+    2, then this is an Iris Setosa flower; otherwise it is either Iris Virginica or
+    Iris Versicolor. This is our first model and it works very well in that it separates
+    Iris Setosa flowers from the other two species without making any mistakes. In
+    this case, we did not actually do any machine learning. Instead, we looked at
+    the data ourselves, looking for a separation between the classes. Machine learning
+    happens when we write code to look for this separation automatically.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The problem of recognizing Iris Setosa apart from the other two species was
+    very easy. However, we cannot immediately see what the best threshold is for distinguishing
+    Iris Virginica from Iris Versicolor. We can even see that we will never achieve
+    perfect separation with these features. We could, however, look for the best possible
+    separation, the separation that makes the fewest mistakes. For this, we will perform
+    a little computation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We first select only the non-Setosa features and labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here we are heavily using NumPy operations on arrays. The `is_setosa` array
+    is a Boolean array and we use it to select a subset of the other two arrays, `features`
+    and `labels`. Finally, we build a new boolean array, `virginica`, by using an
+    equality comparison on labels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, we run a loop over all possible features and thresholds to see which one
+    results in better accuracy. Accuracy is simply the fraction of examples that the
+    model classifies correctly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We need to test two types of thresholds for each feature and value: we test
+    a *greater than threshold* and the reverse comparison. This is why we need the
+    `rev_acc` variable in the preceding code; it holds the accuracy of reversing the
+    comparison.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last few lines select the best model. First, we compare the predictions,
+    `pred`, with the actual labels, `is_virginica`. The little trick of computing
+    the mean of the comparisons gives us the fraction of correct results, the accuracy.
+    At the end of the `for` loop, all the possible thresholds for all the possible
+    features have been tested, and the variables `best_fi`, `best_t`, and `best_reverse`
+    hold our model. This is all the information we need to be able to classify a new,
+    unknown object, that is, to assign a class to it. The following code implements
+    exactly this method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'What does this model look like? If we run the code on the whole data, the model
+    that is identified as the best makes decisions by splitting on the petal width.
+    One way to gain intuition about how this works is to visualize the **decision
+    boundary**. That is, we can see which feature values will result in one decision
+    versus the other and exactly where the boundary is. In the following screenshot,
+    we see two regions: one is white and the other is shaded in grey. Any datapoint
+    that falls on the white region will be classified as Iris Virginica, while any
+    point that falls on the shaded side will be classified as Iris Versicolor.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Building our first classification model](img/2772OS_02_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In a threshold model, the decision boundary will always be a line that is parallel
+    to one of the axes. The plot in the preceding screenshot shows the decision boundary
+    and the two regions where points are classified as either white or grey. It also
+    shows (as a dashed line) an alternative threshold, which will achieve exactly
+    the same accuracy. Our method chose the first threshold it saw, but that was an
+    arbitrary choice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Evaluation – holding out data and cross-validation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The model discussed in the previous section is a simple model; it achieves 94
+    percent accuracy of the whole data. However, this evaluation may be overly optimistic.
+    We used the data to define what the threshold will be, and then we used the same
+    data to evaluate the model. Of course, the model will perform better than anything
+    else we tried on this dataset. The reasoning is circular.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What we really want to do is estimate the ability of the model to generalize
+    to new instances. We should measure its performance in instances that the algorithm
+    has not seen at training. Therefore, we are going to do a more rigorous evaluation
+    and use held-out data. For this, we are going to break up the data into two groups:
+    on one group, we''ll train the model, and on the other, we''ll test the one we
+    held out of training. The full code, which is an adaptation of the code presented
+    earlier, is available on the online support repository. Its output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The result on the training data (which is a subset of the whole data) is apparently
+    even better than before. However, what is important to note is that the result
+    in the testing data is lower than that of the training error. While this may surprise
+    an inexperienced machine learner, it is expected that testing accuracy will be
+    lower than the training accuracy. To see why, look back at the plot that showed
+    the decision boundary. Consider what would have happened if some of the examples
+    close to the boundary were not there or that one of them between the two lines
+    was missing. It is easy to imagine that the boundary will then move a little bit
+    to the right or to the left so as to put them on the *wrong* side of the border.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The accuracy on the training data, the **training accuracy**, is almost always
+    an overly optimistic estimate of how well your algorithm is doing. We should always
+    measure and report the **testing accuracy**, which is the accuracy on a collection
+    of examples that were not used for training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These concepts will become more and more important as the models become more
+    complex. In this example, the difference between the accuracy measured on training
+    data and on testing data is not very large. When using a complex model, it is
+    possible to get 100 percent accuracy in training and do no better than random
+    guessing on testing!
+  prefs: []
+  type: TYPE_NORMAL
+- en: One possible problem with what we did previously, which was to hold out data
+    from training, is that we only used half the data for training. Perhaps it would
+    have been better to use more training data. On the other hand, if we then leave
+    too little data for testing, the error estimation is performed on a very small
+    number of examples. Ideally, we would like to use all of the data for training
+    and all of the data for testing as well, which is impossible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can achieve a good approximation of this impossible ideal by a method called
+    **cross-validation**. One simple form of cross-validation is *leave-one-out cross-validation*.
+    We will take an example out of the training data, learn a model without this example,
+    and then test whether the model classifies this example correctly. This process
+    is then repeated for all the elements in the dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code implements exactly this type of cross-validation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: At the end of this loop, we will have tested a series of models on all the examples
+    and have obtained a final average result. When using cross-validation, there is
+    no circularity problem because each example was tested on a model which was built
+    without taking that datapoint into account. Therefore, the cross-validated estimate
+    is a reliable estimate of how well the models would generalize to new data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The major problem with leave-one-out cross-validation is that we are now forced
+    to perform many times more work. In fact, you must learn a whole new model for
+    each and every example and this cost will increase as our dataset grows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can get most of the benefits of leave-one-out at a fraction of the cost by
+    using x-fold cross-validation, where *x* stands for a small number. For example,
+    to perform five-fold cross-validation, we break up the data into five groups,
+    so-called five folds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then you learn five models: each time you will leave one fold out of the training
+    data. The resulting code will be similar to the code given earlier in this section,
+    but we leave 20 percent of the data out instead of just one element. We test each
+    of these models on the left-out fold and average the results.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Evaluation – holding out data and cross-validation](img/2772OS_02_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The preceding figure illustrates this process for five blocks: the dataset
+    is split into five pieces. For each fold, you hold out one of the blocks for testing
+    and train on the other four. You can use any number of folds you wish. There is
+    a trade-off between computational efficiency (the more folds, the more computation
+    is necessary) and accurate results (the more folds, the closer you are to using
+    the whole of the data for training). Five folds is often a good compromise. This
+    corresponds to training with 80 percent of your data, which should already be
+    close to what you will get from using all the data. If you have little data, you
+    can even consider using 10 or 20 folds. In the extreme case, if you have as many
+    folds as datapoints, you are simply performing leave-one-out cross-validation.
+    On the other hand, if computation time is an issue and you have more data, 2 or
+    3 folds may be the more appropriate choice.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When generating the folds, you need to be careful to keep them balanced. For
+    example, if all of the examples in one fold come from the same class, then the
+    results will not be representative. We will not go into the details of how to
+    do this, because the machine learning package scikit-learn will handle them for
+    you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have now generated several models instead of just one. So, "What final model
+    do we return and use for new data?" The simplest solution is now to train a single
+    overall model on all your training data. The cross-validation loop gives you an
+    estimate of how well this model should generalize.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A cross-validation schedule allows you to use all your data to estimate whether
+    your methods are doing well. At the end of the cross-validation loop, you can
+    then use all your data to train a final model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although it was not properly recognized when machine learning was starting out
+    as a field, nowadays, it is seen as a very bad sign to even discuss the training
+    accuracy of a classification system. This is because the results can be very misleading
+    and even just presenting them marks you as a newbie in machine learning. We always
+    want to measure and compare either the error on a held-out dataset or the error
+    estimated using a cross-validation scheme.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building more complex classifiers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the previous section, we used a very simple model: a threshold on a single
+    feature. Are there other types of systems? Yes, of course! Many others. Throughout
+    this book, you will see many other types of models and we''re not even going to
+    cover everything that is out there.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To think of the problem at a higher abstraction level, "What makes up a classification
+    model?" We can break it up into three parts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**The structure of the model**: How exactly will a model make decisions? In
+    this case, the decision depended solely on whether a given feature was above or
+    below a certain threshold value. This is too simplistic for all but the simplest
+    problems.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The search procedure**: How do we find the model we need to use? In our case,
+    we tried every possible combination of feature and threshold. You can easily imagine
+    that as models get more complex and datasets get larger, it rapidly becomes impossible
+    to attempt all combinations and we are forced to use approximate solutions. In
+    other cases, we need to use advanced optimization methods to find a good solution
+    (fortunately, scikit-learn already implements these for you, so using them is
+    easy even if the code behind them is very advanced).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The gain or loss function**: How do we decide which of the possibilities
+    tested should be returned? Rarely do we find the perfect solution, the model that
+    never makes any mistakes, so we need to decide which one to use. We used accuracy,
+    but sometimes it will be better to optimize so that the model makes fewer errors
+    of a specific kind. For example, in spam filtering, it may be worse to delete
+    a good e-mail than to erroneously let a bad e-mail through. In that case, we may
+    want to choose a model that is conservative in throwing out e-mails rather than
+    the one that just makes the fewest mistakes overall. We can discuss these issues
+    in terms of gain (which we want to maximize) or loss (which we want to minimize).
+    They are equivalent, but sometimes one is more convenient than the other.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can play around with these three aspects of classifiers and get different
+    systems. A simple threshold is one of the simplest models available in machine
+    learning libraries and only works well when the problem is very simple, such as
+    with the Iris dataset. In the next section, we will tackle a more difficult classification
+    task that requires a more complex structure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our case, we optimized the threshold to minimize the number of errors. Alternatively,
+    we might have different loss functions. It might be that one type of error is
+    much costlier than the other. In a medical setting, false negatives and false
+    positives are not equivalent. A **false negative** (when the result of a test
+    comes back negative, but that is false) might lead to the patient not receiving
+    treatment for a serious disease. A **false positive** (when the test comes back
+    positive even though the patient does not actually have that disease) might lead
+    to additional tests to confirm or unnecessary treatment (which can still have
+    costs, including side effects from the treatment, but are often less serious than
+    missing a diagnostic). Therefore, depending on the exact setting, different trade-offs
+    can make sense. At one extreme, if the disease is fatal and the treatment is cheap
+    with very few negative side-effects, then you want to minimize false negatives
+    as much as you can.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: What the **gain/cost** function should be is always dependent on the exact problem
+    you are working on. When we present a general-purpose algorithm, we often focus
+    on minimizing the number of mistakes, achieving the highest accuracy. However,
+    if some mistakes are costlier than others, it might be better to accept a lower
+    overall accuracy to minimize the overall costs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A more complex dataset and a more complex classifier
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will now look at a slightly more complex dataset. This will motivate the
+    introduction of a new classification algorithm and a few other ideas.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Learning about the Seeds dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We now look at another agricultural dataset, which is still small, but already
+    too large to plot exhaustively on a page as we did with Iris. This dataset consists
+    of measurements of wheat seeds. There are seven features that are present, which
+    are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: area A
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: perimeter P
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: compactness C = 4πA/P²
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: length of kernel
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: width of kernel
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: asymmetry coefficient
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: length of kernel groove
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'There are three classes, corresponding to three wheat varieties: Canadian,
+    Koma, and Rosa. As earlier, the goal is to be able to classify the species based
+    on these morphological measurements. Unlike the Iris dataset, which was collected
+    in the 1930s, this is a very recent dataset and its features were automatically
+    computed from digital images.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is how image pattern recognition can be implemented: you can take images,
+    in digital form, compute a few relevant features from them, and use a generic
+    classification system. In [Chapter 10](ch10.html "Chapter 10. Computer Vision"),
+    *Computer Vision*, we will work through the computer vision side of this problem
+    and compute features in images. For the moment, we will work with the features
+    that are given to us.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**UCI Machine Learning Dataset Repository**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The University of California at Irvine (UCI) maintains an online repository
+    of machine learning datasets (at the time of writing, they list 233 datasets).
+    Both the Iris and the Seeds dataset used in this chapter were taken from there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The repository is available online at [http://archive.ics.uci.edu/ml/](http://archive.ics.uci.edu/ml/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Features and feature engineering
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One interesting aspect of these features is that the compactness feature is
+    not actually a new measurement, but a function of the previous two features, area
+    and perimeter. It is often very useful to derive new combined features. Trying
+    to create new features is generally called **feature engineering**. It is sometimes
+    seen as less glamorous than algorithms, but it often matters more for performance
+    (a simple algorithm on well-chosen features will perform better than a fancy algorithm
+    on not-so-good features).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this case, the original researchers computed the **compactness**, which is
+    a typical feature for shapes. It is also sometimes called **roundness**. This
+    feature will have the same value for two kernels, one of which is twice as big
+    as the other one, but with the same shape. However, it will have different values
+    for kernels that are very round (when the feature is close to one) when compared
+    to kernels that are elongated (when the feature is closer to zero).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The goals of a good feature are to simultaneously vary with what matters (the
+    desired output) and be invariant with what does not. For example, compactness
+    does not vary with size, but varies with the shape. In practice, it might be hard
+    to achieve both objectives perfectly, but we want to approximate this ideal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will need to use background knowledge to design good features. Fortunately,
+    for many problem domains, there is already a vast literature of possible features
+    and feature-types that you can build upon. For images, all of the previously mentioned
+    features are typical and computer vision libraries will compute them for you.
+    In text-based problems too, there are standard solutions that you can mix and
+    match (we will also see this in the next chapter). When possible, you should use
+    your knowledge of the problem to design a specific feature or to select which
+    ones from the literature are more applicable to the data at hand.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Even before you have data, you must decide which data is worthwhile to collect.
+    Then, you hand all your features to the machine to evaluate and compute the best
+    classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A natural question is whether we can select good features automatically. This
+    problem is known as **feature selection**. There are many methods that have been
+    proposed for this problem, but in practice very simple ideas work best. For the
+    small problems we are currently exploring, it does not make sense to use feature
+    selection, but if you had thousands of features, then throwing out most of them
+    might make the rest of the process much faster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Nearest neighbor classification
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For use with this dataset, we will introduce a new classifier: **the nearest
+    neighbor classifier**. The nearest neighbor classifier is very simple. When classifying
+    a new element, it looks at the training data for the object that is closest to
+    it, its nearest neighbor. Then, it returns its label as the answer. Notice that
+    this model performs perfectly on its training data! For each point, its closest
+    neighbor is itself, and so its label matches perfectly (unless two examples with
+    different labels have exactly the same feature values, which will indicate that
+    the features you are using are not very descriptive). Therefore, it is essential
+    to test the classification using a cross-validation protocol.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The nearest neighbor method can be generalized to look not at a single neighbor,
+    but to multiple ones and take a vote amongst the neighbors. This makes the method
+    more robust to outliers or mislabeled data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classifying with scikit-learn
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have been using handwritten classification code, but Python is a very appropriate
+    language for machine learning because of its excellent libraries. In particular,
+    scikit-learn has become the standard library for many machine learning tasks,
+    including classification. We are going to use its implementation of nearest neighbor
+    classification in this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The scikit-learn classification API is organized around classifier objects.
+    These objects have the following two essential methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`fit(features, labels)`: This is the learning step and fits the parameters
+    of the model'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`predict(features)`: This method can only be called after fit and returns a
+    prediction for one or more inputs'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Here is how we could use its implementation of k-nearest neighbors for our
+    data. We start by importing the `KneighborsClassifier` object from the `sklearn.neighbors`
+    submodule:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The scikit-learn module is imported as sklearn (sometimes you will also find
+    that scikit-learn is referred to using this short name instead of the full name).
+    All of the sklearn functionality is in submodules, such as `sklearn.neighbors`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now instantiate a classifier object. In the constructor, we specify
+    the number of neighbors to consider, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: If we do not specify the number of neighbors, it defaults to `5`, which is often
+    a good choice for classification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will want to use cross-validation (of course) to look at our data. The scikit-learn
+    module also makes this easy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using five folds for cross-validation, for this dataset, with this algorithm,
+    we obtain 90.5 percent accuracy. As we discussed in the earlier section, the cross-validation
+    accuracy is lower than the training accuracy, but this is a more credible estimate
+    of the performance of the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Looking at the decision boundaries
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will now examine the decision boundary. In order to plot these on paper,
+    we will simplify and look at only two dimensions. Take a look at the following
+    plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Looking at the decision boundaries](img/2772OS_02_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Canadian examples are shown as diamonds, Koma seeds as circles, and Rosa seeds
+    as triangles. Their respective areas are shown as white, black, and grey. You
+    might be wondering why the regions are so horizontal, almost weirdly so. The problem
+    is that the *x* axis (area) ranges from 10 to 22, while the *y* axis (compactness)
+    ranges from 0.75 to 1.0\. This means that a small change in *x* is actually much
+    larger than a small change in *y*. So, when we compute the distance between points,
+    we are, for the most part, only taking the *x* axis into account. This is also
+    a good example of why it is a good idea to visualize our data and look for red
+    flags or surprises.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you studied physics (and you remember your lessons), you might have already
+    noticed that we had been summing up lengths, areas, and dimensionless quantities,
+    mixing up our units (which is something you never want to do in a physical system).
+    We need to normalize all of the features to a common scale. There are many solutions
+    to this problem; a simple one is to *normalize to z-scores*. The z-score of a
+    value is how far away from the mean it is, in units of standard deviation. It
+    comes down to this operation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Looking at the decision boundaries](img/2772OS_02_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this formula, *f* is the old feature value, *f'* is the normalized feature
+    value, *µ* is the mean of the feature, and *σ* is the standard deviation. Both
+    *µ* and *σ* are estimated from training data. Independent of what the original
+    values were, after z-scoring, a value of zero corresponds to the training mean,
+    positive values are above the mean, and negative values are below it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The scikit-learn module makes it very easy to use this normalization as a preprocessing
+    step. We are going to use a pipeline of transformations: the first element will
+    do the transformation and the second element will do the classification. We start
+    by importing both the pipeline and the feature scaling classes as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, we can combine them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The Pipeline constructor takes a list of pairs `(str,clf)`. Each pair corresponds
+    to a step in the pipeline: the first element is a string naming the step, while
+    the second element is the object that performs the transformation. Advanced usage
+    of the object uses these names to refer to different steps.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: After normalization, every feature is in the same units (technically, every
+    feature is now dimensionless; it has no units) and we can more confidently mix
+    dimensions. In fact, if we now run our nearest neighbor classifier, we obtain
+    93 percent accuracy, estimated with the same five-fold cross-validation code shown
+    previously!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Look at the decision space again in two dimensions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Looking at the decision boundaries](img/2772OS_02_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The boundaries are now different and you can see that both dimensions make a
+    difference for the outcome. In the full dataset, everything is happening on a
+    seven-dimensional space, which is very hard to visualize, but the same principle
+    applies; while a few dimensions are dominant in the original data, after normalization,
+    they are all given the same importance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Binary and multiclass classification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first classifier we used, the threshold classifier, was a simple binary
+    classifier. Its result is either one class or the other, as a point is either
+    above the threshold value or it is not. The second classifier we used, the nearest
+    neighbor classifier, was a natural multiclass classifier, its output can be one
+    of the several classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is often simpler to define a simple binary method than the one that works
+    on multiclass problems. However, we can reduce any multiclass problem to a series
+    of binary decisions. This is what we did earlier in the Iris dataset, in a haphazard
+    way: we observed that it was easy to separate one of the initial classes and focused
+    on the other two, reducing the problem to two binary decisions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Is it an Iris Setosa (yes or no)?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If not, check whether it is an Iris Virginica (yes or no).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Of course, we want to leave this sort of reasoning to the computer. As usual,
+    there are several solutions to this multiclass reduction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The simplest is to use a series of *one versus the rest* classifiers. For each
+    possible label ℓ, we build a classifier of the type *is this ℓ or something else?*
+    When applying the rule, exactly one of the classifiers will say *yes* and we will
+    have our solution. Unfortunately, this does not always happen, so we have to decide
+    how to deal with either multiple positive answers or no positive answers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Binary and multiclass classification](img/2772OS_02_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Alternatively, we can build a classification tree. Split the possible labels
+    into two, and build a classifier that asks, "Should this example go in the left
+    or the right bin?" We can perform this splitting recursively until we obtain a
+    single label. The preceding diagram depicts the tree of reasoning for the Iris
+    dataset. Each diamond is a single binary classifier. It is easy to imagine that
+    we could make this tree larger and encompass more decisions. This means that any
+    classifier that can be used for binary classification can also be adapted to handle
+    any number of classes in a simple way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are many other possible ways of turning a binary method into a multiclass
+    one. There is no single method that is clearly better in all cases. The scikit-learn
+    module implements several of these methods in the `sklearn.multiclass` submodule.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Some classifiers are binary systems, while many real-life problems are naturally
+    multiclass. Several simple protocols reduce a multiclass problem to a series of
+    binary decisions and allow us to apply the binary models to our multiclass problem.
+    This means methods that are apparently only for binary data can be applied to
+    multiclass data with little extra effort.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Classification means generalizing from examples to build a model (that is, a
+    rule that can automatically be applied to new, unclassified objects). It is one
+    of the fundamental tools in machine learning and we will see many more examples
+    of this in the forthcoming chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a sense, this was a very theoretical chapter, as we introduced generic concepts
+    with simple examples. We went over a few operations with the Iris dataset. This
+    is a small dataset. However, it has the advantage that we were able to plot it
+    out and see what we were doing in detail. This is something that will be lost
+    when we move on to problems with many dimensions and many thousands of examples.
+    The intuitions we gained here will all still be valid.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You also learned that the training error is a misleading, over-optimistic estimate
+    of how well the model does. We must, instead, evaluate it on testing data that
+    has not been used for training. In order to not waste too many examples in testing,
+    a cross-validation schedule can get us the best of both worlds (at the cost of
+    more computation).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also had a look at the problem of feature engineering. Features are not predefined
+    for you, but choosing and designing features is an integral part of designing
+    a machine learning pipeline. In fact, it is often the area where you can get the
+    most improvements in accuracy, as better data beats fancier methods. The chapters
+    on text-based classification, music genre recognition, and computer vision will
+    provide examples for these specific settings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next chapter looks at how to proceed when your data does not have predefined
+    classes for classification.
+  prefs: []
+  type: TYPE_NORMAL

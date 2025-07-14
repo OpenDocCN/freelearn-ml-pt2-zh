@@ -1,0 +1,297 @@
+- en: Hybrid Recommenders
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this final chapter, we will discuss recommender systems in the context of
+    practicality and industrial use. Until now, we have learned about various types
+    of recommender, including knowledge, content, and collaborative filtering-based
+    engines. However, when used in practice, each recommender usually suffers from
+    one shortcoming or another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ve discussed these shortcomings in the very first chapter (for instance,
+    the novelty problem of content-based engines and the cold start problem of collaborative
+    filters). We also briefly introduced the concept of the hybrid recommender: a
+    robust system that combines various models to combat the disadvantage of one model
+    with the advantage of another. In this chapter, we will build a simple hybrid
+    recommender that combines the content and the collaborative filters that we''ve
+    built thus far.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will be required to have Python installed on a system. Finally, to use the
+    Git repository of this book, the user needs to install Git.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code files of this chapter can be found on GitHub:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Recommendation-Systems-with-Python](https://github.com/PacktPublishing/Hands-On-Recommendation-Systems-with-Python).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the following video to see the code in action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://bit.ly/2uOHwcd](http://bit.ly/2uOHwcd)[.](http://bit.ly/2uOHwcd)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As already mentioned a couple of times, hybrid recommenders are extremely powerful,
+    robust systems that combine various simpler models to give us predictions. There
+    is no single way in which a hybrid model could do this; some hybrids predict using
+    content and collaborative filtering techniques separately to produce results.
+    Some others introduce content-based techniques into collaborative filters and
+    vice versa.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Netflix is a very good example of a hybrid recommender. Netflix employs content-based
+    techniques when it shows you similar movies to a movie you''re watching (the MORE
+    LIKE THIS section), as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/04d435e9-dd63-48ba-ad20-a9897c2d2cb8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, we can see that while watching *Ratatouille, *Netflix recommends movies
+    to me that are very similar to *Ratatouille*. All the top five recommended movies
+    are all animated and produced by Disney Pixar*.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, animated movies are not the only genre I watch on Netflix. I also
+    like watching drama and comedy. Netflix has a separate row of recommendations
+    for me entitled Top Picks for Rounak*, *where it uses collaborative filtering
+    to identify users similar to me and recommend movies that they have liked, but
+    that I haven''t watched:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/230d060c-e096-41bd-9f01-26053402507b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this way, Netflix employs both content- and collaborative-based techniques
+    separately to produce results that are extremely satisfactory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Case study – Building a hybrid model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, let's build a content-based model that incorporates some collaborative
+    filtering techniques into it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Imagine that you have built a website like Netflix. Every time a user watches
+    a movie, you want to display a list of recommendations in the side pane (like
+    YouTube). At first glance, a content-based recommender seems appropriate for this
+    task. This is because, if the person is currently watching something they find
+    interesting, they will be more inclined to watch something similar to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's say our user is watching *The Dark Knight. *Since this is a Batman movie,
+    our content-based recommender is likely to recommend other Batman (or superhero)
+    movies regardless of quality. This may not always lead to the best recommendations.
+    For instance, most people who like *The Dark Knight *do not rate *Batman and Robin *very
+    highly, although they feature the same lead character. Therefore, we will introduce
+    a collaborative filter here that predicts the ratings of the movies recommended
+    by our content-based model and return the top few movies with the highest predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In other words, the workflow of our hybrid model will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Take in a movie title and user as input
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Use a content-based model to compute the 25 most similar movies
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Compute the predicted ratings that the user might give these 25 movies using
+    a collaborative filter
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Return the top 10 movies with the highest predicted rating
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We will be using different datasets for this task. Go ahead and download the
+    datasets from the following links.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Download the following datasets from Kaggle and Google Drive:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ratings_small.csv`: [https://www.kaggle.com/rounakbanik/the-movies-dataset/downloads/ratings_small.csv/7](https://www.kaggle.com/rounakbanik/the-movies-dataset/downloads/ratings_small.csv/7).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`movie_ids.csv`: [https://drive.google.com/drive/folders/1H9pnfVTzP46s7VwOTcC5ZY_VahRTr5Zv?usp=sharing](https://drive.google.com/drive/folders/1H9pnfVTzP46s7VwOTcC5ZY_VahRTr5Zv?usp=sharing).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `ratings_small.csv` file contains 100,000 ratings for 9,000 movies from
+    700 users. We use this file since it contains ratings for more recent movies (the
+    dataset we used for collaborative filtering only contained movies released before
+    1998).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The` links_small.csv`file contains the movie IDs of all the movies rated in
+    the` ratings_small.csv`file and their corresponding titles. We can use these IDs
+    to extract relevant metadata from the `movies_metadata.csv`file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With these files in hand, let's proceed to build our model. The first step is
+    to compute the `cosine_sim`matrix for our movies. In addition, we also need to
+    map every movie to the indices in the `cosine_sim`matrix. We've already learned
+    how to do this in [Chapter 3](336e10ee-05f9-46e4-9b65-26b0a9cff2dc.xhtml), *Building
+    an IMDB Top 250 Clone with Pandas*. Computing this matrix and the mapping, therefore,
+    is left as an exercise for the reader.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can download my `cosine_sim `and` cosine_sim_map`files from the following
+    link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://drive.google.com/drive/folders/1H9pnfVTzP46s7VwOTcC5ZY_VahRTr5Zv?usp=sharing](https://drive.google.com/drive/folders/1H9pnfVTzP46s7VwOTcC5ZY_VahRTr5Zv?usp=sharing).
+    However, be aware that the `cosine_sim`file is over 1 GB in size, and therefore
+    might take some time to download.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let''s use the `ratings.csv`file to build a collaborative filtering model.
+    We will use the SVD model from the last chapter for this purpose:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, let''s load the `movie_ids.cs``v` file into a DataFrame and construct
+    two mappings: one that returns the movie title for a given movie ID, and the other
+    vice versa:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, let's import the metadata for our movies so that our recommender can display
+    useful information, such as the IMDB rating and the year of release. This information
+    can be extracted from the main `movies_metadata.csv `file, and is again left as
+    an exercise for the reader.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can download the required metadata file from the following link: [https://drive.google.com/drive/folders/1H9pnfVTzP46s7VwOTcC5ZY_VahRTr5Zv?usp=sharing](https://drive.google.com/drive/folders/1H9pnfVTzP46s7VwOTcC5ZY_VahRTr5Zv?usp=sharing)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''re finally in a position to build the hybrid recommender function according
+    to the workflow described previously:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let's put our hybrid model to the test. Let's imagine that users with the IDs
+    1 and 2 are both watching the movie *Avatar:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![](img/b514f6a5-92ae-4cf5-96eb-2eb95cb05659.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![](img/339539a5-61d0-43a8-8009-c42bdae49308.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can see that although both users are currently watching *Avatar, *the recommendations
+    differ in the content as well as the order. This is influenced by the collaborative
+    filter. However, all the movies listed are similarto  *Avatar. *This is because
+    of the content-based filtering carried out by the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Following this section may have been a little hard, especially if you do not
+    recall the material covered in [Chapter 3](https://cdp.packtpub.com/hands_on_recommendation_systems_with_python/wp-admin/post.php?post=30&action=edit#post_26), *Building
+    an IMDB Top 250 Clone with Pandas*. I strongly recommend going back and rereading
+    the chapter if something doesn't make sense. For reference, the entire code for
+    this model can be found in the `Chapter7 `folder of the `RecoSys`repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'With this, we come to the end of this chapter, as well as the main part of
+    the book. In this book, we learned the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We were introduced to the world of recommender systems. We defined the recommendation
+    problem mathematically and discussed the various types of recommendation engines
+    that exist, as well as their advantages and disadvantages.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We then learned to perform data wrangling with the pandas library and familiarized
+    ourselves with two of pandas, most powerful data structures: the series and the
+    DataFrame.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With our newly found data wrangling techniques, we proceeded to build an IMDB
+    Top 250 clone. We then improved on this model to build a knowledge-based recommender
+    that took into account the recommended movies' genre, duration, and year of release.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Next, we learned how to build content-based recommenders using plot lines and
+    subsequently more sophisticated metadata, such as the genre, cast, crew, and keywords.
+    In the process, we familiarized ourselves with vectorizers and the cosine similarity
+    metric.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the chapter on data mining, we were introduced to the various techniques
+    used in building and improving recommendation systems. We learned about similarity
+    metrics other than the cosine score. We then proceeded to study clustering, with
+    an emphasis on k-means clustering techniques. This was followed by discussions
+    on dimensionality reduction (with an emphasis on PCA) and the various supervised
+    learning techniques. The chapter concluded with a tour of evaluation metrics that
+    are used to gauge the performance of recommender systems.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The chapter on collaborative filtering had us experimenting with a variety of
+    models that used rating data, and also leveraged data mining techniques introduced
+    in the previous chapter. We were also introduced to the `surprise` library, which
+    made building recommender systems a breeze.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this final chapter, we briefly discussed the various kinds of hybrid recommender
+    used in the industry today and built a model that incorporated collaborative filtering
+    into a content-based engine to offer personalized recommendations to a user, while
+    keeping the current movie being watched in mind.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What we have covered, of course, only touches the surface of the world of recommender
+    systems. However, I am positive that readers will now be in a very good place
+    to tackle advanced topics in the field. I have listed a few resources in the `Appendix`
+    that could serve as a next stop on your journey to becoming a recommendations
+    master.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As mentioned earlier, all the code written as part of this book is available
+    as a GitHub repository to enable you to effortlessly tinker and experiment with
+    the code as you journey through this book. I'd like to thank you all for having
+    come this far. If you have any comments, corrections, criticism, or suggestions,
+    feel free to contact me at `rounakbanik@gmail.com`.
+  prefs: []
+  type: TYPE_NORMAL

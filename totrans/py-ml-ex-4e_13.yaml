@@ -1,0 +1,1442 @@
+- en: '13'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Advancing Language Understanding and Generation with the Transformer Models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we focused on RNNs and used them to deal with sequence
+    learning tasks. However, RNNs may easily suffer from the vanishing gradient problem.
+    In this chapter, we will explore the Transformer neural network architecture,
+    which is designed for sequence-to-sequence tasks and is particularly well suited
+    for **Natural Language Processing** (**NLP**). The key innovation is the self-attention
+    mechanism, allowing the model to weigh different parts of the input sequence differently,
+    and enabling it to capture long-range dependencies more effectively than RNNs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will learn two cutting-edge models utilizing the Transformer architecture
+    and delve into their practical applications, such as sentiment analysis and text
+    generation. Expect enhanced performance on tasks previously covered in the preceding
+    chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will cover the following topics in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding self-attention
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploring the Transformer’s architecture
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Improving sentiment analysis with **Bidirectional Encoder Representations from
+    Transformers** (**BERT**) and Transformers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Generating text using **Generative Pre-trained Transformers** (**GPT**)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understanding self-attention
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The Transformer neural network architecture revolves around the self-attention
+    mechanism. So, let’s first kick off the chapter by looking at this. **Self-attention**
+    is a mechanism used in machine learning, particularly in NLP and computer vision.
+    It allows a model to weigh the importance of different parts of the input sequence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Self-attention is a specific type of attention mechanism. In traditional attention
+    mechanisms, the importance weights are between two different sets of input data.
+    For example, an attention-based English-to-French translation model may focus
+    on specific parts (e.g., nouns, verbs) of the English source sentences that are
+    relevant to the current French target word being generated. However, in self-attention,
+    the importance weighting operates between any two elements within the same input
+    sequence. It focuses on how different parts in the same sequence relate to each
+    other. Used for English-to-French translation, the self-attention model analyzes
+    how each English word interacts with every other English word. By understanding
+    these relationships, the model can generate a more nuanced and accurate French
+    translation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the context of NLP, traditional RNNs process input sequences sequentially.
+    Because of this sequential processing style, RNNs can only handle shorter sequences
+    well, and capture shorter-range dependencies among tokens. On the contrary, a
+    self-attention-powered model can simultaneously process all input tokens in a
+    sequence. For a given token, the model assigns different attention weights to
+    different tokens based on their relevance to the given token, regardless of their
+    positions. As a result, it can capture the relationships between different tokens
+    in the input, and their long-range dependencies. Self-attention-based models outperform
+    RNNs in several sequence-to-sequence tasks such as machine translation, text summarization,
+    and query answering.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s discuss how **self-attention** plays a key role in sequence learning
+    tasks in the following examples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: “I read *Python Machine Learning by Example* by Hayden Liu and it is indeed
+    a great book.” Apparently, *it* here refers to *Python Machine Learning by Example*.
+    When the Transformer model processes this sentence, self-attention will associate
+    *it* with *Python Machine Learning by Example*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can use a self-attention-based model to summarize a document (e.g., this
+    chapter). Self-attention isn’t limited by the order of sentences, unlike sequential
+    learning RNNs, and it can identify relationships between sentences (even distant
+    ones), which ensures the summary reflects the overall information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given a token in an input sequence, self-attention allows the model to look
+    at the other tokens in the sequence at different attention levels. In the next
+    section, we’ll look at a more detailed explanation of how the self-attention mechanism
+    works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Key, value, and query representations
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The self-attention mechanism is applied to each token in a sequence. Its goal
+    is to represent every token by an embedding vector that captures long-range context.
+    The embedding vector of an input token is composed of three vectors: key, value,
+    and query. For a given token, a self-attention-based model learns these three
+    vectors in order to compute the embedding vector.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following describes the meaning of each of the three vectors. To aid comprehension,
+    we use an analogy that likens a model’s understanding of a sequence to a detective
+    investigating a crime scene with a bunch of clues. To solve the case (understand
+    the meaning of the sequence), the detective needs to figure out which clues (tokens)
+    are most important and how clues are connected (how tokens relate to each other):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The key vector, *K*, represents the core information of a token. It captures
+    the key but not the detailed information a token holds. In our detective analogy,
+    the key vector of a clue might contain information about a witness who saw the
+    crime, but not the details they saw.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The value vector, *V*, holds the full information of a token. In our detective
+    example, the value vector of a clue could be the detailed statement from the witness.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finally, the query vector, *Q*, represents the importance of understanding a
+    given token in the context of the whole sequence. It is a question about a token’s
+    relevance to the current task. During the detective’s investigation, their focus
+    can change depending on what they are currently looking for. It can be the weapon
+    used, the victim, the motivation, or something else. The query vector represents
+    the detective’s current focus in the investigation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'These three vectors are derived from the input token’s embeddings. Let’s discuss
+    how they work together using the detective example again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we calculate the attention scores based on the key and query vector.
+    Based on a query vector, *Q*, the model analyses each token and computes the relevance
+    score between its key vector, *K*, and the query vector, *Q*. A high score indicates
+    a high importance of the token to the context. In the detective example, they
+    try to figure out how relevant a clue is to the current investigation focus. For
+    instance, the detective would think clue A about the building is highly relevant
+    when they are looking into the crime scene location. Note that the detective doesn’t
+    look at the details of clue A yet, just like the attention scores are computed
+    based on the key vector, not the value vector. The model (the detective) will
+    use the value vector (details of a clue) in the next stage – embedding vector
+    generation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Next, we generate the embedding vector for a token using the value vectors,
+    *V*, and the attention weights. The detective has decided how much weight (attention
+    scores) is assigned to each clue, and now they will combine the details (value
+    vector) of each clue to create a comprehensive understanding (embedding vector)
+    of the crime scene.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The terminology, “`query`,” “`key`,” and “`value`,” is inspired by the information
+    retrieval systems.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Let’s illustrate using a search engine example. Given a query, the search engine
+    undergoes a matching process against the key of each document candidate and comes
+    up with a ranking score individually. Based on the detailed information and the
+    ranking score of a document, the search engine creates a search result page with
+    the retrieval of specific associated values.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We’ve discussed what key, value, and query vectors are in self-attention mechanisms,
+    and how they work together to allow the model to capture important information
+    from an input sequence. The generated context-aware embedding vector encapsulates
+    the relationships between tokens in the sequence. I hope the detective’s crime
+    scene analogy helped you gain a better understanding. In the next section, we
+    will see how the context-aware embedding vector is generated mathematically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Attention score calculation and embedding vector generation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We have a sequence of tokens (*x*[1], *x*[2], …*x*[i], …*x*[n]). Here, *n* is
+    the length of the sequence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For a given token, the calculation of attention score begins by computing the
+    similarity score between each token in the sequence and the token in question.
+    The similarity score is computed by taking the dot product of the query vector
+    of the current token and the key vector of the other tokens:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*s*[ij]=*q*[i]∙*k*[j]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, *s*[ij] is the similarity score between token *x*[i] and *x*[j], *q*[i]
+    is the query vector of *x*[i], and *k*[j] is the query vector of *x*[j]. The similarity
+    score measures how relevant a token *x*[j] is to the current token *x*[i].
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may notice that the raw similarity scores do not directly reflect relative
+    relevance (they can be negative or greater than 1). Recall that the `softmax`
+    function normalizes raw scores, converting them into probabilities that sum up
+    to 1\. Hence, we need to normalize them using a `softmax` function. The normalized
+    scores are the attention scores we are looking for:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_13_001.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, *a*[ij] is the similarity score between token *x*[i] and *x*[j], d is
+    the dimension of the key vector, and the division of ![](img/B21047_13_002.png)
+    is for scaling. The attention weights (*a*[i][1],*a*[i][2],…,*a*[i][n]) convey
+    the probability distribution over all other tokens in the sequence with respect
+    to the current token.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the normalized attention weights available, we can now compute the embedding
+    vector for the current token. The embedding vector *z*[i] is a weighted sum of
+    the value vectors *v* of all tokens in the sequence, where each weight is the
+    attention score *a*[ij] between the current token *x*[i] and the respective token
+    *x*[j]:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_13_003.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This weighted sum vector is considered the context-aware representation of the
+    current token, taking into account its relationship with all other tokens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Take the sequence *python machine learning by example* as an example; we take
+    the following steps to calculate the self-attention embedding vector for the first
+    word, *python*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We calculate the dot products between each word in the sequence and the word
+    *python*. They are *q*[1]∙*k*[1], *q*[1]∙*k*[2], *q*[1]∙*k*[3], *q*[1]∙*k*[4],
+    and *q*[1]∙*k*[5]. Here, *q*[1] is the query vector for the first word, and *k*[1]
+    to *k*[5] are the key vectors for the five words, respectively.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We normalize the resulting dot products with division and `softmax` activation
+    to find the attention weights:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/B21047_13_004.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_005.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_006.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_007.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_008.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Then, we multiply the resulting attention weights by the value vectors, *v*[1],
+    *v*[2], *v*[3], *v*[4], *v*[5], and add up the results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '*z*[1] = *a*[11].*v*[1]+*a*[12].*v*[2]+*a*[13].*v*[3]+*a*[14].*v*[4]+*a*[15].*v*[5]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*z*[1] is the context-aware embedding vector for the first word, *python*,
+    in the sequence. We repeat this process for each remaining word in the sequence
+    to obtain its context-aware embedding.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'During training in a self-attention mechanism, the key, query, and value vectors
+    are created by three weight matrices, *W*[k], *W*[q], and *W*[v], using a linear
+    transformation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_13_009.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_010.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_011.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, *W*[k] is the weight matrix for the key transformation, *W*[q] is the
+    weight matrix for the query transformation, and *W*[v] is the weight matrix for
+    the value transformation. These three weight matrices are learnable parameters.
+    During the model training process, they get updated typically using gradient-based
+    optimization algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s see how we can simulate the calculation of *z*[1] in PyTorch:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, assume we have the following integer representation mapping for the
+    tokens in the input `python machine learning by example`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Each integer corresponds to the index of the respective token in the vocabulary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We also assume we have embeddings ready to use for our simulated vocabulary:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, our simulated vocabulary has 10 tokens, and the embedding size is 16\.
+    `detach()` is used to create a new tensor that shares the same underlying data
+    as the original tensor but is detached from the computation graph. Also, note
+    that you may get different embedding results due to some non-deterministic operations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we assume we have the following three weight matrices, *W*[k], *W*[q],
+    and *W*[v]:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: For matrix operations, it is essential that vectors *Q* and *K* share the same
+    dimensions to ensure they operate within a consistent feature space. However,
+    vector *V* is allowed to have different dimensions. In this example, we will maintain
+    uniform dimensions for all three vectors for the sake of simplicity. So, we choose
+    16 as the common dimension.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can compute the key vector *k*[1], query vector *q*[1], and value vector
+    *v*[1] for the *python* token accordingly:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Take a look at *k*[1]:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also directly compute the key matrix (composed of key vectors for individual
+    tokens) as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Similarly, the value matrix can be directly computed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the key matrix and the query vector *q*[1], we obtain the attention weight
+    vector *a*[1]=(*a*[11], *a*[12], *a*[13], *a*[14], *a*[15]):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we multiply the resulting attention weights by the value vectors to
+    obtain the context-aware embedding vector for the first token:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This is the self-attention version of the embedding vector for the *python*
+    token based on the three toy weight matrices, *W*[k], *W*[q], and *W*[v].
+  prefs: []
+  type: TYPE_NORMAL
+- en: In practice, we typically employ more than one set of trainable weight matrices,
+    *W*[k], *W*[q], and *W*[v]. That is why self-attention is often called **multi-head
+    self-attention**. Each attention head has its own set of learnable parameters
+    for the key, query, and value transformations. Using multiple attention heads
+    can capture different aspects of relationships within a sequence. Let’s dig into
+    this next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multi-head attention
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The single-head attention mechanism is effective but may not capture diverse
+    relationships within the sequence. Multi-head attention extends this by employing
+    multiple sets of query, key, and value matrices (multiple “heads”). Each head
+    operates **independently** and can attend to different parts of the input sequence
+    **in parallel**. This allows the model to capture diverse relationships simultaneously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the previous example sequence, *python machine learning by example*, one
+    attention head might focus on local dependencies, identifying “`machine learning`"
+    as a noun phrase; another attention head might emphasize semantic relationships,
+    inferring that the “`examples`" are about “`machine learning`.” It’s like having
+    multiple analysts examining the same sentence. Each analyst focuses on a different
+    aspect (for instance, one on grammar, one on word order, and another on sentiment).
+    By combining their insights, you get a more comprehensive understanding of the
+    sentence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, the outputs from all attention heads are concatenated and linearly
+    transformed to produce the final attention output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we presented a self-attention mechanism featuring trainable
+    parameters. In the upcoming section, we will delve into the Transformer architecture,
+    which centers around the self-attention mechanism.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring the Transformer’s architecture
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The Transformer architecture was proposed as an alternative to RNNs for sequence-to-sequence
+    tasks. It heavily relies on the self-attention mechanism to process both input
+    and output sequences.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We’ll start by looking at the high-level architecture of the Transformer model
+    (image based on that in the paper *Attention Is All You Need*, by Vaswani et al.):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_13_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.1: Transformer architecture'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, the Transformer consists of two parts: the **encoder** (the
+    big rectangle on the left-hand side) and the **decoder** (the big rectangle on
+    the right-hand side). The encoder encrypts the input sequence. It has a **multi-head
+    attention layer** and a regular feedforward layer. On the other hand, the decoder
+    generates the output sequence. It has a masked multi-head attention (we will talk
+    about this in detail later) layer, along with a multi-head attention layer and
+    a regular feedforward layer.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: At step *t*, the Transformer model takes in input steps *x*[1], *x*[2], …, *x*[t]
+    and output steps *y*[1], *y*[2], …, *y*[t][−1]. It then predicts *y*[t]. This
+    is no different from the many-to-many RNN model. In the next section, we will
+    explore the important elements of the Transformer that set it apart from RNNs,
+    including the encoder-decoder structure, positional encoding, and layer normalization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The encoder-decoder structure
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The encoder-decoder structure is the key element in the Transformer architecture.
+    It leverages the model’s ability to handle sequence-to-sequence tasks. Below is
+    a breakdown of the encoder component and the decoder component with an analogy
+    to help you understand.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **encoder** component processes the input sequence and creates a context
+    representation. Typically, the encoder component is a stack of encoders. Each
+    encoder consists of a self-attention layer and a feedforward neural network. We’ve
+    covered that the self-attention allows each token to attend to other tokens in
+    the sequence. Unlike sequential models like RNNs, relations between tokens (even
+    the distant ones) are captured in the Transformer, and the feedforward neural
+    network adds non-linearity to the model’s learning capacity. We’ve seen this in
+    deep neural networks before.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Imagine you want to order a meal at a restaurant. The encoder in the Transformer
+    works in a similar way as you reading the menu and generating your own understanding.
+    The encoder takes in the menu (input sequence of words). It analyzes the words
+    using self-attention, just like you read the descriptions of each dish and their
+    ingredients (relationships between words). After the encoder (it could be a stack
+    of encoders) digests the information from the menu, it creates a condensed representation,
+    the encoded context that captures the essence of the menu. This output of the
+    encoder is like your own comprehension of the menu.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the encoder component composed of multiple identical encoder blocks, the
+    output from each encoder serves as the input for the subsequent block in the stacked
+    structure. This stacked approach offers a powerful way to capture more complex
+    relationships and create a richer understanding of the input sequence. We’ve seen
+    a similar approach in RNNs. In case you are wondering, six encoder blocks were
+    employed in the original design in *Attention Is All You Need*. The number of
+    encoders is not magical and is subject to experimentation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **decoder** component utilizes the context representation provided by the
+    encoder to generate the output sequence. Similar to the encoder, the decoder component
+    also consists of multiple stacked decoder blocks. Similarly, each decoder block
+    contains a self-attention layer and a feedforward neural network. However, the
+    self-attention in the decoder is slightly different from the encoder one. It attends
+    to the output sequence but it only considers the context it has already built.
+    This means for a given token, the decoder self-attention only considers the relationships
+    between previously processed tokens and the current tokens. Recall that the self-attention
+    in the encoder can attend to the whole input sequence at once. Hence, we call
+    the self-attention in the decoder **masked self-attention**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Besides a masked self-attention layer and a feedforward neural network, the
+    decoder block has an additional attention layer called **encoder-decoder attention**.
+    It attends to the context representation provided by the encoder so that the generated
+    output sequence is relevant to the encoded context.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Going back to the restaurant ordering analogy. Now, you (the decoder) want to
+    place an order (generate the output sequence). The decoder uses encoder-decoder
+    self-attention to consider the encoded context (your understanding of the menu).
+    Encoder-decoder self-attention ensures the output generation is based on your
+    comprehension of the menu, not someone else’s. The decoder uses **masked self-attention**
+    to generate the output word by word (your order of dishes). Masked self-attention
+    ensures you don’t “peek” at future dishes (words) you haven’t “ordered” (generated)
+    yet. With each generated word (the dish you order), the decoder can refine its
+    understanding of the desired output sequence (meal) based on the encoded context.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similar to the encoder, in the stacked decoder component, the output from each
+    decoder block serves as the input for the subsequent block. Due to the encoder-decoder
+    self-attention, the number of decoder blocks is usually the same as the encoder
+    blocks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: During training, the model is provided with both the input and the target output
+    sequences. It learns to generate the target output sequence by minimizing the
+    difference between its predictions and the actual target sequence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we’ve delved into the Transformer’s encoder-decoder structure.
+    The encoder stack extracts a context representation of the input sequence. The
+    decoder generates the output sequence one token at a time, attending to both the
+    encoded context and previously generated tokens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Positional encoding
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: While powerful, self-attention struggles to differentiate between the importance
+    of elements based solely on their content. For instance, given the sentence, “The
+    white fox jumps over the brown dog,” self-attention might assign similar importance
+    to “`fox`" and “`dog`" simply because they share similar grammatical roles (nouns).
+    To address this limitation, **positional encoding** is introduced to inject positional
+    information into self-attention.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The positional encoding is a fixed-size vector that contains positional information
+    of the token in the sequence. It is typically calculated based on mathematical
+    functions. One common approach is to use a combination of sine and cosine functions
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_13_012.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_013.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, *i* is the dimension index, *pos* is the position of the token, and *d*
+    is the dimension of the embedding vector. *PE*(*pos*, 2*i*) denotes the 2*i*^(th)
+    dimension of the positional encoding for position *pos*; *PE*(*pos*, 2*i*+1) represents
+    the 2*i*+1^(th) dimension of the positional encoding for position *pos*. ![](img/B21047_13_014.png)
+    introduces different frequencies for different dimensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s try to encode the positions of the words in a simple sentence, “`Python
+    machine learning`" using a four-dimensional vector. For the first word, “Python,”
+    we have the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_13_015.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_016.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_017.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_018.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'For the second word “machine,” we have the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_13_019.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_020.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_021.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_13_022.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: So, we have positional encoding `[0, 1, 0, 1]` for “Python,” and `[0.8, 0.5,
+    0, 1]` for “machine.” We will leave the third word as an exercise for you.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After the positional encoding vectors are computed for each position, they are
+    then added to the embeddings of the corresponding tokens. As you can see in the
+    Transformer architecture in *Figure 13.1*, the positional encoding is added to
+    the input embedding before the input embedding is fed into the encoder component.
+    Similarly, the positional encoding is added to the output embedding before the
+    output embedding is fed into the decoder component. Now, when self-attention learns
+    the relationships between tokens, it considers both the content (token themselves)
+    and their positional information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Positional encoding is an important complement to self-attention in Transformers.
+    Since the Transformer doesn’t inherently understand the sequential order of tokens
+    like RNNs do, the additional positional encoding allows it to capture sequential
+    dependencies effectively. In the next section, we will look at another crucial
+    component in Transformers, layer normalization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Layer normalization
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A Transformer has many layers (blocks of encoders and decoders that are composed
+    of multi-head self-attention), and it can suffer from exploding or vanishing gradients.
+    This makes it difficult for the network to learn effectively during training.
+    **Layer normalization** helps address this by normalizing the outputs of each
+    layer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normalization is applied independently to each layer’s activations, including
+    the self-attention layer and the feedforward network. This means that each layer’s
+    outputs are kept within a specific range to prevent gradients from becoming too
+    large or too small. As a result, layer normalization can stabilize the training
+    process and improve the Transformer’s learning efficiency.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We’ve gained a deep understanding of the Transformer architecture and its components,
+    including the encoder, decoder, multi-head self-attention, masked self-attention,
+    positional encoding, and layer normalization. Next, we will learn about models,
+    BERT and GPT, that are based on the Transformer architecture, and will work on
+    their applications, including sentiment analysis and text generation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving sentiment analysis with BERT and Transformers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**BERT** ([https://arxiv.org/abs/1810.04805v2](https://arxiv.org/abs/1810.04805v2))
+    is a model based on the Transformer architecture. It has achieved significant
+    success in various language understanding tasks in recent years.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As its name implies, bidirectional is one significant difference between BERT
+    and earlier Transformer models. Traditional models often process sequence in a
+    unidirectional manner, but BERT processes the entire context bidirectionally.
+    This bidirectional context understanding makes the model more effective in capturing
+    nuanced relationships in a sequence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: BERT is basically a stack of trained Transformer’s encoders. It is pre-trained
+    on large amounts of unlabeled text data in a self-supervised manner. During pre-training,
+    it focuses on understanding the meaning of text in context. After pre-training,
+    BERT can be fine-tuned for specific downstream tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s first talk about the pre-training works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pre-training BERT
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The goal of pre-training BERT is to capture rich contextualized representations
+    of words. It involves training the model on **a large corpus** of unlabeled text
+    data in a self-supervised manner. The pre-training process consists of two main
+    tasks: the **Masked Language Model** (**MLM**) task and the **Next Sentence Prediction**
+    (**NSP**) task. Here is the breakdown.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: MLM
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In MLM, random words in a sentence are replaced with a special token `[MASK]`.
+    BERT takes the modified sentence as input and tries to predict the original masked
+    word based on the surrounding words. In this fill-in-the-blank game, BERT is trained
+    to understand the meaning and context of words.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is worth noting that during the MLM task, the model is trained using the
+    **bidirectional** context—both the left and right context of each masked word.
+    This improves the masked word prediction accuracy. As a result, by going through
+    a large number of training examples, BERT gets better at understanding word meanings
+    and capturing relationships in different contexts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: NSP
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The NSP task helps the model understand relationships between sentences and
+    discourse-level information. During training, pairs of sentences are randomly
+    sampled from the training corpus. For each pair, there is a 50% chance that the
+    second sentence follows the first in the original text and a 50% chance that it
+    doesn’t. Two sentences concatenated together to form a training sample. Special
+    `[CLS]` and `[SEP]` tokens are used to format the training sample:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `[CLS]` (classification) token is added at the beginning of the training
+    sample. The output corresponding to the `[CLS]` token is used to represent the
+    entire input sequence for classification tasks.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `[SEP]` (separator) token separates two concatenated input sentences.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'BERT’s pre-training process is depicted in the following diagram (note that
+    “C” in the diagram is short for “Class”):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_13_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 13.2: BERT pre-training'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see in the pre-training diagram, the model is trained on concatenated
+    sentences to predict whether the second sentence follows the first one. It receives
+    the correct label (is next sentence or not) as feedback and adjusts its parameters
+    to improve its prediction accuracy. Through this sentence matchmaking task, BERT
+    learns to understand how sentences relate to each other and how ideas flow coherently
+    within a text.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interestingly, the diagram shows that BERT’s pre-training combines MLM and NSP
+    tasks simultaneously. The model predicts masked tokens within a sentence while
+    also determining whether a sentence pair follows sequentially.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While the MLM task focuses on word-level contextualization, the NSP task contributes
+    to BERT’s broader understanding of sentence relationships. After pre-training,
+    BERT can be **fine-tuned** for specific downstream NLP tasks. Let’s see how we
+    do this next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fine-tuning of BERT
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'BERT is usually fine-tuned for targeted tasks such as sentiment analysis or
+    named entity recognition. Task-specific layers are added on top of the pre-trained
+    model, and the model is trained on labeled data relevant to the task. Here’s the
+    step-by-step process of fine-tuning:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We first gather labeled data specific to the downstream task.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we need to select a pre-trained BERT model. Various options are available,
+    such as BERT-base and BERT-large. You should use the one suitable for the downstream
+    task and computational capabilities.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Based on the selected BERT model, we use the corresponding tokenizer to tokenize
+    the input. Various tokenizers are available in the Hugging Face tokenizers package
+    ([https://huggingface.co/docs/tokenizers/python/latest/index.html](https://huggingface.co/docs/tokenizers/python/latest/index.html)).
+    But you should use the one that matches the model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Here comes the fun part – architecture modification. We can add task-specific
+    layers on top of the pre-trained BERT model. For instance, you can add a single
+    neuron with a sigmoid activation for sentiment analysis.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We then define the task-specific loss function and objective for training. Use
+    the sentiment analysis example again; you can use the binary cross-entropy loss
+    function.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, we train the modified BERT model on the labeled data.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We usually perform hyperparameter tuning to find the optimal model configurations
+    including learning rate, batch size, and regularization.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Fine-tuning BERT leverages the knowledge acquired during pre-training and adapts
+    it to a specific task. With this transfer learning strategy, BERT doesn’t need
+    to start from scratch, so it learns new things faster and needs less data. In
+    the next section, we’ll utilize BERT to improve the sentiment prediction on movie
+    reviews.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fine-tuning a pre-trained BERT model for sentiment analysis
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In *Chapter 12**, Making Predictions with Sequences Using Recurrent Neural
+    Networks*, we developed an LSTM model for movie review sentiment prediction. We
+    will fine-tune a pre-trained BERT model for the same task in the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we read the IMDb review data from the PyTorch built-in datasets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We just load 25,000 training samples and 25,000 test samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, we separate the raw data into text and label data, as we will need to
+    tokenize the text data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We have finished data preparation and move on to the tokenization step.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, we need to pick a suitable pre-trained model and the corresponding tokenizer.
+    We choose the `distilbert-base-uncased` model given that we have limited computational
+    resources. Think of it as a smaller (“distilled”), faster version of BERT. It
+    keeps most of the power of BERT but with fewer parameters. The “uncased” part
+    just means that the model was trained on lowercase text. To make things work smoothly,
+    we’ll use the `distilbert-base-uncased` tokenizer that matches the model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'If you have not installed Hugging Face’s transformers package yet, you can
+    do so in the command line as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Or, with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: As of the current writing, we are using version `4.32.1`. Feel free to replicate
+    the process using this version, as the transformer package undergoes frequent
+    updates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Pre-trained models from Hugging Face can be loaded and then downloaded and
+    cached locally. We load the `distilbert-base-uncased` tokenizer as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We can also manually download a `transformers` model ahead of time, and read
+    it from the specified local path. To fetch the `distilbert-base-uncased` pre-trained
+    model and tokenizer, you can search `distilbert-base-uncased` at [https://huggingface.co/models](https://huggingface.co/models),
+    and go to the clickable link of `distilbert-base-uncased`. Model and tokenizer
+    files can be found in the **Files** tab or at [https://huggingface.co/distilbert-base-uncased/tree/main](https://huggingface.co/distilbert-base-uncased/tree/main)
+    directly. Download all files **except** `flax_model.msgpack`, `model.safetensors`,
+    `rust_model.ot`, and `tf_model.h5` (as we only need the PyTorch model), and put
+    them in the folder called `distilbert-base-uncased`. Finally, we will be able
+    to load the tokenizer from the `distilbert-base-uncased` path as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we tokenize the input text from the train and test datasets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Take a look at the encoding result of the first train sample:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, the resulting encoding object can only hold up to 512 tokens. If the original
+    text is longer, it will be truncated. Attributes are a list of information associated
+    with the encoding process, including `ids` (representing the token IDs) and `attention_mask`
+    (specifying which tokens should be attended to and which should be ignored).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we encapsulate all data fields, including the labels within a `Dataset`
+    class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Note that we transform the positive label (denoted by “`2`") and the negative
+    label (denoted by “`1`") into the formats `[0, 1]` and `[1, 0]` respectively.
+    We make this adjustment to align with the labeling format required by DistilBERT.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We then generate the custom `Dataset` objects for the train and test data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Based on the resulting datasets, we create batch data loaders and get ready
+    for model fine-tuning and evaluation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After completing the data preparation and tokenization, the next step is loading
+    the pre-trained model and fine-tuning it with the dataset we’ve just prepared.
+    The code for loading the pre-trained model is provided here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We load the pre-trained `distilbert-base-uncased` model as mentioned earlier.
+    We also ensure the model is placed on the specified computing device (GPU highly
+    recommended if available) for training and inference.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `transformers` package offers a variety of pre-trained models. You can explore
+    them at [https://huggingface.co/docs/transformers/index#supported-models-and-frameworks](https://huggingface.co/docs/transformers/index#supported-models-and-frameworks).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We set the corresponding `Adam` optimizer with a learning rate of `0.00005`
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, we define a training function responsible for training (fine-tuning) the
+    model for one iteration:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This is similar to the train function we employed, except BERT needs both token
+    IDs and `attention_mask` as inputs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, we define the evaluation function responsible for evaluating the
+    model accuracy:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We then train the model for one iteration and display the train loss and accuracy
+    at the end of it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The training process takes a while and the training accuracy is 96%. You may
+    train with more iterations if resources and time allow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we evaluate the performance on the test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We obtained a test accuracy of 93% with just one epoch in fine-tuning the pre-trained
+    DistilBERT model. This marks a significant enhancement compared to the 86% test
+    accuracy attained with LSTM in *Chapter 12*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Best practice**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you are dealing with large models or datasets on GPU, it is recommended to
+    monitor GPU memory usage to avoid running out of GPU memory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In PyTorch, you can use `torch.cuda.mem_get_info()` to check the GPU memory
+    usage. It tells you information about the available and allocated GPU memory.
+    Another trick is `torch.cuda.empty_cache()`. It attempts to release all unused
+    cached memory held by the GPU memory allocator back to the system. Finally, if
+    you’re done with a model, you can run `del model` to free up the memory it was
+    using.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the Trainer API to train Transformer models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The Trainer API included in Hugging Face is a shortcut for training Transformer-based
+    models. It lets you fine-tune those pre-trained models on your own tasks with
+    an easy high-level interface. No more wrestling with tons of training code like
+    we did in the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will fine-tune the BERT model more conveniently using the `Trainer` API
+    in the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the pre-trained model again and create the corresponding optimizer:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'To execute the `Trainer` scripts, it is necessary to have the accelerate package
+    installed. Use the following command to install `accelerate`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: or
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we prepare the necessary configurations and initialize a `Trainer` object
+    for training the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, the `TrainingArguments` configuration defines the number of training epochs,
+    the batch size for training, and the number of steps between each logging of training
+    metrics. We also tell the Trainer what model to use, which data to train on, and
+    what optimizer to use – the second element (`None`) means there’s no learning
+    rate scheduler this time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may notice that the `Trainer` initialization in the previous step does
+    not involve evaluation metrics and test datasets. Let’s add them and rewrite the
+    initialization:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The `compute_metrics` function calculates the accuracy based on the predicted
+    and true labels. The `Trainer` will use this metric to measure how well the model
+    performs on the specified test set (`test_encoded_dataset`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we train the model with just one line of code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The model was just trained for one epoch as we specified, and training loss
+    was displayed for every 50 steps.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With another line of code, we can evaluate the trained model on the test dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We obtained the same test accuracy of 93% utilizing the Trainer API, and it
+    required significantly less code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Best practice**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are some best practices for fine-tuning BERT:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Data is king**: You should prioritize high-quality and well-labeled data.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Start small**: You can begin with smaller pre-trained models like BERT-base
+    or DistilBERT. They’re less demanding on your computational power compared to
+    larger models like BERT-large.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Automate hyperparameter tuning**: You may utilize automated hyperparameter
+    tuning libraries (e.g., Hyperopt, Optuna) to search for optimal hyperparameters.
+    This can save you time and let your computer do the heavy lifting.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Implement early stopping**: You should monitor validation loss during training.
+    If it stops getting better after a while, hit the brakes. This early stopping
+    strategy can prevent unnecessary training iterations. Remember, fine-tuning BERT
+    can take some time and resources.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this section, we discussed BERT, a model based on a Transformer encoder,
+    and leveraged it to enhance sentiment analysis. In the following section, we will
+    explore another Transformer-based mode, **GPT**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating text using GPT
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: BERT and GPT are both state-of-the-art NLP models based on the Transformer architecture.
+    However, they differ in their architectures, training objectives, and use cases.
+    We will first learn more about GPT and then generate our own version of *War and
+    Peace* with a fine-tuned GPT model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pre-training of GPT and autoregressive generation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: GPT (*Improving Language Understanding by Generative Pre-training* by Alec Radford
+    et al. 2018) is a **decoder-only** Transformer architecture, while BERT is encoder
+    only. This means GPT utilizes masked self-attention in the decoders and emphasizes
+    predicting the next token in a sequence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Think of BERT like a super detective. It gets a sentence with some words hidden
+    (masked) and has to guess what they are based on the clues (surrounding words)
+    in both directions, like looking at a crime scene from all angles. GPT, on the
+    other hand, is more like a creative storyteller. It is pre-trained using an **autoregressive**
+    language model objective. It starts with a beginning word and keeps adding words
+    one by one, using the previous words as inspiration, similar to how we write a
+    story. This process repeats until the desired sequence length is reached.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The word “autoregressive” means it generates text one token at a time in a sequential
+    manner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both BERT and GPT are pre-trained on large-scale datasets. However, due to their
+    training methods, they have different strengths and use cases for fine-tuning.
+    BERT is a master at grasping how words and sentences connect. It can be fine-tuned
+    for tasks like sentiment analysis and text classification. On the other hand,
+    GPT is better at creating grammatically correct and smooth-flowing text. This
+    makes it ideal for tasks like text generation, machine translation, and summarization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will write our own version of *War and Peace* as we
+    did in *Chapter 12**, Making Predictions with Sequences Using Recurrent Neural
+    Networks*, but by fine-tuning a GPT model this time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Writing your own version of War and Peace with GPT
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For illustrative purposes, we’ll employ GPT-2, a model that is more potent
+    than GPT-1 yet smaller in size than GPT-3, and open source, to generate our own
+    version of *War and Peace* in the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we start, let’s quickly look at how to generate text using the GPT-2
+    model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To generate our own version of *War and Peace*, we need to fine-tune the GPT-2
+    model based on the original *War and Peace* text. We first need to load the GPT-2
+    based tokenizer:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we create a `Dataset` object for the tokenized *War and Peace* text:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We prepare a dataset (`text_dataset`) by tokenizing the text from the `'warpeace_input.txt`'
+    file (which we used in *Chapter 12*). We set the `tokenizer` parameter to the
+    previously created GPT-2 tokenizer, and `block_size` to `128`, specifying the
+    maximum length of each sequence of tokens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: We generated `6176` training samples based on the original text.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Recall in *Chapter 12*, we had to create the training data manually. Thankfully,
+    this time we utilize the `DataCollatorForLanguageModeling` class from Hugging
+    Face to automatically generate the input sequence and output token. This data
+    collator is specifically designed for language modeling tasks, where we’re trying
+    to predict masked tokens. Let’s see how to create a data collator as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The data collator helps organize and batch the input data for training the language
+    model. We set the `mlm` parameter to False. If set to `True`, it would enable
+    masked language modeling, where tokens are randomly masked for the model to predict
+    as we did in BERT. In our case here, it’s turned off, meaning that the model is
+    trained using an autoregressive approach. This approach is ideal for tasks like
+    text generation, where the model learns to create new text one word at a time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After completing the tokenization and data collation, the next step is loading
+    the pre-trained GPT-2 model and creating the corresponding optimizer:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We use `GPT2LMHeadModel` for text generation. It predicts the probability distribution
+    of the next token in a sequence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we prepare the necessary configurations and initialize a `Trainer` object
+    for training the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The model will be trained on the `text_dataset` dataset divided into `16` sample
+    batches for `20` epochs. We also set the limit on the total number of checkpoints
+    to save. In this case, only the latest checkpoint will be saved. This is to reduce
+    space consumption. In the `trainer`, we provide the `DataCollatorForLanguageModeling`
+    instance to organize the data for training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we are ready to train the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After the GPT-2 model is trained based on *War and Peace*, we finally use it
+    to generate our own version. We first develop the following function to generate
+    text based on a given model and prompt text:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: In the generation process, we first tokenize the input prompt text using the
+    tokenizer and convert the tokenized sequence to a PyTorch tensor. Then, we generate
+    text based on the tokenized input using the given model. Here, `no_repeat_ngram_size`
+    prevents repeating the same n-gram phrases to keep things fresh. Another interesting
+    setting, `top_p`, controls the diversity of the generated text. It considers the
+    tokens that are most probable instead of only the most probable one. Finally,
+    we decode the generated response using the tokenizer, translating it back to human
+    language.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We use the same prompt, “`the emperor`,” and here is our version of *War and
+    Peace* in 100 words:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We’ve successfully generated our own version of *War and Peace* using the fine-tuned
+    GPT-2 model. It reads better than the LSTM version in *Chapter 12*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: GPT is a decoder-only Transformer architecture. It’s all about making things
+    up on the fly, one token at a time. Unlike some other Transformer-based models,
+    it doesn’t need a separate step (encoding) to understand what you feed it. This
+    lets it focus on generating text that flows naturally, like a creative writer.
+    Once GPT is trained on a massive pile of text, we can fine-tune it for specific
+    tasks with smaller datasets. Think of it like teaching a master storyteller to
+    write about a specific topic, like history or science fiction. In our example,
+    we generated our own version of *War and Peace* by fine-tuning a GPT-2 model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While BERT focuses on bidirectional pre-training, GPT is autoregressive and
+    predicts the next word in a sequence. You may wonder whether there is a model
+    that combines aspects of both bidirectional understanding and auto-regressive
+    generation. The answer is yes – **Bidirectional and Auto-Regressive Transformers**
+    (**BART**). It was introduced by Facebook AI (*BART: Bidirectional and Autoregressive
+    Transformers for Sequence-to-Sequence Learning* by Lewis et al., 2019), and designed
+    to combine both strengths.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter was all about Transformer, a powerful neural network architecture
+    designed for sequence-to-sequence tasks. Its key ingredient, self-attention, lets
+    the model focus on the most important parts of the information it’s looking at
+    in a sequence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We worked on two NLP projects: sentiment analysis and text generation using
+    two state-of-the-art Transformer models, BERT and GPT. We observed an elevated
+    performance compared to what we did in the last chapter. We also learned how to
+    fine-tune these Transformers with the Hugging Face library, a one-stop shop for
+    loading pre-trained models, performing different NLP tasks, and fine-tuning models
+    on your own data. Plus, it throws in some bonus tools for chopping up text, checking
+    how well the model did, and even generating some text of its own.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will focus on another OpenAI cutting-edge model, CLIP,
+    and will implement natural language-based image search.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exercises
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Can you compute the positional encoding for the third word “`learning`" in the
+    example sentence “`python machine learning`" using a four-dimensional vector?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Can you fine-tune a BERT model for topic classification? You can take the newsgroups
+    dataset as an example.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Can you fine-tune a BART model ([https://huggingface.co/facebook/bart-base](https://huggingface.co/facebook/bart-base))
+    to write your own version of *War and Peace*?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Join our book’s Discord space
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Join our community’s Discord space for discussions with the authors and other
+    readers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.link/yuxi](https://packt.link/yuxi)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/QR_Code187846872178698968.png)'
+  prefs: []
+  type: TYPE_IMG

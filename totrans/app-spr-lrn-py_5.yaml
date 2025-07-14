@@ -1,0 +1,1345 @@
+- en: '*Chapter 5*'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Ensemble Modeling
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Learning Objectives
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'By the end of the chapter, you will be able to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Explain the concepts of bias and variance and how they lead to underfitting
+    and overfitting
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Explain the concepts behind bootstrapping
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implement a bagging classifier using decision trees
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implement adaptive boosting and gradient boosting models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implement a stacked ensemble using a number of classifiers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: This chapter covers bias and variance, and underfitting and overfitting, and
+    then introduces ensemble modeling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the previous chapters, we discussed the two types of supervised learning
+    problems: regression and classification. We looked at a number of algorithms for
+    each type and delved into how those algorithms worked.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: But there are times when these algorithms, no matter how complex they are, just
+    don't seem to perform well on the data that we have. There could be a variety
+    of causes and reasons – perhaps the data is not good enough, perhaps there really
+    is no trend where we are trying to find one, or perhaps the model itself is too
+    complex.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wait. What? How can a model being *too complex* be a problem? Oh, but it can!
+    If a model is too complex and there isn't enough data, the model could fit so
+    well to the data that it learns even the noise and outliers, which is never what
+    we want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Oftentimes, where a single complex algorithm can give us a result that is way
+    off, aggregating the results from a group of models can give us a result that's
+    closer to the actual truth. This is because there is a high likelihood that the
+    errors from all the individual models would cancel out when we take them all into
+    account when making a prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This approach to grouping multiple algorithms to give an aggregated prediction
+    is what **ensemble modeling** is based on. The ultimate goal of an ensemble method
+    is to combine several underperforming **base estimators** (that is, individual
+    algorithms) in such a way that the overall performance of the system improves
+    and the **ensemble** of algorithms results in a model that is more robust and
+    can generalize well compared to an individual algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we'll discuss how building an ensemble model can help us build
+    a robust system that makes accurate predictions without increasing variance. We
+    will start by talking about some reasons a model may not perform well, and then
+    move on to discussing the concepts of bias and variance, as well as overfitting
+    and underfitting. We will introduce ensemble modeling as a solution for these
+    performance issues and discuss different ensemble methods that could be used to
+    overcome different types of problems when it comes to underperforming models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The chapter will discuss three types of ensemble methods. Namely, bagging, boosting,
+    and stacking. Each of these will be discussed right from the basic theory to discussions
+    on which use cases each type deals with well and which use cases each type might
+    not be a good fit for. This chapter will also walk you through a number of exercises
+    to implement the models using the scikit-learn library in Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 43: Importing Modules and Preparing the Dataset'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this exercise, we''ll import all the modules we will need for this chapter
+    and get our dataset in shape for the exercises to come:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import all the modules required to manipulate the data and evaluate the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The dataset that we will use in this chapter is the Titanic dataset, which
+    was introduced in the previous chapters as well. Read the dataset and print the
+    first five rows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.1: The first five rows](img/C12622_05_01.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: 'Figure 5.1: The first five rows'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: In order to make the dataset ready for use, we will add a `preprocess` function,
+    which will preprocess the dataset to get it into a format that is ingestible by
+    the scikit-learn library.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This chapter assumes that the dataset has already been preprocessed and is ready
+    for use, but we will add a `preprocess` function, which will preprocess the dataset
+    to get it into a format that is ingestible by the `Scikit-learn` library.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: First, we create a `fix_age` function to preprocess the `age` function and get
+    an integer value. If the age is null, the function returns a value of *-1* to
+    differentiate it from available values, and if the value is a fraction less than
+    *1*, multiply the age value by *100*. We then apply this function to the `age`
+    column.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Then, we convert the `Sex` column into a binary variable with *1* for female
+    and *0* for male values, and subsequently create dummy binary columns for the
+    `Embarked` column using pandas'' `get_dummies` function. Following this, we combine
+    the DataFrame containing the dummy columns with the remaining numerical columns
+    to create the final DataFrame, which is returned by the function:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Split the dataset into training and validation sets.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We split the dataset into two parts – one on which we will train the models
+    during the exercises (`train`), and another on which we will make predictions
+    to evaluate the performance of each of those models (`val`). We will use the function
+    we wrote in the previous step to preprocess the training and validation datasets
+    separately.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Here, the `Survived` binary variable is the target variable that determines
+    whether or not the individual in each row survived the sinking of the Titanic,
+    so we create `y_train` and `y_val` as the dependent variable columns from both
+    the splits:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Let's begin.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Overfitting and Underfitting
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let's say we fit a supervised learning algorithm to our data and subsequently
+    use the model to perform a prediction on a hold-out validation set. The performance
+    of this model will be considered to be good based on how well it generalizes,
+    that is, the predictions it makes for data points in an independent validation
+    dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sometimes we find that the model is not able to make accurate predictions and
+    gives poor performance on the validation data. This poor performance can be the
+    result of a model that is too simple to model the data appropriately, or a model
+    that is too complex to generalize to the validation dataset. In the former case,
+    the model has a **high bias** and results in **underfitting**, while in the latter
+    case, the model has a **high variance** and results in **overfitting**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Bias**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The bias in the prediction of a machine learning model represents the difference
+    between the predicted values and the true values. A model is said to have a high
+    bias if the average predicted values are far off from the true values and is conversely
+    said to have a low bias if the average predicted values are close to the true
+    values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A high bias indicates that the model cannot capture the complexity in the data
+    and is unable to identify the relevant relationships between the inputs and outputs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Variance**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The variance in prediction of a machine learning model represents how scattered
+    the predicted values are compared to the true values. A model is said to have
+    high variance if the predictions are scattered and unstable and is conversely
+    said to have low variance if the predictions are consistent and not very scattered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A high variance indicates the model''s inability to generalize and make accurate
+    predictions on data points previously unseen by the model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.2: Visual representation of data points having high and low bias
+    and variance](img/C12622_05_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.2: Visual representation of data points having high and low bias and
+    variance'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Underfitting
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Let's say that we fit a simple model on the training dataset, one with a low
+    model complexity, such as a simple linear model. We have fit a function that's
+    able to represent the relationship between the X and Y data points in the training
+    data to some extent, but we see that the training error is still high.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.3: Underfitting versus an ideal fit in regression](img/C12622_05_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.3: Underfitting versus an ideal fit in regression'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: For example, look at the two regression plots shown in *Figure 5.3*; while the
+    first plot shows a model that fits a straight line to the data, the second plot
+    shows a model that attempts to fit a relatively more complex polynomial to the
+    data, one that seems to represent the mapping between X and Y quite well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can say that the first model demonstrates underfitting, since it shows the
+    characteristics of a high bias and low variance; that is, while it is unable to
+    capture the complexity in the mapping between the inputs and outputs, it is consistent
+    in its predictions. This model will have a high prediction error on both the training
+    data and validation data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Overfitting
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s say that we trained a highly complex model that is able to make predictions
+    on the training dataset almost perfectly. We have managed to fit a function to
+    represent the relationship between the X and Y data points in the training data
+    such that prediction error on the training data is extremely low:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.4: An ideal fit versus overfitting in regression](img/C12622_05_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.4: An ideal fit versus overfitting in regression'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Looking at the two plots in *Figure 5.4*, we can see that the second plot shows
+    a model that attempts to fit a highly complex function to the data points, compared
+    to the plot on the left, which represents the ideal fit for the given data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is evident that, when we try to use the first model to predict the Y values
+    for X data points that did not appear in the training set, we will see that the
+    predictions are way off from the corresponding true values. This is a case of
+    overfitting: the phenomenon where the model fits the data *too well* so that it
+    is unable to generalize to new data points, since the model learns even the random
+    noise and outliers in the training data.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This model shows the characteristics of high variance and low bias: while the
+    average predicted values would be close to the true values, they would be quite
+    scattered compared to the true values.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Overcoming the Problem of Underfitting and Overfitting
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: From the previous sections, we can see that, as we move from an overly simplistic
+    to an overly complex model, we go from having an underfitting model with high
+    bias and low variance to an overfitting model with a low bias and high variance.
+    The goal of any supervised machine learning algorithm is to achieve low bias and
+    low variance and find that sweet spot between underfitting and overfitting. This
+    will help the algorithm generalize well from the training data to validation data
+    points as well, resulting in good prediction performance on data the model has
+    never seen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The best way to improve performance when the model underfits the data is to
+    increase the model complexity so as to identify the relevant relationships in
+    the data. This can be done by adding new features, or by creating an ensemble
+    of high-bias models. However, in this case, adding more data to train on would
+    not help, as the constraining factor is model complexity and more data will not
+    help to reduce the model's bias.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Overfitting is, however, more difficult to tackle. Here are some common techniques
+    used to overcome the problem posed by overfitting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**To get more data**: A highly complex model can easily overfit to a small
+    dataset but not be able to as easily on a larger dataset.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Dimensionality Reduction**: Reducing the number of features can help make
+    the model less complex.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Regularization**: A new term is added to the cost function to adjust the
+    coefficients (especially the high-degree coefficients in linear regression) toward
+    a low value.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Ensemble modeling**: Aggregating the predictions of several overfitting models
+    can effectively eliminate high variance in prediction and perform better than
+    individual models that overfit to the training data.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We will talk in more detail about the nuances and considerations involved in
+    the first three in *Chapter 6*, *Model Evaluation*; this chapter will focus on
+    different ensemble modeling techniques. Some of the common types of ensembles
+    are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Bagging**: A shorter term for **bootstrap aggregation**, this technique is
+    also used to decrease the model''s variance and avoid overfitting. It involves
+    taking a subset of features and data points at a time, training a model on each
+    subset, and subsequently aggregating the results from all the models into a final
+    prediction.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Boosting**: This technique is used to reduce bias rather than to reduce variance,
+    and involves incrementally training new models that focus on the misclassified
+    data points in the previous model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Stacking**: The aim of this technique is to increase the predictive power
+    of the classifier, as it involves training multiple models and then using a combiner
+    algorithm to make the final prediction by using the predictions from all these
+    models additional inputs.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let's start with bagging, and then move on to boosting and stacking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bagging
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The term bagging is derived from a technique called bootstrap aggregation. In
+    order to implement a successful predictive model, it's important to know in what
+    situation we could benefit from using bootstrapping methods to build ensemble
+    models. In this section, we'll talk about a way to use bootstrap methods to create
+    an ensemble model that minimizes variance and look at how we can build an ensemble
+    of decision trees, that is, the Random Forest algorithm. But what is bootstrapping
+    and how does it help us build robust ensemble models?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bootstrapping
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The bootstrap method refers to random sampling with replacement, that is, drawing
+    multiple samples (each known as a resample) from the dataset consisting of randomly
+    chosen data points, where there can be an overlap in the data points contained
+    in each resample and each data point has an equal probability of being selected
+    from the overall dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.5: Randomly choosing data points](img/C12622_05_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.5: Randomly choosing data points'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: From the previous diagram, we can see that each of the five bootstrapped samples
+    taken from the primary dataset is different and has different characteristics.
+    As such, training models on each of these resamples would result in different
+    predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following are the advantages of bootstrapping:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each resample can contain different characteristics from that of the entire
+    dataset, allowing us a different perspective of how the data behaves.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Algorithms that utilize bootstrapping can be more robust and handle unseen data
+    better, especially on smaller datasets that have a tendency to cause overfitting.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The bootstrap method can test the stability of a prediction by testing models
+    using datasets with different variations and characteristics, resulting in a model
+    that is more robust.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Bootstrap Aggregation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Now that we are aware of what bootstrapping is, what exactly does a bagging
+    ensemble do? It is essentially an ensemble model that generates multiple versions
+    of a predictor on each resample and uses these to get an aggregated predictor.
+    The aggregation step gives us a *meta prediction*, which involves taking an average
+    over the models when predicting a continuous numerical value for regression problems,
+    and also involves taking a vote when predicting a class for classification problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following diagram gives us a visual representation of how a bagging estimator
+    is built from the bootstrap sampling shown in *Figure 5.5*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.6: Bagging estimator built from bootstrap sampling](img/C12622_05_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.6: Bagging estimator built from bootstrap sampling'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Since each model is essentially independent of the others, all the base models
+    can be trained in parallel, considerably speeding up the training process and
+    allowing us to take advantage of the computational power we have on our hands
+    today.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Bagging essentially helps reduce the variance of the entire ensemble by introducing
+    randomization into its construction procedure and is usually used with a base
+    predictor that has a tendency to overfit the training data. The primary point
+    of consideration here would be the stability (or lack thereof) of the training
+    dataset: Bagging can improve accuracy in cases where a slight perturbation in
+    the data could result in a significant change in the trained model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: scikit-learn uses `BaggingClassifier` and `BaggingRegressor` to implement generic
+    bagging ensembles for classification and regression tasks respectively. The primary
+    inputs to these are the base estimators to use on each resample, along with the
+    number of estimators to use (that is, the number of resamples).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 44: Using the Bagging Classifier'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this exercise, we will use scikit-learn''s `BaggingClassifier` as our ensemble
+    with `DecisionTreeClassifier` as the base estimator. We know that decision trees
+    are prone to overfitting, and so will have a high variance and low bias, both
+    being important characteristics for the base estimators to be used in bagging
+    ensembles:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the base and ensemble classifiers:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Specify the hyperparameters and initialize the model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Here, we will first specify the hyperparameters of the base estimator, for which
+    we are using the decision tree classifier with the entropy or information gain
+    as the splitting criterion. We will not specify any limits on the depth of the
+    tree or size/number of leaves to each tree to grow fully. Following this, we will
+    define the hyperparameters for the bagging classifier and pass the base estimator
+    object to the classifier as a hyperparameter.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We will take 50 base estimators for our example, which will run in parallel
+    and utilize all the processes available in the machine (which is done by specifying
+    `n_jobs=-1`). Additionally, we will specify `max_samples` as 0.5, indicating that
+    the number of datapoints in the bootstrap should be half that in the total dataset.
+    We will also set a random state (to any arbitrary value, which will stay constant
+    throughout) to maintain the reproducibility of the results:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Fit the bagging classifier model to the training data and calculate the prediction
+    accuracy.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s fit the bagging classifier and find the meta predictions for both the
+    training and validation set. Following this, let''s find the prediction accuracy
+    on the training and validation datasets:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.7: Prediction accuracy of the bagging classifier](img/C12622_05_07.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: 'Figure 5.7: Prediction accuracy of the bagging classifier'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Fit the decision tree model to the training data to compare prediction accuracy.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s also fit the decision tree (from the object we initialized in *step
+    two*) so that we will be able to compare the prediction accuracies of the ensemble
+    with that of the base predictor:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.8: Prediction accuracy of the decision tree](img/C12622_05_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.8: Prediction accuracy of the decision tree'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Here, we can see that, although the decision tree has a much higher training
+    accuracy than the bagging classifier, its accuracy on the validation dataset is
+    lower, a clear signal that the decision tree is overfitting to the training data.
+    The bagging ensemble, on the other hand, reduces the overall variance and results
+    in a much more accurate prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Random Forest
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: An issue that is commonly faced with decision trees is that the split on each
+    node is performed using a **greedy** algorithm that minimizes the entropy of the
+    leaf nodes. Keeping this in mind, the base estimator decision trees in a bagging
+    classifier can still be similar in terms of the features they split on, and so
+    can have predictions that are quite similar. However, bagging is only useful in
+    reducing the variance in predictions if the predictions from the base models are
+    not correlated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Random Forest algorithm attempts to overcome this problem by not only bootstrapping
+    the data points in the overall training dataset, but also bootstrapping the features
+    available for each tree to split on. This ensures that when the greedy algorithm
+    is searching for the *best* feature to split on, the overall *best* feature may
+    not always be available in the bootstrapped features for the base estimator and
+    so would not be chosen – resulting in base trees that have different structures.
+    This simple tweak lets the best estimators be trained in such a way that the predictions
+    from each tree in the forest have a lower probability of being correlated to the
+    predictions from other trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each base estimator in the Random Forest has a random sample of data points
+    as well as a random sample of features. And since the ensemble is made up of decision
+    trees, the algorithm is called a Random Forest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 45: Building the Ensemble Model Using Random Forest'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The two primary parameters that Random Forest takes is the fraction of features
+    and the fraction of data points to bootstrap to train each base decision tree
+    on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this exercise, we will use scikit-learn''s `RandomForestClassifier` to build
+    the ensemble model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the ensemble classifier:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Specify the hyperparameters and initialize the model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Here, we will use entropy as the splitting criterion for the decision trees
+    in a forest comprising 100 trees. As before, we will not specify any limits on
+    the depth of the trees or size/number of leaves. Unlike the bagging classifier,
+    which took `max_samples` as an input during initialization, the Random Forest
+    algorithm takes in only `max_features`, indicating the number (or fraction) of
+    features in the bootstrap sample. We will specify the value for this as 0.5, so
+    that only three out of six features are considered for each tree:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Fit the Random Forest classifier model to the training data and calculate the
+    prediction accuracy.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s fit the Random Forest model and find the meta predictions for both the
+    training and validation set. Following this, let''s find the prediction accuracy
+    on the training and validation datasets:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.9: Accuracy on training and validation using Random Forest](img/C12622_05_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.9: Accuracy on training and validation using Random Forest'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: If we compare the prediction accuracies of Random Forest on our dataset to that
+    of the bagging classifier, we can see that the accuracy on the validation set
+    is pretty much the same, although the latter has higher accuracy on the training
+    dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Boosting
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The second ensemble technique we'll be looking at is **boosting**, which involves
+    incrementally training new models that focus on the misclassified data points
+    in the previous model and utilizes weighted averages to turn weak models (underfitting
+    models having high bias) into stronger models. Unlike bagging, where each base
+    estimator could be trained independently of the others, the training of each base
+    estimator in a boosted algorithm depends on the previous one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although boosting also uses the concept of bootstrapping, it's done differently
+    from bagging, since each sample of data is weighted, implying that some bootstrapped
+    samples can be used for training more often than other samples. When training
+    each model, the algorithm keeps track of which features are most useful and which
+    data samples have the most prediction error; these are given higher weightage
+    and are considered to require more iterations to properly train the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When predicting the output, the boosting ensemble takes a weighted average of
+    the predictions from each base estimator, giving a higher weight to the ones that
+    had lower errors during the training stage. This means that, for the data points
+    that are misclassified by the model in an iteration, the weights for those data
+    points are increased so that the next model is more likely to classify it correctly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As was the case with bagging, the results from all the boosting base estimators
+    are aggregated to produce a meta prediction. However, unlike bagging, the accuracy
+    of a boosted ensemble increases significantly with the number of base estimators
+    in the boosted ensemble:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.10: A boosted ensemble](img/C12622_05_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.10: A boosted ensemble'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: In the diagram, we can see that, after each iteration, the misclassified points
+    have increased weights (represented by larger icons) so that the next base estimator
+    that is trained is able to focus on those points. The final predictor has aggregated
+    the decision boundaries from each of its base estimators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adaptive Boosting
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s talk about a boosting technique called **adaptive boosting**, which
+    is best used to boost the performance of decision stumps for binary classification
+    problems. Decision stumps are essentially decision trees with a maximum depth
+    of one (only one split is made on a single feature), and, as such, are weak learners.
+    The primary principle that adaptive boosting works on is the same: to improve
+    the areas where the base estimator fails to turn an ensemble of weak learners
+    to a strong learner.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To start with, the first base estimator takes a bootstrap of data points from
+    the main training set and fits a decision stump to classify the sampled points,
+    after which the trained decision tree stump is fit to the complete training data.
+    For the samples that are misclassified, the weights are increased so that there
+    is a higher probability of these data points being selected in the bootstrap for
+    the next base estimator. A decision stump is again trained on the new bootstrap
+    to classify the data points in the sample. Subsequently, the mini ensemble comprising
+    the two base estimators is used to classify the data points in the entire training
+    set. The misclassified data points from the second round are given a higher weight
+    to improve their probability of selection, and so on until the ensemble reaches
+    the limit on the number of base estimators it should contain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One drawback of adaptive boosting is that the algorithm is easily influenced
+    by noisy data points and outliers since it tries to fit every point perfectly.
+    As such, it is prone to overfitting if the number of estimators is very high.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 46: Adaptive Boosting'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this exercise, we''ll use scikit-learn''s implementation of adaptive boosting
+    for classification, `AdaBoostClassifier`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the classifier:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Specify the hyperparameters and initialize the model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Here, we will first specify the hyperparameters of the base estimator, for
+    which we are using the decision tree classifier with a maximum depth of one, that
+    is, a decision stump. Following this, we will define the hyperparameters for the
+    AdaBoost classifier and pass the base estimator object to the classifier as a
+    hyperparameter:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Fit the model to the training data.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s fit the AdaBoost model and find the meta predictions for both the training
+    and validation set. Following this, let''s find the prediction accuracy on the
+    training and validation datasets:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.11: Accuracy of training and validation data using adaptive boosting](img/C12622_05_11.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: 'Figure 5.11: Accuracy of training and validation data using adaptive boosting'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Calculate the prediction accuracy of the model on the training and validation
+    data for a varying number of base estimators.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Earlier, we claimed that the accuracy tends to increase with an increasing
+    number of base estimators, but also that the model has a tendency to overfit if
+    too many base estimators are used. Let''s calculate the prediction accuracies
+    so that we can find the point where the model begins to overfit the training data:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Plot a line graph to visualize the trend of the prediction accuracies on both
+    the training and validation datasets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.12: The trend of the prediction accuracies](img/C12622_05_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.12: The trend of the prediction accuracies'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: As was mentioned earlier, we can see that the training accuracy almost consistently
+    increases as the number of decision tree stumps increases from 10 to 200\. However,
+    the validation accuracy fluctuates between 0.84 and 0.86 and begins to drop as
+    the number of decision stumps goes higher. This happens because the AdaBoost algorithm
+    is trying fit the noisy data points and outliers as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gradient Boosting
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Gradient boosting is an extension to the boosting method that visualizes boosting
+    as an optimization problem. A loss function is defined that is representative
+    of the error residuals (the difference between the predicted and true values),
+    and the gradient descent algorithm is used to optimize the loss function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the first step, a base estimator (which would be a weak learner) is added
+    and trained on the entire training dataset. The loss associated with the prediction
+    is calculated, and, in order to reduce the error residuals, the loss function
+    is updated to add more base estimators for the data points where the existing
+    estimators are performing poorly. Subsequently, the algorithm iteratively adds
+    new base estimators and computes the loss to allow the optimization algorithm
+    to update the model and minimize the residuals themselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of adaptive boosting, decision stumps were used as the weak learners
+    for the base estimators. However, for gradient boosting methods, larger trees
+    can be used, but the weak learners should still be constrained by providing a
+    limit to the maximum number of layers, nodes, splits, or leaf nodes. This ensures
+    that the base estimators are still weak learners, but they can be constructed
+    in a greedy manner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From *Chapter 3*, *Regression Analysis*, we know that the gradient descent algorithm
+    can be used to minimize a set of parameters, such as the coefficients in a regression
+    equation. When building an ensemble, however, we have decision trees instead of
+    parameters that need to be optimized. After calculating the loss at each step,
+    the gradient descent algorithm then has to modify the parameters of the new tree
+    that's to be added to the ensemble in such a way that reduces the loss. This approach
+    is more commonly known as **functional gradient descent.**
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 47: GradientBoostingClassifier'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The two primary parameters that Random Forest takes is the fraction of features
+    and the fraction of data points to bootstrap to train each base decision tree
+    on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this exercise, we will use scikit-learn''s `GradientBoostingClassifier`
+    to build the boosting ensemble model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the ensemble classifier:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Specify the hyperparameters and initialize the model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Here, we will use 100 decision trees as the base estimator, with each tree
+    having a maximum depth of three and a minimum of five samples in each of its leaves.
+    Although we are not using decision stumps, as in the previous example, the tree
+    is still small and would be considered a weak learner:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Fit the gradient boosting model to the training data and calculate the prediction
+    accuracy.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s fit the ensemble model and find the meta predictions for both the training
+    and validation set. Following this, we will find the prediction accuracy on the
+    training and validation datasets:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.13: Prediction accuracy on the training and validation datasets](img/C12622_05_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.13: Prediction accuracy on the training and validation datasets'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: We can see that the gradient boosting ensemble has greater accuracy on both
+    the training and validation datasets compared to those for the adaptive boosting
+    ensemble.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stacking
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Stacking, or stacked generalization (also called meta ensembling), is a model
+    ensembling technique that involves combining information from multiple predictive
+    models and using them as features to generate a new model. The stacked model will
+    most likely outperform each of the individual models due the smoothing effect
+    it adds, as well as due to its ability to "choose" the base model that performs
+    best in certain scenarios. Keeping this in mind, stacking is usually most effective
+    when each of the base models is significantly different from each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stacking uses the predictions of the base models as additional features when
+    training the final model – these are known as **meta features**. The stacked model
+    essentially acts as a classifier that determines where each model is performing
+    well and where it is performing poorly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, you cannot simply train the base models on the full training data,
+    generate predictions on the full validation dataset, and then output these for
+    second-level training. This runs the risk of your base model predictions already
+    having "seen" the test set and therefore overfitting when feeding these predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is important to note that the value of the meta features for each row cannot
+    be predicted using a model that contained that row in the training data, as we
+    then run the risk of overfitting since the base predictions would have already
+    "seen" the target variable for that row. The common practice is to divide the
+    training data into *k* subsets so that, when finding the meta features for each
+    of those subsets, we only train the model on the remaining data. Doing this also
+    avoids the problem of overfitting the data the model has already "seen":'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.14: A stacking ensemble](img/C12622_05_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.14: A stacking ensemble'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'The preceding diagram shows how this is done: we divide the training data into
+    *k* folds and find the predictions from the base models on each fold by training
+    the model on the remaining *k-1* folds. So, once we have the meta predictions
+    for each of the folds, we can use those meta predictions along with the original
+    features to train the stacked model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 48: Building a Stacked Model'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this exercise, we will use a support vector machine (scikit-learn's `LinearSVC`)
+    and k-nearest neighbors (scikit-learn's `KNeighborsClassifier`) as the base predictors,
+    and the stacked model will be a logistic regression classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the base models and the model used for stacking:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Create a new training set with additional columns for predictions from base
+    predictors.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We need to create two new columns for predicted values from each model to be
+    used as features for the ensemble model in both the test and train set. Since
+    NumPy arrays are immutable, we will create a new array that will have the same
+    number of rows as the training dataset, and two columns more than those in the
+    training dataset. Once the dataset is created, let''s print it to see what it
+    looks like:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.15: The new columns for the predicted values](img/C12622_05_15.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: 'Figure 5.15: The new columns for the predicted values'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: As we can see, there are two extra columns filled with *-1* values at the end
+    of each row.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Train base models using the k-fold strategy.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Let's take *k=5*. For each of the five folds, train on the other four folds
+    and predict on the fifth fold. These predictions should then be added into the
+    placeholder columns for base predictions in the new NumPy array.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: First, we initialize the `KFold` object with the value of `k` and a random state
+    to maintain reproducibility. The `kf.split()` function takes the dataset to split
+    as an input and returns an iterator, each element in the iterator corresponding
+    to the list of indices in the training and validation folds respectively. These
+    index values in each loop over the iterator can be used to subdivide the training
+    data for training and prediction for each row.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Once the data is adequately divided, we train the two base predictors on four-fifths
+    of the data and predict the values on the remaining one-fifth of the rows. These
+    predictions are then inserted into the two placeholder columns we initialized
+    with `-1` in *step 2*:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Create a new validation set with additional columns for predictions from base
+    predictors.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'As we did in *step 2*, we will add two placeholder columns for the base model
+    predictions in the validation dataset as well:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.16: Additional columns for predictions from base predictors](img/C12622_05_16.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: 'Figure 5.16: Additional columns for predictions from base predictors'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Fit base models on the complete training set to get meta features for the validation
+    set.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Next, we will train the two base predictors on the complete training dataset
+    to get the meta prediction values for the validation dataset. This is similar
+    to what we did for each fold in *step 3*:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Train the stacked model and use the final predictions to calculate accuracy.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The last step is to train the logistic regression model on all the columns
+    of the training dataset plus the meta predictions from the base estimators. We
+    use the model to find the prediction accuracies for both the training and validation
+    datasets:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.17: Accuracy using a stacked classifier](img/C12622_05_17.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: 'Figure 5.17: Accuracy using a stacked classifier'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Compare the accuracy with that of base models.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'To get a sense of the performance boost from stacking, we calculate the accuracies
+    of the base predictors on the training and validation datasets and compare it
+    to that of the stacked model:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 5.18: Accuracy of training and validation data using SVM and K-NN](img/C12622_05_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 5.18: Accuracy of training and validation data using SVM and K-NN'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: As we can see, not only does the stacked model give us a validation accuracy
+    that is significantly higher than either of the base predictors, but it also has
+    the highest accuracy, of nearly 89%, of all the ensemble models discussed in this
+    chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 14: Stacking with Standalone and Ensemble Algorithms'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this activity, we''ll use the *Kaggle House Prices: Advanced Regression
+    Techniques database* (available at [https://www.kaggle.com/c/house-prices-advanced-regression-techniques/data](https://www.kaggle.com/c/house-prices-advanced-regression-techniques/data)
+    or on GitHub at [https://github.com/TrainingByPackt/Applied-Supervised-Learning-with-Python](https://github.com/TrainingByPackt/Applied-Supervised-Learning-with-Python)),
+    that we did EDA on in *Chapter 2*, *Exploratory Data Analysis and Visualization*.
+    This dataset is aimed toward solving a regression problem (that is, the target
+    variable takes on a range of continuous values). In this activity, we will use
+    decision trees, K-nearest neighbors, Random Forest, and gradient boosting algorithms
+    to train individual regressors on the data. Then, we will build a stacked linear
+    regression model that uses all these algorithms and compare the performance of
+    each. We will use the **mean absolute error** (**MAE**) as the evaluation metric
+    for this activity.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The steps to be performed are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Import the relevant libraries.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Read the data.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Preprocess the dataset to remove null values and one-hot encode categorical
+    variables to prepare the data for modeling.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Divide the dataset into train and validation DataFrames.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Initialize dictionaries in which to store the train and validation MAE values.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Train a decision tree model with the following hyperparameters and save the
+    scores:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Train a k-nearest neighbors model with the following hyperparameters and save
+    the scores:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Train a Random Forest model with the following hyperparameters and save the
+    scores:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Train a gradient boosting model with the following hyperparameters and save
+    the scores:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Prepare the training and validation datasets, with the four meta estimators
+    having the same hyperparameters that were used in the previous steps.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Train a linear regression model as the stacked model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Visualize the train and validation errors for each individual model and the
+    stacked model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The solution for this activity can be found on page 364.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this chapter, we started off with a discussion on overfitting and underfitting
+    and how these can affect the performance of a model on unseen data. The chapter
+    looked at ensemble modeling as a solution for these and went on to discuss different
+    ensemble methods that could be used, and how they could decrease the overall bias
+    or variance encountered when making predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We first discussed bagging algorithms and introduced the concept of bootstrapping.
+    Then, we looked at Random Forest as a classic example of a Bagged ensemble and
+    solved exercises that involved building a bagging classifier and Random Forest
+    classifier on the previously seen Titanic dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We then moved on to discussing boosting algorithms, how they successfully reduce
+    bias in the system, and gained an understanding of how to implement adaptive boosting
+    and gradient boosting. The last ensemble method we discussed was stacking, which,
+    as we saw from the exercise, gave us the best accuracy score of all the ensemble
+    methods we implemented.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although building an ensemble model is a great way to decrease bias and variance,
+    and they generally outperform any single model by itself, they themselves come
+    with their own problems and use cases. While bagging is great when trying to avoid
+    overfitting, boosting can reduce both bias and variance, though it may still have
+    a tendency to overfit. Stacking, on the other hand, is a good choice for when
+    one model performs well on a portion of the data while another model performs
+    better on another portion of the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will explore more ways to overcome the problems of overfitting
+    and underfitting in detail by looking at validation techniques, that is, ways
+    to judge our model's performance, and how to use different metrics as indicators
+    to build the best possible model for our use case.
+  prefs: []
+  type: TYPE_NORMAL

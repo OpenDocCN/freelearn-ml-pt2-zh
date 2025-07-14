@@ -1,0 +1,1354 @@
+- en: Chapter 10
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Inference Engines
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first principle is that you must not fool yourself—and you are the easiest
+    person to fool. – Richard Feynman
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: So far, we have focused on model building, interpretation of results, and criticism
+    of models. We have relied on the magic of the `pm.sample` function to compute
+    posterior distributions for us. Now we will focus on learning some of the details
+    of the inference engines behind this function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The whole purpose of probabilistic programming tools, such as PyMC, is that
+    the user should not care about how sampling is carried out, but understanding
+    how we get samples from the posterior is important for a full understanding of
+    the inference process, and could also help us to get an idea of when and how these
+    methods fail and what to do about it. If you are not interested in understanding
+    how these methods work, you can skip most of this chapter, but I strongly recommend
+    you at least read the *Diagnosing sample*s section, as this section provides a
+    few guidelines that will help you to check whether your posterior samples are
+    reliable. There are many methods for computing the posterior distribution. In
+    this chapter, we will discuss some general ideas and will focus on the most important
+    methods implemented in PyMC. We will learn about:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inference engines
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Metropolis-Hastings
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hamiltonian Monte Carlo
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Sequential Monte Carlo
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Diagnosing samples
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 10.1 Inference engines
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: While conceptually simple, Bayesian methods can be mathematically and numerically
+    challenging. The main reason is that the marginal likelihood, the denominator
+    in Bayes’ theorem, usually takes the form of an intractable or computationally
+    expensive integral to solve. For this reason, the posterior is usually estimated
+    numerically using algorithms from the **Markov Chain** **Monte Carlo** (**MCMC**)
+    family. These methods are sometimes called inference engines, because, at least
+    in principle, they are capable of approximating the posterior distribution for
+    any probabilistic model. Even though inference does not always work that well
+    in practice, the existence of such methods has motivated the development of probabilistic
+    programming languages such as PyMC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The goal of probabilistic programming languages is to separate the model-building
+    process from the inference process to facilitate the iterative steps of model-building,
+    evaluation, and model modification/expansion. By treating the inference process
+    (but not the model-building process) as a black box, users of probabilistic programming
+    languages such as PyMC are free to focus on their specific problems, leaving PyMC
+    to handle the computational details for them. This is exactly what we have been
+    doing up to this point. So, you may be biased toward thinking that this is the
+    obvious or natural approach. But it is important to notice that before probabilistic
+    programming languages, people working with probabilistic models were also used
+    to writing their own sampling methods, generally tailored to their models, or
+    they were used to simplifying their models to make them suitable for certain mathematical
+    approximations. In fact, this is still true in some academic circles. This tailored
+    approach can be more elegant and can even provide a more efficient way of computing
+    a posterior (for a very specific model), but it is also error-prone and time-consuming,
+    even for experts. Furthermore, the tailored approach is not suitable for most
+    practitioners interested in solving problems with probabilistic models. Software
+    such as PyMC invites people from a very broad background to work with probabilistic
+    models, lowering the mathematical and computational entry barrier. I personally
+    think this is fantastic and also an invitation to learn more about good practices
+    in statistical modeling so we try to avoid fooling ourselves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The previous chapters have been mostly about learning the basics of Bayesian
+    modeling; now we are going to learn, at a conceptual level, how automatic inference
+    is achieved, when and why it fails, and what to do when it fails.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before discussing MCMC methods, however, let me explain two other methods that
+    can be useful sometimes, and also provide an intuition of why we usually use MCMC
+    as general methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.2 The grid method
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The grid method is a simple brute-force approach. Even if you are not able to
+    compute the whole posterior, you may be able to compute the prior and the likelihood
+    point-wise; this is a pretty common scenario, if not the most common one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s assume we want to compute the posterior for a model with a single parameter.
+    The grid approximation is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Define a reasonable interval for the parameter (the prior should give you a
+    hint).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Place a grid of points (generally equidistant) on that interval.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For each point in the grid, multiply the likelihood and the prior.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Optionally, we may normalize the computed values, that is, we divide each value
+    in the `posterior` array by the total area under the curve, ensuring that the
+    total area equals 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code block implements the grid method for the coin-flipping model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 10.1**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Figure [10.1](#x1-191020r1)* shows the posterior we get for flipping a coin
+    13 times and observing 3 heads under a Uniform prior. The curve is very rugged,
+    as we used a grid of only 10 points. If you increase the number of points, the
+    curve will look smoother, the computation will be more accurate, and the cost
+    will be higher.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file248.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.1**: Posterior computed using the grid method'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The biggest caveat of the grid approach is that this method scales poorly with
+    the number of parameters, also referred to as dimensions. We can see this with
+    a simple example. Suppose we want to sample a unit interval (see *Figure [10.2](#x1-191021r2)*)
+    like in the coin-flipping problem, and we use four equidistant points; this would
+    mean a resolution of 0.25 units. Now, suppose we have a 2D problem (the square
+    in *Figure [10.2](#x1-191021r2)*) and we want to use a grid with the same resolution;
+    we will need 16 points. And lastly, for a 3D problem, we will need 64 (see the
+    cube in *Figure [10.2](#x1-191021r2)*). In this example, we need 16 times as many
+    resources to sample from a cube of side 1 than for a line of length 1 with a resolution
+    of 0.25\. If we decide instead to have a resolution of 0.1 units, we will have
+    to sample 10 points for the line and 1,000 for the cube.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file249.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.2**: A grid with the same resolution in 1, 2, and 3 dimensions'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Besides how fast the number of points increases, there is another phenomenon
+    that is not a property of the grid method, or any other method for that matter.
+    It is a property of high-dimensional spaces. As you increase the number of parameters,
+    the region of the parameter space where most of the posterior is concentrated
+    gets smaller and smaller compared to the sampled volume. This is a pervasive phenomenon
+    and is usually known as the curse of dimensionality, or as mathematicians prefer
+    to call it, the concentration of measure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The curse of dimensionality is the term used to refer to various related phenomena
+    that are absent in low-dimensional spaces but present in high-dimensional spaces.
+    Here are some examples of these phenomena:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As the number of dimensions increases, the Euclidean distance between any pair
+    of samples tends to resemble the distance between other pairs. That is, in high-dimensional
+    spaces, most points are basically at the same distance from one another.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For a hypercube, most of the volume is at its corners, not in the middle. For
+    a hypersphere, most of the volume is at its surface and not in the middle.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In high dimensions, most of the mass of a multivariate Gaussian distribution
+    is not close to the mean (or mode), but in a shell around it that moves away from
+    the mean to the tails as the dimensionality increases. This shell is referred
+    to as the typical set.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For code examples illustrating these concepts, please check out the repository
+    for this book at [https://github.com/aloctavodia/BAP3](https://github.com/aloctavodia/BAP3).
+  prefs: []
+  type: TYPE_NORMAL
+- en: For our current discussion, all these facts mean that if we do not choose wisely
+    where to evaluate the posterior, we will spend most of our time computing values
+    with an almost null contribution to the posterior, and thus we will be wasting
+    valuable resources. The grid method is not a very smart method to choose to evaluate
+    the posterior distribution, thus making it not very useful as a general method
+    for high-dimensional problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.3 Quadratic method
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The quadratic approximation, also known as the Laplace method or the normal
+    approximation, consists of approximating the posterior with a Gaussian distribution.
+    To do this, we first find the model of the posterior distribution; numerically,
+    we can do this with an optimization method. Then we compute the Hessian matrix,
+    from which we can then estimate the standard deviation. If you are wondering,
+    the Hessian matrix is a square matrix of second-order partial derivatives. For
+    what we care we can use it to obtain the standard deviation of in general a covariance
+    matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Bambi can solve Bayesian models using the quadratic method for us. In the following
+    code block, we first define a model for the coin-flipping problem, the same one
+    we already defined for the grid method, and then we fit it using the quadratic
+    method, called `laplace` in Bambi:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 10.2**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Figure [10.3](#x1-192010r3)* shows the computed posterior and the exact posterior.
+    Notice that Bambi also returns samples when using this method. It first approximates
+    the posterior as a Gaussian (or multivariate Gaussian) and then takes samples
+    from it.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file250.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.3**: A quadratic approximation to the posterior'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The quadratic/Laplace method is included in Bambi mostly for pedagogical purposes.
+    One nice feature, though, is that Bambi takes into account the boundaries. For
+    example, for the coin-flipping problem, we know the solution must be in the interval
+    [0, 1]. Bambi ensures this is true, even when we use a Gaussian under the hood.
+    Bambi achieves this by fitting a Gaussian in an unbounded parameter space, and
+    then transforming to the proper bounded space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The quadratic/Laplace method, while very limited in itself, can be used as the
+    building block of more advanced methods. For instance, the **Integrated Nested**
+    **Laplace Approximation** (**INLA**) can be used to fit a wide variety of models
+    very efficiently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.4 Markovian methods
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There is a family of related methods, collectively known as the **Markov chain**
+    **Monte Carlo** or **MCMC** methods. These are stochastic methods that allow us
+    to get samples from the true posterior distribution as long as we can compute
+    the likelihood and the prior point-wise. You may remember that this is the same
+    condition we needed for the grid method, but contrary to them, MCMC methods can
+    efficiently sample from higher-probability regions in very high dimensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'MCMC methods visit each region of the parameter space following their relative
+    probabilities. If the probability of region A is twice that of region B, we will
+    obtain twice as many samples from A as we will from B. Hence, even if we are not
+    capable of computing the whole posterior analytically, we could use MCMC methods
+    to take samples from it. In theory, MCMC will give us samples from the correct
+    distribution – the catch is that this theoretical guarantee only holds asymptotically,
+    that is, for an infinite number of samples! In practice, we always have a finite
+    number of samples, thus we need to check that the samples are trustworthy. We
+    are going to learn about that, but let’s not get ahead of ourselves; first, let’s
+    get some intuition for how MCMC methods work. This will help us understand the
+    diagnostic later. To understand what MCMC methods are, we are going to split the
+    method into the ”two MC parts”: the Monte Carlo part and the Markov chain part.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.4.1 Monte Carlo
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The use of random numbers explains the Monte Carlo part of the name. Monte Carlo
+    methods are a very broad family of algorithms that use random sampling to compute
+    or simulate a given process. Monte Carlo is a very famous casino located in the
+    Principality of Monaco. One of the developers of the Monte Carlo method, Stanislaw
+    Ulam, had an uncle who used to gamble there. The key idea Stan had was that while
+    many problems are difficult to solve or even formulate in an exact way, they can
+    be effectively studied by taking samples from them. In fact, as the story goes,
+    the motivation was to answer questions about the probability of getting a particular
+    hand in a game of Solitaire.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One way to solve this problem is to follow the analytical combinatorial problem.
+    Another way, Stanislaw argued, is to play several games of Solitaire and count
+    how many of the hands that we play match the particular hand we are interested
+    in! Maybe this sounds obvious to you, or at least pretty reasonable; you may even
+    have used resampling methods to solve statistical problems. But, remember this
+    mental experiment was performed about 70 years ago, a time when the first practical
+    computers were beginning to be developed!
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first application of the Monte Carlo method was to solve a problem of nuclear
+    physics, a hard-to-tackle problem using the tools at the time. Nowadays, even
+    personal computers are powerful enough to solve many interesting problems using
+    the Monte Carlo approach; hence, these methods are applied to a wide variety of
+    problems in science, engineering, industry, and the arts. A classic pedagogical
+    example of using a Monte Carlo method to compute a quantity of interest is the
+    numerical estimation of the number *π*. In practice, there are better methods
+    for this particular computation, but its pedagogical value remains.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can estimate the value of *π* with the following procedure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Throw *N* points at random into a square of side 2*R*.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Draw a circle of radius *R* inscribed in the square and count the number of
+    points *M* inside the circle.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Compute ![](img/hat_Pi.png) as the ratio 4![MN-](img/file251.jpg).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Here are a few notes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The area of the circle is proportional to the number of points inside it (*M*)
+    and the area of the square is proportional to the total points (*N*).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We know a point is inside a circle if the following relation holds: ![∘ (x2-+-y2)
+    ≤-R-](img/file252.jpg).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The area of the square is (2*R*)² and the area of the circle is *πR*². Thus,
+    we know that the ratio of the area of the square to the area of the circle is
+    *π*.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using a few lines of Python, we can run this simple Monte Carlo simulation and
+    compute *π*, and also the relative error of our estimate compared to the true
+    value of *π*. The result of a run is shown in *Figure [10.4](#x1-194008r4)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file253.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.4**: A Monte Carlo approximation of *π*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.4.2 Markov chain
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A Markov chain is a mathematical object that consists of a sequence of states
+    and a set of transition probabilities that describe how to move among the states.
+    You can create a Markov chain yourself; flip a coin and if you get heads take
+    a step to the right, otherwise step to the left. That is a simple 1-dimensional
+    Markov chain. A chain is Markovian if the probability of moving to any other state
+    depends only on the current state.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a practitioner, you just need to know that Markov chains provide a framework
+    to study the properties of MCMC samplers (among other useful applications). They
+    are not that hard to understand, at least not the most basic properties. But going
+    into the details is not that useful for you as a modeler and thus we will not
+    discuss them any further. You can check [Blitzstein](Bibliography.xhtml#Xblitzstein_2019) [[2019](Bibliography.xhtml#Xblitzstein_2019)]
+    for a nice intro if you want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The most popular MCMC method is probably the Metropolis-Hasting algorithm, and
+    we will discuss it in the following section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.4.3 Metropolis-Hastings
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For some distributions, such as the Gaussian, we have very efficient algorithms
+    to get samples from, but for other distributions, this is not the case. Metropolis-Hastings
+    enables us to obtain samples from any probability distribution given that we can
+    compute at least a value proportional to it, thus ignoring the normalization factor.
+    This is very useful since many times the harder part is precisely to compute the
+    normalization factor. This is the case with Bayesian statistics, where the computation
+    of the marginal likelihood can be a deal-breaker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To conceptually understand this method, we are going to use the following analogy.
+    Suppose we are interested in finding the volume of water in a lake and which part
+    of the lake has the deepest point. The water is really muddy so we can’t estimate
+    the depth just by looking through the water to the bottom, and the lake is really
+    big, so a grid approximation does not seem like a very good idea. To develop a
+    sampling strategy, we seek help from two of our best friends: Markovia and Monty.
+    After a fruitful discussion, they came up with the following algorithm, which
+    requires a boat—nothing fancy, we can even use a wooden raft and a very long stick.
+    This is cheaper than sonar and we have already spent all our money on the boat,
+    anyway! Check out these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choose a random place in the lake, and move the boat there.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Use the stick to measure the depth of the lake.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Move the boat to another point and take a new measurement.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Compare the two measures in the following way:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the new spot is deeper than the first one, write down in your notebook the
+    depth of the new spot and repeat from step 3.
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'If the spot is shallower than the first one, we have two options: to accept
+    or reject. Accepting means we write down the depth of the new spot and repeat
+    from step 3\. Rejecting means we go back to the first spot and write down (yes,
+    again!) the value for the depth of the first spot.'
+  prefs:
+  - PREF_IND
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The rule for deciding whether to accept or reject is known as the Metropolis-Hastings
+    criteria, and it basically says that we must accept the new spot with a probability
+    that is proportional to the ratio of the depth of the new and old spots.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we follow this iterative procedure, we will get not only the total volume
+    of the lake and the deepest point, but also an approximation of the entire curvature
+    of the bottom of the lake. As you may have guessed, in this analogy, the curvature
+    of the bottom of the lake is the posterior distribution and the deepest point
+    is the mode. According to our friend Markovia, the larger the number of iterations,
+    the better the approximation. Indeed, the theory guarantees that under certain
+    general circumstances, we are going to get the exact answer if we get an infinite
+    number of samples. Luckily for us, in practice, and for many, many problems, we
+    can get a very accurate approximation using a finite and relatively small number
+    of samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The preceding explanation is enough to get a conceptual-level understanding
+    of Metropolis-Hastings. The next few pages contain a more detailed and formal
+    explanation in case you want to dig deeper.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Metropolis-Hastings algorithm has the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choose an initial value for a parameter *x*[*i*]. This can be done randomly
+    or by making an educated guess.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Choose a new parameter value *x*[*i*+1], by sampling from *Q*(*x*[*i*+1]|*x*[*i*]).
+    We can think of this step as perturbing the state *x*[*i*] somehow.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Compute the probability of accepting a new parameter value by using the Metropolis-Hastings
+    criteria:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![ ( ) pa(xi+1 | xi) = min 1, p(xi+1) q(xi-| xi+1) p(xi) q(xi+1 | xi) ](img/file254.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: If the probability computed in step 3 is larger than the value taken from a
+    Uniform distribution on the [0, 1] interval, we accept the new state; otherwise,
+    we stay in the old state.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We iterate from step 2 until we have enough samples.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Here are a couple of notes to take into account:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Q* is called the proposal distribution. It can be anything we want, but it
+    makes sense that we choose a distribution that we find simple to sample from,
+    such as a Gaussian or Uniform distribution.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note that *Q* is not the prior or likelihood or any part of the model. It is
+    a component of the MCMC method, not of the model.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If *Q* is symmetric, the terms *q*(*x*[*i*]|*x*[*i*+1]) and *q*(*x*[*i*+1]|*x*[*i*])
+    will cancel out. Hence we will just need to evaluate the ratio ![p(xi+1) p(xi)](img/file255.jpg).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Step 3 and step 4 imply that we will always accept moving to a more probable
+    state. Less probable parameter values are accepted probabilistically, given the
+    ratio between the probability of the new parameter value *x*[*i*+1] and the old
+    parameter value *x*[*i*]. This criteria for accepting proposed steps gives us
+    a more efficient sampling approach compared to the grid method while ensuring
+    a correct sampling.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The target distribution (the posterior distribution in Bayesian statistics)
+    is approximated by a list of sampled parameter values. If we accept, we add *x*[*i*+1]
+    to the list of the new sampled values. If we reject, we add *x*[*i*] to the list,
+    even if the value is repeated.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: At the end of the process, we will have a list of values. If everything was
+    done the right way, these samples would be an approximation of the posterior.
+    The most frequent values in our trace will be the most probable values according
+    to the posterior. An advantage of this procedure is that analyzing the posterior
+    is as simple as manipulating an array of values, as you have already experimented
+    with in all the previous chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following code illustrates a very basic implementation of the Metropolis
+    algorithm. It is not meant to solve a real problem, only to show it is possible
+    to sample from a probability distribution if we know how to compute its density
+    point-wise. Notice that the following implementation has nothing Bayesian in it;
+    there is no prior and we do not even have data! Remember that MCMC methods are
+    very general algorithms that can be applied to a broad array of problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first argument of the metropolis function is a PreliZ distribution; we
+    are assuming we do not know how to directly get samples from this distribution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 10.3**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The result of our simple metropolis algorithm is shown in *Figure [10.5](#x1-196044r5)*.
+    The black line shows the true distribution while the bars show the samples we
+    computed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file256.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.5**: Samples from a simple metropolis algorithm'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The efficiency of the algorithm depends heavily on the proposal distribution;
+    if the proposed state is very far away from the current state, the chance of rejection
+    is very high, and if the proposed state is very close, we explore the parameter
+    space very slowly. In both scenarios, we will need many more samples than for
+    a less extreme situation. Usually, the proposal is a multivariate Gaussian distribution
+    whose covariance matrix is determined during the tuning phase. PyMC tunes the
+    covariance adaptively by following the rule of thumb that the ideal acceptance
+    is around 50% for a unidimensional Gaussian and around 23% for an n-dimensional
+    Gaussian target distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MCMC methods often take some time before they start getting samples from the
+    target distribution. So, in practice, people perform a burn-in step, which consists
+    of eliminating the first portion of the samples. Doing a burn-in is a practical
+    trick and not part of the Markovian theory; in fact, it will not be necessary
+    for an infinite sample. Thus, removing the first portion of the samples is just
+    an *ad hoc* trick to get better results, given that we can only compute a finite
+    sample. Having theoretical guarantees or guidance is better than not having them,
+    but for any practical problem, it is important to understand the difference between
+    theory and practice. Remember, we should not get confused by mixing mathematical
+    objects with the approximation of those objects. Spheres, Gaussians, Markov chains,
+    and all the mathematical objects live only in the Platonic world of ideas, not
+    in our imperfect, real world.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At this point, I hope you have a good conceptual grasp of the Metropolis-Hastings
+    method. You may need to go back and read this section a couple of times; that’s
+    totally fine. The main ideas are simple but also subtle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.4.4 Hamiltonian Monte Carlo
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: MCMC methods, including Metropolis-Hastings, come with the theoretical guarantee
+    that if we take enough samples, we will get an accurate approximation of the correct
+    distribution. However, in practice, it could take more time than we have to get
+    enough samples. For that reason, alternatives to the Metropolis-Hastings algorithm
+    have been proposed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many of those alternative methods, such as the Metropolis-Hastings algorithm
+    itself, were developed originally to solve problems in statistical mechanics,
+    a branch of physics that studies properties of atomic and molecular systems, and
+    thus can be interpreted in a very natural way using analogies of physical systems.
+    One such modification is known as **Hamiltonian Monte Carlo**, or **Hybrid** **Monte
+    Carlo** (**HMC**). In simple terms, a Hamiltonian is a description of the total
+    energy of a physical system. The term *hybrid* is also used because it was originally
+    conceived as a hybridization of Metropolis-Hastings and molecular mechanics, a
+    widely used simulation technique for molecular systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Conceptually, we can think of the HMC method as a Metropolis-Hastings but with
+    a proposal distribution that is not random. To get a general conceptual understanding
+    of HMC without going into the mathematical details, let’s use the lake and boat
+    analogy again. Instead of moving the boat randomly, we do so by following the
+    curvature of the bottom of the lake. To decide where to move the boat, we let
+    a ball roll onto the bottom of the lake starting from our current position. Our
+    ball is a very special one: not only is it perfectly spherical, it also has no
+    friction and thus is not slowed down by the water or mud. We throw the ball and
+    let it roll for a short moment until we suddenly stop it. Then we accept or reject
+    this proposed step using the Metropolis criteria, just as we did in the vanilla
+    Metropolis-Hastings method. Then the whole procedure is repeated many times. Nicely,
+    this modified procedure results in a higher chance of accepting new positions,
+    even if they are far away relative to the previous position.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Moving according to the curvature of the parameter space turns out to be a
+    smarter way of moving because it avoids one of the main drawbacks of Metropolis-Hastings:
+    an efficient exploration of the sample space requires rejecting most of the proposed
+    steps. Instead, using HMC, it is possible to get a high acceptance rate even for
+    faraway points in the parameter space, thus resulting in a very efficient sampling
+    method.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s get out of our Gedankenexperiment and back to the real world. We have
+    to pay a price for this very clever Hamiltonian-based proposal. We need to compute
+    the gradients of our function. A gradient is the generalization of the concept
+    of the derivative to more than one dimension; computing the derivative of a function
+    at one point tells us in which direction the function increases and in which direction
+    it decreases. We can use gradient information to simulate the ball moving in a
+    curved space; in fact, we use the same laws of motion and mathematical machinery
+    used in classical physics to simulate classical mechanical systems, such as balls
+    rolling, the orbits in planetary systems, and the jiggling of molecules.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Computing gradients make us face a trade-off; each HMC step is more expensive
+    to compute than a Metropolis-Hastings step, but the probability of accepting that
+    step is much higher with HMC than with Metropolis. To balance this trade-off in
+    favor of HMC, we need to tune a few parameters of the HMC model (in a similar
+    fashion to how we need to tune the width of the proposal distribution for an efficient
+    Metropolis-Hastings sampler). When this tuning is done by hand, it takes some
+    trial and error and also requires an experienced user, making this procedure a
+    less universal inference engine than we may want. Luckily for us, modern probabilistic
+    programming languages come equipped with efficient adaptive Hamiltonian Monte
+    Carlo methods, such as the NUTS sampler in PyMC. This method has proven remarkably
+    useful and efficient for solving Bayesian models without requiring human intervention
+    (or at least minimizing it).
+  prefs: []
+  type: TYPE_NORMAL
+- en: One caveat of Hamiltonian Monte Carlo methods is that they only work for continuous
+    distribution; the reason is that we cannot compute gradients for discrete distribution.
+    PyMC solves this problem by assigning NUTS to continuous parameters and other
+    samplers to other parameters, such as PGBART for BART random variables or Metropolis
+    to discrete ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: JAX-Based Sampling
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'JAX is a library designed to provide high-performance numerical computing and
+    automatic differentiation for complex mathematical operations. PyMC use a Python
+    version of NUTS. But you can also use JAX-based implementations of this sampler.
+    Depending on your model, these samplers can be much faster than the default NUTS
+    sampler from PyMC. To used them we need to specify the argument `nuts_sampler`
+    for `pm.sample()`. The currently supported options are `"nutpie"`, `"blackjax"`,
+    and `"numpyro"`. None of these three samples comes installed with PyMC by default,
+    so you will need to install them. For CPUs, nutpie is probably the faster option
+    available: [https://github.com/pymc-devs/nutpie](https://github.com/pymc-devs/nutpie).
+    In this book, we used nutpie to sample from GPs – see the Jupyter notebooks for
+    *Chapter [8](CH08.xhtml#x1-1560008)*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'I strongly recommend you complement this section with this very cool application
+    by Chi Feng: [https://chi-feng.github.io/mcmc-demo](https://chi-feng.github.io/mcmc-demo).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.5 Sequential Monte Carlo
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One of the caveats of Metropolis-Hastings and NUTS (and other Hamiltonian Monte
+    Carlo variants) is that if the posterior has multiple peaks and these peaks are
+    separated by regions of very low probability, these methods can get stuck in a
+    single mode and miss the others!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many of the methods developed to overcome this multiple minima problem are based
+    on the idea of tempering. This idea, once again, is borrowed from statistical
+    mechanics. The number of states a physical system can populate depends on the
+    temperature of the system; at 0 Kelvin (the lowest possible temperature), every
+    system is stuck in a single state. On the other extreme, for an infinite temperature,
+    all possible states are equally likely. Generally, we are interested in systems
+    at some intermediate temperature. For Bayesian models, there is a very intuitive
+    way to adapt this tempering idea by writing Bayes’ theorem with a twist.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ β p(θ | y)β = p(y | θ) p(θ) ](img/file257.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The parameter *β* is known as the inverse temperature or tempering parameter.
+    Notice that for *β* = 0 we get *p*(*y*|*θ*)^(*β*) = 1 and thus the tempered posterior
+    *p*(*θ*|*y*)[*β*] is just the prior *p*(*θ*), and when *β* = 1 the *tempered*
+    posterior is the actual full posterior. As sampling from the prior is generally
+    easier than sampling from the posterior (by increasing the value of *β*), we start
+    sampling from an easier distribution and slowly morph it into the more complex
+    distribution we really care about.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are many methods that exploit this idea; one of them is known as **Sequential
+    Monte Carlo** (**SMC**). The SMC method, as implemented in PyMC, can be summarized
+    as follows (also see *Figure [10.6](#x1-198018r6)*):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Initialize *β* at 0.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Generate *N* samples *S*[*β*] from the tempered posterior.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Increase *β* a *little bit*.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Compute a set of *N* weights *W*. The weights are computed according to the
+    new tempered posterior.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Obtain *S*[*w*] by resampling *S*[*b*] according to *W*.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Run *N* Metropolis chains, starting each one from a different sample in *S*[*w*].
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Repeat from step 3 until *β* ≥ 1.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![PIC](img/file258.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.6**: Schematic representation of SMC'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The resampling step works by removing samples with a low probability and replacing
+    them with samples with a higher probability. The Metropolis step perturbs these
+    samples, helping to explore the parameter space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The efficiency of the tempered method depends heavily on the intermediate values
+    of *β*, which is usually referred to as the cooling schedule. The smaller the
+    difference between two successive values of *β*, the closer the two successive
+    tempered posteriors will be, and thus the easier the transition from one stage
+    to the next. But if the steps are too small, we will need many intermediate stages,
+    and beyond some point, this will translate into wasting a lot of computational
+    resources without really improving the accuracy of the results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, SMC can automatically compute the intermediate values of *β*. The
+    exact cooling schedule will be adapted to the difficulty of the problem; distributions
+    that are more difficult to sample will require more stages than simpler ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the top of *Figure [10.6](#x1-198018r6)*, we have nine samples or particles
+    (gray dots) that we obtained from the prior, represented as the very wide distribution
+    on top of everything (stage 0). For the rest of the stages, we re-weight the samples
+    from the previous stage according to their tempered posterior density. And then
+    we resample proportional to those weights. As a result, some particles are lost
+    and replaced by other samples, so the total number is fixed. We then mutate the
+    sample, that is, we apply one or more MCMC steps to the particles. We then increase
+    *β* and repeat. When we reach *β* = 1, the particles (or samples) will be distributed
+    as the posterior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Besides the intermediate values of *β*, two more parameters are dynamically
+    computed based on the acceptance rate of the previous stage: the number of steps
+    of each Markov chain and the width of the proposal distribution.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.6 Diagnosing the samples
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this book, we have used numerical methods to compute the posterior for virtually
+    all models. That will most likely be the case for you, too, when using Bayesian
+    methods for your own problems. Since we are approximating the posterior with a
+    finite number of samples, it is important to check whether we have a valid sample;
+    otherwise, any analysis from it will be totally flawed. There are several tests
+    we can perform, some of which are visual and others quantitative. These tests
+    are designed to spot problems with our samples, but they are unable to prove we
+    have the correct distribution; they can only provide evidence that the sample
+    seems reasonable. If we find problems with the sample, there are many solutions
+    to try. We will discuss them along with the diagnostics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To make the explanations concrete, we are going to use minimalist models, with
+    two parameters: a global parameter *a* and a group parameter *b*. And that’s it,
+    we do not even have likelihood/data in these models!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 10.4**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The difference between `model_c` and `model_nc` models is that for the former,
+    we fit the group-level parameter directly, and for the latter, we model the group-level
+    parameter as a shifted and scaled Gaussian.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These two models may look too artificial to you, or just weird. However, it
+    is important to notice that these two models have essentially the same structure
+    as the centered and non-centered parametrization we already discussed in *Chapter
+    [4](CH04.xhtml#x1-760004)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the discussion in that chapter, we should expect better samples from `model_nc`
+    than from `model_c`. Let’s check if our expectations hold.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.7 Convergence
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Theoretically, MCMC methods are guaranteed to converge once we take infinite
+    samples. In practice, we need to check that we have reasonable finite samples.
+    Usually, we say the sampler has converged once we have collected evidence showing
+    that samples are *stable* in some sense. A simple test to do is to run the same
+    MCMC simulation multiple times and check whether we get the same result every
+    time. This is the reason why PyMC runs more by default than on chain. For modern
+    computers, this is virtually free as we have multiple cores. Also, they do not
+    create any waste, as we can combine samples from different chains to compute summaries,
+    plots, etc.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are many ways to check that different chains are practically equivalent,
+    both visually and with formal tests. We are not going to get too technical here;
+    we are just going to show a few examples and hope they are enough for you to develop
+    an intuition for interpreting diagnostics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.7.1 Trace plot
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: One way to check for convergence is to visually check whether chains look similar.
+    For instance, we can use ArviZ’s `plot_trace` function. To better understand what
+    we should look for when inspecting these plots, let’s compare the results for
+    the two previously defined models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The variable `b` is 10-dimensional. For clarity and brevity we are only going
+    to show one of its dimensions. Feel free to visualize all of them on your own
+    computer. *Figure [10.7](#x1-201003r7)* shows many issues. In the left column,
+    we have four KDEs, one per chain. We can see that they look different. This is
+    an indication that each chain is sampling slightly different regions of the posterior.
+    In the right column, we have the trace itself. We also have four lines, one per
+    chain, which can be messy, but still we see that one chain is stuck in the neighborhood
+    of 0 from the first step until almost step 400\. We see something similar at step
+    ≈800.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The issues become even more clear when we compare *Figure [10.7](#x1-201003r7)*
+    with *Figure [10.8](#x1-201004r8)*. For the latter, we see that the KDEs for the
+    four chains look much more similar to each other, and the trace looks much more
+    fuzzy, more like *noise*, and very difficult to see a pattern. We want a curve
+    freely meandering around. When this happens, we say we have **good** **mixing**.
+    We express it like this because it will be difficult to distinguish one chain
+    from the other; they are mixed. This is good because it means that even when we
+    run four (or more) separated chains starting from different points, they all describe
+    the same distribution. This is not proof of convergence but at least we don’t
+    see evidence of non-convergence or poor mixing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file259.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.7**: Trace plot for `model_c`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [10.7](#x1-201003r7)* also has a few black vertical bars at the top
+    that are absent from *Figure [10.8](#x1-201004r8)*. These are divergences; there
+    is a section dedicated to them later in this chapter.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file260.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.8**: Trace plot for `model_nc`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.7.2 Rank plot
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Trace plots can be difficult to read, especially when we have multiple chains
+    as it is easy to miss some details. An alternative is rank plots [[Vehtari et al.](Bibliography.xhtml#Xvehtari_2021), [2021](Bibliography.xhtml#Xvehtari_2021)].
+    To build a rank plot for a given parameter we first take all the samples from
+    all the chains, order them, and assign an integer: this is sample 0, this is 1,
+    this is 2, etc. We then group all the ranks according to the original chains.
+    Finally, we plot as many histograms as chains. If all chains are sampled from
+    the same distribution, we can expect that all chains have the same number of low
+    ranks, high ranks, medium ranks, etc. In other words, a histogram of the rank
+    should be uniform.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To get a rank plot we can call ArviZ’s `plot_trace` with the `kind="rank_bars"`
+    argument. Figures [10.9](#x1-202003r9) and [10.10](#x1-202004r10) are examples
+    of such plots.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file261.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.9**: Rank plot for `model_c`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file262.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.10**: Rank plot for `model_nc`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the left, we have the same KDEs we have already shown. On the right, we have
+    the rank plots. Again the result for `model_nc` looks much better; the deviations
+    from uniformity are very small. On the other hand, we can see a few issues from
+    *Figure [10.9](#x1-202003r9)*; for instance, the histograms for rank 500 or lower
+    look very bad for parameter `a` and also very bad for parameter `b` around the
+    rank 2000\. There are issues in other regions as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.7.3 ![](img/hat_R.png) (R hat)
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A quantitative way of comparing independent chains is by using the ![](img/hat_R.png)
+    statistic. The idea of this test is to compute the variance between chains with
+    the variance within chains. Ideally, we should expect a value of 1\. As an empirical
+    rule, we will be OK with a value below 1.01; higher values signal a lack of convergence.
+    We can compute it using the `az.r_hat` function (see *Table [10.1](#x1-203003r1)*).
+    The ![](img/hat_R.png) diagnostic is also computed by default with the `az.summary`
+    function and optionally with `az.plot_forest` (using the `r_hat=True` argument).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|  | *a* | *b*[0] | *b*[1] | *b*[2] | *b*[3] | *b*[4] | *b*[5] | *b*[6] | *b*[7]
+    | *b*[8] | *b*[9] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| model_c | 1.2 | 1.17 | 1.05 | 1.17 | 1.17 | 1.15 | 1.11 | 1.09 | 1.17 | 1.18
+    | 1.17 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| model_nc | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '**Table 10.1**: ![](img/hat_R.png) values for models `model_c` and `model_ncm`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Values around 1.1 could be OK, at the initial phase of modeling, when you are
+    just checking whether a likelihood makes sense, or just trying to find out which
+    model you really want to build. Also, the threshold 1.01 could be too tight for
+    a model with a lot of parameters. The reason is that even when you really have
+    convergence, you could still get a few ![](img/hat_R.png) values larger than this
+    threshold by chance. For instance, the PyMC-BART package includes the `plot_convergence`
+    function. This function is intended to check the convergence of BART random variables.
+    When using a BART model, you will get one ![](img/hat_R.png) per observation,
+    and that could be a lot. Thus, `plot_convergence` shows the cumulative distribution
+    of ![](img/hat_R.png) values and a threshold that includes a correction for multiple
+    comparisons that is automatically computed by taking into account the number of
+    observations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [10.11](#x1-203005r11)* shows an example of such a plot. On the right,
+    we have a cumulative distribution of ![](img/hat_R.png)s and a gray dashed line
+    showing the adjusted threshold. Ideally, the entire cumulative curve should be
+    to the left of the dashed line. On the left subplot of *Figure [10.11](#x1-203005r11)*,
+    we have the **Effective Sample Size** (**ESS**). We explain the ESS in the next
+    section.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file263.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.11**: Diagnostic plot computed with `pmb.plot_convergence(.)`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.8 Effective Sample Size (ESS)
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: MCMC samples can be correlated. The reason is that we use the current position
+    to generate a new position and we accept or reject the next position taking into
+    account the old position. This dependency is usually lower for well-tuned modern
+    methods, such as Hamiltonian Monte Carlo, but it can be high. We can compute and
+    plot the autocorrelation with `az.plot_autocorrelation`. But usually, a more useful
+    metric is to compute the **Effective Sample Size** (**ESS**). We can think of
+    this number as the number of useful draws we have in our sample. Due to autocorrelation,
+    this number is usually going to be lower than the actual number of samples. We
+    can compute it using the `az.ess` function (see *Table [10.2](#x1-204002r2)*).
+    The ESS diagnostic is also computed by default with the `az.summary` function
+    and optionally with `az.plot_forest` (using the `ess=True` argument).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|  | *a* | *b*[0] | *b*[1] | *b*[2] | *b*[3] | *b*[4] | *b*[5] | *b*[6] | *b*[7]
+    | *b*[8] | *b*[9] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| model_cm | 14 | 339 | 3893 | 5187 | 4025 | 5588 | 4448 | 4576 | 4025 | 4249
+    | 4973 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| model_ncm | 2918 | 4100 | 4089 | 3942 | 3806 | 4171 | 3632 | 4653 | 3975
+    | 4092 | 3647 |'
+  prefs: []
+  type: TYPE_TB
+- en: '**Table 10.2**: ESS values for models `model_c` and `model_ncm`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The rule of thumb is that we need, at least, an effective sample size of 400
+    (100 ESS per chain). If we get values lower than this, not only could our estimates
+    be excessively noisy, but even diagnostics such as ![](img/hat_R.png) might become
+    unreliable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The quality of the MCMC samples can be different from different regions of the
+    posterior. For instance, at least for some problems, it could be easier to sample
+    the bulk of the distribution than its tails. Thus, we may want to compute ESS
+    for different regions of the posterior. The default value returned by `az.ess()`
+    is the bulk-ESS, which estimates how well the center of the distribution was resolved.
+    This is the ESS you need to check if you are interested in values such as the
+    mean or median of a parameter. If you want to report posterior intervals or you
+    are interested in rare events, you should check the value of the tail-ESS, which
+    is computed as the minimum ESS at the percentiles 5 and 95\. If you are interested
+    in specific quantiles, you can ask ArviZ for those specific values using `az.ess(.,
+    method=’quantile’)`. We can even plot the ESS for many quantiles at the same time
+    with the `az.plot_ess(., kind="quantiles"` function, as in *Figure [10.12](#x1-204004r12)*
+    for parameter `a`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file264.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.12**: ESS for quantiles of parameter `a`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, when we are running a model and find out that we have a very low ESS,
+    the first reaction may be to increase the number of samples. Sometimes this is
+    enough. But sometimes even a 10-fold increase is not enough. Instead of trial
+    and error, we could use `az.plot_ess(., kind="evolution"`. This will give us a
+    plot of samples versus ESS, as in *Figure [10.13](#x1-204005r13)*. We can use
+    the information to estimate how many samples we need to reach a given value of
+    ESS. For example, in *Figure [10.13](#x1-204005r13)* we can see that there is
+    not much hope of getting a good ESS value for parameter `a` in `model_c` just
+    by increasing the number of samples. Compare this with `model_nc`, where the ESS
+    for the bulk is very close to the actual number of samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file265.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.13**: Evolution of the ESS for parameter `a`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.9 Monte Carlo standard error
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Even if we have a very low ![](img/hat_R.png) and a very high value of ESS.
+    The samples from MCMC are still finite, and thus we are introducing an error in
+    the estimation of the posterior parameters. Fortunately, we can estimate the error,
+    and it is called the **Monte Carlo Standard Error** (**MCSE**). The estimation
+    of the MCSE takes into account that the samples are not truly independent of each
+    other. The precision we want in our results is limited by this value. If the MCSE
+    for a parameter is 0.2, it does not make sense to report a parameter as 2.54\.
+    Instead, if we repeat the simulation (with a different random seed), we should
+    expect that for 68% of the results, we obtain values in the range 2*.*54 ± 0*.*2\.
+    Similarly, for 95% of them, we should get values in the range 2*.*54 ± 0*.*4\.
+    Here, I am assuming the MCSE distributes normally and then using the fact that
+    ≈ 68% of the value of a Gaussian is within one standard deviation and ≈ 95% is
+    within two standard deviations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ![](img/hat_R.png), ESS, and MCSE are related. In practice, we should use
+    the ESS as a scale-free diagnostic to ensure we have enough useful samples. It
+    is scale-free because it does not matter if one parameter goes from 0 to 1 and
+    another from 0 to 100\. We can compare their ESSs. With ESS, the larger the better,
+    with a minimum of at least 400\. If we have the minimum, we check we have a low
+    enough ![](img/hat_R.png). We can also visually check a rank plot or a trace plot
+    (we should also check for divergences, as we will explain later). If everything
+    looks fine, then we check that we have a low enough MCSE for the parameters and
+    precision we want to report. Hopefully, for most problems, we will have an MCSE
+    that is way below the precision we want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Too Many Digits can Hurt
+  prefs: []
+  type: TYPE_NORMAL
+- en: When reporting results in text, tables, or plots, it is important to be aware
+    that excessive digits can make the numbers difficult to read and comprehend. It
+    is easier to read a number like 0.9 than 0.909297, and it is also easier to retain
+    in working memory. Also note that when a number is reported with more digits than
+    warranted, a technical audience may assume that you are implying a higher level
+    of significance than actually exists. So you will mislead this audience into trying
+    to find meaning in differences that are actually meaningless. Finally, including
+    too many digits can make your figures, tables, and graphs look cluttered and visually
+    overwhelming. So always remember to be aware of the context of the data interests
+    of your audience.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.10 Divergences
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will now explore divergences, a diagnostic that is exclusive to NUTS, as
+    it is based on the inner workings of the method and not a property of the generated
+    samples. Divergences are a powerful and sensitive method that indicate the sampler
+    has most likely found a region of high curvature in the posterior that cannot
+    be explored properly. A nice feature of divergences is that they usually appear
+    close to the problematic parameter space region, and thus we can use them to identify
+    where the problem may be.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s discuss divergences with a visual aid:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file266.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 10.14**: Pair plot for selected parameters from models `model_c` and
+    `model_nc`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, *Figure [10.14](#x1-206002r14)* shows the following three subplots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The left subplot: We have a scatter plot for two parameters of model `model_c`;
+    namely, one dimension of the parameter `b` (we just picked one at random – feel
+    free to pick a different one), and the logarithm of the parameter `a`. We take
+    the logarithm because `a` is restricted to be positive (it is a scale parameter).
+    Before sampling, PyMC transforms all bounded parameters into unbounded ones. For
+    parameters such as `a`, the transformation is a logarithm. We do the same here
+    because we want to understand what the sampler is *seeing*. OK, so we have a scatter
+    plot where the gray dots are the samples. Look at the shape of the parameter.
+    This shape is known as Neal’s funnel and it is typical in hierarchical models.
+    The black dots are divergences; they are scattered around, but we can see that
+    many of them are around the tip of the funnel. This geometry is problematic for
+    most MCMC methods because it is difficult to tune the sampler in such a way that
+    we can get both good samples from the tip and the top of a funnel. One is a more
+    ”spherical” region, where the sampler can move both up-down and left-right, and
+    the other is ”narrower,” where the sampler has to move more in the up-down direction
+    and very little in the left-right direction.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The middle subplot: We basically have the same as before but for model `model_nc`,
+    now the funnel shape is even more accentuated. But we don’t have divergences.
+    And we already know from previous sections that samples from this model are actually
+    better. What is going on? The key to understanding this is in the model definition.
+    You will notice that for this model, `b` is not actually sampled: `b` is a deterministic
+    variable, a combination of `b_offset` and `a`, and those two are plotted on the
+    last subplot.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The right subplot: We have `b_offset` versus `a`, and we can see that the geometry
+    is more ”spherical”. It is this and not the middle subplot that the sampler is
+    ”seeing.” Because this geometry is easier to sample, we do not get divergences
+    and we get much better diagnostics overall.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Changing the parametrization of a model is a way to remove divergences, but
+    unless you are already aware of an alternative parametrization of your model,
+    it can be very time-consuming to find one. An alternative that is often easy to
+    try is to change the value of `target_accept`, an argument of `pm.sample`. Sometimes
+    you may need both a different parametrization and a different value for `target_accept`.
+    But what is `target_accept`? It is a parameter that controls the tuning of the
+    NUTS sampler in PyMC. It controls the acceptance rate of the proposed samples,
+    which defaults to 0.8\. This means accepting 80% of the proposed samples. The
+    NUTS sampler adaptively adjusts the step size of the Hamiltonian dynamics simulation
+    to achieve the target acceptance rate. 80% is a good default, but for some models,
+    you may want to try larger values like 0.90, 0.95, 0.99, or even 0.999 if you
+    refuse to lose all hope.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.11 Keep calm and keep trying
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'What should we do when diagnostics show problems? We should try to fix them.
+    Sometimes, PyMC will provide suggestions on what to change. Pay attention to those
+    suggestions, and you will save a lot of debugging time. Here, I have listed a
+    few common actions you could take:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Check for typos or other silly mistakes. It is super common even for experts
+    to make ”silly” mistakes. If you misspell the name of a variable, it is highly
+    likely that the model will not even run. But sometimes the mistake is more subtle,
+    and you still get a syntactically valid model that runs, but with the wrong semantics.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Increase the number of samples. This might help for very mild problems, like
+    when you’re close to the target ESS (or MCSE), or when ^*R* is slightly higher
+    than 1.01 but not too much.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Remove some samples from the beginning of the trace. When checking a trace plot,
+    you may observe that a few samples from the first few steps have overall higher
+    or lower values compared to the rest of the trace, which otherwise looks OK. If
+    that’s the case, simply removing those first few samples may be enough. This is
+    known as burn-in, and it was a very common practice in the old days. Modern samplers
+    have reduced the need for it. Also, PyMC already discards the samples from the
+    tuning phase, so this tip is not as useful as it used to be.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Modify sampler parameters, such as increasing the length of the tuning phase,
+    or increasing the `target_accept` parameter for the NUTS sampler.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Transform the data. For example, for linear regression models, centering the
+    covariates (subtracting their means) usually speeds up the sampler and also reduces
+    sampling issues.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Spend some time thinking about your priors. You should not tweak the priors
+    to speed up the sampler or get rid of bad diagnostics. You should use your priors
+    to encode prior knowledge. But it is often the case that when you do that, you
+    also make the sampler’s life much easier. Use tools such as PreliZ and prior predictive
+    checks to help you encode better priors.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Re-parametrize the model, that is, express the model in a different but equivalent
+    way. This is not always easy to do, but for some common models such as hierarchical
+    models, you already know of alternative parametrizations.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 10.12 Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this chapter, we have taken a conceptual walk through some of the most common
+    methods used to compute the posterior distribution. We have put special emphasis
+    on MCMC methods, which are designed to work on any given model (or at least a
+    broad range of models), and thus are sometimes called universal inference engines.
+    These methods are the core of any probabilistic programming language as they allow
+    for automatic inference, letting users concentrate on iterative model design and
+    interpretations of the results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also discussed numerical and visual tests for diagnosing samples. Without
+    good approximations of the posterior distribution, all the advantages and flexibility
+    of the Bayesian framework vanish. Thus, evaluating the quality of the samples
+    is a crucial step before doing any other type of analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 10.13 Exercises
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Use the grid method with other priors; for example, try with `prior = (grid
+    <= 0.5).astype(int)` or `prior = abs(grid - 0.5)`, or try defining your own crazy
+    priors. Experiment with other data, such as increasing the total amount of data
+    or making it more or less even in terms of the number of heads you observe.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the code we use to estimate *π*, keep `N` fixed and re-run the code a couple
+    of times. Notice that the results are different because we are using random numbers,
+    but also check that the errors are more or less in the same order. Try changing
+    the number of `N` points and re-run the code. Can you guesstimate how the number
+    of N points and the error are related? For a better estimation, you may want to
+    modify the code to compute the error as a function of `N`. You can also run the
+    code a few times with the same `N` and compute the mean error and standard deviation
+    of the error. You can plot these results using the `plt.errorbar()` function from
+    Matplotlib. Try using a set of `N`s, such as 100, 1,000, and 10,000; that is,
+    a difference of one order of magnitude or so.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Modify the `dist` argument you pass to the metropolis function; try using the
+    values of the prior from *Chapter [1](CH01.xhtml#x1-160001)*. Compare this code
+    to the grid method; which part should be modified to be able to use it to solve
+    a Bayesian inference problem?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Compare your answer from the previous exercise to this code by Thomas Wiecki:
+    [http://twiecki.github.io/blog/2015/11/10/mcmc-sampling/](http://twiecki.github.io/blog/2015/11/10/mcmc-sampling/)'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Revisit at least a few of the models from previous chapters and run all the
+    diagnostic tools we saw in this chapter.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Revisit the code from all previous chapters, find those with divergences, and
+    try to reduce the number of them.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Join our community Discord space
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Join our Discord community to meet like-minded people and learn alongside more
+    than 5000 members at: [https://packt.link/bayesian](https://packt.link/bayesian)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1.png)'
+  prefs: []
+  type: TYPE_IMG

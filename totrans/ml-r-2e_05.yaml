@@ -1,0 +1,1925 @@
+- en: Chapter 5. Divide and Conquer – Classification Using Decision Trees and Rules
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: While deciding between several job offers with various levels of pay and benefits,
+    many people begin by making lists of pros and cons, and eliminate options based
+    on simple rules. For instance, ''if I have to commute for more than an hour, I
+    will be unhappy.'' Or, ''if I make less than $50k, I won't be able to support
+    my family.'' In this way, the complex and difficult decision of predicting one's
+    future happiness can be reduced to a series of simple decisions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter covers decision trees and rule learners—two machine learning methods
+    that also make complex decisions from sets of simple choices. These methods then
+    present their knowledge in the form of logical structures that can be understood
+    with no statistical knowledge. This aspect makes these models particularly useful
+    for business strategy and process improvement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By the end of this chapter, you will learn:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How trees and rules "greedily" partition data into interesting segments
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The most common decision tree and classification rule learners, including the
+    C5.0, 1R, and RIPPER algorithms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to use these algorithms to perform real-world classification tasks, such
+    as identifying risky bank loans and poisonous mushrooms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We will begin by examining decision trees, followed by a look at classification
+    rules. Then, we will summarize what we've learned by previewing later chapters,
+    which discuss methods that use trees and rules as a foundation for more advanced
+    machine learning techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding decision trees
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Decision tree learners are powerful classifiers, which utilize a **tree structure**
+    to model the relationships among the features and the potential outcomes. As illustrated
+    in the following figure, this structure earned its name due to the fact that it
+    mirrors how a literal tree begins at a wide trunk, which if followed upward, splits
+    into narrower and narrower branches. In much the same way, a decision tree classifier
+    uses a structure of branching decisions, which channel examples into a final predicted
+    class value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To better understand how this works in practice, let's consider the following
+    tree, which predicts whether a job offer should be accepted. A job offer to be
+    considered begins at the **root node**, where it is then passed through **decision
+    nodes** that require choices to be made based on the attributes of the job. These
+    choices split the data across **branches** that indicate potential outcomes of
+    a decision, depicted here as yes or no outcomes, though in some cases there may
+    be more than two possibilities. In the case a final decision can be made, the
+    tree is terminated by **leaf nodes** (also known as **terminal nodes**) that denote
+    the action to be taken as the result of the series of decisions. In the case of
+    a predictive model, the leaf nodes provide the expected result given the series
+    of events in the tree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Understanding decision trees](img/B03905_05_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'A great benefit of decision tree algorithms is that the flowchart-like tree
+    structure is not necessarily exclusively for the learner''s internal use. After
+    the model is created, many decision tree algorithms output the resulting structure
+    in a human-readable format. This provides tremendous insight into how and why
+    the model works or doesn''t work well for a particular task. This also makes decision
+    trees particularly appropriate for applications in which the classification mechanism
+    needs to be transparent for legal reasons, or in case the results need to be shared
+    with others in order to inform future business practices. With this in mind, some
+    potential uses include:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Credit scoring models in which the criteria that causes an applicant to be rejected
+    need to be clearly documented and free from bias
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Marketing studies of customer behavior such as satisfaction or churn, which
+    will be shared with management or advertising agencies
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Diagnosis of medical conditions based on laboratory measurements, symptoms,
+    or the rate of disease progression
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Although the previous applications illustrate the value of trees in informing
+    decision processes, this is not to suggest that their utility ends here. In fact,
+    decision trees are perhaps the single most widely used machine learning technique,
+    and can be applied to model almost any type of data—often with excellent out-of-the-box
+    applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This said, in spite of their wide applicability, it is worth noting some scenarios
+    where trees may not be an ideal fit. One such case might be a task where the data
+    has a large number of nominal features with many levels or it has a large number
+    of numeric features. These cases may result in a very large number of decisions
+    and an overly complex tree. They may also contribute to the tendency of decision
+    trees to overfit data, though as we will soon see, even this weakness can be overcome
+    by adjusting some simple parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Divide and conquer
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Decision trees are built using a heuristic called **recursive partitioning**.
+    This approach is also commonly known as **divide and conquer** because it splits
+    the data into subsets, which are then split repeatedly into even smaller subsets,
+    and so on and so forth until the process stops when the algorithm determines the
+    data within the subsets are sufficiently homogenous, or another stopping criterion
+    has been met.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To see how splitting a dataset can create a decision tree, imagine a bare root
+    node that will grow into a mature tree. At first, the root node represents the
+    entire dataset, since no splitting has transpired. Next, the decision tree algorithm
+    must choose a feature to split upon; ideally, it chooses the feature most predictive
+    of the target class. The examples are then partitioned into groups according to
+    the distinct values of this feature, and the first set of tree branches are formed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Working down each branch, the algorithm continues to divide and conquer the
+    data, choosing the best candidate feature each time to create another decision
+    node, until a stopping criterion is reached. Divide and conquer might stop at
+    a node in a case that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: All (or nearly all) of the examples at the node have the same class
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There are no remaining features to distinguish among the examples
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The tree has grown to a predefined size limit
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'To illustrate the tree building process, let''s consider a simple example.
+    Imagine that you work for a Hollywood studio, where your role is to decide whether
+    the studio should move forward with producing the screenplays pitched by promising
+    new authors. After returning from a vacation, your desk is piled high with proposals.
+    Without the time to read each proposal cover-to-cover, you decide to develop a
+    decision tree algorithm to predict whether a potential movie would fall into one
+    of three categories: **Critical Success**, **Mainstream Hit**, or **Box Office
+    Bust**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To build the decision tree, you turn to the studio archives to examine the
+    factors leading to the success and failure of the company''s 30 most recent releases.
+    You quickly notice a relationship between the film''s estimated shooting budget,
+    the number of A-list celebrities lined up for starring roles, and the level of
+    success. Excited about this finding, you produce a scatterplot to illustrate the
+    pattern:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Divide and conquer](img/B03905_05_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Using the divide and conquer strategy, we can build a simple decision tree
+    from this data. First, to create the tree''s root node, we split the feature indicating
+    the number of celebrities, partitioning the movies into groups with and without
+    a significant number of A-list stars:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Divide and conquer](img/B03905_05_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, among the group of movies with a larger number of celebrities, we can
+    make another split between movies with and without a high budget:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Divide and conquer](img/B03905_05_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: At this point, we have partitioned the data into three groups. The group at
+    the top-left corner of the diagram is composed entirely of critically acclaimed
+    films. This group is distinguished by a high number of celebrities and a relatively
+    low budget. At the top-right corner, majority of movies are box office hits with
+    high budgets and a large number of celebrities. The final group, which has little
+    star power but budgets ranging from small to large, contains the flops.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we wanted, we could continue to divide and conquer the data by splitting
+    it based on the increasingly specific ranges of budget and celebrity count, until
+    each of the currently misclassified values resides in its own tiny partition,
+    and is correctly classified. However, it is not advisable to overfit a decision
+    tree in this way. Though there is nothing to stop us from splitting the data indefinitely,
+    overly specific decisions do not always generalize more broadly. We'll avoid the
+    problem of overfitting by stopping the algorithm here, since more than 80 percent
+    of the examples in each group are from a single class. This forms the basis of
+    our stopping criterion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You might have noticed that diagonal lines might have split the data even more
+    cleanly. This is one limitation of the decision tree's knowledge representation,
+    which uses **axis-parallel splits**. The fact that each split considers one feature
+    at a time prevents the decision tree from forming more complex decision boundaries.
+    For example, a diagonal line could be created by a decision that asks, "is the
+    number of celebrities is greater than the estimated budget?" If so, then "it will
+    be a critical success."
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our model for predicting the future success of movies can be represented in
+    a simple tree, as shown in the following diagram. To evaluate a script, follow
+    the branches through each decision until the script's success or failure has been
+    predicted. In no time, you will be able to identify the most promising options
+    among the backlog of scripts and get back to more important work, such as writing
+    an Academy Awards acceptance speech.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Divide and conquer](img/B03905_05_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Since real-world data contains more than two features, decision trees quickly
+    become far more complex than this, with many more nodes, branches, and leaves.
+    In the next section, you will learn about a popular algorithm to build decision
+    tree models automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The C5.0 decision tree algorithm
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There are numerous implementations of decision trees, but one of the most well-known
+    implementations is the **C5.0 algorithm**. This algorithm was developed by computer
+    scientist J. Ross Quinlan as an improved version of his prior algorithm, **C4.5**,
+    which itself is an improvement over his **Iterative Dichotomiser 3** (**ID3**)
+    algorithm. Although Quinlan markets C5.0 to commercial clients (see [http://www.rulequest.com/](http://www.rulequest.com/)
+    for details), the source code for a single-threaded version of the algorithm was
+    made publically available, and it has therefore been incorporated into programs
+    such as R.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To further confuse matters, a popular Java-based open source alternative to
+    C4.5, titled **J48**, is included in R's `RWeka` package. Because the differences
+    among C5.0, C4.5, and J48 are minor, the principles in this chapter will apply
+    to any of these three methods, and the algorithms should be considered synonymous.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The C5.0 algorithm has become the industry standard to produce decision trees,
+    because it does well for most types of problems directly out of the box. Compared
+    to other advanced machine learning models, such as those described in [Chapter
+    7](ch07.html "Chapter 7. Black Box Methods – Neural Networks and Support Vector
+    Machines"), *Black Box Methods – Neural Networks and Support Vector Machines*,
+    the decision trees built by C5.0 generally perform nearly as well, but are much
+    easier to understand and deploy. Additionally, as shown in the following table,
+    the algorithm''s weaknesses are relatively minor and can be largely avoided:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Strengths | Weaknesses |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: An all-purpose classifier that does well on most problems
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Highly automatic learning process, which can handle numeric or nominal features,
+    as well as missing data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Excludes unimportant features
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Can be used on both small and large datasets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Results in a model that can be interpreted without a mathematical background
+    (for relatively small trees)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: More efficient than other complex models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision tree models are often biased toward splits on features having a large
+    number of levels
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It is easy to overfit or underfit the model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Can have trouble modeling some relationships due to reliance on axis-parallel
+    splits
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Small changes in the training data can result in large changes to decision logic
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Large trees can be difficult to interpret and the decisions they make may seem
+    counterintuitive
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To keep things simple, our earlier decision tree example ignored the mathematics
+    involved in how a machine would employ a divide and conquer strategy. Let's explore
+    this in more detail to examine how this heuristic works in practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choosing the best split
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The first challenge that a decision tree will face is to identify which feature
+    to split upon. In the previous example, we looked for a way to split the data
+    such that the resulting partitions contained examples primarily of a single class.
+    The degree to which a subset of examples contains only a single class is known
+    as **purity**, and any subset composed of only a single class is called **pure**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are various measurements of purity that can be used to identify the best
+    decision tree splitting candidate. C5.0 uses **entropy**, a concept borrowed from
+    information theory that quantifies the randomness, or disorder, within a set of
+    class values. Sets with high entropy are very diverse and provide little information
+    about other items that may also belong in the set, as there is no apparent commonality.
+    The decision tree hopes to find splits that reduce entropy, ultimately increasing
+    homogeneity within the groups.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Typically, entropy is measured in **bits**. If there are only two possible classes,
+    entropy values can range from 0 to 1\. For *n* classes, entropy ranges from 0
+    to *log[2](n)*. In each case, the minimum value indicates that the sample is completely
+    homogenous, while the maximum value indicates that the data are as diverse as
+    possible, and no group has even a small plurality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the mathematical notion, entropy is specified as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Choosing the best split](img/B03905_05_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In this formula, for a given segment of data *(S)*, the term *c* refers to
+    the number of class levels and *p[i]* refers to the proportion of values falling
+    into class level *i*. For example, suppose we have a partition of data with two
+    classes: red (60 percent) and white (40 percent). We can calculate the entropy
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can examine the entropy for all the possible two-class arrangements. If
+    we know that the proportion of examples in one class is *x*, then the proportion
+    in the other class is *(1 – x)*. Using the `curve()` function, we can then plot
+    the entropy for all the possible values of *x*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This results in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Choosing the best split](img/B03905_05_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: As illustrated by the peak in entropy at *x = 0.50*, a 50-50 split results in
+    maximum entropy. As one class increasingly dominates the other, the entropy reduces
+    to zero.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To use entropy to determine the optimal feature to split upon, the algorithm
+    calculates the change in homogeneity that would result from a split on each possible
+    feature, which is a measure known as **information gain**. The information gain
+    for a feature *F* is calculated as the difference between the entropy in the segment
+    before the split *(S[1])* and the partitions resulting from the split *(S[2])*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Choosing the best split](img/B03905_05_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'One complication is that after a split, the data is divided into more than
+    one partition. Therefore, the function to calculate *Entropy(S[2])* needs to consider
+    the total entropy across all of the partitions. It does this by weighing each
+    partition''s entropy by the proportion of records falling into the partition.
+    This can be stated in a formula as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Choosing the best split](img/B03905_05_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In simple terms, the total entropy resulting from a split is the sum of the
+    entropy of each of the *n* partitions weighted by the proportion of examples falling
+    in the partition (*w[i]*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The higher the information gain, the better a feature is at creating homogeneous
+    groups after a split on this feature. If the information gain is zero, there is
+    no reduction in entropy for splitting on this feature. On the other hand, the
+    maximum information gain is equal to the entropy prior to the split. This would
+    imply that the entropy after the split is zero, which means that the split results
+    in completely homogeneous groups.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The previous formulae assume nominal features, but decision trees use information
+    gain for splitting on numeric features as well. To do so, a common practice is
+    to test various splits that divide the values into groups greater than or less
+    than a numeric threshold. This reduces the numeric feature into a two-level categorical
+    feature that allows information gain to be calculated as usual. The numeric cut
+    point yielding the largest information gain is chosen for the split.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Though it is used by C5.0, information gain is not the only splitting criterion
+    that can be used to build decision trees. Other commonly used criteria are **Gini
+    index**, **Chi-Squared statistic**, and **gain ratio**. For a review of these
+    (and many more) criteria, refer to Mingers J. *An Empirical Comparison of Selection
+    Measures for Decision-Tree Induction*. Machine Learning. 1989; 3:319-342.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pruning the decision tree
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A decision tree can continue to grow indefinitely, choosing splitting features
+    and dividing the data into smaller and smaller partitions until each example is
+    perfectly classified or the algorithm runs out of features to split on. However,
+    if the tree grows overly large, many of the decisions it makes will be overly
+    specific and the model will be overfitted to the training data. The process of
+    **pruning** a decision tree involves reducing its size such that it generalizes
+    better to unseen data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One solution to this problem is to stop the tree from growing once it reaches
+    a certain number of decisions or when the decision nodes contain only a small
+    number of examples. This is called **early stopping** or **pre-pruning** the decision
+    tree. As the tree avoids doing needless work, this is an appealing strategy. However,
+    one downside to this approach is that there is no way to know whether the tree
+    will miss subtle, but important patterns that it would have learned had it grown
+    to a larger size.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An alternative, called **post-pruning**, involves growing a tree that is intentionally
+    too large and pruning leaf nodes to reduce the size of the tree to a more appropriate
+    level. This is often a more effective approach than pre-pruning, because it is
+    quite difficult to determine the optimal depth of a decision tree without growing
+    it first. Pruning the tree later on allows the algorithm to be certain that all
+    the important data structures were discovered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The implementation details of pruning operations are very technical and beyond
+    the scope of this book. For a comparison of some of the available methods, see
+    Esposito F, Malerba D, Semeraro G. *A Comparative Analysis of Methods for Pruning
+    Decision Trees*. IEEE Transactions on Pattern Analysis and Machine Intelligence.
+    1997;19: 476-491.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the benefits of the C5.0 algorithm is that it is opinionated about pruning—it
+    takes care of many decisions automatically using fairly reasonable defaults. Its
+    overall strategy is to post-prune the tree. It first grows a large tree that overfits
+    the training data. Later, the nodes and branches that have little effect on the
+    classification errors are removed. In some cases, entire branches are moved further
+    up the tree or replaced by simpler decisions. These processes of grafting branches
+    are known as **subtree raising** and **subtree replacement**, respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Balancing overfitting and underfitting a decision tree is a bit of an art, but
+    if model accuracy is vital, it may be worth investing some time with various pruning
+    options to see if it improves the performance on test data. As you will soon see,
+    one of the strengths of the C5.0 algorithm is that it is very easy to adjust the
+    training options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example – identifying risky bank loans using C5.0 decision trees
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The global financial crisis of 2007-2008 highlighted the importance of transparency
+    and rigor in banking practices. As the availability of credit was limited, banks
+    tightened their lending systems and turned to machine learning to more accurately
+    identify risky loans.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision trees are widely used in the banking industry due to their high accuracy
+    and ability to formulate a statistical model in plain language. Since government
+    organizations in many countries carefully monitor lending practices, executives
+    must be able to explain why one applicant was rejected for a loan while the others
+    were approved. This information is also useful for customers hoping to determine
+    why their credit rating is unsatisfactory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is likely that automated credit scoring models are employed to instantly
+    approve credit applications on the telephone and web. In this section, we will
+    develop a simple credit approval model using C5.0 decision trees. We will also
+    see how the results of the model can be tuned to minimize errors that result in
+    a financial loss for the institution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 1 – collecting data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The idea behind our credit model is to identify factors that are predictive
+    of higher risk of default. Therefore, we need to obtain data on a large number
+    of past bank loans and whether the loan went into default, as well as information
+    on the applicant.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data with these characteristics is available in a dataset donated to the UCI
+    Machine Learning Data Repository ([http://archive.ics.uci.edu/ml](http://archive.ics.uci.edu/ml))
+    by Hans Hofmann of the University of Hamburg. The dataset contains information
+    on loans obtained from a credit agency in Germany.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The dataset presented in this chapter has been modified slightly from the original
+    in order to eliminate some preprocessing steps. To follow along with the examples,
+    download the `credit.csv` file from Packt Publishing's website and save it to
+    your R working directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The credit dataset includes 1,000 examples on loans, plus a set of numeric and
+    nominal features indicating the characteristics of the loan and the loan applicant.
+    A class variable indicates whether the loan went into default. Let's see whether
+    we can determine any patterns that predict this outcome.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 2 – exploring and preparing the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As we did previously, we will import data using the `read.csv()` function.
+    We will ignore the `stringsAsFactors` option and, therefore, use the default value
+    of `TRUE`, as the majority of the features in the data are nominal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The first several lines of output from the `str()` function are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: We see the expected 1,000 observations and 17 features, which are a combination
+    of factor and integer data types.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take a look at the `table()` output for a couple of loan features that
+    seem likely to predict a default. The applicant''s checking and savings account
+    balance are recorded as categorical variables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: The checking and savings account balance may prove to be important predictors
+    of loan default status. Note that since the loan data was obtained from Germany,
+    the currency is recorded in Deutsche Marks (DM).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some of the loan''s features are numeric, such as its duration and the amount
+    of credit requested:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The loan amounts ranged from 250 DM to 18,420 DM across terms of 4 to 72 months
+    with a median duration of 18 months and an amount of 2,320 DM.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `default` vector indicates whether the loan applicant was unable to meet
+    the agreed payment terms and went into default. A total of 30 percent of the loans
+    in this dataset went into default:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: A high rate of default is undesirable for a bank, because it means that the
+    bank is unlikely to fully recover its investment. If we are successful, our model
+    will identify applicants that are at high risk to default, allowing the bank to
+    refuse credit requests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data preparation – creating random training and test datasets
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'As we have done in the previous chapters, we will split our data into two portions:
+    a training dataset to build the decision tree and a test dataset to evaluate the
+    performance of the model on new data. We will use 90 percent of the data for training
+    and 10 percent for testing, which will provide us with 100 records to simulate
+    new applicants.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As prior chapters used data that had been sorted in a random order, we simply
+    divided the dataset into two portions, by taking the first 90 percent of records
+    for training, and the remaining 10 percent for testing. In contrast, the credit
+    dataset is not randomly ordered, making the prior approach unwise. Suppose that
+    the bank had sorted the data by the loan amount, with the largest loans at the
+    end of the file. If we used the first 90 percent for training and the remaining
+    10 percent for testing, we would be training a model on only the small loans and
+    testing the model on the big loans. Obviously, this could be problematic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll solve this problem by using a **random sample** of the credit data for
+    training. A random sample is simply a process that selects a subset of records
+    at random. In R, the `sample()` function is used to perform random sampling. However,
+    before putting it in action, a common practice is to set a **seed** value, which
+    causes the randomization process to follow a sequence that can be replicated later
+    on if desired. It may seem that this defeats the purpose of generating random
+    numbers, but there is a good reason for doing it this way. Providing a seed value
+    via the `set.seed()` function ensures that if the analysis is repeated in the
+    future, an identical result is obtained.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You may wonder how a so-called random process can be seeded to produce an identical
+    result. This is due to the fact that computers use a mathematical function called
+    a **pseudorandom number generator** to create random number sequences that appear
+    to act very random, but are actually quite predictable given knowledge of the
+    previous values in the sequence. In practice, modern pseudorandom number sequences
+    are virtually indistinguishable from true random sequences, but have the benefit
+    that computers can generate them quickly and easily.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following commands use the `sample()` function to select 900 values at
+    random out of the sequence of integers from 1 to 1000\. Note that the `set.seed()`
+    function uses the arbitrary value `123`. Omitting this seed will cause your training
+    and testing split to differ from those shown in the remainder of this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As expected, the resulting `train_sample` object is a vector of 900 random
+    integers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: By using this vector to select rows from the credit data, we can split it into
+    the 90 percent training and 10 percent test datasets we desired. Recall that the
+    dash operator used in the selection of the test records tells R to select records
+    that are not in the specified rows; in other words, the test data includes only
+    the rows that are not in the training sample.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If all went well, we should have about 30 percent of defaulted loans in each
+    of the datasets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: This appears to be a fairly even split, so we can now build our decision tree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If your results do not match exactly, ensure that you ran the command `set.seed(123)`
+    immediately prior to creating the `train_sample` vector.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 3 – training a model on the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will use the C5.0 algorithm in the `C50` package to train our decision tree
+    model. If you have not done so already, install the package with `install.packages("C50")`
+    and load it to your R session, using `library(C50)`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following syntax box lists some of the most commonly used commands to build
+    decision trees. Compared to the machine learning approaches we used previously,
+    the C5.0 algorithm offers many more ways to tailor the model to a particular learning
+    problem, but more options are available. Once the `C50` package has been loaded,
+    the `?C5.0Control` command displays the help page for more details on how to finely-tune
+    the algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Step 3 – training a model on the data](img/B03905_05_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'For the first iteration of our credit approval model, we''ll use the default
+    C5.0 configuration, as shown in the following code. The 17th column in `credit_train`
+    is the `default` class variable, so we need to exclude it from the training data
+    frame, but supply it as the target factor vector for classification:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `credit_model` object now contains a C5.0 decision tree. We can see some
+    basic data about the tree by typing its name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding text shows some simple facts about the tree, including the function
+    call that generated it, the number of features (labeled `predictors`), and examples
+    (labeled `samples`) used to grow the tree. Also listed is the tree size of 57,
+    which indicates that the tree is 57 decisions deep—quite a bit larger than the
+    example trees we've considered so far!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To see the tree''s decisions, we can call the `summary()` function on the model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Step 3 – training a model on the data](img/B03905_05_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The preceding output shows some of the first branches in the decision tree.
+    The first three lines could be represented in plain language as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the checking account balance is unknown or greater than 200 DM, then classify
+    as "not likely to default."
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Otherwise, if the checking account balance is less than zero DM or between one
+    and 200 DM.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: And the credit history is perfect or very good, then classify as "likely to
+    default."
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The numbers in parentheses indicate the number of examples meeting the criteria
+    for that decision, and the number incorrectly classified by the decision. For
+    instance, on the first line, `412/50` indicates that of the 412 examples reaching
+    the decision, 50 were incorrectly classified as not likely to default. In other
+    words, 50 applicants actually defaulted, in spite of the model's prediction to
+    the contrary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Sometimes a tree results in decisions that make little logical sense. For example,
+    why would an applicant whose credit history is very good be likely to default,
+    while those whose checking balance is unknown are not likely to default? Contradictory
+    rules like this occur sometimes. They might reflect a real pattern in the data,
+    or they may be a statistical anomaly. In either case, it is important to investigate
+    such strange decisions to see whether the tree's logic makes sense for business
+    use.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After the tree, the `summary(credit_model)` output displays a confusion matrix,
+    which is a cross-tabulation that indicates the model''s incorrectly classified
+    records in the training data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The Errors output notes that the model correctly classified all but 133 of the
+    900 training instances for an error rate of 14.8 percent. A total of 35 actual
+    no values were incorrectly classified as yes (false positives), while 98 yes values
+    were misclassified as no (false negatives).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision trees are known for having a tendency to overfit the model to the training
+    data. For this reason, the error rate reported on training data may be overly
+    optimistic, and it is especially important to evaluate decision trees on a test
+    dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 4 – evaluating model performance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To apply our decision tree to the test dataset, we use the `predict()` function,
+    as shown in the following line of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This creates a vector of predicted class values, which we can compare to the
+    actual class values using the `CrossTable()` function in the `gmodels` package.
+    Setting the `prop.c` and `prop.r` parameters to `FALSE` removes the column and
+    row percentages from the table. The remaining percentage (`prop.t`) indicates
+    the proportion of records in the cell out of the total number of records:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This results in the following table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Step 4 – evaluating model performance](img/B03905_05_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Out of the 100 test loan application records, our model correctly predicted
+    that 59 did not default and 14 did default, resulting in an accuracy of 73 percent
+    and an error rate of 27 percent. This is somewhat worse than its performance on
+    the training data, but not unexpected, given that a model's performance is often
+    worse on unseen data. Also note that the model only correctly predicted 14 of
+    the 33 actual loan defaults in the test data, or 42 percent. Unfortunately, this
+    type of error is a potentially very costly mistake, as the bank loses money on
+    each default. Let's see if we can improve the result with a bit more effort.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 5 – improving model performance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Our model's error rate is likely to be too high to deploy it in a real-time
+    credit scoring application. In fact, if the model had predicted "no default" for
+    every test case, it would have been correct 67 percent of the time—a result not
+    much worse than our model's, but requiring much less effort! Predicting loan defaults
+    from 900 examples seems to be a challenging problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making matters even worse, our model performed especially poorly at identifying
+    applicants who do default on their loans. Luckily, there are a couple of simple
+    ways to adjust the C5.0 algorithm that may help to improve the performance of
+    the model, both overall and for the more costly type of mistakes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Boosting the accuracy of decision trees
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: One way the C5.0 algorithm improved upon the C4.5 algorithm was through the
+    addition of **adaptive boosting**. This is a process in which many decision trees
+    are built and the trees vote on the best class for each example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The idea of boosting is based largely upon the research by Rob Schapire and
+    Yoav Freund. For more information, try searching the web for their publications
+    or their recent textbook *Boosting: Foundations and Algorithms*. The MIT Press
+    (2012).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As boosting can be applied more generally to any machine learning algorithm,
+    it is covered in detail later in this book in [Chapter 11](ch11.html "Chapter 11. Improving
+    Model Performance"), *Improving Model Performance*. For now, it suffices to say
+    that boosting is rooted in the notion that by combining a number of weak performing
+    learners, you can create a team that is much stronger than any of the learners
+    alone. Each of the models has a unique set of strengths and weaknesses and they
+    may be better or worse in solving certain problems. Using a combination of several
+    learners with complementary strengths and weaknesses can therefore dramatically
+    improve the accuracy of a classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `C5.0()` function makes it easy to add boosting to our C5.0 decision tree.
+    We simply need to add an additional `trials` parameter indicating the number of
+    separate decision trees to use in the boosted team. The `trials` parameter sets
+    an upper limit; the algorithm will stop adding trees if it recognizes that additional
+    trials do not seem to be improving the accuracy. We''ll start with 10 trials,
+    a number that has become the de facto standard, as research suggests that this
+    reduces error rates on test data by about 25 percent:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'While examining the resulting model, we can see that some additional lines
+    have been added, indicating the changes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Across the 10 iterations, our tree size shrunk. If you would like, you can
+    see all 10 trees by typing `summary(credit_boost10)` at the command prompt. It
+    also lists the model''s performance on the training data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The classifier made 34 mistakes on 900 training examples for an error rate
+    of 3.8 percent. This is quite an improvement over the 13.9 percent training error
+    rate we noted before adding boosting! However, it remains to be seen whether we
+    see a similar improvement on the test data. Let''s take a look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting table is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Boosting the accuracy of decision trees](img/B03905_05_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, we reduced the total error rate from 27 percent prior to boosting down
+    to 18 percent in the boosted model. It does not seem like a large gain, but it
+    is in fact larger than the 25 percent reduction we expected. On the other hand,
+    the model is still not doing well at predicting defaults, predicting only *20/33
+    = 61%* correctly. The lack of an even greater improvement may be a function of
+    our relatively small training dataset, or it may just be a very difficult problem
+    to solve.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This said, if boosting can be added this easily, why not apply it by default
+    to every decision tree? The reason is twofold. First, if building a decision tree
+    once takes a great deal of computation time, building many trees may be computationally
+    impractical. Secondly, if the training data is very noisy, then boosting might
+    not result in an improvement at all. Still, if greater accuracy is needed, it's
+    worth giving it a try.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Making mistakes more costlier than others
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Giving a loan out to an applicant who is likely to default can be an expensive
+    mistake. One solution to reduce the number of false negatives may be to reject
+    a larger number of borderline applicants, under the assumption that the interest
+    the bank would earn from a risky loan is far outweighed by the massive loss it
+    would incur if the money is not paid back at all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The C5.0 algorithm allows us to assign a penalty to different types of errors,
+    in order to discourage a tree from making more costly mistakes. The penalties
+    are designated in a **cost matrix**, which specifies how much costlier each error
+    is, relative to any other prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To begin constructing the cost matrix, we need to start by specifying the dimensions.
+    Since the predicted and actual values can both take two values, `yes` or `no`,
+    we need to describe a 2 x 2 matrix, using a list of two vectors, each with two
+    values. At the same time, we''ll also name the matrix dimensions to avoid confusion
+    later on:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Examining the new object shows that our dimensions have been set up correctly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we need to assign the penalty for the various types of errors by supplying
+    four values to fill the matrix. Since R fills a matrix by filling columns one
+    by one from top to bottom, we need to supply the values in a specific order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Predicted no, actual no
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Predicted yes, actual no
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Predicted no, actual yes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Predicted yes, actual yes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Suppose we believe that a loan default costs the bank four times as much as
+    a missed opportunity. Our penalty values could then be defined as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This creates the following matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As defined by this matrix, there is no cost assigned when the algorithm classifies
+    a no or yes correctly, but a false negative has a cost of 4 versus a false positive''s
+    cost of 1\. To see how this impacts classification, let''s apply it to our decision
+    tree using the `costs` parameter of the `C5.0()` function. We''ll otherwise use
+    the same steps as we did earlier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This produces the following confusion matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Making mistakes more costlier than others](img/B03905_05_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Compared to our boosted model, this version makes more mistakes overall: 37
+    percent error here versus 18 percent in the boosted case. However, the types of
+    mistakes are very different. Where the previous models incorrectly classified
+    only 42 and 61 percent of defaults correctly, in this model, 79 percent of the
+    actual defaults were predicted to be non-defaults. This trade resulting in a reduction
+    of false negatives at the expense of increasing false positives may be acceptable
+    if our cost estimates were accurate.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding classification rules
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Classification rules represent knowledge in the form of logical if-else statements
+    that assign a class to unlabeled examples. They are specified in terms of an **antecedent**
+    and a **consequent**; these form a hypothesis stating that "if this happens, then
+    that happens." A simple rule might state, "if the hard drive is making a clicking
+    sound, then it is about to fail." The antecedent comprises certain combinations
+    of feature values, while the consequent specifies the class value to assign when
+    the rule's conditions are met.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Rule learners are often used in a manner similar to decision tree learners.
+    Like decision trees, they can be used for applications that generate knowledge
+    for future action, such as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Identifying conditions that lead to a hardware failure in mechanical devices
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Describing the key characteristics of groups of people for customer segmentation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finding conditions that precede large drops or increases in the prices of shares
+    on the stock market
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: On the other hand, rule learners offer some distinct advantages over trees for
+    some tasks. Unlike a tree, which must be applied from top-to-bottom through a
+    series of decisions, rules are propositions that can be read much like a statement
+    of fact. Additionally, for reasons that will be discussed later, the results of
+    a rule learner can be more simple, direct, and easier to understand than a decision
+    tree built on the same data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As you will see later in this chapter, rules can be generated using decision
+    trees. So, why bother with a separate group of rule learning algorithms? The reason
+    is that decision trees bring a particular set of biases to the task that a rule
+    learner avoids by identifying the rules directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Rule learners are generally applied to problems where the features are primarily
+    or entirely nominal. They do well at identifying rare events, even if the rare
+    event occurs only for a very specific interaction among feature values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Separate and conquer
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Classification rule learning algorithms utilize a heuristic known as **separate
+    and conquer**. The process involves identifying a rule that covers a subset of
+    examples in the training data, and then separating this partition from the remaining
+    data. As the rules are added, additional subsets of the data are separated until
+    the entire dataset has been covered and no more examples remain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One way to imagine the rule learning process is to think about drilling down
+    into the data by creating increasingly specific rules to identify class values.
+    Suppose you were tasked with creating rules to identify whether or not an animal
+    is a mammal. You could depict the set of all animals as a large space, as shown
+    in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Separate and conquer](img/B03905_05_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'A rule learner begins by using the available features to find homogeneous groups.
+    For example, using a feature that indicates whether the species travels via land,
+    sea, or air, the first rule might suggest that any land-based animals are mammals:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Separate and conquer](img/B03905_05_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Do you notice any problems with this rule? If you''re an animal lover, you
+    might have realized that frogs are amphibians, not mammals. Therefore, our rule
+    needs to be a bit more specific. Let''s drill down further by suggesting that
+    mammals must walk on land and have a tail:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Separate and conquer](img/B03905_05_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: An additional rule can be defined to separate out the bats, the only remaining
+    mammal. Thus, this subset can be separated from the other data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An additional rule can be defined to separate out the bats, the only remaining
+    mammal. A potential feature distinguishing bats from the other remaining animals
+    would be the presence of fur. Using a rule built around this feature, we have
+    then correctly identified all the animals:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Separate and conquer](img/B03905_05_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'At this point, since all of the training instances have been classified, the
+    rule learning process would stop. We learned a total of three rules:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Animals that walk on land and have tails are mammals
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the animal does not have fur, it is not a mammal
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Otherwise, the animal is a mammal
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The previous example illustrates how rules gradually consume larger and larger
+    segments of data to eventually classify all instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As the rules seem to cover portions of the data, separate and conquer algorithms
+    are also known as **covering algorithms**, and the resulting rules are called
+    covering rules. In the next section, we will learn how covering rules are applied
+    in practice by examining a simple rule learning algorithm. We will then examine
+    a more complex rule learner, and apply both to a real-world problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The 1R algorithm
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Suppose a television game show has a wheel with ten evenly sized colored slices.
+    Three of the segments were colored red, three were blue, and four were white.
+    Prior to spinning the wheel, you are asked to choose one of these colors. When
+    the wheel stops spinning, if the color shown matches your prediction, you will
+    win a large cash prize. What color should you pick?
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you choose white, you are, of course, more likely to win the prize—this is
+    the most common color on the wheel. Obviously, this game show is a bit ridiculous,
+    but it demonstrates the simplest classifier, **ZeroR**, a rule learner that literally
+    learns no rules (hence the name). For every unlabeled example, regardless of the
+    values of its features, it predicts the most common class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **1R algorithm** (**One Rule** or **OneR**), improves over ZeroR by selecting
+    a single rule. Although this may seem overly simplistic, it tends to perform better
+    than you might expect. As demonstrated in empirical studies, the accuracy of this
+    algorithm can approach that of much more sophisticated algorithms for many real-world
+    tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For an in-depth look at the surprising performance of 1R, see Holte RC. *Very
+    simple classification rules perform well on most commonly used datasets*. Machine
+    Learning. 1993; 11:63-91.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The strengths and weaknesses of the 1R algorithm are shown in the following
+    table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Strengths | Weaknesses |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generates a single, easy-to-understand, human-readable rule of thumb
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Often performs surprisingly well
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Can serve as a benchmark for more complex algorithms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Uses only a single feature
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Probably overly simplistic
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The way this algorithm works is simple. For each feature, 1R divides the data
+    into groups based on similar values of the feature. Then, for each segment, the
+    algorithm predicts the majority class. The error rate for the rule based on each
+    feature is calculated and the rule with the fewest errors is chosen as the one
+    rule.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following tables show how this would work for the animal data we looked
+    at earlier in this section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The 1R algorithm](img/B03905_05_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'For the **Travels By** feature, the dataset was divided into three groups:
+    **Air**, **Land**, and **Sea**. Animals in the **Air** and **Sea** groups were
+    predicted to be non-mammal, while animals in the **Land** group were predicted
+    to be mammals. This resulted in two errors: bats and frogs. The **Has Fur** feature
+    divided animals into two groups. Those with fur were predicted to be mammals,
+    while those without fur were not predicted to be mammals. Three errors were counted:
+    pigs, elephants, and rhinos. As the **Travels By** feature results in fewer errors,
+    the 1R algorithm will return the following "one rule" based on **Travels By**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the animal travels by air, it is not a mammal
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the animal travels by land, it is a mammal
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the animal travels by sea, it is not a mammal
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The algorithm stops here, having found the single most important rule.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obviously, this rule learning algorithm may be too basic for some tasks. Would
+    you want a medical diagnosis system to consider only a single symptom, or an automated
+    driving system to stop or accelerate your car based on only a single factor? For
+    these types of tasks, a more sophisticated rule learner might be useful. We'll
+    learn about one in the following section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The RIPPER algorithm
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Early rule learning algorithms were plagued by a couple of problems. First,
+    they were notorious for being slow, which made them ineffective for the increasing
+    number of large datasets. Secondly, they were often prone to being inaccurate
+    on noisy data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A first step toward solving these problems was proposed in 1994 by Johannes
+    Furnkranz and Gerhard Widmer. Their **Incremental Reduced Error Pruning (IREP)
+    algorithm** uses a combination of pre-pruning and post-pruning methods that grow
+    very complex rules and prune them before separating the instances from the full
+    dataset. Although this strategy helped the performance of rule learners, decision
+    trees often still performed better.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For more information on IREP, see Furnkranz J, Widmer G. *Incremental Reduced
+    Error Pruning*. Proceedings of the 11^(th) International Conference on Machine
+    Learning. 1994: 70-77.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Rule learners took another step forward in 1995 when William W. Cohen introduced
+    the **Repeated Incremental Pruning to Produce Error Reduction (RIPPER) algorithm**,
+    which improved upon IREP to generate rules that match or exceed the performance
+    of decision trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For more detail on RIPPER, see Cohen WW. *Fast effective rule induction*. Proceedings
+    of the 12^(th) International Conference on Machine Learning. 1995:115-123.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As outlined in the following table, the strengths and weaknesses of RIPPER
+    are generally comparable to decision trees. The chief benefit is that they may
+    result in a slightly more parsimonious model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Strengths | Weaknesses |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generates easy-to-understand, human-readable rules
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Efficient on large and noisy datasets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Generally produces a simpler model than a comparable decision tree
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: May result in rules that seem to defy common sense or expert knowledge
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Not ideal for working with numeric data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Might not perform as well as more complex models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Having evolved from several iterations of rule learning algorithms, the RIPPER
+    algorithm is a patchwork of efficient heuristics for rule learning. Due to its
+    complexity, a discussion of the technical implementation details is beyond the
+    scope of this book. However, it can be understood in general terms as a three-step
+    process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Grow
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Prune
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Optimize
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The growing phase uses the separate and conquer technique to greedily add conditions
+    to a rule until it perfectly classifies a subset of data or runs out of attributes
+    for splitting. Similar to decision trees, the information gain criterion is used
+    to identify the next splitting attribute. When increasing a rule's specificity
+    no longer reduces entropy, the rule is immediately pruned. Steps one and two are
+    repeated until it reaches a stopping criterion, at which point the entire set
+    of rules is optimized using a variety of heuristics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The RIPPER algorithm can create much more complex rules than can the 1R algorithm,
+    as in can consider more than one feature. This means that it can create rules
+    with multiple antecedents such as "if an animal flies and has fur, then it is
+    a mammal." This improves the algorithm's ability to model complex data, but just
+    like decision trees, it means that the rules can quickly become more difficult
+    to comprehend.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The evolution of classification rule learners didn't stop with RIPPER. New rule
+    learning algorithms are being proposed rapidly. A survey of literature shows algorithms
+    called IREP++, SLIPPER, TRIPPER, among many others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Rules from decision trees
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Classification rules can also be obtained directly from decision trees. Beginning
+    at a leaf node and following the branches back to the root, you will have obtained
+    a series of decisions. These can be combined into a single rule. The following
+    figure shows how rules could be constructed from the decision tree to predict
+    movie success:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Rules from decision trees](img/B03905_05_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Following the paths from the root node down to each leaf, the rules would be:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the number of celebrities is low, then the movie will be a **Box Office Bust**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the number of celebrities is high and the budget is high, then the movie
+    will be a **Mainstream Hit**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the number of celebrities is high and the budget is low, then the movie will
+    be a **Critical Success**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For reasons that will be made clear in the following section, the chief downside
+    to using a decision tree to generate rules is that the resulting rules are often
+    more complex than those learned by a rule learning algorithm. The divide and conquer
+    strategy employed by decision trees biases the results differently than that of
+    a rule learner. On the other hand, it is sometimes more computationally efficient
+    to generate rules from trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `C5.0()` function in the `C50` package will generate a model using classification
+    rules if you specify `rules = TRUE` when training the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What makes trees and rules greedy?
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Decision trees and rule learners are known as **greedy learners** because they
+    use data on a first-come, first-served basis. Both the divide and conquer heuristic
+    used by decision trees and the separate and conquer heuristic used by rule learners
+    attempt to make partitions one at a time, finding the most homogeneous partition
+    first, followed by the next best, and so on, until all examples have been classified.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The downside to the greedy approach is that greedy algorithms are not guaranteed
+    to generate the optimal, most accurate, or smallest number of rules for a particular
+    dataset. By taking the low-hanging fruit early, a greedy learner may quickly find
+    a single rule that is accurate for one subset of data; however, in doing so, the
+    learner may miss the opportunity to develop a more nuanced set of rules with better
+    overall accuracy on the entire set of data. However, without using the greedy
+    approach to rule learning, it is likely that for all but the smallest of datasets,
+    rule learning would be computationally infeasible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![What makes trees and rules greedy?](img/B03905_05_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Though both trees and rules employ greedy learning heuristics, there are subtle
+    differences in how they build rules. Perhaps the best way to distinguish them
+    is to note that once divide and conquer splits on a feature, the partitions created
+    by the split may not be re-conquered, only further subdivided. In this way, a
+    tree is permanently limited by its history of past decisions. In contrast, once
+    separate and conquer finds a rule, any examples not covered by all of the rule's
+    conditions may be re-conquered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To illustrate this contrast, consider the previous case in which we built a
+    rule learner to determine whether an animal was a mammal. The rule learner identified
+    three rules that perfectly classify the example animals:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Animals that walk on land and have tails are mammals (bears, cats, dogs, elephants,
+    pigs, rabbits, rats, rhinos)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the animal does not has fur, it is not a mammal (birds, eels, fish, frogs,
+    insects, sharks)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Otherwise, the animal is a mammal (bats)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In contrast, a decision tree built on the same data might have come up with
+    four rules to achieve the same perfect classification:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If an animal walks on land and has fur, then it is a mammal (bears, cats, dogs,
+    elephants, pigs, rabbits, rats, rhinos)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If an animal walks on land and does not have fur, then it is not a mammal (frogs)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the animal does not walk on land and has fur, then it is a mammal (bats)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the animal does not walk on land and does not have fur, then it is not a
+    mammal (birds, insects, sharks, fish, eels)![What makes trees and rules greedy?](img/B03905_05_22.jpg)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The different result across these two approaches has to do with what happens
+    to the frogs after they are separated by the "walk on land" decision. Where the
+    rule learner allows frogs to be re-conquered by the "does not have fur" decision,
+    the decision tree cannot modify the existing partitions, and therefore must place
+    the frog into its own rule.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On one hand, because rule learners can reexamine cases that were considered
+    but ultimately not covered as part of prior rules, rule learners often find a
+    more parsimonious set of rules than those generated from decision trees. On the
+    other hand, this reuse of data means that the computational cost of rule learners
+    may be somewhat higher than for decision trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example – identifying poisonous mushrooms with rule learners
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Each year, many people fall ill and sometimes even die from ingesting poisonous
+    wild mushrooms. Since many mushrooms are very similar to each other in appearance,
+    occasionally even experienced mushroom gatherers are poisoned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unlike the identification of harmful plants such as a poison oak or poison ivy,
+    there are no clear rules such as "leaves of three, let them be" to identify whether
+    a wild mushroom is poisonous or edible. Complicating matters, many traditional
+    rules, such as "poisonous mushrooms are brightly colored," provide dangerous or
+    misleading information. If simple, clear, and consistent rules were available
+    to identify poisonous mushrooms, they could save the lives of foragers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Because one of the strengths of rule learning algorithms is the fact that they
+    generate easy-to-understand rules, they seem like an appropriate fit for this
+    classification task. However, the rules will only be as useful as they are accurate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 1 – collecting data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To identify rules for distinguishing poisonous mushrooms, we will utilize the
+    Mushroom dataset by Jeff Schlimmer of Carnegie Mellon University. The raw dataset
+    is available freely at the UCI Machine Learning Repository ([http://archive.ics.uci.edu/ml](http://archive.ics.uci.edu/ml)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The dataset includes information on 8,124 mushroom samples from 23 species
+    of gilled mushrooms listed in *Audubon Society Field Guide to North American Mushrooms*
+    (1981). In the Field Guide, each of the mushroom species is identified "definitely
+    edible," "definitely poisonous," or "likely poisonous, and not recommended to
+    be eaten." For the purposes of this dataset, the latter group was combined with
+    the "definitely poisonous" group to make two classes: poisonous and nonpoisonous.
+    The data dictionary available on the UCI website describes the 22 features of
+    the mushroom samples, including characteristics such as cap shape, cap color,
+    odor, gill size and color, stalk shape, and habitat.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This chapter uses a slightly modified version of the mushroom data. If you plan
+    on following along with the example, download the `mushrooms.csv` file from the
+    Packt Publishing website and save it in your R working directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 2 – exploring and preparing the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We begin by using `read.csv()`, to import the data for our analysis. Since
+    all the 22 features and the target class are nominal, in this case, we will set
+    `stringsAsFactors = TRUE` and take advantage of the automatic factor conversion:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The output of the `str(mushrooms)` command notes that the data contain 8,124
+    observations of 23 variables as the data dictionary had described. While most
+    of the `str()` output is unremarkable, one feature is worth mentioning. Do you
+    notice anything peculiar about the `veil_type` variable in the following line?
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you think it is odd that a factor has only one level, you are correct. The
+    data dictionary lists two levels for this feature: partial and universal. However,
+    all the examples in our data are classified as partial. It is likely that this
+    data element was somehow coded incorrectly. In any case, since the veil type does
+    not vary across samples, it does not provide any useful information for prediction.
+    We will drop this variable from our analysis using the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: By assigning `NULL` to the veil type vector, R eliminates the feature from the
+    `mushrooms` data frame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before going much further, we should take a quick look at the distribution
+    of the mushroom `type` class variable in our dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: About 52 percent of the mushroom samples (*N = 4,208*) are edible, while 48
+    percent (*N = 3,916*) are poisonous.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the purposes of this experiment, we will consider the 8,214 samples in the
+    mushroom data to be an exhaustive set of all the possible wild mushrooms. This
+    is an important assumption, because it means that we do not need to hold some
+    samples out of the training data for testing purposes. We are not trying to develop
+    rules that cover unforeseen types of mushrooms; we are merely trying to find rules
+    that accurately depict the complete set of known mushroom types. Therefore, we
+    can build and test the model on the same data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 3 – training a model on the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If we trained a hypothetical ZeroR classifier on this data, what would it predict?
+    Since ZeroR ignores all of the features and simply predicts the target's mode,
+    in plain language, its rule would state that all the mushrooms are edible. Obviously,
+    this is not a very helpful classifier, because it would leave a mushroom gatherer
+    sick or dead with nearly half of the mushroom samples bearing the possibility
+    of being poisonous. Our rules will need to do much better than this in order to
+    provide safe advice that can be published. At the same time, we need simple rules
+    that are easy to remember.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since simple rules can often be extremely predictive, let's see how a very simple
+    rule learner performs on the mushroom data. Toward the end, we will apply the
+    1R classifier, which will identify the most predictive single feature of the target
+    class and use it to construct a set of rules.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will use the 1R implementation in the `RWeka` package called `OneR()`. You
+    may recall that we had installed `RWeka` in [Chapter 1](ch01.html "Chapter 1. Introducing
+    Machine Learning"), *Introducing Machine Learning*, as a part of the tutorial
+    on installing and loading packages. If you haven''t installed the package per
+    these instructions, you will need to use the `install.packages("RWeka")` command
+    and have Java installed on your system (refer to the installation instructions
+    for more details). With these steps complete, load the package by typing `library(RWeka)`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Step 3 – training a model on the data](img/B03905_05_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The `OneR()` implementation uses the R formula syntax to specify the model to
+    be trained. The formula syntax uses the `~` operator (known as the tilde) to express
+    the relationship between a target variable and its predictors. The class variable
+    to be learned goes to the left of the tilde, and the predictor features are written
+    on the right, separated by `+` operators. If you like to model the relationship
+    between the `y` class and predictors `x1` and `x2`, you could write the formula
+    as `y ~ x1 + x2`. If you like to include all the variables in the model, the special
+    term `.` can be used. For example, `y ~ .` specifies the relationship between
+    `y` and all the other features in the dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The R formula syntax is used across many R functions and offers some powerful
+    features to describe the relationships among predictor variables. We will explore
+    some of these features in the later chapters. However, if you're eager for a sneak
+    peek, feel free to read the documentation using the `?formula` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using the `type ~ .` formula, we will allow our first `OneR()` rule learner
+    to consider all the possible features in the mushroom data while constructing
+    its rules to predict type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To examine the rules it created, we can type the name of the classifier object,
+    in this case, `mushroom_1R`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the first line of the output, we see that the odor feature was selected
+    for rule generation. The categories of odor, such as almond, anise, and so on,
+    specify rules for whether the mushroom is likely to be edible or poisonous. For
+    instance, if the mushroom smells fishy, foul, musty, pungent, spicy, or like creosote,
+    the mushroom is likely to be poisonous. On the other hand, mushrooms with more
+    pleasant smells like almond and anise, and those with no smell at all are predicted
+    to be edible. For the purposes of a field guide for mushroom gathering, these
+    rules could be summarized in a simple rule of thumb: "if the mushroom smells unappetizing,
+    then it is likely to be poisonous."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 4 – evaluating model performance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The last line of the output notes that the rules correctly predicted the edibility
+    of 8,004 of the 8,124 mushroom samples or nearly 99 percent of the mushroom samples.
+    We can obtain additional details about the classifier using the `summary()` function,
+    as shown in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: The section labeled `Summary` lists a number of different ways to measure the
+    performance of our 1R classifier. We will cover many of these statistics later
+    on in [Chapter 10](ch10.html "Chapter 10. Evaluating Model Performance"), *Evaluating
+    Model Performance*, so we will ignore them for now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The section labeled `Confusion Matrix` is similar to those used before. Here,
+    we can see where our rules went wrong. The key is displayed on the right, with
+    `a = edible` and `b = poisonous`. Table columns indicate the predicted class of
+    the mushroom while the table rows separate the 4,208 edible mushrooms from the
+    3,916 poisonous mushrooms. Examining the table, we can see that although the 1R
+    classifier did not classify any edible mushrooms as poisonous, it did classify
+    120 poisonous mushrooms as edible—which makes for an incredibly dangerous mistake!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Considering that the learner utilized only a single feature, it did reasonably
+    well; if one avoids unappetizing smells when foraging for mushrooms, they will
+    almost avoid a trip to the hospital. That said, close does not cut it when lives
+    are involved, not to mention the field guide publisher might not be happy about
+    the prospect of a lawsuit when its readers fall ill. Let's see if we can add a
+    few more rules and develop an even better classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 5 – improving model performance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'For a more sophisticated rule learner, we will use `JRip()`, a Java-based implementation
+    of the RIPPER rule learning algorithm. As with the 1R implementation we used previously,
+    `JRip()` is included in the `RWeka` package. If you have not done so yet, be sure
+    to load the package using the `library(RWeka)` command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Step 5 – improving model performance](img/B03905_05_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: As shown in the syntax box, the process of training a `JRip()` model is very
+    similar to how we previously trained a `OneR()` model. This is one of the pleasant
+    benefits of the functions in the `RWeka` package; the syntax is consistent across
+    algorithms, which makes the process of comparing a number of different models
+    very simple.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s train the `JRip()` rule learner as we did with `OneR()`, allowing it
+    to choose rules from all the available features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To examine the rules, type the name of the classifier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `JRip()` classifier learned a total of nine rules from the mushroom data.
+    An easy way to read these rules is to think of them as a list of if-else statements,
+    similar to programming logic. The first three rules could be expressed as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the odor is foul, then the mushroom type is poisonous
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the gill size is narrow and the gill color is buff, then the mushroom type
+    is poisonous
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If the gill size is narrow and the odor is pungent, then the mushroom type is
+    poisonous
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Finally, the ninth rule implies that any mushroom sample that was not covered
+    by the preceding eight rules is edible. Following the example of our programming
+    logic, this can be read as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Else, the mushroom is edible
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The numbers next to each rule indicate the number of instances covered by the
+    rule and a count of misclassified instances. Notably, there were no misclassified
+    mushroom samples using these nine rules. As a result, the number of instances
+    covered by the last rule is exactly equal to the number of edible mushrooms in
+    the data (*N = 4,208*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following figure provides a rough illustration of how the rules are applied
+    to the mushroom data. If you imagine everything within the oval as all the species
+    of mushroom, the rule learner identified features or sets of features, which separate
+    homogeneous segments from the larger group. First, the algorithm found a large
+    group of poisonous mushrooms uniquely distinguished by their foul odor. Next,
+    it found smaller and more specific groups of poisonous mushrooms. By identifying
+    covering rules for each of the varieties of poisonous mushrooms, all of the remaining
+    mushrooms were found to be edible. Thanks to Mother Nature, each variety of mushrooms
+    was unique enough that the classifier was able to achieve 100 percent accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Step 5 – improving model performance](img/B03905_05_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter covered two classification methods that use so-called "greedy"
+    algorithms to partition the data according to feature values. Decision trees use
+    a divide and conquer strategy to create flowchart-like structures, while rule
+    learners separate and conquer data to identify logical if-else rules. Both methods
+    produce models that can be interpreted without a statistical background.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One popular and highly configurable decision tree algorithm is C5.0\. We used
+    the C5.0 algorithm to create a tree to predict whether a loan applicant will default.
+    Using options for boosting and cost-sensitive errors, we were able to improve
+    our accuracy and avoid risky loans that would cost the bank more money.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also used two rule learners, 1R and RIPPER, to develop rules to identify
+    poisonous mushrooms. The 1R algorithm used a single feature to achieve 99 percent
+    accuracy in identifying potentially fatal mushroom samples. On the other hand,
+    the set of nine rules generated by the more sophisticated RIPPER algorithm correctly
+    identified the edibility of each mushroom.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter merely scratched the surface of how trees and rules can be used.
+    In [Chapter 6](ch06.html "Chapter 6. Forecasting Numeric Data – Regression Methods"),
+    *Forecasting Numeric Data – Regression Methods*, we will learn techniques known
+    as regression trees and model trees, which use decision trees for numeric prediction
+    rather than classification. In [Chapter 11](ch11.html "Chapter 11. Improving Model
+    Performance"), *Improving Model Performance*, we will discover how the performance
+    of decision trees can be improved by grouping them together in a model known as
+    a random forest. In [Chapter 8](ch08.html "Chapter 8. Finding Patterns – Market
+    Basket Analysis Using Association Rules"), *Finding Patterns – Market Basket Analysis
+    Using Association Rules*, we will see how association rules—a relative of classification
+    rules—can be used to identify groups of items in transactional data.
+  prefs: []
+  type: TYPE_NORMAL

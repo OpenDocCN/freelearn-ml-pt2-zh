@@ -1,0 +1,530 @@
+- en: Recommending Movies with Keras
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Recommendation systems are an invaluable tool. They are able to increase both
+    customer experience and a company's profitability. Such systems work by recommending
+    items that users will probably like, based on other items they have already liked.
+    For example, when shopping for a smartphone on Amazon, accessories for that specific
+    smartphone will be recommended. This improves the customer's experience (as they
+    do not need to search for accessories), while it also increases Amazon's profits
+    (for example, if the user did not know that there are accessories available for
+    sale).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Demystifying recommendation systems
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Neural recommendation systems
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using Keras for movie recommendations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this chapter, we will utilize the MovieLens dataset (available at [http://files.grouplens.org/datasets/movielens/ml-latest-small.zip](http://files.grouplens.org/datasets/movielens/ml-latest-small.zip))
+    in order to create a movie recommendation system using the Keras deep learning
+    framework and ensemble learning techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We would like to thank the GroupLens members for giving us permission to use
+    their data in this book. For more information about the data, please read the
+    following relevant paper:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'F. Maxwell Harper and Joseph A. Konstan. 2015. *The MovieLens Datasets: History
+    and Context*. ACM Transactions on Interactive Intelligent Systems (TiiS) 5, 4,
+    Article 19 (December 2015), 19 pages.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[The paper is available at: http://dx.doi.org/10.1145/2827872](http://dx.doi.org/10.1145/2827872)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will require basic knowledge of machine learning techniques and algorithms.
+    Furthermore, a knowledge of python conventions and syntax is required. Finally,
+    familiarity with the NumPy library will greatly help the reader to understand
+    some custom algorithm implementations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code files of this chapter can be found on GitHub:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter12](https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter12)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Check out the following video to see the Code in Action: [http://bit.ly/2NXZqVE](http://bit.ly/2NXZqVE).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Demystifying recommendation systems
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Although the inner workings of recommendation systems may seem intimidating
+    at first, they are actually quite intuitive. Let''s take an example of various
+    movies and users. Each user has the option to rate a movie on a scale of 1 to
+    5\. The recommendation system will try to find users with similar preferences
+    to a new user, and will then recommend movies that the new user will probably
+    like, as similar users also like them. Let''s take the following simple example,
+    consisting of four users and six movies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **User** | **Interstellar** | **2001: A Space Odyssey** | **The Matrix**
+    | **Full Metal Jacket** | **Jarhead** | **Top Gun** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| U0 | 5 | 4 |  | 2 | 1 |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| U1 |  | 1 |  | 4 | 4 | 3 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| U2 | 4 |  | 4 |  |  | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| U3 |  | 4 | 5 | 5 | 4 |  |'
+  prefs: []
+  type: TYPE_TB
+- en: Ratings for each movie from each user
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As is evident, each user has rated a number of movies, although not all users
+    watched the same movies and each user liked different movies. If we want to recommend
+    a movie to **user two** (**U2**), we must first find the most similar users. We
+    can then make predictions in a **k-Nearest Neighbor** (**k-NN**) fashion, using
+    the *K* most similar users. Of course, we can see that the user probably likes
+    sci-fi films, but we need a quantitative method to measure it. If we treat each
+    user''s preferences as a vector, we have four vectors of six elements. We can
+    then compute the cosine between any two vectors. If the vectors align perfectly,
+    the cosine will be 1, indicating a perfect equality. If the vectors are completely
+    opposite, it will be -1, indicating a perfect disagreement between the two users''
+    preferences. The only problem that arises is the fact that not all movies have
+    been rated by each user. We can fill empty entries with zeros, in order to compute
+    the cosine similarities. The following graph shows the cosine similarities between
+    the users:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/387799cc-8a62-41af-ad61-84416098f610.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Cosine similarities between users
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We notice that users U0 and U3 exhibit a high level of similarity with U2\.
+    The problem is that U0 also exhibits high similarity with U1, although their ratings
+    are complete opposites. This is due to the fact that we fill any non-rated movie
+    with 0, meaning all users who have not watched a movie agree that they do not
+    like it. This can be remedied by first subtracting the mean of each user''s ratings
+    from their ratings. This normalizes the values and centers them around 0\. Following
+    this, we assign 0 to any movie the user has not yet rated. This indicates that
+    the user is indifferent toward this movie and the user''s mean rating is not altered.
+    By computing the centered cosine similarity, we get the following values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/814c6255-6afd-4803-a455-f18e7dc4b21e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Centered cosine similarities between users
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now see that U2 is similar to U0 and U3, while U1 and U0 are quite dissimilar.
+    In order to compute a prediction about movies that U2 has not seen, but that the
+    nearest *K* neighbors have seen, we will compute the weighted average for each
+    movie, using the cosine similarities as weights. We only do this for movies that
+    all similar users have rated, but that the target user has not rated yet. This
+    gives us the following predicted ratings. If we were to recommend a single movie
+    to U2, we would recommend *2001: A Space Odyssey*, a sci-fi film, as we speculated
+    earlier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Interstellar** | **2001: A Space Odyssey** | **The Matrix** | **Full Metal
+    Jacket** | **Jarhead** | **Top Gun** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| - | 4.00 | - | 3.32 | 2.32 | - |'
+  prefs: []
+  type: TYPE_TB
+- en: Predicted ratings for user U2
+  prefs: []
+  type: TYPE_NORMAL
+- en: This recommendation method is called **collaborative filtering**. When we search
+    for similar users, as we did in this small example, it is called **user-user filtering**.
+    We can also apply this method to search for similar items by transposing the ratings
+    table. This is called **item-item filtering**, and it usually performs better
+    in real-world applications. This is due to the fact that items usually belong
+    to more well-defined categories, when compared to users. For example, a movie
+    can be an action movie, a thriller, a documentary, or a comedy with little overlap
+    between the genres. A user may like a certain mix of those categories; thus, it
+    is easier to find similar movies, rather than similar users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Neural recommendation systems
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Instead of explicitly defining similarity metrics, we can utilize deep learning
+    techniques in order to learn good representations and mappings of the feature
+    space. There are a number of ways to employ neural networks in order to build
+    recommendation systems. In this chapter, we will present two of the simplest ways
+    to do so in order to demonstrate the ability to incorporate ensemble learning
+    into the system. The most important piece that we will utilize in our networks
+    is the embedding layer. These layer types accept an integer index as input and
+    map it to an n-dimensional space. For example, a two-dimensional mapping could
+    map 1 to [0.5, 0.5]. Utilizing these layers, we will be able to feed the user's
+    index and the movie's index to our network, and the network will predict the rating
+    for the specific user-movie combination.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first architecture that we will test consists of two embedding layers,
+    where we will multiply their outputs using a dot product, in order to predict
+    the user''s rating of the movie. The architecture is depicted in the following
+    diagram. Although it is not a traditional neural network, we will utilize backpropagation
+    in order to train the parameters of the two embedding layers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/813302e0-f9b1-4198-94ec-2dabd06b1515.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Simple dot product architecture
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The second architecture is a more traditional neural network. Instead of relying
+    on a predefined operation to combine the outputs of the embedding layers (the
+    dot product), we will allow the network to find the optimal way to combine them.
+    Instead of a dot product, we will feed the output of the embedding layers to a
+    series of fully-connected (**dense**) layers. The architecture is depicted in
+    the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5598ed5a-7097-49cd-8f2e-b1dfc95f9543.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The fully connected architecture
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to train the networks, we will utilize the Adam optimizer, and we will
+    use the **mean squared error** (**MSE**) as a loss function. Our goal will be
+    to predict the ratings of movies for any given user as accurately as possible.
+    As the embedding layers have a predetermined output dimension, we will utilize
+    a number of networks with different dimensions in order to create a stacking ensemble.
+    Each individual network will be a separate base learner, and a relatively simple
+    machine learning algorithm will be utilized in order to combine the individual
+    predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Keras for movie recommendations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this section, we will utilize Keras as a deep learning framework in order
+    to build our models. Keras can easily be installed by using either `pip` (`pip
+    install keras`) or `conda` (`conda install -c conda-forge keras`). In order to
+    build the neural networks, we must first understand our data. The MovieLens dataset
+    consists of almost 100,000 samples and 4 different variables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`userId`: A numeric index corresponding to a specific user'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`movieId`: A numeric index corresponding to a specific movie'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`rating`: A value between 0 and 5'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`timestamp`: The specific time when the user rated the movie'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'A sample from the dataset is depicted in the following table. As is evident,
+    the dataset is sorted by the `userId` column. This can potentially create overfitting
+    problems in our models. Thus, we will shuffle the data before any split happens.
+    Furthermore, we will not utilize the `timestamp` variable in our models, as we
+    do not care about the order in which the movies were rated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **userId** | **movieId** | **rating** | **timestamp** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 1 | 4 | 964982703 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 3 | 4 | 964981247 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 6 | 4 | 964982224 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 47 | 5 | 964983815 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 50 | 5 | 964982931 |'
+  prefs: []
+  type: TYPE_TB
+- en: A sample from the dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By looking at the distribution of ratings on the following graph, we can see
+    that most movies were rated at 3.5, which is above the middle of the rating scale
+    (2.5). Furthermore, the distribution shows a left tail, indicating that most users
+    are generous with their ratings. Indeed, the first quartile of the ratings spans
+    from 0.5 to 3, while the other 75% of the ratings lie in the 3-5 range. In other
+    words, a user only rates 1 out of 4 movies with a value of less than 3:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c8b2bbe4-1cbb-4474-80e1-e82bd00c6c6c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Ratings' distribution
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the dot model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Our first model will consist of two embedding layers, one for the movie index
+    and one for the user index, as well as their dot product. We will use the `keras.layers`
+    package, which contains the necessary layer implementations, as well as the `Model`
+    implementation from the `keras.models` package. The layers that we will utilize
+    are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The`Input` layer, which is responsible for creating Keras tensors from more
+    conventional Python data types
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `Embedding` layer, which is the implementation of embedding layers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `Flatten` layer, which transforms any Keras n-dimensional tensor to a single
+    dimensional tensor
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `Dot` layer, which implements the dot product
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Furthermore, we will utilize `train_test_split` and `metrics` from `sklearn`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Apart from setting the random seed of `numpy`, we define a function that loads
+    and preprocesses our data. We read the data from the `.csv` file, drop the timestamp,
+    and shuffle the data by utilizing the shuffle function of `pandas`. Furthermore,
+    we create a train/test split of 80%/20%. We then re-map the dataset''s indices
+    in order to have consecutive integers as indices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to create the network, we first define the movie part of the input.
+    We create an `Input` layer, which will act as the interface to our `pandas` dataset
+    by accepting its data and transforming it into Keras tensors. Following this,
+    the layer''s output is fed into the `Embedding` layer, in order to map the integer
+    to a five-dimensional space. We define the number of possible indices as `n_movies`
+    (first parameter), and the number of features as `fts` (second parameter). Finally,
+    we flatten the output. The same process is repeated for the user part:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we define the dot product layer, with the two flattened embeddings
+    as inputs. We then define `Model` by specifying the `user_in` and `movie_in` (`Input`)
+    layers as inputs, and the `prod` (`Dot`) layer as an output. After defining the
+    model, Keras needs to compile it in order to create the computational graph. During
+    compilation, we define the optimizer and loss functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By calling `model.summary()`, we can see that the model has around 52,000 trainable
+    parameters. All of these parameters are in the `Embedding` layers. This means
+    that the network will only learn how to map the user and movie indices to the
+    five-dimensional space. The function''s output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6e947f22-661c-49ef-b9bb-98dfbef6a3e4.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The model's summary
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we fit the model to our train set and evaluate it on the test set.
+    We train the network for ten epochs in order to observe how it behaves, as well
+    as how much time it needs to train itself. The following code depicts the training
+    progress of the network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Take a look at the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/610b0fd4-a499-4dd9-b633-43eb6bd20209.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Training progress of the dot product network
+  prefs: []
+  type: TYPE_NORMAL
+- en: The model is able to achieve an MSE of 1.28 on the test set. In order to improve
+    the model, we could increase the number of features each `Embedding` layer is
+    able to learn, but the main limitation is the dot product layer. Instead of increasing
+    the number of features, we will give the model the freedom to choose how to combine
+    the two layers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the dense model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In order to create the dense model, we will substitute the `Dot` layer with
+    a series of `Dense` layers. `Dense` layers are classic neurons, where each neuron
+    gets, as input, all the outputs from the previous layer. In our case, as we have
+    two `Embedding` layers, we must first concatenate them using the `Concatenate`
+    layer, and then feed them to the first `Dense` layer. These two layers are also
+    included in the `keras.layers` package. Thus, our model definition will now look
+    like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By adding these three `Dense` layers, we have increased the number of trainable
+    parameters from almost 52,000 to almost 57,200 (an increase of 10%). Furthermore,
+    each step now needs almost 210 microseconds, which increased from 144 us (a 45%
+    increase), as is evident from the training progression and summary, as depicted
+    in the following diagrams:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6a1c2efe-311b-48ad-9b1b-c8c71eb3c77a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Summary of the dense model
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/52afae2e-d3ca-4544-8b37-e560cdcff7c3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Training progression of the dense model
+  prefs: []
+  type: TYPE_NORMAL
+- en: Nonetheless, the model now achieves an MSE 0.77 , which is 60% of the original
+    dot-product model. Thus, as this model outperforms the previous model, we will
+    utilize this architecture for our stacking ensemble. Moreover, as each network
+    has a higher degree of freedom, it has a higher probability of diversifying from
+    other base learners.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a stacking ensemble
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In order to create our stacking ensemble, we will utilize three dense networks,
+    with embeddings consisting of 5, 10, and 15 features as base learners. We will
+    train all networks on the original train set and utilize them to make predictions
+    on the test set. Furthermore, we will train a Bayesian ridge regression as a meta
+    learner. In order to train the regression, we will use all but the last 1,000
+    samples of the test set. Finally, we will evaluate the stacking ensemble on these
+    last 1,000 samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we will create a function that creates and trains a dense network with
+    *n* number of embedding features, as well as a function that accepts a model as
+    input and return its predictions on the test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will then create and train our base learners and meta learner in order to
+    predict on the test set. We combine all three models'' predictions in a single
+    array:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we train the meta learner on all but the last 1,000 test samples and
+    evaluate the base learners, as well as the whole ensemble, on these last 1,000
+    samples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The results are depicted in the following table. As is evident, the ensemble
+    is able to outperform the individual base learners on unseen data, achieving a
+    lower MSE than any individual base learner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Model** | **MSE** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Base Learner 5 | 0.7609 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Base Learner 10 | 0.7727 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Base Learner 15 | 0.7639 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Ensemble | 0.7596 |'
+  prefs: []
+  type: TYPE_TB
+- en: Results for individual base learners and the ensemble
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we briefly presented the concept of recommendation systems
+    and how collaborative filtering works. We then presented how neural networks can
+    be utilized in order to avoid explicitly defining rules that dictate how unrated
+    items would be rated by a user, using embedding layers and dot products. Following
+    that, we showed how the performance of these models can be improved if we allow
+    the networks to learn how to combine the embedding layers themselves. This gives
+    the models considerably higher degrees of freedom without drastically increasing
+    the number of parameters, leading to considerable increases in performance. Finally,
+    we showed how the same architecture—with variable numbers of embedding features—can
+    be utilized in order to create base learners for a stacking ensemble. In order
+    to combine the base learners, we utilized a Bayesian ridge regression, which resulted
+    in better results than any individual base learner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter serves as an introduction to the concept of using ensemble learning
+    techniques for deep recommendation systems, rather than a fully detailed guide.
+    There are many more options that can lead to considerable improvements in the
+    system. For example, the usage of user descriptions (rather than indices), additional
+    information about each movie (such as genre), and different architectures, can
+    all greatly contribute to performance improvements. Still, all these concepts
+    can greatly benefit from the usage of ensemble learning techniques, which this
+    chapter adequately demonstrates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next and final chapter, we will use ensemble learning techniques in order
+    to cluster data from the World Happiness Report as we try to uncover patterns
+    in the data.
+  prefs: []
+  type: TYPE_NORMAL

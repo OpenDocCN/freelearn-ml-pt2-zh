@@ -1,0 +1,931 @@
+- en: Create a Custom Newsfeed
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: I read *a lot*. Some might even say compulsively. I've been known to consume
+    more than a hundred articles on some days. But despite this, I frequently find
+    myself searching for more to read. I suffer from this sneaking suspicion that
+    I have missed something interesting, and will forever suffer a gap in my knowledge!
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you suffer from similar symptoms, fear not, because in this chapter, I'm
+    going to reveal one simple trick to finding all the articles you want to read
+    without having to dig through the dozens that you don't.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By the end of this chapter, you'll have learned how to build a system that understands
+    your taste in news, and will send you a personally tailored newsletter each day.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s what we''ll cover in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a supervised training set with the Pocket app
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Leveraging the Pocket API to retrieve stories
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using the Embedly API to extract story bodies
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Natural language processing basics
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Support vector machines
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: IFTTT integration with RSS feeds and Google Sheets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Setting up a daily personal newsletter
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a supervised training set with Pocket
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before we can create a model of our taste in news articles, we need training
+    data. This training data will be fed into our model in order to teach it to discriminate
+    between the articles we'd be interested in and those we would not. To build this
+    corpus, we will need to annotate a large number of articles to correspond to these
+    interests. We'll label each article either `y` or `n`, indicating whether it is
+    the type of article we would want to have sent to us in our daily digest or not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To simplify this process, we'll use the Pocket app. Pocket is an application
+    that allows you to save stories to read later. You simply install the browser
+    extension, and then click on the Pocket icon in your browser's toolbar when you
+    wish to save a story. The article is saved to your personal repository. One of
+    the great features of Pocket for our purposes is the ability to save the article
+    with a tag of your choosing. We'll use this to mark interesting articles as `y`
+    and non-interesting articles as `n`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing the Pocket Chrome Extension
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'I''m using Google Chrome for this, but other browsers should work similarly. Follow
+    the steps for installing the Pocket Chrome Extention:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For Chrome, go to the Google app store and look for the Extensions section:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/bec36363-4072-441d-9ee3-5e8d34d870e2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Pocket Chrome Extention
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on Add to Chrome. If you already have an account, log in, and, if not,
+    go ahead and sign up (it's free).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once that is complete, you should see the Pocket icon in the upper-right corner
+    of your browser.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'It will be grayed out, but once there is an article you wish to save, you can
+    click it. It will turn red once the article has been saved:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/0600e60d-722d-40bc-ae27-2ac2aac6598e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The saved page can be seen as below:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f0eba099-38cb-46dc-b437-6676aa2cbf4d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The New York Times saved page
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now the fun part! As you go through your day, start saving articles you'd like
+    to read, as well as those you wouldn't. Tag the interesting ones with `y`, and
+    the non-interesting ones with `n`. This is going to take some work. Your end results
+    will only be as good as your training set, so you're going to need to do this
+    for hundreds of articles. If you forget to tag an article when you save it, you
+    can always go to the site, [http://www.get.pocket.com](https://getpocket.com/),
+    to tag it there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the Pocket API to retrieve stories
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now that you''ve diligently saved your articles to Pocket, the next step is
+    to retrieve them. To accomplish this, we''ll use the Pocket API. You can sign
+    up for an account at [https://getpocket.com/developer/apps/new](https://getpocket.com/developer/apps/new).
+    Follow the steps to achieve that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click on Create a New App in the upper-left corner and fill in the details to
+    get your API key.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Make sure to click all of the permissions so that you can add, change, and
+    retrieve articles:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/d70f782e-626c-411d-b2d7-111535a45741.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Once you have that filled in and submitted, you will receive your **consumer
+    key**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'You can find that in the upper-left corner, under My Apps. It will look like
+    the following screenshot, but obviously with a real key:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/2f8553e5-5a88-4939-8c58-1e115884f87e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Once that is set, you are ready to move on to the next step, which is to set
+    up authorizations. We'll do that now.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'It requires you to input your consumer key and a redirect URL. The redirect
+    URL can be anything. Here, I have used my Twitter account:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e651dd33-b0ae-439a-8d0e-512fcdacdde3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The output will have the code you''ll need for the next step. Place the following
+    in your browser bar:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[https://getpocket.com/auth/authorize?request_token=some_long_access_code&amp;redirect_uri=https%3A//www.twitter.com/acombs](https://getpocket.com/auth/authorize?request_token=some_long_access_code&redirect_uri=https%3A//www.twitter.com/acombs)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you change the redirect URL to one of your own, make sure to URL encode it
+    (that's the `%3A` type stuff you see in the preceding URL).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'At this point, you should be presented with an authorization screen. Go ahead
+    and approve it, and then we can move on to the next step:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f4c276fc-3893-4910-b350-f332d3d02864.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We''ll use the output code here, to move on to retrieving the stories. First,
+    we retrieve the stories tagged `n`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0ed35aed-75d2-4df9-8091-fc87965664d3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: You'll notice that we have a long JSON string on all the articles that we tagged
+    `n`. There are several keys in this, but we are really only interested in the
+    URL at this point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll go ahead and create a list of all the URLs from this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/bac52869-eb17-41e6-99f6-e15668064bfd.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: List of URLs
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This list contains all the URLs of stories we aren''t interested in. Let''s
+    now put that in a DataFrame and tag it as such:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7b330ba0-fb54-44e7-b899-a03304214597.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Tagging the URLs
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we''re all set with the unwanted stories. Let''s do the same thing with
+    those stories we are interested in:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e0cf64cd-f8cc-4071-9d3b-ee31e97bdd51.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Tagging the URLs of stories we are interested in
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have both types of stories for our training data, let''s join them
+    together into a single DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7a12a25e-1a50-471b-b1af-6836de25339a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Joining the URLs- both interested and not interested
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we're set with all our URLs and their corresponding tags in a single
+    frame, we'll move on to downloading the HTML for each article. We'll use another
+    free service for this, called Embedly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the Embedly API to download story bodies
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have all the URLs for our stories, but, unfortunately, this isn't enough
+    to train on; we'll need the full article body. This in itself could become a huge
+    challenge if we want to roll our own scraper, especially if we are going to be
+    pulling stories from dozens of sites. We would need to write code to target the
+    article body while carefully avoiding all the other site gunk that surrounds it.
+    Fortunately, as far as we are concerned, there are a number of free services that
+    will do this for us. I'm going to be using Embedly to do this, but there are a
+    number of other services that you could use instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step is to sign up for Embedly API access. You can do that at [https://app.embed.ly/signup](https://app.embed.ly/signup).
+    It is a straightforward process. Once you confirm your registration, you will
+    receive an API key. That''s really all you''ll need. You''ll just use that key
+    in your HTTP request. Let''s do that now:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6b4b9a5b-6e6e-4345-8a5c-766a71a49269.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: HTTP requests
+  prefs: []
+  type: TYPE_NORMAL
+- en: And with that, we have the HTML of each story.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since the content is embedded in HTML markup, and we want to feed plain text
+    into our model, we''ll use a parser to strip out the markup tags:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/fb4aa1e9-f5f4-4a26-923c-b4cfa49d89e4.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: And with that, we have our training set ready. We can now move on to a discussion
+    of how to transform our text into something that a model can work with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Basics of Natural Language Processing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If machine learning models only operate on numerical data, how can we transform
+    our text into a numerical representation? That is exactly the focus of **Natural
+    Language Processing** (**NLP**). Let's take a brief look at how this is done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll begin with a small corpus of three sentences:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The new kitten played with the other kittens
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: She ate lunch
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: She loved her kitten
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We''ll first convert our corpus into a **bag-of-words** (**BOW**) representation.
+    We''ll skip preprocessing for now. Converting our corpus into a BOW representation
+    involves taking each word and its count to create what''s called a **term-document
+    matrix**. In a term-document matrix, each unique word is assigned to a column,
+    and each document is assigned to a row. At the intersection of the two is the
+    count:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Sr. no.**  | **the** | **new** | **kitten** | **played** | **with** | **other**
+    | **kittens** | **she** | **ate** | **lunch** | **loved** | **her** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 0 | 0 | 0 | 0 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 1 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: Notice that, for these three short sentences, we already have 12 features. As
+    you might imagine, if we were dealing with actual documents, such as news articles
+    or even books, the number of features would explode into the hundreds of thousands.
+    To mitigate this explosion, we can take a number of steps to remove features that
+    add little to no informational value to our analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step we can take is to remove **stop words**. These are words that
+    are so common that they typically tell you nothing about the content of the document.
+    Common examples of English stop words are *the*, *is*, *at*, *which*, and *on*.
+    We''ll remove those, and recompute our term-document matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Sr. no.** | **new** | **kitten** | **played** | **kittens** | **ate** |
+    **lunch** | **loved** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 1 | 1 | 1 | 1 | 0 | 0 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 0 | 0 | 0 | 0 | 1 | 1 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 0 | 1 | 0 | 0 | 0 | 0 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'As you can see, the number of features was reduced from 12 to 7\. This is great,
+    but we can take it even further. We can perform **stemming** or **lemmatization**
+    to reduce the features further. Notice that in our matrix, we have both *kitten*
+    and *kittens*. By using stemming or lemmatization, we can consolidate that into
+    just *kitten*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Sr. no.** | **new** | **kitten** | **play** | **eat** | **lunch** | **love**
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 1 | 2 | 1 | 0 | 0 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 0 | 0 | 0 | 1 | 1 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 0 | 1 | 0 | 0 | 0 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: Our new matrix consolidated *kittens* and *kitten*, but something else happened
+    as well. We lost the suffixes to *played* and *loved*, and *ate* was transformed
+    to *eat*. Why? This is what lemmatization does. If you remember your grade school
+    grammar classes, we've gone from the inflectional form to the base form of the
+    word. If that is lemmatization, what is stemming? Stemming has the same goal,
+    but uses a less sophisticated approach. This approach can sometimes produce pseudo-words
+    rather than the actual base form. For example, in lemmatization, if you were to
+    reduce *ponies*, you would get *pony*, but with stemming, you'd get *poni*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now go further to apply another transformation to our matrix. So far,
+    we have used a simple count of each word, but we can apply an algorithm that will
+    act like a filter on our data to enhance the words that are unique to each document.
+    This algorithm is called **term frequency-inverse document frequency** (**tf-idf**)**.**
+  prefs: []
+  type: TYPE_NORMAL
+- en: We calculate this tf-idf ratio for each term in our matrix. Let's calculate
+    it for a couple of examples. For the word *new* in document one, the term frequency
+    is just the count, which is `1`. The inverse document frequency is calculated
+    as the log of the number of documents in the corpus over the number of documents
+    the term appears in. For *new*, this is *log (3/1)*, or .4471\. So, for the complete
+    tf-idf value, we have *tf * idf*, or, here, it is *1 x .4471*, or just .4471\.
+    For the word *kitten* in document one, the tf-idf is *2 * log (3/2)*, or .3522.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Completing this for the remainder of the terms and documents, we have the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Sr. no.** | **new** | **kitten** | **play** | **eat** | **lunch** | **love**
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | .4471 | .3522 | .4471 | 0 | 0 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 0 | 0 | 0 | .4471 | .4471 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 0 | .1761 | 0 | 0 | 0 | .4471 |'
+  prefs: []
+  type: TYPE_TB
+- en: Why do all of this? Let's say, for example, we have a corpus of documents about
+    many subjects (medicine, computing, food, animals, and so on) and we want to classify
+    them into topics. Very few documents would contain the word *sphygmomanometer*,
+    which is the device used to measure blood pressure; and all the documents that
+    did would likely concern the topic of medicine. And obviously, the more times
+    this word appears in a document, the more likely it is to be about medicine. So
+    a term that occurs rarely across our entire corpus, but that is present many times
+    in a document, makes it likely that this term is tied closely to the topic of
+    that document. In this way, documents can be said to be represented by those terms
+    with high tf-idf values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the help of this framework, we''ll now convert our training set into a
+    tf-idf matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With those three lines, we have converted all our documents into a tf-idf vector.
+    We passed in a number of parameters: `ngram_range`, `stop_words`, and `min_df`.
+    Let''s discuss each.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, `ngram_range` is how the document is tokenized. In our previous examples,
+    we used each word as a token, but here, we are using all one- to three-word sequences
+    as tokens. Let''s take our second sentence, *She ate lunch*. We''ll ignore stop
+    words for the moment. The n-grams for this sentence would be: *she*, *she ate*,
+    *she ate lunch*, *ate*, *ate lunch*, and *lunch*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we have `stop_words`. We pass in `english` for this to remove all the
+    English stop words. As discussed previously, this removes all terms that lack
+    informational content.
+  prefs: []
+  type: TYPE_NORMAL
+- en: And finally, we have `min_df`. This removes all words from consideration that
+    don't appear in at least three documents. Adding this removes very rare terms
+    and reduces the size of our matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that our article corpus is in a workable numerical format, we'll move on
+    to feeding it to our classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Support Vector Machines
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We're going to be utilizing a new classifier in this chapter, a linear **Support
+    Vector Machine** (**SVM**). An SVM is an algorithm that attempts to linearly separate
+    data points into classes using a **maximum-margin hyperplane**. That's a mouthful,
+    so let's look at what it really means.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Suppose we have two classes of data, and we want to separate them with a line.
+    (We''ll just deal with two features, or dimensions, here.) What is the most effective
+    way to place that line? Lets have a look at an illustration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/13ff1cec-f4de-4170-b1c7-e2feadd686af.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the preceding diagram, line **H[1]** does not effectively discriminate between
+    the two classes, so we can eliminate that one. Line **H[2]** is able to discriminate
+    between them cleanly, but **H[3]** is the maximum-margin line. This means that
+    the line is centered between the two nearest points of each class, which are known
+    as the **support vectors**. These can be seen as the dotted lines in the following
+    diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/30e96749-12d3-4f34-be03-81b0701fff2c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'What if the data isn''t able to be separated into classes so neatly? What if
+    there is an overlap between the points? In that situation, there are still options.
+    One is to use what''s called a **soft-margin SVM**. This formulation still maximizes
+    the margin, but with the trade-off being a penalty for points that fall on the
+    wrong side of the margin. The other option is to use what''s called the **kernel
+    trick**. This method transforms the data into a higher dimensional space where
+    the data can be linearly separated. An example is provided here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/bb67ef6e-3a1e-4060-8da9-6e6fcfd5ea5f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The two-dimensional representation is a follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/74a17d51-a26b-4487-9d36-644d544e09fd.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We have taken a one-dimensional feature space and mapped it onto a two-dimensional
+    feature space. The mapping simply takes each *x* value and maps it to *x*, *x²*.
+    Doing so allows us to add a linear separating plane.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With that covered, let''s now feed our tf-idf matrix into our SVM:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`tv` is our matrix, and `df[''wanted'']` is our list of labels. Remember this
+    is either `y` or `n`, denoting whether we are interested in the article. Once
+    that runs, our model is trained.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: One thing we aren't doing in this chapter is formally evaluating our model.
+    You should almost always have a hold-out set to evaluate your model against, but
+    because we are going to be continuously updating our model, and evaluating it
+    daily, we'll skip that step for this chapter. Just remember that this is generally
+    a terrible idea.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now move on to setting up our daily feed of news items.
+  prefs: []
+  type: TYPE_NORMAL
+- en: IFTTT integration with feeds, Google Sheets, and email
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We used Pocket to build our training set, but now we need a streaming feed of
+    articles to run our model against. To set this up, we'll use IFTTT once again,
+    as well as Google Sheets, and a Python library that will allow us to work with
+    Google Sheets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up news feeds and Google Sheets through IFTTT
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Hopefully, you have an IFTTT account set up at this point, but if not, go ahead
+    and set that up now. Once that is done, you''ll need to set up integration with
+    feeds and with Google Sheets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, search for feeds in the search box on the home page, then click on Services,
+    and click to set that up:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/fea512df-fbd0-44dd-a31d-fe6600f32ce9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'You''ll just need to click Connect:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/6389031a-ce09-45cd-bf3d-41080cd1cc73.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, search for `Google Drive` under Services:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/03e1346f-8188-45e6-9a4a-3e44ae1bab67.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Click on that. It should take you to a page where you select the Google account
+    you want to connect to. Choose the account and then click Allow to enable IFTTT
+    to access your Google Drive account. Once that''s done, you should see the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/f2445244-6fc6-4787-90a3-0ac7823c8d23.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, with our channels connected, we can set up our feed. Click on New Applet
+    in the dropdown under your username in the right-hand corner. This will bring
+    you here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/9bf9d660-7dba-4d1b-b951-8ebb2d523f60.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Click on +this. Search for `RSS Feed`, and then click on that. That should
+    bring you here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/edc23225-750c-4932-bf9f-5aeaf1001c77.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'From here, click on New feed item:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/fe70de1e-5a10-47a3-8aea-e12bedde546d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Then, add the URL to the box and click Create trigger. Once that is done, you''ll
+    be brought back to add the +that action:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/bff82527-32fb-4ed2-8e67-fcebfc39e102.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Click on +that, search for `Sheets`, and then click on its icon. Once that
+    is done, you''ll find yourself here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/89fbc4e5-1aad-42d7-84c8-39773626cec5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We want our news items to flow into a Google Drive spreadsheet, so click on
+    Add row to spreadsheet. You''ll then have an opportunity to customize the spreadsheet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/e9c7a419-8c0c-486a-97ad-22ed50fafff1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: I gave the spreadsheet the name `NewStories`, and placed it in a Google Drive
+    folder called `IFTTT`. Click Create Action to finish the recipe, and soon you'll
+    start seeing news items flow into your Google Drive spreadsheet. Note that it
+    will only add new items as they come in, not items that existed at the time you
+    created the sheet. I recommend adding a number of feeds. You will need to create
+    individual recipes for each. It is best if you add feeds for the sites that are
+    in your training set, in other words, the ones you saved with Pocket.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Give those stories a day or two to build up in the sheet, and then it should
+    look something like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/4a6b042c-a32e-41a0-93a5-f9d4b27e1efd.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Fortunately, the full article HTML body is included. This means we won't have
+    to use Embedly to download it for each article. We will still need to download
+    the articles from Google Sheets, and then process the text to strip out the HTML
+    tags, but this can all be done rather easily.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To pull down the articles, we''ll use a Python library called `gspread`. This
+    can be pip installed. Once that is installed, you need to follow the direction
+    for setting up **OAuth 2**. That can be found at [http://gspread.readthedocs.org/en/latest/oauth2.html](http://gspread.readthedocs.org/en/latest/oauth2.html).
+    You will end up downloading a JSON credentials file. It is critical that, once
+    you have that file, you find the email address in it with the `client_email` key.
+    You then need to share the `NewStories` spreadsheet you are sending the stories
+    to with that email. Just click on the blue Share button in the upper-right corner
+    of the sheet, and paste the email in there. You will end up receiving a *failed
+    to send* message in your Gmail account, but that is expected. Make sure to swap
+    in your path to the file and the name of the file in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, if everything went well, it should run without errors. Next, you can download
+    the stories:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/cb48abf5-89de-4090-8fc2-47ddc3a33bf0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'With that, we downloaded all of the articles from our feed and placed them
+    into a DataFrame. We now need to strip out the HTML tags. We can use the function
+    we used earlier to retrieve the text. We''ll then transform it using our tf-idf
+    vectorizer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0d864c05-e9fc-4aad-b78f-902084ce2524.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here, we see that our vectorization was successful. Let''s now pass it into
+    our model to get back the results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2292ef3e-aa9e-4b12-9703-f4e5ec5b44cc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We see here that we have results for each of the stories. Let''s now join them
+    with the stories themselves so that we can evaluate the results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c5dd103e-6d29-4d96-afaf-3271f3696e49.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'At this point, we can improve the model by going through the results and correcting
+    the errors. You''ll need to do this for yourself, but here is how I made changes
+    to my own:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/25c89735-a506-4343-834a-8ea97965d1c2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This may look like a lot of changes, but of the over 900 articles evaluated,
+    I had to change very few. By making these corrections, we can now feed this back
+    into our model to improve it even more. Let''s add these results to our earlier
+    training data and then rebuild the model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b97a3db6-da79-4fbc-9a5d-6216fbde7bd7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Retrain the model with following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now we have retrained our model with all the available data. You may want to
+    do this a number of times as you get more results over the days and weeks. The
+    more you add, the better your results will be.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll assume you have a well-trained model at this point, and are ready to begin
+    using it. Let's now see how we can deploy this to set up a personalized news feed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up your daily personal newsletter
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In order to set up a personal email with news stories, we''re going to utilize
+    IFTTT again. As before, in [Chapter 3](73ff80b5-e844-4791-bf95-b678215c00a8.xhtml),
+    *Build an App to Find Cheap Airfares*, we''ll use the Webhooks channel to send
+    a `POST` request. But this time, the payload will be our news stories. If you
+    haven''t set up the Webhooks channel, do so now. Instructions can be found in
+    [Chapter 3](73ff80b5-e844-4791-bf95-b678215c00a8.xhtml), *Build an App to Find
+    Cheap Airfares*. You should also set up the Gmail channel. Once that is complete,
+    we''ll add a recipe to combine the two. Follow the steps to set up IFTTT:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, click New Applet from the IFTTT home page and then click +this. Then,
+    search for the Webhooks channel:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/9dfbd355-91a9-4624-9ccf-155e0796cb1b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Select that, and then select Receive a web request:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/35ed4dcf-c87b-42ae-b804-c13f352ac26a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Then, give the request a name. I''m using `news_event`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/aaa279e1-2abc-42e7-97cd-4d2ff759aa9f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Finish by clicking Create trigger. Next, click on +that to set up the email
+    piece. Search for Gmail and click on that:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/0f4c3ac5-e8a7-4d0e-9eef-9e4da3764925.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once you have clicked Gmail, click Send yourself an email. From there, you
+    can customize your email message:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/36ee5b08-8d0d-45a2-a692-936f5e2b9b74.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Input a subject line, and include `{{Value1}}` in the email body. We will pass
+    our story title and link into this with our `POST` request. Click on Create action
+    and then Finish to finalize it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we''re ready to generate the script that will run on a schedule, automatically
+    sending us articles of interest. We''re going to create a separate script for
+    this, but one last thing we need to do in our existing code is serialize our vectorizer
+    and our model, as demonstrated in the following code block:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With that, we have saved everything we need from our model. In our new script,
+    we will read those in to generate our new predictions. We''re going to use the
+    same scheduling library to run the code as we used in [Chapter 3](73ff80b5-e844-4791-bf95-b678215c00a8.xhtml), *Build
+    an App to Find Cheap Airfares*. Putting it all together, we have the following
+    script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: What this script will do is run every 4 hours, pull down the news stories from
+    Google Sheets, run the stories through the model, generate an email by sending
+    a `POST` request to IFTTT for those stories that are predicted to be of interest,
+    and then, finally, it will clear out the stories in the spreadsheet so only new
+    stories get sent in the next email.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Congratulations! You now have your own personalized news feed!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we've learned how to work with text data when training machine
+    learning models. We've also learned the basics of NLP and of SVMs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we'll develop these skills further and attempt to predict
+    what sort of content will go viral.
+  prefs: []
+  type: TYPE_NORMAL

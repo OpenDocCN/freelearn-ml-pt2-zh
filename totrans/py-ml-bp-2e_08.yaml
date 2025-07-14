@@ -1,0 +1,1284 @@
+- en: Classifying Images with Convolutional Neural Networks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we're going to explore the vast and awesome world of computer
+    vision.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you've ever wanted to construct a predictive machine learning model using
+    image data, this chapter will serve as an easily-digestible and practical resource.
+    We'll go step by step through building an image-classification model, cross-validating
+    it, and then building it in a better way. At the end of this chapter, we'll have
+    a *darn good* model and discuss some paths for future enhancement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, some background in the fundamentals of predictive modeling will help
+    this to go smoothly. As you'll soon see, the process of converting images into
+    usable features for our model might might feel new, but once our features are
+    extracted, the model-building and cross-validation processes are exactly the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we're going to build a convolutional neural network to classify
+    images of articles of clothing from the Zalando Research dataset—a dataset of
+    70,000 images, each depicting 1 of 10 possible articles of clothing such as T-shirt/top,
+    a pair of pants, a sweater, a dress, a coat, a sandal, a shirt, a sneaker, a bag,
+    or an ankle boot. But first, we'll explore some of the fundamentals together,
+    starting with image-feature extraction and walking through how convolutional neural
+    networks work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, let's get started. Seriously!.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s what we''ll cover in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image-feature extraction
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Convolutional neural networks:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Network topology
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Convolutional layers and filters
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Max pooling layers
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Flattening
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Fully-connected layers and output
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Building a convolutional neural network to classify images in the Zalando Research
+    dataset, using Keras
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Image-feature extraction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When dealing with unstructured data, be it text or images, we must first convert
+    the data into a numerical representation that's usable by our machine learning
+    model. The process of converting data that is non-numeric into a numerical representation
+    is called **feature extraction**. For image data, our features are the pixel values
+    of the image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, let's imagine a 1,150 x 1,150 pixel grayscale image. A 1,150 x 1,150
+    pixel image will return a 1,150 x 1,150 matrix of pixel intensities. For grayscale
+    images, the pixel values can range from 0 to 255, with 0 being a completely black
+    pixel, and 255 being a completely white pixel, and shades of gray in between.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To demonstrate what this looks like in code, let's extract the features from
+    our grayscale cat burrito. The image is available on GitHub at [https://github.com/PacktPublishing/Python-Machine-Learning-Blueprints-Second-Edition/tree/master/Chapter08](https://github.com/PacktPublishing/Python-Machine-Learning-Blueprints-Second-Edition/tree/master/Chapter08)
+    as `grayscale_cat_burrito.jpg`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I've made the image assets used throughout this chapter available to you at [https://github.com/mroman09/packt-image-assets](https://github.com/mroman09/packt-image-assets).
+    You can find our cat burritos there!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s now take a look at a sample of this in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you're unable to read a `.jpg` by running the preceding code, just install
+    `PIL` by running `pip install pillow`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the preceding code, we imported `pandas` and two submodules: `image` and `pyplot`,
+    from `matplotlib`. We used the `imread` method from `matplotlib.image` to read-in
+    the image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Running the preceding code gives us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/cd46ced0-2f96-410d-9801-0f7aa0f1fb90.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The output is a two-dimensional `numpy` ndarray that contains the features of
+    our model. As with most applied machine learning applications, there are several
+    preprocessing steps you'll want to perform on these extracted features, some of
+    which we'll explore together on the Zalando fashion dataset later in this chapter,
+    but these are the raw extracted features of the image!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The shape of the extracted features for our grayscale image is `image_height`
+    rows x `image_width` columns. We can check the shape easily by running the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code returns this output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/69f79aee-22b1-481c-b230-2035e84f9d23.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can check the maximum and minimum pixel values in our ndarray easily, too:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This returns the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0eb77b3e-f4b9-483c-9426-4fa4498031ae.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Finally, we can display our grayscale image from our ndarray by running this
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: The preceding code returns our image, which is available at [https://github.com/PacktPublishing/Python-Machine-Learning-Blueprints-Second-Edition/tree/master/Chapter08](https://github.com/PacktPublishing/Python-Machine-Learning-Blueprints-Second-Edition/tree/master/Chapter08) as
+    `output_grayscale_cat_burrito.png`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The feature-extraction process for color images is identical; however, with
+    color images, the shape of our ndarray output will be three-dimensional—a **tensor**—representing
+    the **red, green, and blue** (**RGB**) pixel values of our image. Here, we'll
+    carry out the same process as before, this time on a color version of the cat
+    burrito. The image is available on GitHub at [https://github.com/PacktPublishing/Python-Machine-Learning-Blueprints-Second-Edition/tree/master/Chapter08](https://github.com/PacktPublishing/Python-Machine-Learning-Blueprints-Second-Edition/tree/master/Chapter08) as `color_cat_burrito.jpg`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s extract the features from our color version of the cat burrito by using
+    the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running this code returns the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/642c0bf0-c57c-491e-92e5-b0923f98f55f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Again, here we see that this image contains three channels. Our `color_cat_burrito`
+    variable is a tensor that contains three matrices that tell us what the RGB values
+    are for each pixel in our image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can display the color image from our ndarray by running the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: This returns our color image. The image is available on GitHub at [https://github.com/PacktPublishing/Python-Machine-Learning-Blueprints-Second-Edition/tree/master/Chapter08](https://github.com/PacktPublishing/Python-Machine-Learning-Blueprints-Second-Edition/tree/master/Chapter08) as `output_color_cat_burrito.png`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is the first step of our image-feature extraction. We've taken a single
+    image at a time and converted those images into numeric values using just a few
+    lines of code. In doing so, we saw that extracting features from grayscale images
+    produces a two-dimensional ndarray and extracting features from color images produces
+    a tensor of pixel-intensity values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, there''s a slight problem. Remember, this is just a single image,
+    a single training sample, a single *row* of our data. In the instance of our grayscale
+    image, if we were to flatten this matrix into a single row, we would have `image_height` x `image_width`
+    columns, or in our case, 1,322,500 columns. We can confirm that in code by running
+    the following snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is an issue! As with other machine learning modeling tasks, high dimensionality
+    leads to model-performance issues. At this magnitude of dimensionality, any model
+    we build will likely overfit, and training times will be slow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This dimensionality problem is endemic to computer-vision tasks of this sort.
+    Even a dataset of a lower resolution, 400 x 400 pixel grayscale cat burritos,
+    would leave us with 160,000 features per image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is, however, a known solution to this problem: convolutional neural networks.
+    In the next section, we''ll continue our feature-extraction process using convolutional
+    neural networks to build lower-dimensional representations of these raw image
+    pixels. We''ll go over the mechanics of how they work and continue to build an
+    idea of why they''re so performant in image-classification tasks.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Convolutional neural networks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Convolutional neural networks are a class of neural network that resolve the
+    high-dimensionality problem we alluded to in the previous section, and, as a result,
+    excel at image-classification tasks. It turns out that image pixels in a given
+    image region are highly correlated—they tell us similar information about that
+    specific image region. Accordingly, using convolutional neural networks, we can
+    scan regions of an image and summarize that region in lower-dimensional space.
+    As we'll see, these lower-dimensional representations, called **feature maps**,
+    tell us many interesting things about the presence of all sorts of shapes—from
+    the simplest lines, shadows, loops, and swirls, to very abstract, complex forms
+    specific to our data, in our case, cat ears, cat faces, or tortillas—and do this
+    in fewer dimensions than the original image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After using convolutional neural networks to extract these lower-dimensional
+    features from our images, we'll pass the output of the convolutional neural network
+    into a network suitable for the classification or regression task we want to perform.
+    In our case, when modeling the Zalando research dataset, the output of our convolutional
+    neural network will be passed into a fully-connected neural network for multi-class
+    classification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But how does this work? There are several key components we'll discuss with
+    respect to convolutional neural networks on grayscale images, and these are all
+    important for building our understanding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Network topology
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'You may have encountered a diagram similar to the aforementioned that depicts
+    a convolutional neural network to a feedforward neural network architecture. We''ll
+    be building something such as this very soon! But what''s being depicted here?
+    Check it out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/82007989-4f27-47f2-bd42-69f1e2c7a49c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the preceding diagram, on the very left, we have our input. These are the
+    extracted features of our image, the matrix (as was the case with the grayscale
+    cat burrito) of values ranging from 0 to 255 that describe the pixel intensities
+    present in the image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we pass the data through alternating convolutional and max-pooling layers.
+    These layers define the convolutional neural network component of the architecture
+    depicted. We'll describe what each of these layer types do in the following two
+    sections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After this, we pass the data to a fully-connected layer before arriving at the
+    output layer. These two layers describe a fully-connected neural network. You're
+    free to use any multi-class classification algorithm you like here, instead of
+    a fully-connected neural network—a **logistic regression** or **random forest
+    classifier**, perhaps—but for our dataset, we'll be using a fully-connected neural
+    network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output layer depicted is the same as for any other multi-class classifier.
+    Sticking with our cat burrito example, let''s suppose we were building a model
+    to predict what kind of cat burrito an image was from five distinct classes: chicken
+    cat burrito, steak cat burrito, cat burrito al pastor, vegetarian cat burrito,
+    or fish cat burrito (I''ll let you use your imagination to visualize what our
+    training data might look like). The output layer would be the predicted probability
+    that the image belonged to one of the five classes, with `max(probability)` indicating
+    what our model believes to be the most likely class.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At a high level, we''ve walked through the architecture, or **topology** of
+    the preceding network. We''ve discussed our input versus the convolutional neural
+    network component versus the fully-connected neural network component of the preceding
+    topology. Let''s dig just a bit deeper now and add some concepts that allow us
+    to describe the topology in more detail:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How many convolutional layers does the network have? Two.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: And in each convolutional layer, how many feature maps are there? There are
+    seven in convolutional layer 1 and 12 in convolutional layer 2.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How many pooling layers does the network have? Two.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How many fully-connected layers are there? One.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How many **neurons** are in the fully-connected layer? 10.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What is the output? Five.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The modeler's decision to use two convolutional layers versus any other number
+    or just a single fully-connected layer versus any other number should be thought
+    of as the **hyperparameters** of the model. That is, it's something that we, as
+    the modelers, should experiment with and cross-validate but not a parameter our
+    model is explicitly learning and optimizing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are other useful things you can infer about the problem you're solving
+    just by looking at the network's topology. As we discussed, the fact that our
+    network's output layer contains five nodes lets us know that this neural network
+    was designed to solve a multi-class classification task for which there are five
+    classes. If it were a regression or a binary classification problem, our network's
+    architecture would (in most cases) have a single output node. We also know that
+    the modeler used seven filters in the first convolutional layer and 12 kernels
+    in the second convolutional layer because of the number of feature maps resulting
+    from each layer (we'll discuss what these kernels are in some more detail in the
+    next section).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Great! We learned some useful jargon that will help us describe our networks
+    and build our conceptual understanding of how they work. Now let's explore the
+    convolutional layers of our architecture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Convolutional layers and filters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Convolutional layers and filters are at the heart of convolutional neural networks.
+    In these layers, we slide a filter (also referred to in this text as a **window**
+    or **kernel**) over our ndarray feature and take the inner product at each step.
+    Convolving our ndarray and kernel in this way results in a lower-dimensional image
+    representation. Let''s explore how this works on this grayscale image (available
+    in image-assets repository):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/cfd2a688-480d-4f87-82e0-cd686e4bdf3c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The preceding image is a 5 x 5 pixel grayscale image shows a black diagonal
+    line against a white background.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Extracting the features from the following diagram, we get the following matrix
+    of pixel intensities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f0fe030e-ccaa-4d16-9edb-32c7012b9689.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, let''s assume we (or Keras) instantiate the following kernel:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d0f28169-8372-4341-954f-3867f5b576af.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We'll now visualize the convolution process. The movement of the window starts
+    from the top, left of our image matrix. We'll slide the window right by a predetermined
+    stride size. In this case, our stride size will be 1, but in general the stride
+    size should be considered another hyperparameter of your model. Once the window
+    reaches the rightmost edge of the image, we'll slide our window down by 1 (our
+    stride size), move the window back to the leftmost edge of the image, and start
+    the process of taking the inner product again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now let''s do this step by step:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Slide the kernel over the top-left part of the matrix and calculate the inner
+    product:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/16616ed8-ac7b-4479-84a4-013bb46bb2c5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'I''ll explicitly map out the inner product for this first step so that you
+    can easily follow along:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`(0x0)+(255x0)+(255x0)+(255x0)+(0x1)+(255x0)+(255x0)+(255x0)+(0x0) = 0`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We write the result to our feature map and continue!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Take the inner product and write the result to our feature map:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/6a00c530-8e36-4547-9038-4cfadbd29e61.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Step 3:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/65e5b537-dd45-4afd-a1e5-6f1679b47ddb.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We''ve reached the rightmost edge of the image. Slide the window down by 1,
+    our stride size, and start the process again at the leftmost edge of the image:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/a19790b1-455f-4a34-96f0-aeb86d966c6a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Step 5:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/1d16c2c3-909d-4a32-b221-8111f72cb5c9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Step 6:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/bb8ce393-a48b-40c5-86cf-e7d5cac709a1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Step 7:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/6c75d988-2688-4c58-a16e-ba6a3b23da98.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Step 8:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/b403905a-5501-4067-92ab-e41a221b564d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Step 9:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/71dd0a5d-47a9-4e7d-804e-f1e833273591.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Voila! We''ve now represented our original 5 x 5 image in a 3 x 3 matrix (our
+    feature map). In this toy example, we''ve been able to reduce the dimensionality
+    from 25 features down to just 9\. Let''s take a look at the image that results
+    from this operation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9dac7706-ca00-4455-8cb1-6fa21d61e9f2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: If you're thinking that this looks exactly like our original black diagonal
+    line but smaller, you're right. The values the kernel takes determine what's being
+    identified, and in this specific example, we used what's called an **identity
+    kernel**. Kernels taking other values will return other properties of the image—detecting
+    the presence of lines, edges, outlines, areas of high contrast, and more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll apply multiple kernels to the image, simultaneously, at each convolutional
+    layer. The number of kernels used is up to the modeler—another hyperparameter.
+    Ideally, you want to use as few as possible while still achieving acceptable cross-validation
+    results. The simpler the better! However, depending on the complexity of the task,
+    we may see performance gains by using more. The same thinking can can be applied
+    when tuning the other hyperparameters of the model, such as the number of layers
+    in the network or the number of neurons per layer. We're trading simplicity for
+    complexity, and generalizability and speed for detail and precision.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While the number of kernels is our choice, the values that each kernel takes
+    is a parameter of our model, which is learned from our training data and optimized
+    during training in a manner that reduces the cost function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ve seen the step-by-step process of how to convolve a filter with our image
+    features to create a single feature map. But what happens when we apply multiple
+    kernels simultaneously? And how do these feature maps pass through each layer
+    of the network? Lets have a look at the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5550bd45-05ec-4fa9-9611-e5e383a9564c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Image source: Lee et al., Convolutional Deep Belief Networks for Scalable Unsupervised
+    Learning of Hierarchical Representations, via stack exchange. Source text here:
+    https://ai.stanford.edu/~ang/papers/icml09-ConvolutionalDeepBeliefNetworks.pdf'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The preceding screenshot visualizes the feature maps generated at each convolutional
+    layer of a network trained on images of faces. In the early layers of the network
+    (at the very bottom), we detect the presence of simple visual structures—simple
+    lines and edges. We did this with our identity kernel! The output of this first
+    layer gets passed on to the next layer (the middle row), which combines these
+    simple shapes into abstract forms. We see here that the combination of edges build
+    the components of a face—eyes, noses, ears, mouths, and eyebrows. The output of
+    this middle layer, in turn, gets passed to a final layer, which combines the combination
+    of edges into complete objects—in this case, different people's faces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One particularly powerful property of this entire process is that all of these
+    features and representations are learned from the data. At no point do we explicitly
+    tell our model: *Model, for this task, I''d like to use an identity kernel and
+    a bottom sobel kernel in the first convolutional layer because I think these two
+    kernels will extract the most signal-rich feature maps*. Once we''ve set the hyperparameter
+    for the number of kernels we want to use, the model learns through optimization
+    what lines, edges, shadows, and complex combinations thereof are best suited to
+    determine what a face is or isn''t. The model performs this optimization with
+    no domain-specific, hardcoded rules about what faces, cat burritos, or clothes
+    are.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are many other fascinating properties of convolutional neural networks,
+    which we won't cover in this chapter. However, we did explore the fundamentals,
+    and hopefully you have a sense of the importance of using convolutional neural
+    networks to extract highly expressive, signal-rich, low-dimensional features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we'll discuss *Max pooling layers*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Max pooling layers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We''ve discussed the importance of reducing our dimensional space and how we
+    use convolutional layers to achieve this. We use max pooling layers for the same
+    reason—to further reduce dimensionality. Quite intuitively, as the name suggests,
+    with max pooling, we slide a window over our feature map and take the max value
+    for the window. Let''s return to the feature map from our diagonal-line example
+    to illustrate, this as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/8c08fee6-0ca0-4ec3-85ef-5a8894ca291d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s see what happens when we max pool the preceding feature map using a
+    2 x 2 window. Again, all we''re doing here is returning `max(values in window)`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Return `max(0,255,255,0)`, which gets us 255:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/6c75d908-819d-450b-ad34-eb16754aca77.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Step 2:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/cfa2a066-bab6-4b25-bc96-c98f85bda1e5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Step 3:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/38d64d16-026a-4c48-9afd-413a09c42d45.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Step 4:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/32f83e69-0ce7-41c5-971b-06e015cd1e3a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: By max pooling our feature map with a 2 x 2 window, we've knocked a column and
+    a row off, getting us from a 3 x 3 representation to a 2 x 2—Not bad!
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are other forms of pooling as well—average pooling and min pooling, for
+    example; however, you'll see max pooling used most often.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we'll discuss flattening, a step we'll perform to turn our max-pooled
+    feature map into the right shape for modeling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Flattening
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far, we've focused on building as condensed and expressive a representation
+    of our features as possible and used convolutional neural networks and max pooling
+    layers to do this. The last step of our transformation is to flatten our convolved
+    and max-pooled ndarray, in our example a 2 x 2 matrix, into a single row of training
+    data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our max-pooled diagonal black line example would look something like the following,
+    in code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running this code returns the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/43d89914-dd37-48cd-af87-1bc40ec8cce9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can check the shape here by running the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This returns this output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9325c607-8ce4-4e88-bdcf-e6355d65483f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To turn this matrix into a single training sample, we just run `flatten()`.
+    Let''s do this and look at the shape of our flattened matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e63af8b4-430b-47df-a61b-c6fc09bce587.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: What started as a 5 x 5 matrix of pixel intensities is now a single row with
+    four features. We can now pass this into a fully-connected neural network.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fully-connected layers and output
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The fully-connected layers are where we map our input—the rows resulting from
+    us convolving, max-pooling, and flattening our original extracted features—to
+    our target class or classes. Here, each input is connected to every **neuron**
+    or **node** in the following layer. The strength of these connections, or **weights**,
+    and a **bias** term present in each node of the network are parameters of the
+    model, optimized throughout the training process to minimize an objective function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The final layer of our model will be our output layer, which gives us our model
+    predictions. The number of neurons in our output layer and the **activation function**
+    we apply to it are determined by the kind of problem we''re trying to solve: regression,
+    binary classification, or multi-class classification. We''ll see exactly how to
+    set up the fully-connected and output layers for a multi-class classification
+    task when we start working with the Zalando Research fashion dataset in the next
+    section.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The fully-connected layers and output—that is, the feedforward neural network
+    component of our architecture—belong to a distinct neural network type from the
+    convolutional neural networks we discussed in this section. We briefly described
+    how feedforward networks work in this section only to provide color on how the
+    classifier component of our architecture works. You can always substitute this
+    portion of the architecture for a classifier you are more familiar with, such
+    as a **logit**!
+  prefs: []
+  type: TYPE_NORMAL
+- en: With this fundamental knowledge, you're now ready to build your network!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building a convolutional neural network to classify images in the Zalando Research
+    dataset, using Keras
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we'll be building our convolutional neural network to classify
+    images of clothing, using Zalando Research's fashion dataset. The repository for
+    this dataset is available at [https://github.com/zalandoresearch/fashion-mnist](https://github.com/zalandoresearch/fashion-mnist).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This dataset contains 70,000 grayscale images—each depicting an article of
+    clothing—from 10 possible clothing articles. Specifically, the target classes
+    are as follows: T-shirt/top, pants, sweater, dress, coat, sandal, shirt, sneaker,
+    bag, and ankle boot.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Zalando, a Germany-based e-commerce company, released this dataset to provide
+    researchers with an alternative to the classic MNIST dataset of handwritten digits.
+    Additionally, this dataset, which they call **Fashion MNIST**, is a bit more challenging
+    to predict excellently—the MNIST handwritten-digits dataset can be predicted with
+    99.7% accuracy without the need for extensive preprocessing or particularly deep
+    neural networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, let''s get started! Follow these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Clone the repository to our desktop. From the terminal, run the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you haven't done so already, please install Keras by running `pip install
+    keras` from the command line. We'll also need to install TensorFlow. To do this,
+    run `pip install tensorflow` from the command line.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the libraries we''ll be using:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Many of these libraries should look familiar by now. However, for some of you,
+    this may be your first time using Keras. Keras is a popular Python deep learning
+    library. It's a wrapper that can run on top of machine learning frameworks such
+    as TensorFlow, CNTK, or Theano.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For our project, Keras will be running TensorFlow under the hood. Using TensorFlow
+    directly would allow us more explicit control of the behavior of our networks;
+    however, because TensorFlow uses dataflow graphs to represent its operations,
+    this can take some getting used to. Luckily for us, Keras abstracts a lot of this
+    away and its API is a breeze to learn for those comfortable with `sklearn`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The only other library that may be new to some of you here will be the **Python
+    Imaging Library** (**PIL**). PIL provides certain image-manipulation functionalities.
+    We'll use it to visualize our Keras network's topology.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load in the data. Zalando has provided us with a helper script that does the
+    loading in for us. We just have to make sure that `fashion-mnist/utils/` is in
+    our path:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Load in the data using the helper script:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Take a look at the shapes of `X_train`, `X_test`, `y_train`, and `y_test`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running that code gives us the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a8500b89-ac19-4d4c-b8b6-8506b8303741.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here, we can see our training set contains 60,000 images and our test contains
+    10,000 images. Each image is currently a vector of values 784 that are elements
+    long. Let''s now check the data types:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This returns the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ec3a5302-7c97-4748-8bae-72a155ad21db.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, let''s see what the data looks like. Remember, in its current form, each
+    image is a vector of values. We know the images are grayscale, so to visualize
+    each image, we''ll have to reshape these vectors into a 28 x 28 matrix. Let''s
+    do this and peek at the first image:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/02c86512-feb3-4b76-bf86-1b412698621e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Awesome! We can check to see the class this image belongs to by running the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/03c7a2b5-8520-4a03-9418-10238801bc15.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The classes are encoded from 0-9\. In the README, Zalando provides us with
+    the mapping:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e7cf2657-275b-4cfa-9f61-c0dc75214a1b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Given this, we now know our first image is of an ankle boot. Sweet! Let''s
+    create an explicit mapping of these encoded values to their class names. This
+    will come in handy momentarily:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Great. We've seen a single image, but we still need to get a feel for what's
+    in our data. What do the images look like? Getting a grasp of this will tell us certain
+    things. As an example, I'm interested to see how visually distinct the classes
+    are. Classes that look similar to other classes will be harder for a classifier
+    to differentiate than classes that are more unique.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we define a helper function to help us through our visualization journey:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: What does this function do? It creates a grid of images selected at random from
+    the data so that we can view multiple images simultaneously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It takes as arguments the desired number of image rows (`plot_rows`), image
+    columns (`plot_columns`), our `X_train` (`feature_array`), and `y_train` (`target_array`)
+    and generates a matrix of images that's `plot_rows` x `plot_columns` large. As
+    optional arguments, you can specify a `cmap`, or colormap (the default is `‘gray'`
+    because these are grayscale images), and a `random_seed`, if replicating the visualization
+    is important.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see how to run this, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This returns the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/21924c3b-e0af-4a11-a139-27f612ad96c5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Visualization output
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Remove the `random_seed` argument and rerun this function several times. Specifically,
+    run the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: You may have noticed that at this resolution some classes look quite similar
+    and others quite distinct. For example, samples of the t-shirt/top target class
+    can look very similar to samples from the shirt and coat target classes, whereas
+    the sandal target class seems to be quite different than the rest. This is food
+    for thought when thinking about where our model may be weak versus where it's
+    likely to be strong.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now let''s take a peek at the distribution of target classes in our dataset.
+    Will we have to do any upsampling or downsampling? Let''s check:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the preceding code generates the following plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6bc6b269-edaa-4f0c-a68a-980ae4c01d42.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Awesome! No class-balancing to do here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, let's start preprocessing our data to get it ready for modeling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As we discussed in our *Image-feature extraction* section, these grayscale
+    images contain pixel values ranging from 0 to 255\. We confirm this by running
+    the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This returns the following values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0782a868-cbe5-4b34-a5ed-33ae7d0d6511.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'For the purposes of modeling, we''re going to want to normalize these values
+    on a 0–1 scale. This is a common preprocessing step when preparing image data
+    for modeling. Keeping our values in this range will allow our neural network to
+    converge more quickly. We can normalize the data by running the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Our data is now scaled from 0.0 to 1.0\. We can confirm this by running the
+    following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This returns the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5fca7448-9f2a-4680-be20-ec3b55f749de.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The next preprocessing step we''ll need to perform before running our first
+    Keras network will be to reshape our data. Remember, the shapes of our `X_train` and
+    `X_test` are currently (60,000, 784) and (10,000,784), respectively. Our images
+    are still vectors. For us to convolve these lovely kernels all over the image,
+    we''ll need need to reshape them into their 28 x 28 matrix form. Additionally,
+    Keras requires that we explicitly declare the number of channels for our data.
+    Accordingly, when we reshape these grayscale images for modeling, we''ll declare
+    `1`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Lastly, we''ll one-hot encode our `y` vectors to conform with the target shape
+    requirements of Keras:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''re now ready for modeling. Our first network will have eight hidden layers.
+    The first six hidden layers will consist of alternating convolutional and max
+    pooling layers. We''ll then flatten the output of this network and feed that into
+    a two-layer feedforward neural network before generating our predictions. Here''s
+    what this looks like, in code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s describe what''s happening on each line in some depth:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Line 1**: Here, we just instantiate our model object. We''ll further define
+    the architecture—that is, the number of layers—sequentially with a series of `.add()`
+    method calls that follow. This is the beauty of the Keras API.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line 2**: Here, we add our first convolutional layer. We specify `35` kernels,
+    each 3 x 3 in size. After this, we specify the image input shape, 28 x 28 x 1\.
+    We only have to specify the input shape in the first `.add()` call of our network.
+    Lastly, we specify our activation function as `relu`. Activation functions transform
+    the output of a layer before it''s passed into the next layer. We''ll apply activation
+    functions to our `Conv2D` and `Dense` layers. These transformations have many
+    important properties. Using `relu` here speeds up the convergence of our network, [http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf](http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf)http://www.cs.toronto.edu/~fritz/absps/imagenet.pdf
+    and `relu`, relative to alternative activation functions, isn''t expensive to
+    compute—we''re just transforming negative values to 0, and otherwise keeping all
+    positive values. Mathematically, the `relu` function is given by `max(0, value)`.
+    For the purpose of this chapter, we''ll stick to the `relu` activation for every
+    layer but the output layer.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line 3**: Here, we add our first max pooling layer. We specify that the window
+    size of this layer will be  2 x 2.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line 4**: This is our second convolutional layer. We set it up just as we
+    set up the first convolutional layer.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line 5**: This is the second max pooling layer. We set this layer up just
+    as we set up the first max pooling layer.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line 6**: This is our third and final convolutional layer. This time, we
+    add additional filters (`45` versus the `35` in previous layers). This is just
+    a hyperparameter, and I encourage you to try multiple variations of this.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line 7**: This is the third and final max pooling layer. It''s configured
+    the same as all max pooling layers that came before it.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line 8**: Here''s where we flatten the output of our convolutional neural
+    network.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line 9**: Here''s the first layer of our fully-connected network. We specify
+    `64` neurons in this layer and a `relu` activation function.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line 10**: Here''s the second layer of our fully-connected network. We specify
+    `32` neurons for this layer and a `relu` activation function.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line 11**: This is our output layer. We specify `10` neurons, equal to the
+    number of target classes in our data. Since this is a multi-class classification
+    problem, we specify a `softmax` activation function. The output will represent
+    the predicted probability of the image belonging to classes 0–9\. These probabilities
+    will sum to `1`. The highest predicted probability of the `10` will represent
+    the class our model believes to be the most likely class.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line 12**: Here''s where we compile our Keras model. In the compile step,
+    we specify our optimizer, `Adam`, a **gradient-descent** algorithm that automatically
+    adapts its learning rate. We specify our **loss function**—in this case, `categorical
+    cross entropy` because we''re performing a multi-class classification problem.
+    Lastly, for the metrics argument, we specify `accuracy`. By specifying this, Keras
+    will inform us of our train and validation accuracy for each epoch that our model
+    runs.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We can get a summary of our model by running the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This outputs the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/485b7f6f-0585-468a-b359-a5b0cd770863.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Notice how the output shapes change as the data passes through the model. Specifically,
+    look at the shape of our output after the flattening occurs—just 45 features.
+    The raw data in `X_train` and `X_test` consisted of 784 features per row, so this
+    is fantastic!
+  prefs: []
+  type: TYPE_NORMAL
+- en: You'll need to install `pydot` to render the visualization. To install it, run
+    `pip install pydot` from the terminal. You may need to restart your kernel for
+    the install to take effect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using the `plot_model` function in Keras, we can visualize the topology of
+    our network differently. To do this, run the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the preceding code saves the topology to `Conv_model1.png` and generates
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b88953fb-ec6c-4b7a-bf4a-62caa3e1e736.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This model will take several minutes to fit. If you have concerns about your
+    system's hardware specs, you can easily reduce the training time by reducing the
+    number of epochs to `10`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Running the following code block will fit the model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the fit step, we specify our `X_train` and `y_train`. We then specify the
+    number of epochs we'd like to train the model. Then we plug in the validation
+    data—`X_test` and `y_test`—to observe our model's out-of-sample performance. I
+    like to save the `model.fit` step as a variable, `my_fit_model`, so we can later
+    easily visualize the training and validation losses over epochs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As the code runs, you''ll see the model''s train and validation loss, and accuracy
+    after each epoch. Let''s plot our model''s train loss and validation loss using
+    the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the preceding code generates the following plot. Your plot won''t be
+    identical—there are several stochastic processes taking place here—but it should
+    look roughly the same:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d0a689ed-6b00-4d32-baf9-733f49b1804e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'A quick glance at this plot shows us that our model is overfitting. We see
+    our train loss continue to fall in every epoch, but the validation loss doesn''t
+    move in lockstep. Let''s glance at our accuracy scores to grasp how well this
+    model did at the classification task. We can do this by running the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This generates the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/cfd56e4a-0ee6-4060-ad8b-04cc3521cc0b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This plot, too, tells us we''ve overfit. But it appears as though our validation
+    accuracy is in the high 80s, which is great! To get the max accuracy our model
+    achieved and the epoch in which it occurred, we can run the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Your specific results will differ from mine, but here''s my output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7e6eb9cd-38e2-4a6b-a1f6-fd4b19c2adac.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Using our convolutional neural network, we achieved a max classification accuracy
+    of 89.48% in the 21st epoch. This is amazing! But we've still got to address that
+    overfitting problem. Next, we'll rebuild our model using **dropout regularization**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dropout regularization is a form of regularization we can apply to the fully-connected
+    layers of our neural network. Using dropout regularization, we randomly drop neurons
+    and their connections from the network during training. By doing this, the network
+    doesn't become too reliant on the weights or biases associated with any specific
+    node, allowing it to generalize better out of sample.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we add dropout regularization, specifying that we''d like to drop `35%` of
+    the neurons at each `Dense` layer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the preceding code will compile our new model. Let''s have another
+    look at the summary by rerunning the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the preceding code returns the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/819a4e32-36b5-4fe9-91b8-2ceb69e1f8aa.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s refit our model by rerunning the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once your model has refit, rerun the plot code to visualize loss. Here''s mine:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ad4333d4-48bf-43f0-962c-725832e0a4d3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This looks better! The difference between our training and validation losses
+    has shrunk, which was the intended purpose, though there does appear to be some
+    room for improvement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, re-plot your accuracy curves. Here are mine for this run:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/97fd4ea0-c7dc-412b-bd43-8da26dc2cf95.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This also looks better from an overfitting perspective. Fantastic! What was
+    the best classification accuracy we achieved after applying regularization? Let''s
+    run the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'My output from this run of the model was as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f8b9853f-45f0-440c-89fd-fa95f6b5b572.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Interesting! The best validation accuracy we achieved was lower than that in
+    our unregularized model, but not by much. And it's still quite good! Our model
+    is telling us that we predict the correct type of clothing article 88.85% of the
+    time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One way to think about how well we've done here is to compare our model's accuracy
+    with the **baseline accuracy** for our dataset. The baseline accuracy is simply
+    the score we would get by naïvely selecting the most-commonly occurring class
+    in the dataset. For this specific dataset, because the classes are perfectly balanced
+    and there are 10 classes, the baseline accuracy is 10%. Our model handily beats
+    this baseline accuracy. It's clearly learned something about the data!
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are so many different places you can go from here! Try building deeper
+    models or grid-searching over the many hyperparameters we used in our models.
+    Assess your classifier's performance as you would with any other model—try building
+    a confusion matrix to understand what classes we predicted well and what classes
+    we weren't as strong in!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We certainly covered a lot of ground here! We talked about how to extract features
+    from images, how convolutional neural networks work, and then we built a convolutional
+    neural network to a fully-connected network architecture. Along the way, we picked
+    up lots of new jargon and concepts, too!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hopefully, after reading this chapter, you feel that these image-classification
+    techniques—knowledge of which you may have once considered the province of sorcerers—is
+    actually just a series of mathematical optimizations carried out for intuitive
+    reasons! And hopefully this content can help move you forward in tackling an image-processing
+    project that interests you!
+  prefs: []
+  type: TYPE_NORMAL

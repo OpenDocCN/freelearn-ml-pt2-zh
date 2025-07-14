@@ -1,0 +1,436 @@
+- en: 7\. Model Evaluation
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 7.01: Final Test Project'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Import the relevant libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import pandas as pd
+  prefs: []
+  type: TYPE_NORMAL
+- en: import numpy as np
+  prefs: []
+  type: TYPE_NORMAL
+- en: import json
+  prefs: []
+  type: TYPE_NORMAL
+- en: '%matplotlib inline'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import matplotlib.pyplot as plt
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.preprocessing import OneHotEncoder
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.model_selection import RandomizedSearchCV, train_test_split
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.ensemble import GradientBoostingClassifier
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.metrics import (accuracy_score, precision_score, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: recall_score, confusion_matrix, precision_recall_curve)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Read the breast-cancer-data.csv dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: data = pd.read_csv('../Datasets/breast-cancer-data.csv')
+  prefs: []
+  type: TYPE_NORMAL
+- en: data.info()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s separate the input data (X) and the target (y):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: X = data.drop(columns=['diagnosis'])
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'y = data[''diagnosis''].map({''malignant'': 1, ''benign'': 0}.get).values'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Split the dataset into training and test sets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: X_train, X_test, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_train, y_test = train_test_split(X, y, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: test_size=0.2, random_state=11)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(X_train.shape)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(y_train.shape)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(X_test.shape)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(y_test.shape)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (455, 30)
+  prefs: []
+  type: TYPE_NORMAL
+- en: (455,)
+  prefs: []
+  type: TYPE_NORMAL
+- en: (114, 30)
+  prefs: []
+  type: TYPE_NORMAL
+- en: (114,)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Choose a base model and define the range of hyperparameter values corresponding
+    to the model to be searched for hyperparameter tuning. Let''s use a gradient-boosted
+    classifier as our model. We then define ranges of values for all hyperparameters
+    we want to tune in the form of a dictionary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: meta_gbc = GradientBoostingClassifier()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'param_dist = {''n_estimators'': list(range(10, 210, 10)), \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '''criterion'': [''mae'', ''mse''],\'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '''max_features'': [''sqrt'', ''log2'', 0.25, 0.3, \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 0.5, 0.8, None], \
+  prefs: []
+  type: TYPE_NORMAL
+- en: '''max_depth'': list(range(1, 10)), \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '''min_samples_leaf'': list(range(1, 10))}'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Define the parameters with which to initialize the RandomizedSearchCV object
+    and use K-fold cross-validation to identify the best model hyperparameters. Define
+    the parameters required for random search, including cv as 5, indicating that
+    the hyperparameters should be chosen by evaluating the performance using 5-fold
+    cross-validation. Then, initialize the RandomizedSearchCV object and use the .fit()
+    method to initiate optimization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'rand_search_params = {''param_distributions'': param_dist, \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '''scoring'': ''accuracy'', ''n_iter'': 100, \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '''cv'': 5, ''return_train_score'': True, \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '''n_jobs'': -1, ''random_state'': 11 }'
+  prefs: []
+  type: TYPE_NORMAL
+- en: random_search = RandomizedSearchCV(meta_gbc, **rand_search_params)
+  prefs: []
+  type: TYPE_NORMAL
+- en: random_search.fit(X_train, y_train)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.36: The RandomizedSearchCSV object'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-B4U09VDI.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.36: The RandomizedSearchCSV object'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the tuning is complete, find the position (iteration number) at which
+    the highest mean test score was obtained. Find the corresponding hyperparameters
+    and save them to a dictionary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: idx = np.argmax(random_search.cv_results_['mean_test_score'])
+  prefs: []
+  type: TYPE_NORMAL
+- en: final_params = random_search.cv_results_['params'][idx]
+  prefs: []
+  type: TYPE_NORMAL
+- en: final_params
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.37: Hyperparameters'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-Q75G5A0N.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.37: Hyperparameters'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Split the training dataset further into training and validation sets and train
+    a new model using the final hyperparameters on the training dataset. Use scikit-learn''s
+    train_test_split() method to split X and y into train and validation components,
+    with the validation set comprising 15% of the dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: train_X, val_X, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: train_y, val_y = train_test_split(X_train, y_train, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: test_size=0.15, random_state=11)
+  prefs: []
+  type: TYPE_NORMAL
+- en: train_X.shape, train_y.shape, val_X.shape, val_y.shape
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ((386, 30), (386,), (69, 30), (69,))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Train the gradient-boosted classification model using the final hyperparameters
+    and make predictions in relation to the training and validation sets. Also, calculate
+    the probability regarding the validation set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: gbc = GradientBoostingClassifier(**final_params)
+  prefs: []
+  type: TYPE_NORMAL
+- en: gbc.fit(train_X, train_y)
+  prefs: []
+  type: TYPE_NORMAL
+- en: preds_train = gbc.predict(train_X)
+  prefs: []
+  type: TYPE_NORMAL
+- en: preds_val = gbc.predict(val_X)
+  prefs: []
+  type: TYPE_NORMAL
+- en: pred_probs_val = np.array([each[1] \
+  prefs: []
+  type: TYPE_NORMAL
+- en: for each in gbc.predict_proba(val_X)])
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Calculate accuracy, precision, and recall for predictions in relation to the
+    validation set, and print the confusion matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('train accuracy_score = {}'\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .format(accuracy_score(y_true=train_y, y_pred=preds_train)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('validation accuracy_score = {}'\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .format(accuracy_score(y_true=val_y, y_pred=preds_val)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'print(''confusion_matrix: \n{}''\'
+  prefs: []
+  type: TYPE_NORMAL
+- en: .format(confusion_matrix(y_true=val_y, y_pred=preds_val)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('precision_score = {}'\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .format(precision_score(y_true=val_y, y_pred=preds_val)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('recall_score = {}'\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .format(recall_score(y_true=val_y, y_pred=preds_val)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.38: Evaluation scores and the confusion matrix'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-RRBUP7VU.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.38: Evaluation scores and the confusion matrix'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Experiment with varying thresholds to find the optimal point having a high recall.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Plot the precision-recall curve:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.figure(figsize=(10,7))
+  prefs: []
+  type: TYPE_NORMAL
+- en: precision, recall, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: thresholds = precision_recall_curve(val_y, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: pred_probs_val)
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.plot(recall, precision)
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.xlabel('Recall')
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.ylabel('Precision')
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.show()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.39: Precision recall curve'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-PQXLFL93.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.39: Precision recall curve'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"""'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Plot the variation in precision and recall with increasing threshold values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"""'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'PR_variation_df = pd.DataFrame({''precision'': precision, \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '''recall'': recall}, \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: index=list(thresholds)+[1])
+  prefs: []
+  type: TYPE_NORMAL
+- en: PR_variation_df.plot(figsize=(10,7))
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.xlabel('Threshold')
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.ylabel('P/R values')
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.show()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You should get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.40: Variation in precision and recall with increasing threshold
+    values'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-5EQYQMWH.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.40: Variation in precision and recall with increasing threshold values'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finalize a threshold that will be used for predictions in relation to the test
+    dataset. Let''s finalize a value, say, 0.05\. This value is entirely dependent
+    on what you feel would be optimal based on your exploration in the previous step:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: final_threshold = 0.05
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Predict the final values in relation to the test dataset and save them to a
+    file. Use the final threshold value determined in Step 10 to find the classes
+    for each value in the training set. Then, write the final predictions to the final_predictions.csv
+    file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: pred_probs_test = np.array([each[1] \
+  prefs: []
+  type: TYPE_NORMAL
+- en: for each in gbc.predict_proba(X_test)])
+  prefs: []
+  type: TYPE_NORMAL
+- en: preds_test = (pred_probs_test > final_threshold).astype(int)
+  prefs: []
+  type: TYPE_NORMAL
+- en: preds_test
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.41: Prediction for final values for the test dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-M3PSVYTK.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.41: Prediction for final values for the test dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Alternatively, you can also get the output in CSV format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with open(''final_predictions.csv'', ''w'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: f.writelines([str(val)+'\n' for val in preds_test])
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be a CSV file as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.42: Output for the final values'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-B4Q64TC3.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.42: Output for the final values'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to https://packt.live/2Ynw6Lt.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at https://packt.live/3erAajt. You must
+    execute the entire Notebook in order to get the desired result.
+  prefs: []
+  type: TYPE_NORMAL

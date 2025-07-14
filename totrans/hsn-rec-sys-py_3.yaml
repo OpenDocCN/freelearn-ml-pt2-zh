@@ -1,0 +1,474 @@
+- en: Building an IMDB Top 250 Clone with Pandas
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The **Internet Movie** **Database** (**IMDB**) maintains a chart called the IMDB
+    Top 250*, *which is a ranking of the top 250 movies according to a certain scoring
+    metric. All the movies in this list are non-documentary, theatrical releases with
+    a runtime of at least 45 minutes and over 250,000 ratings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5a3b1cb6-d956-475b-ad1a-7e9a353820e8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This chart can be considered the simplest of recommenders. It doesn't take into
+    consideration the tastes of a particular user, nor does it try to deduce similarities
+    between different movies. It simply calculates a score for every movie based on
+    a predefined metric and outputs a sorted list of movies based on that score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will be covering the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building a clone of the IMDB Top 250chart (henceforth referred to as the simple
+    recommender).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Taking the functionalities of the chart one step further and building a knowledge-based
+    recommender. This model takes user preferences with regards to genre, timeframe,
+    runtime, language, and so on, and recommends movies that satisfy all conditions.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will be required to have Python installed on a system. Finally, to use the
+    Git repository of this book, the user needs to install Git.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code files of this chapter can be found on GitHub:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Recommendation-Systems-with-Python](https://github.com/PacktPublishing/Hands-On-Recommendation-Systems-with-Python).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the following video to see the code in action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://bit.ly/2v7SZD4](http://bit.ly/2v7SZD4)[.](http://bit.ly/2v7SZD4)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The simple recommender
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The first step in building our simple recommender is setting up our workspace.
+    Let's create a new directory named `Chapter3`*.* Create a Jupyter Notebook in
+    this directory named `Simple Recommender`and open it in the browser.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now load the dataset we used in the previous chapter into our notebook.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In case you have not downloaded it already, the dataset is available at
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://www.kaggle.com/rounakbanik/the-movies-dataset/downloads/movies_metadata.csv/7](https://www.kaggle.com/rounakbanik/the-movies-dataset/downloads/movies_metadata.csv/7).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Upon running the cell, you should see a familiar table-like structure output
+    in the notebook.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Building the simple recommender is fairly straightforward. The steps are as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choose a metric (or score) to rate the movies on
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Decide on the prerequisites for the movie to be featured on the chart
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate the score for every movie that satisfies the conditions
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Output the list of movies in decreasing order of their scores
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The metric
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The metric is the numeric quantity based on which we rank movies. A movie is
+    considered to be betterthan another movie if it has a higher metric score than
+    the other movie. It is very important that we have a robust and a reliable metric
+    to build our chart upon to ensure a good quality of recommendations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The choice of a metric is arbitrary. One of the simplest metrics that can be
+    used is the movie rating. However, this suffers from a variety of disadvantages.
+    In the first place, the movie rating does not take the popularity of a movie into
+    consideration. Therefore, a movie rated 9 by 100,000 users will be placed below
+    a movie rated 9.5 by 100 users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is not desirable as it is highly likely that a movie watched and rated
+    only by 100 people caters to a very specific niche and may not appeal as much
+    to the average person as the former.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is also a well-known fact that as the number of voters increase, the rating
+    of a movie normalizes and it approaches a value that is reflective of the movie's
+    quality and popularity with the general populace. To put it another way, movies
+    with very few ratings are not very reliable. A movie rated 10/10 by five users
+    doesn't necessarily mean that it's a good movie.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Therefore, what we need is a metric that can, to an extent, take into account
+    the movie rating and the number of votes it has garnered (a proxy for popularity).
+    This would give a greater preference to a blockbuster movie rated 8 by 100,000
+    users over an art house movie rated 9 by 100 users.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fortunately, we do not have to brainstorm a mathematical formula for the metric.
+    As the title of this chapter states, we are building an IMDB top 250 clone. Therefore,
+    we shall use IMDB''s weighted rating formula as our metric. Mathematically, it
+    can be represented as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Weighted Rating (WR) =* ![](img/4489b75d-977e-4557-895a-2aeff1f98725.png)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following apply:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*v* is the number of votes garnered by the movie'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*m* is the minimum number of votes required for the movie to be in the chart
+    (the prerequisite)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*R* is the mean rating of the movie'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*C* is the mean rating of all the movies in the dataset'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We already have the values for *v* and *R *for every movie in the form of the `vote_count` and
+    `vote_average`features respectively. Calculating *C *is extremely trivial, as
+    we have already seen in the previous chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The prerequisties
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The IMDB weighted formula also has a variable *m *, which it requires to compute
+    its score. This variable is in place to make sure that only movies that are above
+    a certain threshold of popularity are considered for the rankings. Therefore,
+    the value of *m *determines the movies that qualify to be in the chart and also,
+    by being part of the formula, determines the final value of the score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Just like the metric, the choice of the value of *m *is arbitrary. In other
+    words, there is no right value for *m. *It is a good idea to experiment with different
+    values of *m *and then choose the one that you (and your audience) think gives
+    the best recommendations. The only thing to be kept in mind is that the higher
+    the value of *m, *the higher the emphasis on the popularity of a movie, and therefore
+    the higher the selectivity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For our recommender, we will use the number of votes garnered by the 80th percentile
+    movie as our value for *m. *In other words, for a movie to be considered in the
+    rankings, it must have garnered more votes than at least 80% of the movies present
+    in our dataset. Additionally, the number of votes garnered by the 80th percentile
+    movie is used in the weighted formula described previously to come up with the
+    value for the scores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let us now calculate the value of *m*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that only 20% of the movies have gained more than 50 votes. Therefore,
+    our value of *m* is`50`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another prerequisite that we want in place is the runtime. We will only consider
+    movies that are greater than `45 minutes` and less than `300 minutes` in length.
+    Let us define a new DataFrame, `q_movies`,which will hold all the movies that
+    qualify to appear in the chart:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: We see that from our dataset of 45,000 movies approximately 9,000 movies (or
+    20%) made the cut.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calculating the score
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The final value that we need to discover before we calculate our scores is *C, *the
+    mean rating for all the movies in the dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that the average rating of a movie is approximately 5.6/10\. It seems
+    that IMDB happens to be particularly strict with their ratings. Now that we have
+    the value of *C, *we can go about calculating our score for each movie.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let us define a function that computes the rating for a movie, given
+    its features and the values of *m *and *C*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we will use the familiar `apply` function on our `q_movies` DataFrame
+    to construct a new feature score*. *Since the calculation is done for every row,
+    we will set the axis to `1` to denote row-wise operation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Sorting and output
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'There is just one step left. We now need to sort our DataFrame on the basis
+    of the score we just computed and output the list of top movies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a0667c30-199a-4342-b2c3-6181e3e3aa19.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: And voila! You have just built your very first recommender. Congratulations!
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that the Bollywood film *Dilwale Dulhania Le Jayenge *figures at
+    the top of the list. We can also see that it has a noticeably smaller number of
+    votes than the other Top 25 movies. This strongly suggests that we should probably
+    explore a higher value of *m. *This is left as an exercise for the reader; experiment
+    with different values of *m *and observe how the movies in the chart change.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The knowledge-based recommender
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this section, we are going to go ahead and build a knowledge-based recommender
+    on top of our IMDB Top 250 clone. This will be a simple function that will perform
+    the following tasks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ask the user for the genres of movies he/she is looking for
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Ask the user for the duration
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Ask the user for the timeline of the movies recommended
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Using the information collected, recommend movies to the user that have a high
+    weighted rating (according to the IMDB formula) and that satisfy the preceding
+    conditions
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The data that we have has information on the duration, genres, and timelines,
+    but it isn't currently in a form that is directly usable. In other words, our
+    data needs to be wrangled before it can be put to use to build this recommender.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our `Chapter3`folder, let's create a new Jupyter Notebook named `Knowledge
+    Recommender`*. *This notebook will contain all the code that we write as part
+    of this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As usual, let us load our packages and the data into our notebook. Let''s also
+    take a look at the features that we have and decide on the ones that will be useful
+    for this task:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From our output, it is quite clear which features we do and do not require.
+    Now, let''s reduce our DataFrame to only contain features that we need for our
+    model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, let us extract the year of release from our `release_date`feature:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Our `year`feature is still an `object` and is riddled with `NaT`values, which
+    are a type of null value used by Pandas. Let's convert these values to an integer, `0`,
+    and convert the datatype of the `year`feature into `int`*.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To do this, we will define a helper function, `convert_int`,and apply it to
+    the `year`feature:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We do not require the `release_date`feature anymore. So let''s go ahead and
+    remove it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `runtime`feature is already in a form that is usable. It doesn't require
+    any additional wrangling. Let us now turn our attention to `genres`*.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: Genres
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Upon preliminary inspection, we can observe that the genres are in a format
+    that looks like a JSON object (or a Python dictionary). Let us take a look at
+    the `genres`object of one of our movies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can observe that the output is a stringified dictionary. In order for this
+    feature to be usable, it is important that we convert this string into a native
+    Python dictionary. Fortunately, Python gives us access to a function called `literal_eval`(available
+    in the `ast`library) which does exactly that. `literal_eval`parses any string
+    passed into it and converts it into its corresponding Python object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: We now have all the tools required to convert the *genres *feature into the
+    Python dictionary format.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Also, each dictionary represents a genre and has two keys: `id`and `name`*. *However,
+    for this exercise (as well as all subsequent exercises), we only require the `name`*. *Therefore,
+    we shall convert our list of dictionaries into a list of strings, where each string
+    is a genre name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Printing the head of the DataFrame should show you a new `genres`feature, which
+    is a list of genre names. However, we're still not done yet. The last step is
+    to `explode`the genres column. In other words, if a particular movie has multiple
+    genres, we will create multiple copies of the movie, with each movie having one
+    of the genres.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, if there is a movie called *Just Go With It *that has *romance *and *comedy *as
+    its genres, we will `explode`this movie into two rows. One row will be *Just Go
+    With It *as a *romance *movie. The other will be a *comedy*movie:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![](img/3e28d632-7f07-410c-be80-0fdada09bdf3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: You should be able to see three *Toy Story *rows now; one each to represent *animation*,
+    *family*,and *comedy. *This `gen_df`DataFrame is what we will use to build our
+    knowledge-based recommender.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The build_chart function
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We are finally in a position to write the function that will act as our recommender.
+    We cannot use our computed values of *m *and *C *from earlier, as we will not
+    be considering every movie just the ones that qualify. In other words, these are
+    three main steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Get user input on their preferences
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Extract all movies that match the conditions set by the user
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate the values of *m *and *C *for only these movies and proceed to build
+    the chart as in the previous section
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Therefore, the `build_chart`function will accept only two inputs: our `gen_df`DataFrame
+    and the percentile used to calculate the value of *m. *By default, let''s set
+    this to 80%, or `0.8`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Time to put our model into action!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We want recommendations for animated movies between 30 minutes and 2 hours
+    in length, and released anywhere between 1990 and 2005\. Let''s see the results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2ffa5654-3666-43b8-b4a0-af1a897ab647.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can see that the movies that it outputs satisfy all the conditions we passed
+    in as input. Since we applied IMDB's metric, we can also observe that our movies
+    are very highly rated and popular at the same time. The top 5 also includes *The
+    Lion King, *which is my favorite animated movie of all time! I, for one, would
+    be very happy with the results of this list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we built a simple recommender, which was a clone of the IMDB
+    Top 250 chart. We then proceeded to build an improved knowledge-based recommender,
+    which asked the user for their preferred genres, duration, and time. In the process
+    of building these models, we also learned to perform some advanced data wrangling
+    with the Pandas library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will use more advanced features and techniques to build
+    a content-based recommender. This model will be able to detect similar movies
+    based on their plots and recommend movies by identifying similarities in genre,
+    cast, crew, plot, and so on.
+  prefs: []
+  type: TYPE_NORMAL

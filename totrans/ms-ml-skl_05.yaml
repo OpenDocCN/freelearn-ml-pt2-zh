@@ -1,0 +1,714 @@
+- en: Chapter 5. Nonlinear Classification and Regression with Decision Trees
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the previous chapters we discussed generalized linear models, which relate
+    a linear combination of explanatory variables to one or more response variables
+    using a link function. You learned to use multiple linear regression to solve
+    regression problems, and we used logistic regression for classification tasks.
+    In this chapter we will discuss a simple, nonlinear model for classification and
+    regression tasks: the decision tree. We''ll use decision trees to build an ad
+    blocker that can learn to classify images on a web page as banner advertisements
+    or page content. Finally, we will introduce ensemble learning methods, which combine
+    a set of models to produce an estimator with better predictive performance than
+    any of its component estimators.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision trees
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Decision trees are tree-like graphs that model a decision. They are analogous
+    to the parlor game Twenty Questions. In Twenty Questions, one player, called the
+    answerer, chooses an object but does not reveal the object to the other players,
+    who are called questioners. The object should be a common noun, such as "guitar"
+    or "sandwich", but not "1969 Gibson Les Paul Custom" or "North Carolina". The
+    questioners must guess the object by asking as many as twenty questions that can
+    be answered with `yes`, `no`, or `maybe`. An intuitive strategy for questioners
+    is to ask questions of increasing specificity; asking "*is it a musical instrument?*"
+    as the first question will not efficiently reduce the number of possibilities.
+    The branches of a decision tree specify the shortest sequences of explanatory
+    variables that can be examined in order to estimate the value of a response variable.
+    To continue the analogy, in Twenty Questions the questioner and the answerers
+    all have knowledge of the training data, but only the answerer knows the values
+    of the features for the test instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision trees are commonly learned by recursively splitting the set of training
+    instances into subsets based on the instances' values for the explanatory variables.
+    The following diagram depicts a decision tree that we will look at in more detail
+    later in the chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Decision trees](img/8365OS_05_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Represented by boxes, the interior nodes of the decision tree test explanatory
+    variables. These nodes are connected by edges that specify the possible outcomes
+    of the tests. The training instances are divided into subsets based on the outcomes
+    of the tests. For example, a node might test whether or not the value of an explanatory
+    variable exceeds a threshold. The instances that pass the test will follow an
+    edge to the node's right child, and the instances that fail the test will follow
+    an edge to the node's left child. The children nodes similarly test their subsets
+    of the training instances until a stopping criterion is satisfied. In classification
+    tasks, the leaf nodes of the decision tree represent classes. In regression tasks,
+    the values of the response variable for the instances contained in a leaf node
+    may be averaged to produce the estimate for the response variable. After the decision
+    tree has been constructed, making a prediction for a test instance requires only
+    following the edges until a leaf node is reached.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training decision trees
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let's create a decision tree using an algorithm called **Iterative Dichotomiser
+    3** (**ID3**). Invented by Ross Quinlan, ID3 was one of the first algorithms used
+    to train decision trees. Assume that you have to classify animals as cats or dogs.
+    Unfortunately, you cannot observe the animals directly and must use only a few
+    attributes of the animals to make your decision. For each animal, you are told
+    whether or not it likes to play fetch, whether or not it is frequently grumpy,
+    and its favorite of three types of food.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To classify new animals, the decision tree will examine an explanatory variable
+    at each node. The edge it follows to the next node will depend on the outcome
+    of the test. For example, the first node might ask whether or not the animal likes
+    to play fetch. If the animal does, we will follow the edge to the left child node;
+    if not, we will follow the edge to the right child node. Eventually an edge will
+    connect to a leaf node that indicates whether the animal is a cat or a dog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following fourteen instances comprise our training data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Training instance | Plays fetch | Is grumpy | Favorite food | Species |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | Yes | No | Bacon | Dog |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | No | Yes | Dog Food | Dog |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | No | Yes | Cat food | Cat |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | No | Yes | Bacon | Cat |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | No | No | Cat food | Cat |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | No | Yes | Bacon | Cat |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | No | Yes | Cat Food | Cat |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 8 | No | No | Dog Food | Dog |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 9 | No | Yes | Cat food | Cat |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 10 | Yes | No | Dog Food | Dog |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 11 | Yes | No | Bacon | Dog |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 12 | No | No | Cat food | Cat |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 13 | Yes | Yes | Cat food | Cat |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 14 | Yes | Yes | Bacon | Dog |'
+  prefs: []
+  type: TYPE_TB
+- en: From this data we can see that cats are generally grumpier than the dogs. Most
+    dogs play fetch and most cats refuse. Dogs prefer dog food and bacon, whereas
+    cats only like cat food and bacon. The `is grumpy` and `plays fetch` explanatory
+    variables can be easily converted to binary-valued features. The `favorite food`
+    explanatory variable is a categorical variable that has three possible values;
+    we will one-hot encode it. Recall from [Chapter 3](ch03.html "Chapter 3. Feature
+    Extraction and Preprocessing"), *Feature Extraction and Preprocessing*, that one-hot
+    encoding represents a categorical variable with as many binary-valued features
+    as there are values for variable. Representing the categorical variable with a
+    single integer-valued feature will encode an artificial order to its values. Since
+    `favorite food` has three possible states, we will represent it with three binary-valued
+    features. From this table, we can manually construct classification rules. For
+    example, an animal that is grumpy and likes cat food must be a cat, while an animal
+    that plays fetch and likes bacon must be a dog. Constructing these classification
+    rules by hand for even a small data set is cumbersome. Instead, we will learn
+    these rules by creating a decision tree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Selecting the questions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Like Twenty Questions, the decision tree will estimate the value of the response
+    variable by testing the values of a sequence of explanatory variables. Which explanatory
+    variable should be tested first? Intuitively, a test that produces subsets that
+    contain all cats or all dogs is better than a test that produces subsets that
+    still contain both cats and dogs. If the members of a subset are of different
+    classes, we are still uncertain about how to classify the instance. We should
+    also avoid creating tests that separate only a single cat or dog from the others;
+    such tests are analogous to asking specific questions in the first few rounds
+    of Twenty Questions. More formally, these tests can infrequently classify an instance
+    and might not reduce our uncertainty. The tests that reduce our uncertainty about
+    the classification the most are the best. We can quantify the amount of uncertainty
+    using a measure called **entropy**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Measured in bits, entropy quantifies the amount of uncertainty in a variable.
+    Entropy is given by the following equation, where ![Selecting the questions](img/8365OS_05_30.jpg)
+    is the number of outcomes and ![Selecting the questions](img/8365OS_05_31.jpg)
+    is the probability of the outcome ![Selecting the questions](img/8365OS_05_32.jpg).
+    Common values for ![Selecting the questions](img/8365OS_05_33.jpg) are `2`, ![Selecting
+    the questions](img/8365OS_05_33a.jpg), and `10`. Because the log of a number less
+    than one will be negative, the entire sum is negated to return a positive value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Selecting the questions](img/8365OS_05_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'For example, a single toss of a fair coin has only two outcomes: heads and
+    tails. The probability that the coin will land on heads is 0.5, and the probability
+    that it will land on tails is 0.5\. The entropy of the coin toss is equal to the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Selecting the questions](img/8365OS_05_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'That is, only one bit is required to represent the two equally probable outcomes,
+    heads and tails. Two tosses of a fair coin can result in four possible outcomes:
+    heads and heads, heads and tails, tails and heads, and tails and tails. The probability
+    of each outcome is *0.5 x 0.5 = 0.25*. The entropy of two tosses is equal to the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Selecting the questions](img/8365OS_05_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If the coin has the same face on both sides, the variable representing its
+    outcome has 0 bits of entropy; that is, we are always certain of the outcome and
+    the variable will never represent new information. Entropy can also be represented
+    as a fraction of a bit. For example, an unfair coin has two different faces, but
+    is weighted such that the faces are not equally likely to land in a toss. Assume
+    that the probability that an unfair coin will land on heads is 0.8, and the probability
+    that it will land on tails is 0.2\. The entropy of a single toss of this coin
+    is equal to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Selecting the questions](img/8365OS_05_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The outcome of a single toss of an unfair coin can have a fraction of one bit
+    of entropy. There are two possible outcomes of the toss, but we are not totally
+    uncertain since one outcome is more frequent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s calculate the entropy of classifying an unknown animal. If an equal
+    number of dogs and cats comprise our animal classification training data and we
+    do not know anything else about the animal, the entropy of the decision is equal
+    to one. All we know is that the animal could be either a cat or a dog; like the
+    fair coin toss, both outcomes are equally likely. Our training data, however,
+    contains six dogs and eight cats. If we do not know anything else about the unknown
+    animal, the entropy of the decision is given by the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Selecting the questions](img/8365OS_05_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Since cats are more common, we are less uncertain about the outcome. Now let''s
+    find the explanatory variable that will be most helpful in classifying the animal;
+    that is, let''s find the explanatory variable that reduces the entropy the most.
+    We can test the `plays fetch` explanatory variable and divide the training instances
+    into animals that play fetch and animals that don''t. This produces the two following
+    subsets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Selecting the questions](img/8365OS_05_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Decision trees are often visualized as diagrams that are similar to flowcharts.
+    The top box of the previous diagram is the root node; it contains all of our training
+    instances and specifies the explanatory variable that will be tested. At the root
+    node we have not eliminated any instances from the training set and the entropy
+    is equal to approximately 0.985\. The root node tests the `plays fetch` explanatory
+    variable. Recall that we converted this Boolean explanatory variable to a binary-valued
+    feature. Training instances for which `plays fetch` is equal to zero follow the
+    edge to the root''s left child, and training instances for animals that do play
+    fetch follow the edge to the root''s right child node. The left child node contains
+    a subset of the training data with seven cats and two dogs that do not like to
+    play fetch. The entropy at this node is given by the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Selecting the questions](img/8365OS_05_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The right child contains a subset with one cat and four dogs that do like to
+    play fetch. The entropy at this node is given by the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Selecting the questions](img/8365OS_05_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Instead of testing the `plays fetch` explanatory variable, we could test the
+    `is grumpy` explanatory variable. This test produces the following tree. As with
+    the previous tree, instances that fail the test follow the left edge, and instances
+    that pass the test follow the right edge.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Selecting the questions](img/8365OS_05_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We could also divide the instances into animals that prefer cat food and animals
+    that don''t to produce the following tree:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Selecting the questions](img/8365OS_05_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Information gain
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Testing for the animals that prefer cat food resulted in one subset with six
+    cats, zero dogs, and 0 bits of entropy and another subset with two cats, six dogs,
+    and 0.811 bits of entropy. How can we measure which of these tests reduced our
+    uncertainty about the classification the most? Averaging the entropies of the
+    subsets may seem to be an appropriate measure of the reduction in entropy. In
+    this example, the subsets produced by the cat food test have the lowest average
+    entropy. Intuitively, this test seems to be effective, as we can use it to classify
+    almost half of the training instances. However, selecting the test that produces
+    the subsets with the lowest average entropy can produce a suboptimal tree. For
+    example, imagine a test that produced one subset with two dogs and no cats and
+    another subset with four dogs and eight cats. The entropy of the first subset
+    is equal to the following (note that the second term is omitted because ![Information
+    gain](img/8365OS_05_35.jpg) is undefined):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Information gain](img/8365OS_05_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The entropy of the second subset is equal to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Information gain](img/8365OS_05_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The average of these subsets' entropies is only 0.459, but the subset containing
+    most of the instances has almost one bit of entropy. This is analogous to asking
+    specific questions early in Twenty Questions; we could get lucky and win within
+    the first few attempts, but it is more likely that we will squander our questions
+    without eliminating many possibilities. Instead, we will measure the reduction
+    in entropy using a metric called **information gain**. Calculated with the following
+    equation, information gain is the difference between the entropy of the parent
+    node, ![Information gain](img/8365OS_05_36.jpg), and the weighted average of the
+    children nodes' entropies. ![Information gain](img/8365OS_05_37.jpg) is the set
+    of instances, and ![Information gain](img/8365OS_05_41.jpg) is the explanatory
+    variable under test. ![Information gain](img/8365OS_05_38.jpg) is the value of
+    attribute ![Information gain](img/8365OS_05_41.jpg) for instance ![Information
+    gain](img/8365OS_05_46.jpg). ![Information gain](img/8365OS_05_39.jpg) is the
+    number of instances for which attribute ![Information gain](img/8365OS_05_41.jpg)
+    is equal to the value ![Information gain](img/8365OS_05_42.jpg). ![Information
+    gain](img/8365OS_05_40.jpg) is the entropy of the subset of instances for which
+    the value of the explanatory variable ![Information gain](img/8365OS_05_41.jpg)
+    is ![Information gain](img/8365OS_05_42.jpg).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Information gain](img/8365OS_05_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The following table contains the information gains for all of the tests. In
+    this case, the cat food test is still the best, as it increases the information
+    gain the most.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Test | Parent''s entropy | Child''s entropy | Child''s entropy | Weighted
+    average | IG |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **plays fetch?** | 0.9852 | 0.7642 | 0.7219 | 0.7490 * 9/14 + 0.7219 * 5/14
+    = 0.7491 | 0.2361 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **is grumpy?** | 0.9852 | 0.9183 | 0.8113 | 0.9183 * 6/14 + 0.8113 * 8/14
+    = 0.85710.8572 | 0.1280 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **favorite food = cat food** | 0.9852 | 0.8113 | 0 | 0.8113 * 8 /14 + 0.0
+    * 6/14 = 0.4636 | 0.5216 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **favorite food = dog food** | 0.9852 | 0.8454 | 0 | 0.8454 * 11/14 + 0.0
+    * 3/14 = 0.6642 | 0.3210 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **favorite food = bacon** | 0.9852 | 0.9183 | 0.971 | 0.9183 * 9/14 + 0.9710
+    * 5/14 = 0.9371 | 0.0481 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Now let''s add another node to the tree. One of the child nodes produced by
+    the test is a leaf node that contains only cats. The other node still contains
+    two cats and six dogs. We will add a test to this node. Which of the remaining
+    explanatory variables reduces our uncertainty the most? The following table contains
+    the information gains for all of the possible tests:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Test | Parent''s entropy | Child''s entropy | Child''s entropy | Weighted
+    average | IG |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **plays fetch?** | 0.8113 | 1 | 0 | 1.0 * 4/8 + 0 * 4/8 = 0.5 | 0.3113 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **is grumpy?** | 0.8113 | 0 | 1 | 0.0 * 4/8 + 1 * 4/8 = 0.5 | 0.3113 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **favorite food=dog food** | 0.8113 | 0.9710 | 0 | 0.9710 * 5/8 + 0.0 * 3/8
+    = 0.6069 | 0.2044 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **favorite food=bacon** | 0.8113 | 0 | 0.9710 | 0.0 * 3/8 + 0.9710 * 5/8
+    = 0.6069 | 0.2044 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'All of the tests produce subsets with 0 bits of entropy, but the `is grumpy`
+    and `plays fetch` tests produce the greatest information gain. ID3 breaks ties
+    by selecting one of the best tests arbitrarily. We will select the `is grumpy`
+    test, which splits its parent''s eight instances into a leaf node containing four
+    dogs and a node containing two cats and two dogs. The following is a diagram of
+    the current tree:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Information gain](img/8365OS_05_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We will now select another explanatory variable to test the child node''s four
+    instances. The remaining tests, `favorite food=bacon`, `favorite food=dog food`,
+    and `plays fetch`, all produce a leaf node containing one dog or cat and a node
+    containing the remaining animals. The remaining tests produce equal information
+    gains, as shown in the following table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Test | Parent''s Entropy | Child Entropy | Child Entropy | Weighted Average
+    | Information Gain |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **plays fetch?** | 1 | 0.9183 | 0 | 0.688725 | 0.311275 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **favorite food=dog food** | 1 | 0.9183 | 0 | 0.688725 | 0.311275 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **favorite food=bacon** | 1 | 0 | 0.9183 | 0.688725 | 0.311275 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'We will arbitrarily select the `plays fetch` test to produce a leaf node containing
+    one dog and a node containing two cats and a dog. Two explanatory variables remain;
+    we can test for animals that like bacon, or we can test for animals that like
+    dog food. Both of the tests will produce the same subsets and create a leaf node
+    containing one dog and a leaf node containing two cats. We will arbitrarily choose
+    to test for animals that like dog food. The following is a diagram of the completed
+    decision tree:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Information gain](img/8365OS_05_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s classify some animals from the following test data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Testing instance | Plays fetch | Is grumpy | Favorite food | Species |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | Yes | No | Bacon | Dog |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | Yes | Yes | Dog Food | Dog |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | No | Yes | Dog Food | Cat |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | No | Yes | Bacon | Cat |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | No | No | Cat food | Cat |'
+  prefs: []
+  type: TYPE_TB
+- en: Let's classify the first animal, which likes to plays fetch, is infrequently
+    grumpy, and loves bacon. We will follow the edge to the root node's left child
+    since the animal's favorite food is not cat food. The animal is not grumpy, so
+    we will follow the edge to the second-level node's left child. This is a leaf
+    node containing only dogs; we have correctly classified this instance. To classify
+    the third test instance as a cat, we follow the edge to the root node's left child,
+    follow the edge to the second-level node's right child, follow the edge to the
+    third-level node's left child, and finally follow the edge to the fourth-level
+    node's right child.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Congratulations! You've constructed a decision tree using the ID3 algorithm.
+    Other algorithms can be used to train decision trees. **C4.5** is a modified version
+    of ID3 that can be used with continuous explanatory variables and can accommodate
+    missing values for features. C4.5 also can **prune** trees. Pruning reduces the
+    size of a tree by replacing branches that classify few instances with leaf nodes.
+    Used by scikit-learn's implementation of decision trees, **CART** is another learning
+    algorithm that supports pruning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gini impurity
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In the previous section, we built a decision tree by creating nodes that produced
+    the greatest information gain. Another common heuristic for learning decision
+    trees is **Gini impurity**, which measures the proportions of classes in a set.
+    Gini impurity is given by the following equation, where ![Gini impurity](img/8365OS_05_45.jpg)
+    is the number of classes, ![Gini impurity](img/8365OS_05_44.jpg) is the subset
+    of instances for the node, and ![Gini impurity](img/8365OS_05_43.jpg) is the probability
+    of selecting an element of class ![Gini impurity](img/8365OS_05_32.jpg) from the
+    node''s subset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Gini impurity](img/8365OS_05_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Intuitively, Gini impurity is zero when all of the elements of the set are
+    the same class, as the probability of selecting an element of that class is equal
+    to one. Like entropy, Gini impurity is greatest when each class has an equal probability
+    of being selected. The maximum value of Gini impurity depends on the number of
+    possible classes, and it is given by the following equation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Gini impurity](img/8365OS_05_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Our problem has two classes, so the maximum value of the Gini impurity measure
+    will be equal to one half. scikit-learn supports learning decision trees using
+    both information gain and Gini impurity. There are no firm rules to help you decide
+    when to use one criterion or the other; in practice, they often produce similar
+    results. As with many decisions in machine learning, it is best to compare the
+    performances of models trained using both options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision trees with scikit-learn
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s use decision trees to create software that can block banner ads on web
+    pages. This program will predict whether each of the images on a web page is an
+    advertisement or article content. Images that are classified as being advertisements
+    could then be hidden using Cascading Style Sheets. We will train a decision tree
+    classifier using the *Internet Advertisements Data Set* from [http://archive.ics.uci.edu/ml/datasets/Internet+Advertisements](http://archive.ics.uci.edu/ml/datasets/Internet+Advertisements),
+    which contains data for 3,279 images. The proportions of the classes are skewed;
+    459 of the images are advertisements and 2,820 are content. Decision tree learning
+    algorithms can produce biased trees from data with unbalanced class proportions;
+    we will evaluate a model on the unaltered data set before deciding if it is worth
+    balancing the training data by over- or under-sampling instances. The explanatory
+    variables are the dimensions of the image, words from the containing page''s URL,
+    words from the image''s URL, the image''s alt text, the image''s anchor text,
+    and a window of words surrounding the image tag. The response variable is the
+    image''s class. The explanatory variables have already been transformed into feature
+    representations. The first three features are real numbers that encode the width,
+    height, and aspect ratio of the images. The remaining features encode binary term
+    frequencies for the text variables. In the following sample, we will grid search
+    for the hyperparameter values that produce the decision tree with the greatest
+    accuracy, and then evaluate the tree''s performance on a test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'First we read the `.csv` file using pandas. The `.csv` does not have a header
+    row, so we split the last column containing the response variable''s values from
+    the features using its index:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We encoded the advertisements as the positive class and the content as the
+    negative class. More than one quarter of the instances are missing at least one
+    of the values for the image''s dimensions. These missing values are marked by
+    whitespace and a question mark. We replaced the missing values with negative one,
+    but we could have imputed the missing values; for instance, we could have replaced
+    the missing height values with the average height value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then split the data into training and test sets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We created a pipeline and an instance of `DecisionTreeClassifier`. Then, we
+    set the `criterion` keyword argument to `entropy` to build the tree using the
+    information gain heuristic:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we specified the hyperparameter space for the grid search:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We set `GridSearchCV()` to maximize the model''s F1 score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: The classifier detected more than 80 percent of the ads in the test set, and
+    approximately 92 percent of the images that it predicted were ads were truly ads.
+    Overall, the performance is promising; in following sections, we will try to modify
+    our model to improve its performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tree ensembles
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Ensemble learning** methods combine a set of models to produce an estimator
+    that has better predictive performance than its individual components. A **random
+    forest** is a collection of decision trees that have been trained on randomly
+    selected subsets of the training instances and explanatory variables. Random forests
+    usually make predictions by returning the mode or mean of the predictions of their
+    constituent trees; scikit-learn''s implementations return the mean of the trees''
+    predictions. Random forests are less prone to overfitting than decision trees
+    because no single tree can learn from all of the instances and explanatory variables;
+    no single tree can memorize all of the noise in the representation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's update our ad blocker's classifier to use a random forest. It is simple
+    to replace the `DecisionTreeClassifier` using scikit-learn's API; we simply replace
+    the object with an instance of `RandomForestClassifier`. Like the previous example,
+    we will grid search to find the values of the hyperparameters that produce the
+    random forest with the best predictive performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, import the `RandomForestClassifier` class from the `ensemble` module:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, replace the `DecisionTreeClassifier` in the `pipeline` with an instance
+    of `RandomForestClassifier` and update the hyperparameter space:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Replacing the single decision tree with a random forest resulted in a significant
+    reduction of the error rate; the random forest improves the precision and recall
+    for ads to 0.97 and 0.83.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The advantages and disadvantages of decision trees
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The compromises associated with using decision trees are different than those
+    of the other models we discussed. Decision trees are easy to use. Unlike many
+    learning algorithms, decision trees do not require the data to have zero mean
+    and unit variance. While decision trees can tolerate missing values for explanatory
+    variables, scikit-learn's current implementation cannot. Decision trees can even
+    learn to ignore explanatory variables that are not relevant to the task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Small decision trees can be easy to interpret and visualize with the `export_graphviz`
+    function from scikit-learn's `tree` module. The branches of a decision tree are
+    conjunctions of logical predicates, and they are easily visualized as flowcharts.
+    Decision trees support multioutput tasks, and a single decision tree can be used
+    for multiclass classification without employing a strategy like one-versus-all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Like the other models we discussed, decision trees are **eager learners**. Eager
+    learners must build an input-independent model from the training data before they
+    can be used to estimate the values of test instances, but can predict relatively
+    quickly once the model has been built. In contrast, **lazy** **learners** such
+    as the k-nearest neighbors algorithm defer all generalization until they must
+    make a prediction. Lazy learners do not spend time training, but often predict
+    slowly compared to eager learners.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision trees are more prone to overfitting than many of the models we discussed,
+    as their learning algorithms can produce large, complicated decision trees that
+    perfectly model every training instance but fail to generalize the real relationship.
+    Several techniques can mitigate over-fitting in decision trees. **Pruning** is
+    a common strategy that removes some of the tallest nodes and leaves of a decision
+    tree, but it is not currently implemented in scikit-learn. However, similar effects
+    can be achieved by setting a maximum depth for the tree or by creating child nodes
+    only when the number of training instances they will contain exceeds a threshold.
+    The `DecisionTreeClassifier` and `DecisionTreeRegressor` classes provide keyword
+    arguments to set these constraints. Creating a random forest can also reduce over-fitting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Efficient decision tree learning algorithms like ID3 are **greedy**. They learn
+    efficiently by making locally optimal decisions, but are not guaranteed to produce
+    the globally optimal tree. ID3 constructs a tree by selecting a sequence of explanatory
+    variables to test. Each explanatory variable is selected because it reduces the
+    uncertainty in the node more than the other variables. It is possible, however,
+    that locally suboptimal tests are required in order to find the globally optimal
+    tree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In our toy examples, the size of the tree did not matter since we retained all
+    of nodes. In a real application, however, the tree's growth could be limited by
+    pruning or similar mechanisms. Pruning trees with different shapes can produce
+    trees with different performances. In practice, locally optimal decisions that
+    are guided by the information gain or Gini impurity heuristics often result in
+    an acceptable decision trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter we learned about simple nonlinear models for classification
+    and regression called decision trees. Like the parlor game Twenty Questions, decision
+    trees are composed of sequences of questions that examine a test instance. The
+    branches of a decision tree terminate in leaves that specify the predicted value
+    of the response variable. We discussed how to train decision trees using the ID3
+    algorithm, which recursively splits the training instances into subsets that reduce
+    our uncertainty about the value of the response variable. We also discussed ensemble
+    learning methods, which combine the predictions from a set of models to produce
+    an estimator with better predictive performance. Finally, we used random forests
+    to predict whether or not an image on a web page is a banner advertisement. In
+    the next chapter, we will introduce our first unsupervised learning task: clustering.'
+  prefs: []
+  type: TYPE_NORMAL

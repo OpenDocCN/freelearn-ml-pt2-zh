@@ -1,0 +1,2046 @@
+- en: 'Chapter 9: Scaling Your Training Jobs'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the four previous chapters, you learned how to train models with built-in
+    algorithms, frameworks, or your own code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, you''ll learn how to scale training jobs, allowing them to
+    train on larger datasets while keeping training time and cost under control. We''ll
+    start by discussing when and how to take scaling decisions, thanks to monitoring
+    information and simple guidelines. You''ll also see how to collect profiling information
+    with **Amazon** **SageMaker Debugger**, in order to understand how efficient your
+    training jobs are. Then, we''ll look at several key techniques for scaling: **pipe
+    mode**, **distributed training**, **data parallelism**, and **model parallelism**.
+    After that, we''ll launch a large training job on the large **ImageNet** dataset
+    and see how to scale it. Finally, we''ll discuss storage alternatives to **S3**
+    for large-scale training, namely **Amazon** **EFS** and **Amazon** **FSx for Lustre**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding when and how to scale
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Monitoring and profiling training jobs with Amazon SageMaker Debugger
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Streaming datasets with pipe mode
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Distributing training jobs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Scaling an image classification model on ImageNet
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Training with data and model parallelism
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using other storage services
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need an AWS account to run the examples included in this chapter. If
+    you haven't got one already, please point your browser at [https://aws.amazon.com/getting-started/](https://aws.amazon.com/getting-started/)
+    to create it. You should also familiarize yourself with the AWS Free Tier ([https://aws.amazon.com/free/](https://aws.amazon.com/free/)),
+    which lets you use many AWS services for free within certain usage limits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will need to install and configure the AWS **Command Line Interface** (**CLI**)
+    for your account ([https://aws.amazon.com/cli/](https://aws.amazon.com/cli/)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will need a working `pandas`, `numpy`, and more).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Code examples included in this book are available on GitHub at [https://github.com/PacktPublishing/Learn-Amazon-SageMaker-second-edition](https://github.com/PacktPublishing/Learn-Amazon-SageMaker-second-edition).
+    You will need to install a Git client to access them ([https://git-scm.com/](https://git-scm.com/)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding when and how to scale
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Before we dive into scaling techniques, let's first discuss the monitoring information
+    that we should consider when deciding whether we need to scale, and how we should
+    do it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding what scaling means
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The training log tells us how long the job lasted. In itself, this isn't really
+    useful. How long is *too long*? This feels very subjective, doesn't it? Furthermore,
+    even when training on the same dataset and infrastructure, changing a single hyperparameter
+    can significantly impact training time. Batch size is one example of this, and
+    there are many more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When we''re concerned about training time, I think we''re really trying to
+    answer three questions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Is the training time compatible with our business requirements?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Are we making good use of the infrastructure we're paying for? Did we underprovision
+    or overprovision?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Could we train faster without spending more money?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adapting training time to business requirements
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Ask yourself this question—what would be the direct impact on your business
+    if your training job ran twice as fast? In many cases, the honest answer should
+    be *none*. There is no clear business metric that would be improved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sure, some companies run training jobs that last days, even weeks—think autonomous
+    driving or life sciences. For them, any significant reduction in training time
+    means that they get results much faster, analyze them, and launch the next iteration.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some other companies want the freshest models possible, and they retrain every
+    hour. Of course, training time needs to be kept under control to make the deadline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In both types of companies, scaling is vital. For everyone else, things are
+    not so clear. If your company trains a production model every week or every month,
+    does it really matter whether training reaches the same level of accuracy 30 minutes
+    sooner? Probably not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some people would certainly object that they need to train a lot of models all
+    of the time. I'm afraid this is a fallacy. As SageMaker lets you create on-demand
+    infrastructure whenever you need it, training activities will not be capacity-bound.
+    This is the case when you work with physical infrastructure, but not with cloud
+    infrastructure. Even if you need to train 1,000 **XGBoost** jobs every day, does
+    it really matter whether each individual job takes 5 minutes instead of 6? Probably
+    not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some would retort that "the faster you train, the less it costs." Again, this
+    is a fallacy. The cost of a SageMaker training job is the training time in seconds
+    multiplied by the cost of the instance type and by the number of instances. If
+    you pick a larger instance type, training time will most probably decrease. Will
+    it decrease enough to offset the increased instance cost? Maybe, maybe not. Some
+    training workloads will make good use of the extra infrastructure, and some won't.
+    The only way to know is to run tests and make data-driven decisions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Right-sizing training infrastructure
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: SageMaker supports a long list of instance types, which looks like a very nice
+    candy store ([https://aws.amazon.com/sagemaker/pricing/instance-types](https://aws.amazon.com/sagemaker/pricing/instance-types)).
+    All you have to do is call an API to fire up an 8 GPU EC2 instance – more powerful
+    than any server your company would have allowed you to buy. Caveat emptor – don't
+    forget the "pricing" part of the URL!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the words "EC2 instance" don't mean much to you, I would definitely recommend
+    reading a bit about **Amazon** **EC2** at [https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Granted, cloud infrastructure doesn't require you to pay a lot of money upfront
+    to buy and host servers. Still, the AWS bill will come at the end of the month.
+    Hence, even using cost optimization techniques such as **Managed Spot Training**
+    (which we'll discuss in the next chapter), it's critical that you right-size your
+    training infrastructure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'My advice is always the same:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Identify business requirements that depend on training time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Start with the smallest reasonable amount of infrastructure.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Measure technical metrics and cost.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'If business requirements are met, did you overprovision? There are two possible
+    answers:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'a) **Yes**: Scale down and repeat.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'b) **No**: You''re done.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: If business requirements are not met, identify bottlenecks.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Run some tests on scaling up (larger instance type) and scaling out (more instances).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Measure technical metrics and costs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implement the best solution for your business context.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Repeat.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Of course, this process is as good as the people who take part in it. Be critical!
+    "Too slow" is not a data point—it's an opinion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deciding when to scale
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When it comes to monitoring information, you can rely on three sources: the
+    training log, **Amazon** **CloudWatch** metrics, and the profiling capability
+    in **Amazon** **SageMaker Debugger**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: If "CloudWatch" doesn't mean much to you, I would definitely recommend reading
+    a bit about it at [https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The training log shows you the total training time and the number of samples
+    per second. As discussed in the previous section, total training time is not a
+    very useful metric. Unless you have very strict deadlines, it's best to ignore
+    it. The number of samples per second is more interesting. You can use it to compare
+    your training job to benchmarks available in research papers or blog posts. If
+    someone has managed to train the same model twice as fast on the same GPU, you
+    should be able to do the same. When you get close to that number, you'll also
+    know that there's not a lot of room for improvement and that other scaling techniques
+    should be considered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CloudWatch gives you coarse-grained infrastructure metrics with a 1-minute resolution.
+    For simple training jobs, these metrics are all you need to check if your training
+    makes efficient use of the underlying infrastructure and identify potential bottlenecks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For more complex jobs (distributed training, custom code, and so on), SageMaker
+    Debugger gives you fine-grained, near real-time infrastructure and Python metrics,
+    with a resolution as low as 100 milliseconds. This information will let you drill
+    down and identify complex performance and scaling problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deciding how to scale
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As mentioned earlier, you can either scale up (move to a bigger instance) or
+    scale out (use several instances for distributed training). Let's look at the
+    pros and cons.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaling up
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Scaling up is simple. You just need to change the instance type. Monitoring
+    stays the same, and there's only one training log to read. Last but not least,
+    training on a single instance is predictable and very often delivers the best
+    accuracy, as there's only one set of model parameters to learn and update.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the downside, your algorithm may not be compute-intensive and parallel enough
+    to benefit from the extra computing power. Extra vCPUs and GPUs are only useful
+    if they're put to work. Your network and storage layers must also be fast enough
+    to keep them busy at all times, which may require using alternatives to S3, generating
+    some extra engineering work. Even if you don't hit any of these problems, there
+    comes a point where there simply isn't a bigger instance you can use!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaling up with multi-GPU instances
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As tempting as multi-GPU instances are, they create specific challenges. An
+    `ml.g4dn.16xlarge` and `ml.p3dn.24xlarge` support 100-Gbit networking and ultra-fast
+    SSD NVMe local storage. Still, that level of performance comes at a price, and
+    you need to make sure it's really worth it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should keep in mind that bigger isn't always better. Inter-GPU communication,
+    no matter how fast, introduces some overhead that could kill the performance of
+    smaller training jobs. Here too, you should experiment and find the sweetest spot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In my experience, getting great performance with multi-GPU instances takes some
+    work. Unless the model is too large to fit on a single GPU or the algorithm doesn't
+    support distributed training, I'd recommend trying first to scale out on single-GPU
+    instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaling out
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Scaling out lets you distribute large datasets to a cluster of training instances.
+    Even if your training job doesn't scale linearly, you'll get a noticeable speedup
+    compared to single-instance training. You can use plenty of smaller instances
+    that only process a subset of your dataset, which helps to keep costs under control.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the downside, datasets need to be prepared in a format that can be efficiently
+    distributed across training clusters. As distributed training is pretty chatty,
+    network I/O can also become a bottleneck. Still, the main problem is usually accuracy,
+    which is often lower than for single-instance training, as each instance works
+    with its own set of model parameters. This can be alleviated by asking training
+    instances to synchronize their work periodically, but this is a costly operation
+    that impacts training time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you think that scaling is harder than it seems, you're right. Let's try to
+    put all of these notions into practice with a first simple example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaling a BlazingText training job
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In [*Chapter 6*](B17705_06_Final_JM_ePub.xhtml#_idTextAnchor108), *Training
+    Natural Language Processing Models*, we used **BlazingText** and the Amazon reviews
+    dataset to train a sentiment analysis model. At the time, we only trained it on
+    100,000 reviews. This time, we''ll train it on the full dataset: 1.8 million reviews
+    (151 million words).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reusing our SageMaker Processing notebook, we process the full dataset on an
+    `ml.c5.9xlarge` instance, store results in S3, and feed them to our training job.
+    The size of the training set has grown to a respectable 720 MB.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To give BlazingText extra work, we apply the following hyperparameters to increase
+    the complexity of the word vectors the job will learn:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: We train on a single `ml.c5.2xlarge` instance. It has 8 vCPU and 16 GB of RAM
+    and uses `gp2` class, which is SSD-based).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The job runs for 2,109 seconds (a little more than 35 minutes), peaking at
+    4.84 million words per second. Let''s take a look at the CloudWatch metrics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Starting from the **Experiments and trials** panel in **SageMaker Studio**,
+    we locate the training job and right-click on **Open in trial details**.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, we select the **AWS settings** tab. Scrolling down, we see a link named
+    **View instance metrics**. Clicking on it takes us directly to the CloudWatch
+    metrics for our training job.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s select `CPUUtilization` and `MemoryUtilization` in **All metrics** and
+    visualize them as shown in the next screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.1 – Viewing CloudWatch metrics'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_1.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.1 – Viewing CloudWatch metrics
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the right-hand Y-axis, memory utilization is stable at 20%, so we definitely
+    don't need more RAM.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Still on the right-hand Y-axis, disk utilization is about 3% during the training,
+    going up to 12% when the model is saved. We allocated way too much storage to
+    this instance. By default, SageMaker instances get 30 GB of Amazon EBS storage,
+    so how much money did we waste here? The EBS cost for SageMaker in `eu-west-1`
+    is $0.154 per GB-month, so 30 GB for 2,117 seconds costs 0.154*30*(2109/(24*30*3600))
+    = $0.00376\. That's a silly low amount, but if you train thousands of jobs per
+    month, it will add up. Even if this saves us $10 a year, we should save that!
+    This can easily be done by setting the `volume_size` parameter in all estimators.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the left-hand Y-axis, we see that the CPU utilization plateaus around 790%,
+    very close to the maximum value of 800% (8 vCPUs at 100% usage). This job is obviously
+    compute-bound.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, what are our options? If BlazingText supported distributed training in
+    supervised mode (it doesn''t), we could have considered scaling out with smaller
+    `ml.c5.xlarge` instances (4 vCPUs and 8 GB of RAM). That''s more than enough RAM,
+    and adding capacity in small chunks is good practice. This is what right-sizing
+    is all about: not too much, not too little—it should be just right.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Anyway, our only choice here is to scale up. Looking at the list of available
+    instances, we could try `ml.c5.4xlarge`. As BlazingText supports single-GPU acceleration,
+    `ml.p3.2xlarge` (1 NVIDIA V100 GPU) is also an option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the time of writing, the cost-effective `ml.g4dn.xlarge` is unfortunately
+    not supported by BlazingText.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's try both and compare training times and costs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/011.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The `ml.c5.4xlarge` instance provides a nice speedup for a moderate price increase.
+    Interestingly, the job is still compute-bound, so I decided to try the even larger
+    `ml.c5.9xlarge` instance (36 vCPUs) for good measure, but the speedup was large
+    enough to offset the increased cost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The GPU instance is almost 3x faster, as BlazingText has been optimized to utilize
+    thousands of cores. It's also about 3x more expensive, which could be acceptable
+    if minimizing training time was very important.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This simple example shows you that right-sizing your training infrastructure
+    is not black magic. By following simple rules, looking at a few metrics, and using
+    common sense, you can find the right instance size for your project.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's introduce the monitoring and profiling capability in Amazon SageMaker
+    Debugger, which will give us even more information on the performance of our training
+    jobs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Monitoring and profiling training jobs with Amazon SageMaker Debugger
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: SageMaker Debugger includes a monitoring and profiling capability that lets
+    us collect infrastructure and code performance information at much lower time
+    resolution than CloudWatch (as often as every 100 milliseconds). It also allows
+    us to configure and trigger built-in or custom rules that watch for unwanted conditions
+    in our training jobs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Profiling is very easy to use, and in fact, it''s on by default! You may have
+    noticed a line such as this one in your training log:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: This tells us that SageMaker is automatically running a profiling job, in parallel
+    with our training job. The role of the profiling job is to collect data points
+    that we can then display in SageMaker Studio, in order to visualize metrics and
+    understand potential performance issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Viewing monitoring and profiling information in SageMaker Studio
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let''s go back to the `ml.p3.2xlarge` instance. We right-click on it and select
+    **Open Debugger for insights** this time. This opens a new tab, visible in the
+    next screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.2 – Viewing monitoring and profiling information'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_2.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.2 – Viewing monitoring and profiling information
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At the top, we can see that monitoring is indeed on by default and that profiling
+    isn''t. Expanding the **Resource utilization summary** item in the **Overview**
+    tab, we see a summary of infrastructure metrics, as shown in the next screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.3 – Viewing utilization summary'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_3.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.3 – Viewing utilization summary
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: P50, p95, and p99 are percentiles. If you're not familiar with this concept,
+    you can find more information at [https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_concepts.html#Percentiles](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_concepts.html#Percentiles).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Moving on to the `algo-1`. For example, you can see its GPU utilization in
+    the next screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.4 – Viewing GPU utilization over time'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_4.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.4 – Viewing GPU utilization over time
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We also get a very nice view of system utilization over time, with one line
+    per vCPU and GPU, as shown in the next screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.5 – Viewing system utilization over time'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_5.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.5 – Viewing system utilization over time
+  prefs: []
+  type: TYPE_NORMAL
+- en: All this information is updated in near-real-time while your training job is
+    running. Just launch a training job, open this view, and, after a few minutes,
+    the graphs will show up and get updated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's see how we can enable detailed profiling information in our training
+    jobs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enabling profiling in SageMaker Debugger
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Profiling collects framework metrics (**TensorFlow**, **PyTorch**, **Apache**
+    **MXNet**, and XGBoost), data loader metrics, and Python metrics. For the latter,
+    we can use **CProfile** or **Pyinstrument**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Profiling can be configured in the estimator (which is the option we'll use).
+    You can also enable it manually in SageMaker Studio on a running job (see the
+    slider in *Figure 9.2*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s reuse our TensorFlow/Keras example from [*Chapter 6*](B17705_06_Final_JM_ePub.xhtml#_idTextAnchor108),
+    *Training Computer Vision Models*, and collect all profiling information every
+    100 milliseconds:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we create a `FrameworkProfile` object containing default settings for
+    the profiling, data loading, and Python configurations. For each one of these,
+    we could specify precise time ranges or step ranges for data collection:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we create a `ProfilerConfig` object that sets framework parameters and
+    the time interval for data collection:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we pass this configuration to our estimator, and train as usual:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As the training job runs, profiling data is automatically collected and saved
+    in a default location in S3 (you can define a custom path with the `s3_output_path`
+    parameter in `ProfilingConfig`). We could also use the `smdebug` **SDK** ([https://github.com/awslabs/sagemaker-debugger](https://github.com/awslabs/sagemaker-debugger))
+    to load and inspect profiling data.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Shortly after the training job completes, we see summary information in the
+    **Overview** tab, as shown in the next screenshot:![Figure 9.6 – Viewing profiling
+    information
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_6.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 9.6 – Viewing profiling information
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can also download a detailed report in HTML format (see the button in *Figure
+    9.2*). For example, it tells us which are the most expensive GPU operators. Unsurprisingly,
+    we see our `fmnist_model` function and the TensorFlow operator for 2D convolution,
+    as visible in the next screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.7 – Viewing the profiling report'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_7.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.7 – Viewing the profiling report
+  prefs: []
+  type: TYPE_NORMAL
+- en: The report also contains information on built-in rules that have been triggered
+    during training, warning us about conditions such as low GPU usage, CPU bottlenecks,
+    and more. These rules have default settings that can be customized if needed.
+    We'll cover rules in more details in the next chapter when we'll discuss how to
+    use SageMaker Debugger to debug training jobs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For now, let's look at some common scaling issues for training jobs, and how
+    we could address them. In the process, we'll mention several SageMaker features
+    that will be covered in the rest of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solving training challenges
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will dive into the challenges, and their solutions, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*I need lots of storage on training instances.*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As discussed in the previous example, most SageMaker training instances use
+    EBS volumes, and you can set their size in the estimator. The maximum size of
+    an EBS volume is 16 TB, so you should have more than enough. If your algorithm
+    needs lots of temporary storage for intermediate results, this is the way to go.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*My dataset is very large, and it takes a long time to copy it to training
+    instances.*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Define "long"! If you're looking for a quick fix, you can use instance types
+    with high network performance. For example, `ml.g4dn` and `ml.p3dn` instances
+    support the **Elastic Fabric Adapter** (https://aws.amazon.com/hpc/efa), and can
+    go all the way to 100 Gbit/s.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If that's not enough, and if you're training on a single instance, you should
+    use pipe mode, which streams data from S3 instead of copying it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If training is distributed, you can switch the `FullyReplicated` to `ShardedbyS3Key`,
+    which will only distribute a fraction of the dataset to each instance. This can
+    be combined with pipe mode for extra performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*My dataset is very large, and it doesn''t fit in RAM.*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to stick to a single instance, a quick way to solve the problem
+    is to scale up. The `ml.r5d.24xlarge` and `ml.p3dn.24xlarge` instances have 768
+    GB of RAM! If distributed training is an option, then you should configure it
+    and apply data parallelism.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*CPU utilization is low.*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Assuming you haven't overprovisioned, the most likely cause is I/O latency (network
+    or storage). The CPU is stalled because it's waiting for data to be fetched from
+    wherever it's stored.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first thing you should review is the data format. As discussed in previous
+    chapters, there's no escaping **RecordIO** or **TFRecord** files. If you're using
+    other formats (CSV, individual images, and so on), you should start there before
+    tweaking the infrastructure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If data is copied from S3 to an EBS volume, you can try using an instance with
+    more EBS bandwidth. Numbers are available at the following location:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-optimized.html](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-optimized.html)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also switch to an instance type with local NVMe storage (g4dn and p3dn).
+    If the problem persists, you should review the code that reads data and passes
+    it to the training algorithm. It probably needs more parallelism.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If data is streamed from S3 with pipe mode, it's unlikely that you've hit the
+    maximum transfer speed of 25 GB/s, but it's worth checking the instance metric
+    in CloudWatch. If you're sure that nothing else could be the cause, you should
+    move to other file storage services, such as **Amazon** **EFS** and **Amazon**
+    **FSx for Lustre**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*GPU memory utilization is low.*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The GPU doesn''t receive enough data from the CPU. You need to increase batch
+    size until memory utilization is close to 100%. If you increase it too much, you''ll
+    get an angry `out of memory` error message, such as this one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: When working with a multi-GPU instance in a data-parallel configuration, you
+    should multiply the batch size passed to the estimator by the number of GPUs present
+    in an instance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When increasing batch size, you have to factor in the number of training samples
+    available. For example, the **Pascal** VOC dataset that we used for Semantic Segmentation
+    in [*Chapter 5*](B17705_05_Final_JM_ePub.xhtml#_idTextAnchor091), *Training Computer
+    Vision Models*, only has 1,464 samples, so it would probably not make sense to
+    increase batch size above 64 or 128.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, batch size has an important effect on job convergence. Very large batches
+    may slow it down, so you may want to increase the learning rate accordingly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sometimes, you'll simply have to accept that GPU memory utilization is low!
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*GPU utilization is low.*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Maybe your model is simply not large enough to keep the GPU really busy. You
+    should try scaling down on a smaller GPU.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you're working with a large model, the GPU is probably stalled because the
+    CPU can't feed it fast enough. If you're in control of the data loading code,
+    you should try to add more parallelism, such as additional threads for data loading
+    and preprocessing. If you're not, you should try a larger instance type with more
+    vCPUs. Hopefully, they can be put to good use by the data-loading code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If there's enough parallelism in the data loading code, then slow I/O is likely
+    to be responsible. You should look for a faster alternative (NVMe, EFS, or FSx
+    for Lustre).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*GPU utilization is high*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: That's a good place to be! You're efficiently using the infrastructure that
+    you're paying for. As discussed in the previous example, you can try scaling up
+    (more vCPUs or more GPUs), or scaling out (more instances). Combining both can
+    work for highly parallel workloads such as deep learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now we know a little more about scaling jobs, let's learn about more SageMaker
+    features, starting with pipe mode.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Streaming datasets with pipe mode
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The default setting of estimators is to copy the dataset to training instances,
+    which is known as **file mode**. Instead, **pipe mode** streams it directly from
+    S3\. The name of the feature comes from its use of **Unix** **named pipes** (also
+    known as **FIFOs**): at the beginning of each epoch, one pipe is created per input
+    channel.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pipe mode removes the need to copy any data to training instances. Obviously,
+    training jobs start quicker. They generally run faster too, as pipe mode is highly
+    optimized. Another benefit is that you won't have to provision any storage for
+    the dataset on training instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Cutting on training time and storage means that you''ll save money. The larger
+    the dataset, the more you''ll save. You can find benchmarks at the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://aws.amazon.com/blogs/machine-learning/accelerate-model-training-using-faster-pipe-mode-on-amazon-sagemaker/](https://aws.amazon.com/blogs/machine-learning/accelerate-model-training-using-faster-pipe-mode-on-amazon-sagemaker/)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In practice, you can start experimenting with pipe mode for datasets in the
+    hundreds of megabytes and beyond. In fact, this feature enables you to work with
+    infinitely large datasets. As storage and RAM requirements are no longer coupled
+    to the size of the dataset, there's no practical limit on the amount of data that
+    your algorithm can crunch. Training on petabyte-scale datasets becomes possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using pipe mode with built-in algorithms
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The prime candidates for pipe mode are built-in algorithms, as most of them
+    support it natively:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Linear Learner**, **k-Means**, **k-Nearest Neighbors**, **Principal Component
+    Analysis**, **Random Cut Forest**, and **Neural Topic Modeling**: RecordIO-wrapped
+    protobuf or CSV data'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Factorization Machines**, **Latent Dirichlet Allocation**: RecordIO-wrapped
+    protobuf data'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**BlazingText** (supervised mode): Augmented manifest'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Image Classification** or **Object Detection**: RecordIO-wrapped protobuf
+    data or augmented manifest'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Semantic segmentation**: Augmented manifest.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You should already be familiar with `im2rec` tool has an option to generate
+    multiple list files (`--chunks`). If you have existing list files, you can of
+    course split them yourself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We looked at the **augmented manifest** format when we discussed datasets annotated
+    by **SageMaker** **Ground Truth** in [*Chapter 5*](B17705_05_Final_JM_ePub.xhtml#_idTextAnchor091),
+    *Training Computer Vision Models*. For computer vision algorithms, this **JSON
+    Lines** file contains the location of images in S3 and their labeling information.
+    You can learn more at the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://docs.aws.amazon.com/sagemaker/latest/dg/augmented-manifest.html](https://docs.aws.amazon.com/sagemaker/latest/dg/augmented-manifest.html)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using pipe mode with other algorithms and frameworks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'TensorFlow supports pipe mode thanks to the `PipeModeDataset` class implemented
+    by AWS. Here are some useful resources:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/aws/sagemaker-tensorflow-extensions](https://github.com/aws/sagemaker-tensorflow-extensions)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk/tensorflow_script_mode_pipe_mode](https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk/tensorflow_script_mode_pipe_mode)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://medium.com/@julsimon/making-amazon-sagemaker-and-tensorflow-work-for-you-893365184233](mailto:https://medium.com/@julsimon/making-amazon-sagemaker-and-tensorflow-work-for-you-893365184233)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For other frameworks and for your own custom code, it''s still possible to
+    implement pipe mode inside the training container. A Python example is available
+    at the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/pipe_bring_your_own](https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/pipe_bring_your_own)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Simplifying data loading with MLIO
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**MLIO** (https://github.com/awslabs/ml-io) is an AWS open source project that
+    lets you load data stored in memory, on local storage, or in S3 with pipe mode.
+    The data can then be converted into different popular formats.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the high-level features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Input formats**: **CSV**, **Parquet**, RecordIO-protobuf, **JPEG**, **PNG**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Conversion formats**: NumPy arrays, SciPy matrices, **Pandas** **DataFrames**,
+    TensorFlow tensors, PyTorch tensors, Apache MXNet arrays, and **Apache** **Arrow**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: API available in Python and **C++**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now, let's run some examples with pipe mode.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training factorization machines with pipe mode
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We''re going to revisit the example we used in [*Chapter 4*](B17705_04_Final_JM_ePub.xhtml#_idTextAnchor069),
+    *Training Machine Learning Models*, where we trained a recommendation model on
+    the **MovieLens** dataset. At the time, we used a small version of the dataset,
+    limited to 100,000 reviews. This time, we''ll go for the largest version:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We download and extract the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This dataset includes 25,000,095 reviews, from 162,541 users, on 62,423 movies.
+    Unlike the 100k version, movies are not numbered sequentially. The last movie
+    ID is 209,171, which needlessly increases the number of features. The alternative
+    would be to renumber movies, but let''s not do that here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Just like in [*Chapter 4*](B17705_04_Final_JM_ePub.xhtml#_idTextAnchor069)*,
+    Training Machine Learning Models* we load the dataset into a sparse matrix (`lil_matrix`
+    from SciPy), split it for training and testing, and convert both datasets into
+    RecordIO-wrapped protobuf. Given the size of the dataset, this could take 45 minutes
+    on a small Studio instance. Then, we upload the datasets to S3.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Next, we configure the two input channels, and we set their input mode to pipe
+    mode instead of file mode:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We then configure the estimator, and train as usual on an `ml.c5.xlarge` instance
+    (4 vCPUs, 8 GB RAM, $0.23 per hour in `eu-west-1`).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Looking at the training log, we see the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: As expected, no time was spent copying the dataset. The same step in file mode
+    takes 66 seconds. Even with a modest 1.5 GB dataset, pipe mode already makes sense.
+    As datasets get bigger, this advantage will only increase!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's move on to distributed training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributing training jobs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Distributed training lets you scale training jobs by running them on a cluster
+    of CPU or GPU instances. It can be used to solve two different problems: very
+    large datasets, and very large models.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding data parallelism and model parallelism
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Some datasets are too large to be trained in a reasonable amount of time on
+    a single CPU or GPU. Using a technique called *data parallelism*, we can distribute
+    data across the training cluster. The full model is still loaded on each CPU/GPU,
+    which only receive an equal share of the dataset, not the full dataset. In theory,
+    this should speed up training linearly according to the number of CPU/GPUs involved,
+    and as you can guess, the reality is often different.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Believe it or not, some state-of-the-art-deep learning models are too large
+    to fit on a single GPU. Using a technique called *model parallelism*, we can split
+    it, and distribute the layers across a cluster of GPUs. Hence, training batches
+    will flow across several GPUs to be processed by all layers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's see where we can use distributed training in SageMaker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributing training for built-in algorithms
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Data parallelism is available for almost all built-in algorithms (semantic segmentation
+    and LDA are notable exceptions). As they are implemented with Apache MXNet, they
+    automatically use its native distributed training mechanism.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributing training for built-in frameworks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: TensorFlow, PyTorch, Apache MXNet, and **Hugging Face** have native data parallelism
+    mechanisms, and they're supported on SageMaker. **Horovod** ([https://github.com/horovod/horovod](https://github.com/horovod/horovod))
+    is available too.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For TensorFlow, PyTorch, and Hugging Face, you can also use the newer **SageMaker
+    Distributed Data Parallel Library** and **SageMaker Model Parallel Library**.
+    Both will be covered later in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Distributed training often requires framework-specific changes to your training
+    code. You can find more information in the framework documentation (for example
+    [https://www.tensorflow.org/guide/distributed_training](https://www.tensorflow.org/guide/distributed_training)),
+    and in sample notebooks hosted at [https://github.com/awslabs/amazon-sagemaker-examples](https://github.com/awslabs/amazon-sagemaker-examples):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`sagemaker-python-sdk/tensorflow_script_mode_horovod`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: b) `advanced_functionality/distributed_tensorflow_mask_rcnn`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`sagemaker-python-sdk/keras_script_mode_pipe_mode_horovod`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`sagemaker-python-sdk/pytorch_horovod_mnist`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each framework has its peculiarities, yet everything we discussed in the previous
+    sections stands true. If you want to make the most of your infrastructure, you
+    need to pay attention to batch size, synchronization, and so on. Experiment, monitor,
+    analyze, and iterate!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distributing training for custom containers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you're training with your own custom container, you have to implement your
+    own distributed training mechanism. Let's face it, this is going to be a lot of
+    work. SageMaker only helps to provide the name of cluster instances and the name
+    of the container network interface. They are available inside the container in
+    the `/opt/ml/input/config/resourceconfig.json` file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can find more information at the following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-training-algo-running-container.html](https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-training-algo-running-container.html)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's time for a distributed training example!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaling an image classification model on ImageNet
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 5*](B17705_05_Final_JM_ePub.xhtml#_idTextAnchor091), *Training
+    Computer Vision Models*, we trained the image classification algorithm on a small
+    dataset with dog and cat images (25,000 training images). This time, let's go
+    for something a little bigger.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We're going to train a ResNet-50 network from scratch on the **ImageNet** dataset
+    – the reference dataset for many computer vision applications ([http://www.image-net.org](http://www.image-net.org)).
+    The 2012 version contains 1,281,167 training images (140 GB) and 50,000 validation
+    images (6.4 GB) from 1,000 classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you want to experiment at a smaller scale, you can work with 5-10% of the
+    dataset. Final accuracy won't be as good, but it doesn't matter for our purposes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing the ImageNet dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This requires a lot of storage – the dataset is 150 GB, so please make sure
+    you have at least 500 GB available to store it in ZIP and processed formats. You're
+    also going to need a lot of bandwidth and a lot of patience to download it. I
+    used an EC2 instance running `us-east-1` region, and my download took *five days*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visit the ImageNet website, register to download the dataset, and accept the
+    conditions. You'll get a username and an access key allowing you to download the
+    dataset.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'One of the TensorFlow repositories includes a great script that will download
+    the dataset and extract it. Using `nohup` is essential so that the process continues
+    running even if your session is terminated:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Once this is over (again, downloading will take days), the `imagenet/train`
+    directory contains the training dataset (one folder per class). The `imagenet/validation`
+    directory contains 50,000 images in the same folder. We can use a simple script
+    to organize it with one folder per class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We''re going to build RecordIO files with the `im2rec` tool present in the
+    Apache MXNet repository. Let''s install dependencies, and fetch `im2rec`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In the `imagenet` directory, we run `im2rec` twice – once to build the list
+    files, and once to build the RecordIO files. We create RecordIO files that are
+    approximately 1 GB each (we''ll see why that matters in a second). We also resize
+    the smaller dimension of images to `224` so that the algorithm won''t have to
+    do it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we sync the dataset to S3:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The dataset is now ready for training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Defining our training job
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now that the dataset is ready, we need to think about the configuration of
+    our training job. Specifically, we need to come up with the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: An input configuration, defining the location and the properties of the dataset
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Infrastructure requirements to run the training job
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hyperparameters to configure the algorithm
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let's look at each one of these items in detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Defining the input configuration
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Given the size of the dataset, pipe mode sounds like a great idea. Out of curiosity,
+    I tried training in file mode. Even with a 100 Gbit/s network interface, it took
+    almost 25 minutes to copy the dataset from S3 to local storage. Pipe mode it is!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may wonder why we took care of splitting the dataset into multiple files.
+    Here''s why:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In general, multiple files create opportunities for more parallelism, making
+    it easier to write fast data loading and processing code.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We can shuffle the files at the beginning of each epoch, removing any potential
+    bias caused by the order of samples.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It makes it very easy to work with a fraction of the dataset.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now that we've defined the input configuration, what about infrastructure requirements?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Defining infrastructure requirements
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: ImageNet is a large and complex dataset that requires a lot of training to reach
+    good accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A quick test shows that a single `ml.p3.2xlarge` instance with the batch size
+    set to 128 will crunch through the dataset at about 335 images per second. As
+    we have about 1,281,167 images, we can expect one epoch to last about 3,824 seconds
+    (about 1 hour and 4 minutes).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Assuming that we need to train for 150 epochs to get decent accuracy, we're
+    looking at a job that should last (3,824/3,600)*150 = 158 hours (about 6.5 days).
+    This is probably not acceptable from a business perspective. For the record, at
+    $3.825 per instance per hour in `us-east-1`, that job would cost about $573.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's try to speed up our job with `ml.p3dn.24xlarge` instances. Each one hosts
+    eight NVIDIA V100s with 32 GB of GPU memory (twice the amount available on other
+    `p3` instances). They also have 96 **Intel** **Skylake** cores, 768 GB of RAM,
+    and 1.8 TB of local NVMe storage. Although we're not going to use it here, the
+    latter is a fantastic storage option for long-running, large-scale jobs. Last
+    but not least, this instance type has 100 Gbit/s networking, a great feature for
+    streaming data from S3 and for inter-instance communication.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: At $35.894 per hour per instance in `us-east-1`, you may not want to try this
+    at home or even at work without getting permission. Your service quotas probably
+    don't let you run that much infrastructure anyway, and you would have to get in
+    touch with AWS Support first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we're going to talk about *managed spot training* – a great
+    way to slash training costs. We'll revisit the ImageNet example once we've covered
+    this topic, so you definitely should refrain from training right now!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training on ImageNet
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let''s configure the training job:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We configure pipe mode on both input channels. The files of the training channel
+    are shuffled for extra randomness:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'To begin with, we configure the `Estimator` module with a single `ml.p3dn.24xlarge`
+    instance:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We set hyperparameters, starting with a reasonable batch size of 1,024, and
+    we launch training:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Updating batch size
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Time per epochs is 727 seconds. For 150 epochs, this translates into 30.3 hours
+    of training (1.25 days), and a cost of $1,087\. The good news is that we're going
+    5x faster. The bad news is that cost has gone up 2x. Let's start scaling this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Looking at total GPU utilization in CloudWatch, we see that it doesn''t exceed
+    300%. That is, 37.5% on each GPU. This probably means that our batch size is too
+    low to keep the GPUs fully busy. Let''s bump it to (1,024/0.375)=2730, rounded
+    up to 2,736 to be divisible by 8:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: Depending on algorithm versions, `out of memory` errors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Training again, an epoch now lasts 758 seconds. It looks like maxing out GPU
+    memory usage didn't make a big difference this time. Maybe it's offset by the
+    cost of synchronizing gradients? Anyway, keeping GPU cores as busy as possible
+    is good practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding more instances
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now, let''s add a second instance to scale out the training job:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Time for epoch is now 378 seconds! For 150 epochs, this translates to 15.75
+    hours of training, and a cost of $1,221\. Compared to our initial job, this is
+    2x faster and 3x cheaper!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'How about four instances? Let''s see if we can we keep scaling:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Time for epoch is now 198 seconds! For 150 epochs, this translates to 8.25 hours
+    of training, and a cost of $1,279\. We sped up 2x again, with a marginal cost
+    increase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, shall we train eight instances? Of course! Who wouldn''t want to train
+    on 64 GPUs, 327K CUDA cores, and 2 TB (!) of GPU RAM:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Time for epoch is now 99 seconds. For 150 epochs, this translates into 4.12
+    hours of training, and a cost of $1,277\. We sped up 2x *again*, at no cost increase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summing things up
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For 2x the initial cost, we've accelerated our training job 38x, thanks to pipe
+    mode, distributed training, and state-of-the-art GPU instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Fig 9.8 Outcome of the training jobs'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/02.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fig 9.8 Outcome of the training jobs
+  prefs: []
+  type: TYPE_NORMAL
+- en: Not bad at all! Saving days on your training jobs helps you iterate faster,
+    get to a high-quality model quicker, and get to production sooner. I'm pretty
+    sure this would easily offset the extra cost. Still, in the next chapter, we'll
+    see how we can slash training costs massively with managed spot training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we're familiar with distributed training, let's take a look at two
+    new SageMaker libraries for data parallelism and model parallelism.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training with the SageMaker data and model parallel libraries
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: These two libraries were introduced in late 2020, and significantly improve
+    the performance of large-scale training jobs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **SageMaker** **Distributed Data Parallel** (**DDP**) library implements
+    a very efficient distribution of computation on GPU clusters. It optimizes network
+    communication by eliminating inter-GPU communication, maximizing the amount of
+    time and resources they spend on training. You can learn more at the following
+    link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://aws.amazon.com/blogs/aws/managed-data-parallelism-in-amazon-sagemaker-simplifies-training-on-large-datasets/](https://aws.amazon.com/blogs/aws/managed-data-parallelism-in-amazon-sagemaker-simplifies-training-on-large-datasets/)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: DDP is available for TensorFlow, PyTorch, and Hugging Face. The first two require
+    minor modifications to the training code, but the last one doesn't. As DDP only
+    makes sense for large, long-running training jobs, available instance sizes are
+    `ml.p3.16xlarge`, `ml.p3dn24dnxlarge`, and `ml.p4d.24xlarge`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **SageMaker** **Distributed Model Parallel** (**DMP**) library solves a
+    different problem. Some large deep learning models are simply too bulky to fit
+    inside the memory of a single GPU. Others barely fit, forcing you to work with
+    very small batch sizes, and slowing down your training jobs. DMP solves this problem
+    by automatically partitioning models across a cluster of GPUs and orchestrating
+    the flow of data through these different partitions. You can learn more at the
+    following link:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://aws.amazon.com/blogs/aws/amazon-sagemaker-simplifies-training-deep-learning-models-with-billions-of-parameters/](https://aws.amazon.com/blogs/aws/amazon-sagemaker-simplifies-training-deep-learning-models-with-billions-of-parameters/)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: DMP is available for TensorFlow, PyTorch, and Hugging Face. Again, the first
+    two require small modifications to the training code, and the last one doesn't,
+    as the Hugging Face `Trainer` API fully supports DMP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's give both a try by revisiting our TensorFlow and Hugging Face examples
+    from [*Chapter 7*](B17705_07_Final_JM_ePub.xhtml#_idTextAnchor130), *Extending
+    Machine Learning Services Using Built-In Frameworks*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training on TensorFlow with SageMaker DDP
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Our initial code used the high-level Keras API: `compile()`, `fit()`, and so
+    on. In order to implement DDP, we need to rewrite this code to use `tf.GradientTape()`,
+    and to implement a custom training loop. It''s not as difficult as it sounds,
+    so let''s get to work:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need to import and initialize DDP:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we retrieve the list of GPUs present on an instance, and we assign them
+    a local DDP rank, which is just an integer identifier. We also allow memory growth,
+    a TensorFlow feature required by DDP:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As recommended by the documentation, we increase the batch size and the learning
+    rate according to the number of GPUs present in the training cluster. This is
+    very important for job accuracy:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We then create a loss function and an optimizer. Labels have been one-hot encoded
+    during preprocessing, so we use `CategoricalCrossentropy`, not `SparseCategoricalCrossentropy`.
+    We also initialize model and optimizer variables on all GPUs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we need to write a `training_step()` function, and decorate it with `@tf.function`
+    so that DDP recognizes it. As its name implies, this function is responsible for
+    running a training step on each GPU in the training cluster: predict a batch,
+    compute loss, compute gradients, and apply them. It''s based on the `tf.GradientTape()`
+    API, which we simply wrap with `sdp.DistributedGradientTape()`. At the end of
+    each training step, we use `sdp.oob_allreduce()` to compute the average loss,
+    using values coming from all GPUs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we write the training loop. There''s nothing particular about it. To
+    avoid log pollution, we only print out messages from the master GPU (rank 0):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we save the model on GPU #0 only:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Moving to our notebook, we configure this job with two `ml.p3.16xlarge` instances,
+    and we enable data parallelism with an additional parameter in the estimator:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We train as usual, and we see steps going by in the training log:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can see, it's not really difficult to scale training jobs with SageMaker
+    DDP, especially if your training code already uses low-level APIs. We used TensorFlow
+    here, and the process for PyTorch is very similar.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's see how we can train large Hugging Face models with both libraries.
+    Indeed, state-of-the-art NLP models are getting larger and more complex all the
+    time, and they're good candidates for data parallelism and model parallelism.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training on Hugging Face with SageMaker DDP
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As the Hugging Face `Trainer` API fully supports DDP, we don''t need to change
+    anything in our training script. Woohoo. All it takes is an extra parameter in
+    the estimator. Set the instance type and instance count, and you''re good to go:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: Training on Hugging Face with SageMaker DMP
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Adding DMP is not difficult either. Our Hugging Face example uses a **DistilBERT**
+    model that is about 250 MB. That''s small enough to fit on a single GPU, but let''s
+    try to train with DMP anyway:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need to configure `processes_per_host` to a value lower or equal
+    to the number of GPUs on a training instance. Here, I''ll use an `ml.p3dn.24xlarge`
+    instance with 8 NVIDIA V100 GPUs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we configure DMP options. Here, I set the most important ones – the number
+    of model partitions that we want (`partitions`), and how many times they should
+    be replicated for increased parallelism (`microbatches`). In other words, our
+    model will be split in four, each split will be duplicated, and these eight splits
+    will each run on a different GPU. You can find more information on all parameters
+    at the following link:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_general.html](https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_general.html)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we configure our estimator and train as usual:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You can find additional examples here:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: TensorFlow and PyTorch
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[https://github.com/aws/amazon-sagemaker-examples/tree/master/training/distributed_training](https://github.com/aws/amazon-sagemaker-examples/tree/master/training/distributed_training)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Hugging Face: [https://github.com/huggingface/notebooks/tree/master/sagemaker](https://github.com/huggingface/notebooks/tree/master/sagemaker)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To close this chapter, let's now look at storage options you should consider
+    for very large-scale, high-performance training jobs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using other storage services
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'So far, we''ve used S3 to store training data. At a large scale, throughput
+    and latency can become a bottleneck, making it necessary to consider other storage
+    services:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Amazon** **Elastic File System** (**EFS**): [https://aws.amazon.com/efs](https://aws.amazon.com/efs)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Amazon** **FSx for Lustre**: [https://aws.amazon.com/fsx/lustre](https://aws.amazon.com/fsx/lustre).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This section requires a little bit of AWS knowledge on VPCs, subnets, and security
+    groups. If you''re not familiar at all with these, I''d recommend reading the
+    following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Subnets.html](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Subnets.html)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Working with SageMaker and Amazon EFS
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: EFS is a managed storage service compatible with **NFS** v4\. It lets you create
+    volumes that can be attached to EC2 instances and SageMaker instances. This is
+    a convenient way to share data, and you can use it to scale I/O for large training
+    jobs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, files are stored in the **Standard** class. You can enable a life
+    cycle policy that automatically moves files that haven't been accessed for a certain
+    time to the **Infrequent Access**, which is slower but more cost-effective.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can pick one of two throughput modes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Bursting throughput**: Burst credits are accumulated over time, and burst
+    capacity depends on the size of the filesystem: 100 MB/s, plus an extra 100 MB/s
+    for each TB of storage.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Provisioned throughput**: You set the expected throughput, from 1 to 1,024
+    MB/s.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You can also pick one of two performance modes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**General purpose**: This is fine for most applications.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Max I/O**: This is the one to use if tens or hundreds of instances are accessing
+    the volume. Throughput will be maximized at the expense of latency.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let's create an 8 GB EFS volume. Then, we'll mount it on an EC2 instance to
+    copy the **Pascal VOC** dataset that we previously prepared, and we'll train an
+    object detection job. To keep costs reasonable, we won't scale the job, but the
+    overall process would be exactly the same at any scale.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Provisioning an EFS volume
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The EFS console makes it extremely simple to create a volume. You can find
+    detailed instructions at [https://docs.aws.amazon.com/efs/latest/ug/getting-started.html](https://docs.aws.amazon.com/efs/latest/ug/getting-started.html):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We set the volume name to `sagemaker-demo`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We select our default VPC, and use **Regional** availability.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We create the volume. Once it''s ready, you should see something similar to
+    the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 9.9– Creating an EFS volume'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_8.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.9– Creating an EFS volume
+  prefs: []
+  type: TYPE_NORMAL
+- en: The EFS volume is ready to receive data. We're now going to create a new EC2
+    instance, mount the EFS volume, and copy the dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating an EC2 instance
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'As EFS volumes live inside a VPC, they can only be accessed by instances located
+    in the same VPC. These instances must also have a *security group* that allows
+    inbound NFS traffic:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the VPC console ([https://console.aws.amazon.com/vpc/#vpcs:sort=VpcId](https://console.aws.amazon.com/vpc/#vpcs:sort=VpcId)),
+    we write down the ID of our default VPC. For me, it's `vpc-def884bb`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Still in the VPC console, we move to the **Subnets** section ([https://console.aws.amazon.com/vpc/#subnets:sort=SubnetId](https://console.aws.amazon.com/vpc/#subnets:sort=SubnetId)).
+    We write down the subnet IDs and the availability zone for all subnets hosted
+    in the default VPC.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'For me, they look like what''s shown in the next screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.10 – Viewing subnets for the default VPC'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_9.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 9.10 – Viewing subnets for the default VPC
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Moving to the EC2 console, we create an EC2 instance. We select the Amazon Linux
+    2 image and a `t2.micro` instance size.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we set `eu-west-1a` **Availability Zone**. We also assign it the security
+    group we just created, **IAM role** to a role with appropriate S3 permissions,
+    and **File Systems** to the EFS filesystem that we just created. We also make
+    sure to tick the box that automatically creates and attaches the required security
+    groups.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the next screens, we leave storage and tags as they are, and we attach a
+    security group that allows incoming `ssh`. Finally, we launch instance creation.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Accessing an EFS volume
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Once the instance is ready, we can `ssh` to it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We see that the EFS volume has been automatically mounted:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We move to that location, and sync our PascalVOC dataset from S3\. As the filesystem
+    is mounted as `root`, we need to use `sudo`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Job done. We can log out and shut down or terminate the instance, as we won't
+    need it anymore.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's train with this dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training an object detection model with EFS
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The training process is identical, except for the location of the input data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instead of using the `TrainingInput` object to define input channels, we use
+    the `FileSystemInput` object, passing the identifier of our EFS volume and the
+    absolute data path inside the volume:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We configure the `Estimator` module, passing the list of subnets for the VPC
+    hosting the EFS volume. SageMaker will launch training instances there so that
+    they may mount the EFS volume. We also need to pass a security group allowing
+    NFS traffic. We can reuse the one that was automatically created for our EC2 instance
+    (not the one allowing ssh access) – it's visible in the **Security** tab in the
+    instance details, as shown in the next screenshot:![Figure 9.11 – Viewing security
+    groups
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_10.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: For testing purposes, we only train for one epoch. Business as usual, although,
+    this time, data is loaded from our EFS volume.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once training is complete, you may delete the EFS volume in the EFS console
+    to avoid unnecessary costs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's see how we can use another storage service – Amazon FSx for Lustre.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with SageMaker and Amazon FSx for Lustre
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Very large-scale workloads require high throughput and low latency storage –
+    two qualities that Amazon FSx for Lustre possesses. As the name implies, this
+    service is based on the Lustre filesystem ([http://lustre.org](http://lustre.org)),
+    a popular open source choice for **HPC** applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The smallest filesystem you can create is 1.2 TB (like I said, "very large-scale").
+    We can pick one of two deployment options for FSx filesystems:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Persistent**: This should be used for long-term storage that requires high
+    availability.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Scratch**: Data is not replicated, and it won''t persist if a file server
+    fails. In exchange, we get high burst throughput, making this is a good choice
+    for spiky, short-term jobs.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Optionally, a filesystem can be backed by an S3 bucket. Objects are automatically
+    copied from S3 to FSx when they're first accessed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Just like for EFS, a filesystem lives inside a VPC, and we''ll need a security
+    group allowing inbound Lustre traffic (ports 988 and 1,021-2,023). You can create
+    this in the EC2 console, and it should be similar to the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.12 – Creating a security group for FSx for Lustre'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_11.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.12 – Creating a security group for FSx for Lustre
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create the filesystem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the FSx console, we create a filesystem named `sagemaker-demo`, and we select
+    the **Scratch** deployment type.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We set storage capacity to 1.2 TB.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the `eu-west-1a` subnet of the default VPC, and we assign it to the security
+    group we just created.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the `s3://sagemaker-eu-west-1-123456789012`) and the prefix (`pascalvoc`).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: On the next screen, we review our choices, as shown in the following screenshot,
+    and we create the filesystem.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'After a few minutes, the filesystem is in service, as shown in the following
+    screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.13 – Creating an FSx volume'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_09_12.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 9.13 – Creating an FSx volume
+  prefs: []
+  type: TYPE_NORMAL
+- en: As the filesystem is backed by an S3 bucket, we don't need to populate it. We
+    can proceed directly to training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training an object detection model with FSx for Lustre
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Now, we will train the model using FSx as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similar to what we just did with EFS, we define input channels with `FileSystemInput`.
+    One difference is that the directory path must start with the name of the filesystem
+    mount point. You can find it as **Mount name** in the FSx console:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: All other steps are identical. Don't forget to update the name of the security
+    group passed to the `Estimator` module.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: When we're done training, we delete the FSx filesystem in the console.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'This concludes our exploration of storage options for SageMaker. Summing things
+    up, here are my recommendations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, you should use RecordIO or TFRecord data as much as possible. They're
+    convenient to move around, faster to train on, and they work with both file mode
+    and pipe mode.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For development and small-scale production, file mode is completely fine. Your
+    primary focus should always be your machine learning problem, not useless optimization.
+    Even at a small scale, EFS can be an interesting option for collaboration, as
+    it makes it easy to share datasets and notebooks.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If you train with built-in algorithms, pipe mode is a no-brainer, and you should
+    use it at every opportunity. If you train with frameworks or your own code, implementing
+    pipe mode will take some work, and is probably not worth the engineering effort
+    unless you're working at a significant scale (hundreds of gigabytes or more).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If you have large, distributed workloads with tens of instances or more, EFS
+    in Performance Mode is worth trying. Don't go near the mind-blowing FSx for Lustre
+    unless you have insane workloads.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, you learned how and when to scale training jobs. You saw that
+    it definitely takes some careful analysis and experimentation to find the best
+    setup: scaling up versus scaling out, CPU versus GPU versus multi-GPU, and so
+    on. This should help you to make the right decisions for your own workloads and
+    avoid costly mistakes.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You also learned how to achieve significant speedup with techniques such as
+    distributed training, data parallelism, model parallelism, RecordIO, and pipe
+    mode. Finally, you learned how to set Amazon EFS and Amazon FSx for Lustre for
+    large-scale training jobs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we'll cover advanced features for hyperparameter optimization,
+    cost optimization, model debugging, and more.
+  prefs: []
+  type: TYPE_NORMAL

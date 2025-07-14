@@ -1,0 +1,749 @@
+- en: Clustering – Making Sense of Unlabeled Data
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clustering is the poster child of unsupervised learning methods. It is usually
+    our first choice when we need to add meaning to unlabeled data. In an e-commerce
+    website, the marketing team may ask you to put your users into a few buckets so
+    that they can tailor the messages they send to each group of them. If no one has
+    labeled those millions of users for you, then clustering is your only way to put
+    these users into buckets. When dealing with a large number of documents, videos,
+    or web pages, and there are no categories assigned to this content, and you are
+    not willing to ask *Marie Kondo* for help, then clustering is your only way to
+    declutter this mess.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since this is our first chapter about supervised learning algorithms, we will
+    start with some theoretical background about clustering. Then, we will have a
+    look at three commonly used clustering algorithms, in addition to the methods
+    used for evaluating them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we are going to cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding clustering
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: K-means clustering
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Agglomerative clustering
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: DBSCAN
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let's get started!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Machine learning algorithms can be seen as optimization problems. They take
+    data samples, and an objective function, and try to optimize this function. In
+    the case of supervised learning, the objective function is based on the labels
+    given to it. We try to minimize the differences between our predictions and the
+    actual labels. In the case of unsupervised learning, things are different due
+    to the lack of labels. Clustering algorithms, in essence, try to put the data
+    samples into clusters so that it minimizes the intracluster distances and maximizes
+    the intercluster distances. In other words, we want samples that are in the same
+    cluster to be as similar as possible, and samples from different clusters to be
+    as different as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Nevertheless, there is one trivial solution to this optimization problem. If
+    we treat each sample as its own cluster, then the intracluster distances are all
+    zeros and the intercluster distances are at their maximum. Obviously, this is
+    not what we want from our clustering algorithm. Thus, to avoid this trivial solution,
+    we usually add a constraint to our optimization function. For example, we may
+    predefine the number of clusters we need to make sure the aforementioned trivial
+    solution is avoided. One other possible constraint involves setting the minimum
+    number of samples per cluster. We will see those constraints in practice when
+    we discuss each of the different clustering algorithms in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The lack of labels also dictates the different metrics for evaluating how good
+    the resulting clusters are. That's why I decided to emphasize the objective function
+    of clustering algorithms here, since understanding the objective of an algorithm
+    makes it easier to understand its evaluation metrics. We will come across a couple
+    of evaluation metrics throughout this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One way to measure the intracluster distances is to calculate the distances
+    between each point in the cluster and the cluster's centroid. The concept of the
+    centroid should be familiar to you by now since we discussed the **nearest centroid**
+    algorithm in [Chapter 5](b95b628d-5913-477e-8897-989ce2afb974.xhtml), *Image Processing
+    with Nearest Neighbors*. The centroid is basically the mean of all the samples
+    in the clusters. Furthermore, the average Euclidean distance between some samples
+    and their mean has another name that we all learned about in primary school –
+    **standard deviation**. The very same distance measure can be used to measure
+    the dissimilarity between the clusters' centroids.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At this point, we are ready to explore our first algorithm, known as **K-means**.
+    However, we need to create some sample data first so that we can use it to demonstrate
+    our algorithms. In the next section, after explaining the algorithm, we are going
+    to create the needed data and use the K-means algorithm to cluster it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: K-means clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"We all know we are unique individuals, but we tend to see others as representatives
+    of groups."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '- Deborah Tannen'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the previous section, we discussed the constraint we put on our objective
+    function by specifying the number of clusters we need. This is what the *K* stands
+    for: the number of clusters. We also discussed the cluster''s centroid, hence
+    the word means. The algorithm works as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It starts by picking *K* random points and setting them as the cluster centroids.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, it assigns each data point to the nearest centroid to it to form *K* clusters.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, it calculates a new centroid for the newly formed clusters.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Since the centroids have been updated, we need to go back to *step 2* to reassign
+    the samples to their new clusters based on the updated centroids. However, if
+    the centroids didn't move much, we know that the algorithm has converged, and
+    we stop.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: As you can see, this is an iterative algorithm. It keeps iterating until it
+    converges, but we can limit the number of iterations by setting its `max_iter`hyperparameter.
+    Additionally, we may decide to tolerate bigger centroid movements and stop earlier
+    by setting the `tol`*hyperparameter to a larger value. The different choices regarding
+    the initial cluster centroids may lead to different results. Setting the algorithm's`init`
+    hyperparameter to`k-means++`makes sure the initial centroids are distant from
+    each other. This usually leads to better results than random initialization. The
+    choice of *K* is also given using the`n_clusters` hyperparameter. To demonstrate
+    the usage of this algorithm and its hyperparameters, let's start by creating a
+    sample dataset.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*## Creating a blob-shaped dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We usually visualize clusters as rounded blobs of scattered data points. This
+    sort of shape is also known as a convex cluster and is one of the easiest shapes
+    for algorithms to deal with. Later on, we will generate harder-to-cluster datasets,
+    but let's start with the easy blobs for now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `make_blobs` function helps us create a blob-shaped dataset. Here, we set
+    the number of samples to `100` and divide them into four clusters. Each data point
+    only has two features. This will make it easier for us to visualize the data later
+    on. The clusters have different standard deviations; that is, some clusters are
+    more dispersed than the others. The function also returns labels. We will keep
+    the labels aside to validate our algorithm later on. Finally, we put the `x`''s
+    and the `y`''s into a DataFrame and call it `df_blobs`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: To make sure you get the exact same data I did, set the `random_state` parameter
+    of the data generating function to a specific random seed. Now that the data is
+    ready, we need to create a function to visualize this data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing our sample data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We are going to use the following function throughout this chapter. It takes
+    the 2D *x*''s and *y* labels and plots them into the given Matplotlib axis, *ax*.
+    In real-life scenarios, no labels are given, but still, we can give this function
+    the labels predicted by the clustering algorithm instead. The resulting plot gets
+    a title, along with the number of clusters that have been deduced from the cardinality
+    of the given *y*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can use the new `plot_2d_clusters()` function as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will give us the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/46e06437-e455-4edb-9f80-2a5f0e3fa3a8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Each data point is marked according to its given label. Now, we will pretend
+    those labels haven't been given to us and see whether the K-means algorithm will
+    be able to predict them or not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clustering with K-means
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now that we''re pretending that no labels have been given, how can we tell
+    what value to use for *K*, that is, the`n_clusters`hyperparameter? We can''t.
+    We will just pick any number for now; later on, we will learn how to find the
+    best value for `n_clusters`. Let''s set it to five for now. We will keep all the
+    other hyperparameters at their default values. Once the algorithm is initialized,
+    we can use its `fit_predict` method, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that the concept of fitting on a training set and predicting a test date
+    seldom makes sense here. We usually fit and predict on the same dataset. We also
+    don't pass any labels to the `fit` or`fit_predict` methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we''ve predicted the new labels, we can use the `plot_2d_clusters()`
+    function to compare our predictions to the original labels, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'I prepended the words `Actuals` and `KMeans` to their corresponding figure
+    titles. The resulting clusters are shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5ee215f8-1d25-4616-9a9f-af712af33559.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: One of the original four clusters has been split into two since we set *K* to
+    five. Other than that, the predictions for the other clusters make sense. The
+    labels that have been given to the clusters are arbitrary. The original cluster
+    with label one was called three by the algorithm. This should not bother us at
+    all, as long as the clusters have the exact same members. This should not bother
+    the clustering evaluation metrics either. They usually take this fact into account
+    and ignore the label names when evaluating a clustering algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Still, how do we determine the value of *K*? We have no other choice but to
+    run the algorithm multiple times with different numbers of clusters and pick the
+    best one. In the following code snippet, we''re looping over three different values
+    for `n_clusters`. We also have access to the final centroids, which are calculated
+    for each cluster after the algorithm converges. Seeing these centroids clarifies
+    how the algorithm assigned each data point to its own cluster. The last line in
+    our code snippet uses a triangular marker to plot the centroids in each of the
+    three graphs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here are the results of the three choices, side by side:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0b987078-8fc4-4e29-aaab-d2ad7f166a07.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: A visual investigation of the three graphs tells us that the choice of four
+    clusters was the right choice. Nevertheless, we have to remember that we are dealing
+    with 2D data points here. The same visual investigation would have been much harder
+    if our data samples contained more than two features. In the next section, we
+    are going to learn about the silhouette score and use it to pick the optimum number
+    of clusters, without the need for visual aid.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The silhouette score
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The **silhouette score** is a measure of how similar a sample is to its own
+    cluster compared to the samples in the other clusters. For each sample, we will
+    calculate the average distance between this sample and all the other samples in
+    the same cluster. Let''s call this mean distance *A*. Then, we calculate the average
+    distance between the same sample and all the other samples in the nearest cluster.
+    Let''s call this other mean distance *B*. Now, we can define the silhouette score,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/31c4243e-df21-4e17-adc4-552606e7e508.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, rather than performing a visual investigation of the clusters, we are
+    going to loop over multiple values for `n_clusters` and store the silhouette score
+    after each iteration. As you can see, `silhouette_score` takes two parameters
+    – the data points (`x`) and the predicted cluster labels (`y_pred`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can just pick the `n_clusters` value that gives the best score. Here, we
+    put the calculated scores into a DataFrame and use a bar chart to compare them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting scores confirm our initial decision that four is the best choice
+    for the number of clusters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6e3a0b1b-2b2c-4241-b818-5c0dc80941ec.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In addition to picking the number of clusters, the choice of the algorithm's
+    initial centroid also affects its accuracy. A bad choice may lead the K-means
+    algorithm to converge at an undesirable local minimum. In the next section, we
+    are going to witness how the initial centroids may affect the algorithm's final
+    decision.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choosing the initial centroids
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'By default, the K-means implementation of scikit-learn picks random initial
+    centroids that are further apart from each other. It also tries multiple initial
+    centroids and picks the one that gives the best results. Having said that, we
+    can also set the initial centroids by hand. In the following code snippet, we
+    will compare two initial settings to see their effect on the final results. We
+    will then print the two outcomes side by side:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following graphs show the resulting clusters after the algorithm converges.
+    Parts of the styling code were omitted for brevity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/aba5995c-2526-458d-adcf-3f7a3eb00ffa.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Clearly, the first initial setup helped the algorithm, while the second one
+    led it to bad results. Thus, we have to be aware of the algorithm's initialization
+    since its results are nondeterministic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the field of machine learning, the term transfer learning refers to the set
+    of problems where we need to repurpose the knowledge gained while solving one
+    problem and apply it to a slightly different problem. Humans also need transfer
+    learning. The K-means algorithm has a `fit_transform` method. If our data (*x*)
+    is made of *N* samples and *M* features, the method will transform it into *N*
+    samples and *K* columns instead. The values in the columns are based on the predicted
+    clusters. Usually, *K* is much smaller than *N*. Thus, you can repurpose your
+    K-means clustering**algorithm so that it can be used as a dimensionality reduction
+    step, before feeding its transformed output to a simple classifier or regressor.
+    Similarly, in a**multi-class** classification problem, a clustering algorithm
+    can be used to reduce the cardinality of the targets.**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**In contrast to the K-means algorithm, **agglomerative clustering** is another
+    algorithm whose results are deterministic. It doesn''t rely on any initial choices
+    since it approaches the clustering problem from a different angle. Agglomerative
+    clustering is the topic of the next section.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Agglomerative clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"The most populous city is but an agglomeration of wildernesses."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '- Aldous Huxley'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the K-means clustering algorithm, we had our *K* cluster from day one. With
+    each iteration, some samples may change their allegiances and some clusters may
+    change their centroids, but in the end, the clusters are defined from the very
+    beginning. Conversely, in agglomerative clustering, no clusters exist at the beginning.
+    Initially, each sample belongs to its own cluster. We have as many clusters in
+    the beginning as there are data samples. Then, we find the two closest samples
+    and aggregate them into one cluster. After that, we keep iterating by combining
+    the next closest two samples, two clusters, or the next closest sample and a cluster.
+    As you can see, with each iteration, the number of clusters decreases by one until
+    all our samples join a single cluster. Putting all the samples into one cluster
+    sounds unintuitive. Thus, we have the option to stop the algorithm at any iteration,
+    depending on the final number of clusters we need.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With that, let''s learn how to use the agglomerative clustering algorithm.
+    All you have to do for the algorithm to prematurely abort its agglomeration mission
+    is to let it know the final number of clusters we need via its `n_clusters`hyperparameter.
+    Obviously, since I mentioned that the algorithm combines the closed clusters,
+    we need to dive into how intercluster distances are being calculated, but let''s
+    ignore this for now – we will get to it in a bit. Here is how the algorithm is
+    used when the number of clusters has been set to `4`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since we set the number of clusters to `4`, the predicted `y_pred` will have
+    values from zero to three.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In fact, the agglomerative clustering algorithm did not stop when the number
+    of clusters was four. It continued to aggregate the clusters and kept track of
+    which clusters are members of which bigger clusters using an internal tree structure.
+    When we specified that we just needed four clusters, it revisited this internal
+    tree and inferred the clusters' labels accordingly. In the next section, we are
+    going to learn how to access the algorithm's internal hierarchy and trace the
+    tree it builds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tracing the agglomerative clustering's children
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As we mentioned previously, each sample or cluster becomes a member of another
+    cluster, which, in turn, becomes a member of a bigger cluster, and so forth. This
+    hierarchy is stored in the algorithm''s `children_` attribute. This attribute
+    is in the form of a list of lists. The outer list has as many members as the number
+    of data samples, minus one. Each of the member lists is made up of two numbers.
+    We can list the last five members of the `children_` attribute as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will give us the following list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The very last element of the list is the root of the tree. It has two children,
+    `196` and `197`. Those are the IDs of the children of this root node. An ID that
+    is greater than or equal to the number of data samples is a cluster ID, while
+    the smaller IDs refer to individual samples. If you subtract the number of data
+    samples from a cluster ID, it will give you the location in the children list
+    where you can get the members of this cluster. From this information, we can build
+    the following recursive function, which takes a list of children and the number
+    of data samples and returns the nested tree of all the clusters and their members,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can call the function we''ve just created like so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'At this point, `tree[0]` and `tree[1]` contain the IDs of the samples in the
+    left-hand side and right-hand side of the tree – these are the members of the
+    two biggest clusters. If our aim is to divide our samples into four clusters instead
+    of two, we can use `tree[0][0]`, `tree[0][1]`, `tree[1][0]`, and `tree[1][1]`.
+    Here is what `tree[0][0]` looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This nestedness allows us to set how deep we want our clusters to be and retrieve
+    their members accordingly. Nevertheless, we can flatten this list using the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we can get a member of`tree[0][0]`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also mimic the output of `fit_predict` and build our own predicted labels
+    using the following code snippet. It will assign the labels from zero to three
+    to the members of the different branches of the tree we built. Let''s call our
+    predicted labels `y_pred_dash`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: To make sure our code works as expected, the values in `y_pred_dash` should
+    match those in `y_pred` from the previous section. Nonetheless, nothing says whether
+    the`tree[0][0]`part of the tree should be given the label `0`, `1`, `2`, or `3`.
+    Our choice of labels is arbitrary. Therefore, we need a scoring function that
+    compares the two predictions while taking into account that the label names may
+    vary. That's the job of the adjusted Rand index, which is going to be the topic
+    of the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The adjusted Rand index
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The **adjusted Rand index** is very similar to the accuracy score in terms
+    of its classification. It calculates the level of agreement between two lists
+    of labels, yet it accounts for the following issues that the accuracy score cannot
+    deal with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The adjusted rand index doesn't care much about the actual labels, as long as
+    the members of one cluster here are the same members of the cluster there.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Unlike in classification, we may end up having too many clusters. In the extreme
+    case of having each sample as its own cluster, any two lists of clusters will
+    agree with each other if we ignore the names of the labels. Thus, the adjusted
+    rand index discounts the possibility of the two clusters agreeing by chance.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The best-adjusted rand index is`1` when the two predictions match. Thus, we
+    can use it to compare`y_pred` with our `y_pred_dash`. The score is symmetric,
+    so the order of its parameters doesn''t matter when calling the scoring function,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since we get an adjusted rand index of `1`, we can rest assured that our code
+    for inferring the cluster memberships from the children tree is correct.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I quickly mentioned that, in each iteration, the algorithm combines the two
+    closest clusters. It is easy to imagine how distances are calculated between the
+    two samples. They are basically two points and we have already used different
+    distance measures, such as the Euclidean distance and Manhattan distance, before.
+    However, a cluster is not a point. Where exactly should we measure the distances
+    from? Shall we use the cluster's centroid? Shall we pick a specific data point
+    within each cluster to calculate the distance from it? All these choices can be
+    specified using the **linkage** hyperparameter. In the next section, we are going
+    to see its different options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choosing the cluster linkage
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: By default, the **Euclidean** distance is used to decide which cluster pairs
+    are closest to each other. This default metric can be changed using the **affinity**
+    hyperparameter. Please refer to [Chapter 5](b95b628d-5913-477e-8897-989ce2afb974.xhtml)*,
+    Image Processing with Nearest Neighbors*, if you want to know more about the different
+    distance metrics, such as the **c****osine** and**Manhattan** distance. When calculating
+    the distance between two clusters, the **linkage** criterion decides how the distances
+    can be measured, given the fact that a cluster usually contains more than one
+    data point. In a *complete* linkage, the maximum distance between all the data
+    points in the two clusters is used. Conversely, in a *single* linkage, the minimum
+    distance is used. Clearly, the *average* linkage takes the average of all the
+    distances between all sample pairs. In a *ward* linkage, two clusters are merged
+    if the average Euclidean distances between each data point in the two clusters
+    and the centroid of the merging cluster are at their minimum. Only Euclidean distances
+    can be used with ward linkage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To be able to compare the aforementioned linkage methods, we need to create
+    a new dataset. The data points will be arranged in the form of two concentric
+    circles. The smaller circle is enclaved into the bigger one, like Lesotho and
+    South Africa. The `make_circles` function specifies the number of samples to generate
+    (`n_samples`), how far apart the two circles are (`factor`), and how noisy the
+    data is (`noise`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'I will display the resulting dataset in a bit, but first, let''s use the agglomerative
+    algorithm to cluster the new data samples. I will run the algorithm twice: first
+    with a complete linkage and then with a single linkage. I will be using Manhattan
+    distance this time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here are the results of the two linkage methods side by side:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c84230e2-77e0-4616-b3a2-40c162c83714.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'When a single linkage is used, the shortest distance between each cluster pair
+    is considered. This allows it to identify the circular strip where the data points
+    have been arranged. The compete linkage considers the longest distances between
+    the clusters. This resulted in more biased results. Clearly, the single linkage
+    had the best results here. Nevertheless, it is subject to noise due to its variance.
+    To demonstrate this, we can regenerate the circular samples once more after increasing
+    the noise from `0.05` to `0.08`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the same clustering algorithm on the new samples will give us the following
+    results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/805f7f0e-cd92-42a4-bb30-501e56fa5dd2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The noisy data confused our single linkage this time, while the outcome of the
+    complete linkage did not vary much. In the single linkage, a noisy point that
+    falls between two clusters may cause them to merge. The average linkage can be
+    seen as a middle ground between the single and the complete linkage criteria.
+    Due to the iterative nature of these algorithms, the three linkage methods cause
+    the bigger clusters to grow even bigger. This may result in uneven cluster sizes.
+    If having imbalanced clusters must be avoided, then the ward linkage should be
+    favored over the other three linkage methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, the desired number of clusters had to be predefined for the K-means
+    and agglomerative clustering algorithms. Agglomerative**clustering**is computationally
+    expensive compared to the K-means algorithm, while the K-means algorithm cannot
+    deal with non-convex data. In the next section, we are going to see a third algorithm
+    that doesn't require the number of clusters to be predefined.****
+  prefs: []
+  type: TYPE_NORMAL
+- en: '****# DBSCAN'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"You never really understand a person until you consider things from his point
+    of view."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '- Harper Lee'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The acronym **DBSCAN** stands for **density-based spatial clustering of applications
+    with noise**. It sees clusters as areas of high density separated by areas of
+    low density. This allows it to deal with clusters of any shape. This is in contrast
+    to the K-means algorithm, which assumes clusters to be convex; that is, data blobs
+    with centroids. The DBSCAN**algorithm starts by identifying the core samples.
+    These are points that have at least `min_samples` around them within a distance
+    of `eps` (***ε***). Initially, a cluster is built out of its core samples. Once
+    a core sample has been identified, its neighbors are also examined and added to
+    the cluster if they meet the core sample criteria. Then, the cluster is expanded
+    so that we can add non-core samples to it. These are samples that can be reached
+    directly from the core samples within a distance of `eps` but are not core samples
+    themselves. Once all the clusters have been identified, along with their core
+    and non-core samples, the remaining samples are considered noise.**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**It is clear that the `min_samples` and `eps` hyperparameters play a big role
+    in the final predictions. Here, we''re setting `min_samples` to `3` and trying
+    a different setting for `eps`***:***'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: The resulting clusters for the blobs dataset help us identify the effect of
+    the `eps`**hyperparameter:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**![](img/df4122fc-30e5-4c42-a0f8-bbda069507d7.png)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A very small `eps` does not allow any core samples to form. When `eps` was set
+    to `0.1`, almost all the points were treated as noise. The core points started
+    to form as we increased the value of `eps`. However, at some point, when `eps`**was
+    set to `0.5`, two clusters were mistakenly merged.**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Similarly, the value of `min_samples` can make or break our clustering algorithm.
+    Here, we''re going to try different values of `min_samples`**for our concentric
+    data points:**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**[PRE23]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we can see the effect of `min_samples` on our clustering results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/00022b95-11a4-44a4-9c8e-4de20b8a90a9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Once more, a careful choice of `min_samples` gave the best results. In contrast
+    to `eps`, the bigger the value of `min_samples`, the harder it is for the core
+    samples to form.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to the aforementioned hyperparameters, we can also change the distance
+    metric used by the algorithm. Usually, `min_samples` takes values above three.
+    Setting `min_samples` to one means that each sample will be its own cluster, while
+    setting it to two will give similar results to the agglomerative clustering algorithm,
+    but with a single linkage. You may start by setting the `min_samples` value to
+    double the dimensionality of your data; that is, twice the number of features.
+    Then, you may increase it if your data is known to be noisy and decrease it otherwise.
+    As for `eps`, we can use the following **k-distance graph**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the concentric dataset, we set `min_samples` to three. Now, for each sample,
+    we want to see how far its two neighbors are. The following code snippet calculates
+    the distance between each point and its closest two neighbors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If `min_samples` was set to any other number, we would have wanted to get as
+    many neighbors as that number, minus one. Now, we can focus on the farthest neighbor
+    of the two for each sample and plot all the resulting distances, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting graph will look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6264955d-c1b2-4dbc-b366-674508dc0573.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The point where the graph changes its slope dramatically gives us a rough estimate
+    for our `eps` value. Here, when`min_samples` was set to three, an `eps` value
+    of `0.2` sounded quite right. Furthermore, we can try different values for these
+    two numbers and use the silhouette score or any other clustering metric to fine-tune
+    our hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The British historian Arnold Toynbee once said, "*n**o tool is omnicompetent"*.
+    In this chapter, we used three tools for clustering. Each of the three algorithms
+    we discussed here approaches the problem from a different angle. The K-means clustering
+    algorithm tries to find points that summarize the clusters and the centroids and
+    builds its clusters around them. The agglomerative clustering approach is more
+    of a bottom-up approach, while the DBSCAN clustering algorithm introduces new
+    concepts such as core points and density. This chapter is the first of three chapters
+    to deal with unsupervised learning problems. The lack of labels here forced us
+    to learn about newer evaluation metrics, such as the adjusted rand index and the
+    silhouette score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next chapter, we are going to deal with our second unsupervised learning
+    problem: **anomaly detection**. Luckily, the concepts discussed here, as well
+    as the ones from[Chapter 5](b95b628d-5913-477e-8897-989ce2afb974.xhtml), *Image
+    Processing with Nearest Neighbors,*about nearest neighbors and nearest centroid
+    algorithms will help us in the next chapter. Once more, we will be given unlabeled
+    data samples, and we will be tasked with picking the odd samples out.***************'
+  prefs: []
+  type: TYPE_NORMAL

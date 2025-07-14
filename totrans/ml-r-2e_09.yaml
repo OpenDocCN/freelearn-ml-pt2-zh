@@ -1,0 +1,1124 @@
+- en: Chapter 9. Finding Groups of Data – Clustering with k-means
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Have you ever spent time watching a large crowd? If so, you are likely to have
+    seen some recurring personalities. Perhaps a certain type of person, identified
+    by a freshly pressed suit and a briefcase, comes to typify the "fat cat" business
+    executive. A twenty-something wearing skinny jeans, a flannel shirt, and sunglasses
+    might be dubbed a "hipster," while a woman unloading children from a minivan may
+    be labeled a "soccer mom."
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, these types of stereotypes are dangerous to apply to individuals,
+    as no two people are exactly alike. Yet understood as a way to describe a collective,
+    the labels capture some underlying aspect of similarity among the individuals
+    within the group.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you will soon learn, the act of clustering, or spotting patterns in data,
+    is not much different from spotting patterns in groups of people. In this chapter,
+    you will learn:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ways clustering tasks differ from the classification tasks we examined previously
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How clustering defines a group, and how such groups are identified by k-means,
+    a classic and easy-to-understand clustering algorithm
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The steps needed to apply clustering to a real-world task of identifying marketing
+    segments among teenage social media users
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Before jumping into action, we'll begin by taking an in-depth look at exactly
+    what clustering entails.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Clustering is an unsupervised machine learning task that automatically divides
+    the data into **clusters,** or groups of similar items. It does this without having
+    been told how the groups should look ahead of time. As we may not even know what
+    we're looking for, clustering is used for knowledge discovery rather than prediction.
+    It provides an insight into the natural groupings found within data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Without advance knowledge of what comprises a cluster, how can a computer possibly
+    know where one group ends and another begins? The answer is simple. Clustering
+    is guided by the principle that items inside a cluster should be very similar
+    to each other, but very different from those outside. The definition of similarity
+    might vary across applications, but the basic idea is always the same—group the
+    data so that the related elements are placed together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The resulting clusters can then be used for action. For instance, you might
+    find clustering methods employed in the following applications:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Segmenting customers into groups with similar demographics or buying patterns
+    for targeted marketing campaigns
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting anomalous behavior, such as unauthorized network intrusions, by identifying
+    patterns of use falling outside the known clusters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Simplifying extremely large datasets by grouping features with similar values
+    into a smaller number of homogeneous categories
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Overall, clustering is useful whenever diverse and varied data can be exemplified
+    by a much smaller number of groups. It results in meaningful and actionable data
+    structures that reduce complexity and provide insight into patterns of relationships.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clustering as a machine learning task
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Clustering is somewhat different from the classification, numeric prediction,
+    and pattern detection tasks we examined so far. In each of these cases, the result
+    is a model that relates features to an outcome or features to other features;
+    conceptually, the model describes the existing patterns within data. In contrast,
+    clustering creates new data. Unlabeled examples are given a cluster label that
+    has been inferred entirely from the relationships within the data. For this reason,
+    you will, sometimes, see the clustering task referred to as **unsupervised classification**
+    because, in a sense, it classifies unlabeled examples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The catch is that the class labels obtained from an unsupervised classifier
+    are without intrinsic meaning. Clustering will tell you which groups of examples
+    are closely related—for instance, it might return the groups A, B, and C—but it's
+    up to you to apply an actionable and meaningful label. To see how this impacts
+    the clustering task, let's consider a hypothetical example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Suppose you were organizing a conference on the topic of data science. To facilitate
+    professional networking and collaboration, you planned to seat people in groups
+    according to one of three research specialties: computer and/or database science,
+    math and statistics, and machine learning. Unfortunately, after sending out the
+    conference invitations, you realize that you had forgotten to include a survey
+    asking which discipline the attendee would prefer to be seated with.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In a stroke of brilliance, you realize that you might be able to infer each
+    scholar''s research specialty by examining his or her publication history. To
+    this end, you begin collecting data on the number of articles each attendee published
+    in computer science-related journals and the number of articles published in math
+    or statistics-related journals. Using the data collected for several scholars,
+    you create a scatterplot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Clustering as a machine learning task](img/B03905_09_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: As expected, there seems to be a pattern. We might guess that the upper-left
+    corner, which represents people with many computer science publications but few
+    articles on math, could be a cluster of computer scientists. Following this logic,
+    the lower-right corner might be a group of mathematicians. Similarly, the upper-right
+    corner, those with both math and computer science experience, may be machine learning
+    experts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our groupings were formed visually; we simply identified clusters as closely
+    grouped data points. Yet in spite of the seemingly obvious groupings, we unfortunately
+    have no way to know whether they are truly homogeneous without personally asking
+    each scholar about his/her academic specialty. The labels we applied required
+    us to make qualitative, presumptive judgments about the types of people that would
+    fall into the group. For this reason, you might imagine the cluster labels in
+    uncertain terms, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Clustering as a machine learning task](img/B03905_09_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Rather than defining the group boundaries subjectively, it would be nice to
+    use machine learning to define them objectively. Given the axis-parallel splits
+    in the preceding diagram, our problem seems like an obvious application for the
+    decision trees described in [Chapter 5](ch05.html "Chapter 5. Divide and Conquer
+    – Classification Using Decision Trees and Rules"), *Divide and Conquer – Classification
+    Using Decision Trees and Rules*. This might provide us with a rule in the form
+    "if a scholar has few math publications, then he/she is a computer science expert."
+    Unfortunately, there's a problem with this plan. As we do not have data on the
+    true class value for each point, a supervised learning algorithm would have no
+    ability to learn such a pattern, as it would have no way of knowing what splits
+    would result in homogenous groups.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the other hand, clustering algorithms use a process very similar to what
+    we did by visually inspecting the scatterplot. Using a measure of how closely
+    the examples are related, homogeneous groups can be identified. In the next section,
+    we'll start looking at how clustering algorithms are implemented.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This example highlights an interesting application of clustering. If you begin
+    with unlabeled data, you can use clustering to create class labels. From there,
+    you could apply a supervised learner such as decision trees to find the most important
+    predictors of these classes. This is called **semi-supervised learning**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The k-means clustering algorithm
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **k-means** **algorithm** is perhaps the most commonly used clustering method.
+    Having been studied for several decades, it serves as the foundation for many
+    more sophisticated clustering techniques. If you understand the simple principles
+    it uses, you will have the knowledge needed to understand nearly any clustering
+    algorithm in use today. Many such methods are listed on the following site, the
+    **CRAN Task View** for clustering at [http://cran.r-project.org/web/views/Cluster.html](http://cran.r-project.org/web/views/Cluster.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'As k-means has evolved over time, there are many implementations of the algorithm.
+    One popular approach is described in : Hartigan JA, Wong MA. A k-means clustering
+    algorithm. Applied *Statistics*. 1979; 28:100-108.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Even though clustering methods have advanced since the inception of k-means,
+    this is not to imply that k-means is obsolete. In fact, the method may be more
+    popular now than ever. The following table lists some reasons why k-means is still
+    used widely:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Strengths | Weaknesses |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Uses simple principles that can be explained in non-statistical terms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Highly flexible, and can be adapted with simple adjustments to address nearly
+    all of its shortcomings
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Performs well enough under many real-world use cases
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Not as sophisticated as more modern clustering algorithms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Because it uses an element of random chance, it is not guaranteed to find the
+    optimal set of clusters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Requires a reasonable guess as to how many clusters naturally exist in the data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Not ideal for non-spherical clusters or clusters of widely varying density
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the name k-means sounds familiar to you, you may be recalling the k-NN algorithm
+    discussed in [Chapter 3](ch03.html "Chapter 3. Lazy Learning – Classification
+    Using Nearest Neighbors"), *Lazy Learning – Classification Using Nearest Neighbors*.
+    As you will soon see, k-means shares more in common with the k-nearest neighbors
+    than just the letter k.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The k-means algorithm assigns each of the *n* examples to one of the *k* clusters,
+    where *k* is a number that has been determined ahead of time. The goal is to minimize
+    the differences within each cluster and maximize the differences between the clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unless *k* and *n* are extremely small, it is not feasible to compute the optimal
+    clusters across all the possible combinations of examples. Instead, the algorithm
+    uses a heuristic process that finds **locally optimal** solutions. Put simply,
+    this means that it starts with an initial guess for the cluster assignments, and
+    then modifies the assignments slightly to see whether the changes improve the
+    homogeneity within the clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will cover the process in depth shortly, but the algorithm essentially involves
+    two phases. First, it assigns examples to an initial set of *k* clusters. Then,
+    it updates the assignments by adjusting the cluster boundaries according to the
+    examples that currently fall into the cluster. The process of updating and assigning
+    occurs several times until changes no longer improve the cluster fit. At this
+    point, the process stops and the clusters are finalized.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Due to the heuristic nature of k-means, you may end up with somewhat different
+    final results by making only slight changes to the starting conditions. If the
+    results vary dramatically, this could indicate a problem. For instance, the data
+    may not have natural groupings or the value of *k* has been poorly chosen. With
+    this in mind, it's a good idea to try a cluster analysis more than once to test
+    the robustness of your findings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To see how the process of assigning and updating works in practice, let's revisit
+    the case of the hypothetical data science conference. Though this is a simple
+    example, it will illustrate the basics of how k-means operates under the hood.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using distance to assign and update clusters
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As with k-NN, k-means treats feature values as coordinates in a multidimensional
+    feature space. For the conference data, there are only two features, so we can
+    represent the feature space as a two-dimensional scatterplot as depicted previously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The k-means algorithm begins by choosing *k* points in the feature space to
+    serve as the cluster centers. These centers are the catalyst that spurs the remaining
+    examples to fall into place. Often, the points are chosen by selecting *k* random
+    examples from the training dataset. As we hope to identify three clusters, according
+    to this method, *k = 3* points will be selected at random. These points are indicated
+    by the star, triangle, and diamond in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using distance to assign and update clusters](img/B03905_09_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: It's worth noting that although the three cluster centers in the preceding diagram
+    happen to be widely spaced apart, this is not always necessarily the case. Since
+    they are selected at random, the three centers could have just as easily been
+    three adjacent points. As the k-means algorithm is highly sensitive to the starting
+    position of the cluster centers, this means that random chance may have a substantial
+    impact on the final set of clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To address this problem, k-means can be modified to use different methods for
+    choosing the initial centers. For example, one variant chooses random values occurring
+    anywhere in the feature space (rather than only selecting among the values observed
+    in the data). Another option is to skip this step altogether; by randomly assigning
+    each example to a cluster, the algorithm can jump ahead immediately to the update
+    phase. Each of these approaches adds a particular bias to the final set of clusters,
+    which you may be able to use to improve your results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In 2007, an algorithm called **k-means++** was introduced, which proposes an
+    alternative method for selecting the initial cluster centers. It purports to be
+    an efficient way to get much closer to the optimal clustering solution while reducing
+    the impact of random chance. For more information, refer to *Arthur D, Vassilvitskii
+    S*. k-means++: The advantages of careful seeding. *Proceedings of the eighteenth
+    annual ACM-SIAM symposium on discrete algorithms*. 2007:1027–1035.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: After choosing the initial cluster centers, the other examples are assigned
+    to the cluster center that is nearest according to the distance function. You
+    will remember that we studied distance functions while learning about k-Nearest
+    Neighbors. Traditionally, k-means uses Euclidean distance, but Manhattan distance
+    or Minkowski distance are also sometimes used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Recall that if *n* indicates the number of features, the formula for Euclidean
+    distance between example *x* and example *y* is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using distance to assign and update clusters](img/B03905_09_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'For instance, if we are comparing a guest with five computer science publications
+    and one math publication to a guest with zero computer science papers and two
+    math papers, we could compute this in R as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using this distance function, we find the distance between each example and
+    each cluster center. The example is then assigned to the nearest cluster center.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Keep in mind that as we are using distance calculations, all the features need
+    to be numeric, and the values should be normalized to a standard range ahead of
+    time. The methods discussed in [Chapter 3](ch03.html "Chapter 3. Lazy Learning
+    – Classification Using Nearest Neighbors"), *Lazy Learning – Classification Using
+    Nearest Neighbors*, will prove helpful for this task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As shown in the following diagram, the three cluster centers partition the
+    examples into three segments labeled **Cluster A**, **Cluster B**, and **Cluster
+    C**. The dashed lines indicate the boundaries for the **Voronoi diagram** created
+    by the cluster centers. The Voronoi diagram indicates the areas that are closer
+    to one cluster center than any other; the vertex where all the three boundaries
+    meet is the maximal distance from all three cluster centers. Using these boundaries,
+    we can easily see the regions claimed by each of the initial k-means seeds:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using distance to assign and update clusters](img/B03905_09_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now that the initial assignment phase has been completed, the k-means algorithm
+    proceeds to the update phase. The first step of updating the clusters involves
+    shifting the initial centers to a new location, known as the **centroid**, which
+    is calculated as the average position of the points currently assigned to that
+    cluster. The following diagram illustrates how as the cluster centers shift to
+    the new centroids, the boundaries in the Voronoi diagram also shift and a point
+    that was once in **Cluster B** (indicated by an arrow) is added to **Cluster A**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using distance to assign and update clusters](img/B03905_09_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As a result of this reassignment, the k-means algorithm will continue through
+    another update phase. After shifting the cluster centroids, updating the cluster
+    boundaries, and reassigning points into new clusters (as indicated by arrows),
+    the figure looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using distance to assign and update clusters](img/B03905_09_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Because two more points were reassigned, another update must occur, which moves
+    the centroids and updates the cluster boundaries. However, because these changes
+    result in no reassignments, the k-means algorithm stops. The cluster assignments
+    are now final:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using distance to assign and update clusters](img/B03905_09_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The final clusters can be reported in one of the two ways. First, you might
+    simply report the cluster assignments such as A, B, or C for each example. Alternatively,
+    you could report the coordinates of the cluster centroids after the final update.
+    Given either reporting method, you are able to define the cluster boundaries by
+    calculating the centroids or assigning each example to its nearest cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choosing the appropriate number of clusters
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In the introduction to k-means, we learned that the algorithm is sensitive to
+    the randomly-chosen cluster centers. Indeed, if we had selected a different combination
+    of three starting points in the previous example, we may have found clusters that
+    split the data differently from what we had expected. Similarly, k-means is sensitive
+    to the number of clusters; the choice requires a delicate balance. Setting *k*
+    to be very large will improve the homogeneity of the clusters, and at the same
+    time, it risks overfitting the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ideally, you will have *a priori* knowledge (a prior belief) about the true
+    groupings and you can apply this information to choosing the number of clusters.
+    For instance, if you were clustering movies, you might begin by setting *k* equal
+    to the number of genres considered for the Academy Awards. In the data science
+    conference seating problem that we worked through previously, *k* might reflect
+    the number of academic fields of study that were invited.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sometimes the number of clusters is dictated by business requirements or the
+    motivation for the analysis. For example, the number of tables in the meeting
+    hall could dictate how many groups of people should be created from the data science
+    attendee list. Extending this idea to another business case, if the marketing
+    department only has resources to create three distinct advertising campaigns,
+    it might make sense to set *k = 3* to assign all the potential customers to one
+    of the three appeals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Without any prior knowledge, one rule of thumb suggests setting *k* equal to
+    the square root of *(n / 2)*, where *n* is the number of examples in the dataset.
+    However, this rule of thumb is likely to result in an unwieldy number of clusters
+    for large datasets. Luckily, there are other statistical methods that can assist
+    in finding a suitable k-means cluster set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A technique known as the **elbow method** attempts to gauge how the homogeneity
+    or heterogeneity within the clusters changes for various values of *k*. As illustrated
+    in the following diagrams, the homogeneity within clusters is expected to increase
+    as additional clusters are added; similarly, heterogeneity will also continue
+    to decrease with more clusters. As you could continue to see improvements until
+    each example is in its own cluster, the goal is not to maximize homogeneity or
+    minimize heterogeneity, but rather to find *k* so that there are diminishing returns
+    beyond that point. This value of *k* is known as the **elbow point** because it
+    looks like an elbow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Choosing the appropriate number of clusters](img/B03905_09_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: There are numerous statistics to measure homogeneity and heterogeneity within
+    the clusters that can be used with the elbow method (the following information
+    box provides a citation for more detail). Still, in practice, it is not always
+    feasible to iteratively test a large number of *k* values. This is in part because
+    clustering large datasets can be fairly time consuming; clustering the data repeatedly
+    is even worse. Regardless, applications requiring the exact optimal set of clusters
+    are fairly rare. In most clustering applications, it suffices to choose a *k*
+    value based on convenience rather than strict performance requirements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For a very thorough review of the vast assortment of cluster performance measures,
+    refer to: *Halkidi M, Batistakis Y, Vazirgiannis M*. On clustering validation
+    techniques. *Journal of Intelligent Information Systems*. 2001; 17:107-145.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The process of setting *k* itself can sometimes lead to interesting insights.
+    By observing how the characteristics of the clusters change as *k* is varied,
+    one might infer where the data have naturally defined boundaries. Groups that
+    are more tightly clustered will change a little, while less homogeneous groups
+    will form and disband over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In general, it may be wise to spend little time worrying about getting *k* exactly
+    right. The next example will demonstrate how even a tiny bit of subject-matter
+    knowledge borrowed from a Hollywood film can be used to set *k* such that actionable
+    and interesting clusters are found. As clustering is unsupervised, the task is
+    really about what you make of it; the value is in the insights you take away from
+    the algorithm's findings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Example – finding teen market segments using k-means clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Interacting with friends on a **social networking service** (**SNS**), such
+    as Facebook, Tumblr, and Instagram has become a rite of passage for teenagers
+    around the world. Having a relatively large amount of disposable income, these
+    adolescents are a coveted demographic for businesses hoping to sell snacks, beverages,
+    electronics, and hygiene products.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The many millions of teenage consumers using such sites have attracted the attention
+    of marketers struggling to find an edge in an increasingly competitive market.
+    One way to gain this edge is to identify segments of teenagers who share similar
+    tastes, so that clients can avoid targeting advertisements to teens with no interest
+    in the product being sold. For instance, sporting apparel is likely to be a difficult
+    sell to teens with no interest in sports.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given the text of teenagers' SNS pages, we can identify groups that share common
+    interests such as sports, religion, or music. Clustering can automate the process
+    of discovering the natural segments in this population. However, it will be up
+    to us to decide whether or not the clusters are interesting and how we can use
+    them for advertising. Let's try this process from start to finish.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 1 – collecting data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For this analysis, we will use a dataset representing a random sample of 30,000
+    U.S. high school students who had profiles on a well-known SNS in 2006\. To protect
+    the users' anonymity, the SNS will remain unnamed. However, at the time the data
+    was collected, the SNS was a popular web destination for US teenagers. Therefore,
+    it is reasonable to assume that the profiles represent a fairly wide cross section
+    of American adolescents in 2006.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This dataset was compiled by Brett Lantz while conducting sociological research
+    on the teenage identities at the University of Notre Dame. If you use the data
+    for research purposes, please cite this book chapter. The full dataset is available
+    at the Packt Publishing website with the filename `snsdata.csv`. To follow along
+    interactively, this chapter assumes that you have saved this file to your R working
+    directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The data was sampled evenly across four high school graduation years (2006 through
+    2009) representing the senior, junior, sophomore, and freshman classes at the
+    time of data collection. Using an automated web crawler, the full text of the
+    SNS profiles were downloaded, and each teen's gender, age, and number of SNS friends
+    was recorded.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A text mining tool was used to divide the remaining SNS page content into words.
+    From the top 500 words appearing across all the pages, 36 words were chosen to
+    represent five categories of interests: namely extracurricular activities, fashion,
+    religion, romance, and antisocial behavior. The 36 words include terms such as
+    *football*, *sexy*, *kissed*, *bible*, *shopping*, *death*, and *drugs*. The final
+    dataset indicates, for each person, how many times each word appeared in the person''s
+    SNS profile.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 2 – exploring and preparing the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can use the default settings of `read.csv()` to load the data into a data
+    frame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s also take a quick look at the specifics of the data. The first several
+    lines of the `str()` output are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we had expected, the data include 30,000 teenagers with four variables indicating
+    personal characteristics and 36 words indicating interests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Do you notice anything strange around the `gender` row? If you were looking
+    carefully, you may have noticed the `NA` value, which is out of place compared
+    to the `1` and `2` values. The `NA` is R's way of telling us that the record has
+    a missing value—we do not know the person's gender. Until now, we haven't dealt
+    with missing data, but it can be a significant problem for many types of analyses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see how substantial this problem is. One option is to use the `table()`
+    command, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Although this command tells us how many `F` and `M` values are present, the
+    `table()` function excluded the `NA` values rather than treating it as a separate
+    category. To include the `NA` values (if there are any), we simply need to add
+    an additional parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we see that 2,724 records (9 percent) have missing gender data. Interestingly,
+    there are over four times as many females as males in the SNS data, suggesting
+    that males are not as inclined to use SNS websites as females.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you examine the other variables in the data frame, you will find that besides
+    `gender`, only `age` has missing values. For numeric data, the `summary()` command
+    tells us the number of missing `NA` values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: A total of 5,086 records (17 percent) have missing ages. Also concerning is
+    the fact that the minimum and maximum values seem to be unreasonable; it is unlikely
+    that a 3 year old or a 106 year old is attending high school. To ensure that these
+    extreme values don't cause problems for the analysis, we'll need to clean them
+    up before moving on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A more reasonable range of ages for the high school students includes those
+    who are at least 13 years old and not yet 20 years old. Any age value falling
+    outside this range should be treated the same as missing data—we cannot trust
+    the age provided. To recode the age variable, we can use the `ifelse()` function,
+    assigning `teen$age` the value of `teen$age` if the age is at least 13 and less
+    than 20 years; otherwise, it will receive the value `NA`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By rechecking the `summary()` output, we see that the age range now follows
+    a distribution that looks much more like an actual high school:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Unfortunately, now we've created an even larger missing data problem. We'll
+    need to find a way to deal with these values before continuing with our analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data preparation – dummy coding missing values
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: An easy solution for handling the missing values is to exclude any record with
+    a missing value. However, if you think through the implications of this practice,
+    you might think twice before doing so—just because it is easy does not mean it
+    is a good idea! The problem with this approach is that even if the missingness
+    is not extensive, you can easily exclude large portions of the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, suppose that in our data, the people with the `NA` values for gender
+    are completely different from those with missing age data. This would imply that
+    by excluding those missing either gender or age, you would exclude *9% + 17% =
+    26%* of the data, or over 7,500 records. And this is for missing data on only
+    two variables! The larger the number of missing values present in a dataset, the
+    more likely it is that any given record will be excluded. Fairly soon, you will
+    be left with a tiny subset of data, or worse, the remaining records will be systematically
+    different or non-representative of the full population.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An alternative solution for categorical variables like gender is to treat a
+    missing value as a separate category. For instance, rather than limiting to female
+    and male, we can add an additional category for the unknown gender. This allows
+    us to utilize dummy coding, which was covered in [Chapter 3](ch03.html "Chapter 3. Lazy
+    Learning – Classification Using Nearest Neighbors"), *Lazy Learning – Classification
+    Using Nearest Neighbors*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you recall, dummy coding involves creating a separate binary (1 or 0) valued
+    dummy variable for each level of a nominal feature except one, which is held out
+    to serve as the reference group. The reason one category can be excluded is because
+    its status can be inferred from the other categories. For instance, if someone
+    is not female and not unknown gender, they must be male. Therefore, in this case,
+    we need to only create dummy variables for female and unknown gender:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you might expect, the `is.na()` function tests whether gender is equal to
+    `NA`. Therefore, the first statement assigns `teens$female` the value `1` if gender
+    is equal to `F` and the gender is not equal to `NA`; otherwise, it assigns the
+    value `0`. In the second statement, if `is.na()` returns `TRUE`, meaning the gender
+    is missing, the `teens$no_gender` variable is assigned `1`; otherwise, it is assigned
+    the value `0`. To confirm that we did the work correctly, let''s compare our constructed
+    dummy variables to the original `gender` variable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: The number of `1` values for `teens$female` and `teens$no_gender` matches the
+    number of `F` and `NA` values, respectively, so we should be able to trust our
+    work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data preparation – imputing the missing values
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Next, let's eliminate the 5,523 missing age values. As age is numeric, it doesn't
+    make sense to create an additional category for the unknown values—where would
+    you rank "unknown" relative to the other ages? Instead, we'll use a different
+    strategy known as **imputation**, which involves filling in the missing data with
+    a guess as to the true value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Can you think of a way we might be able to use the SNS data to make an informed
+    guess about a teenager's age? If you are thinking of using the graduation year,
+    you've got the right idea. Most people in a graduation cohort were born within
+    a single calendar year. If we can identify the typical age for each cohort, we
+    would have a fairly reasonable estimate of the age of a student in that graduation
+    year.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One way to find a typical value is by calculating the average or mean value.
+    If we try to apply the `mean()` function, as we did for previous analyses, there''s
+    a problem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The issue is that the mean is undefined for a vector containing missing data.
+    As our age data contains missing values, `mean(teens$age)` returns a missing value.
+    We can correct this by adding an additional parameter to remove the missing values
+    before calculating the mean:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This reveals that the average student in our data is about 17 years old. This
+    only gets us part of the way there; we actually need the average age for each
+    graduation year. You might be tempted to calculate the mean four times, but one
+    of the benefits of R is that there''s usually a way to avoid repeating oneself.
+    In this case, the `aggregate()` function is the tool for the job. It computes
+    statistics for subgroups of data. Here, it calculates the mean age by graduation
+    year after removing the `NA` values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The mean age differs by roughly one year per change in graduation year. This
+    is not at all surprising, but a helpful finding for confirming our data is reasonable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `aggregate()` output is a data frame. This is helpful for some purposes,
+    but would require extra work to merge back onto our original data. As an alternative,
+    we can use the `ave()` function, which returns a vector with the group means repeated
+    so that the result is equal in length to the original vector:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To impute these means onto the missing values, we need one more `ifelse()`
+    call to use the `ave_age` value only if the original age value was `NA`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `summary()` results show that the missing values have now been eliminated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: With the data ready for analysis, we are ready to dive into the interesting
+    part of this project. Let's see whether our efforts have paid off.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 3 – training a model on the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: To cluster the teenagers into marketing segments, we will use an implementation
+    of k-means in the `stats` package, which should be included in your R installation
+    by default. If by chance you do not have this package, you can install it as you
+    would any other package and load it using the `library(stats)` command. Although
+    there is no shortage of k-means functions available in various R packages, the
+    `kmeans()` function in the `stats` package is widely used and provides a vanilla
+    implementation of the algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Step 3 – training a model on the data](img/B03905_09_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The `kmeans()` function requires a data frame containing only numeric data and
+    a parameter specifying the desired number of clusters. If you have these two things
+    ready, the actual process of building the model is simple. The trouble is that
+    choosing the right combination of data and clusters can be a bit of an art; sometimes
+    a great deal of trial and error is involved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll start our cluster analysis by considering only the 36 features that
+    represent the number of times various interests appeared on the teen SNS profiles.
+    For convenience, let''s make a data frame containing only these features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you recall from [Chapter 3](ch03.html "Chapter 3. Lazy Learning – Classification
+    Using Nearest Neighbors"), *Lazy Learning – Classification Using Nearest Neighbors*,
+    a common practice employed prior to any analysis using distance calculations is
+    to normalize or z-score standardize the features so that each utilizes the same
+    range. By doing so, you can avoid a problem in which some features come to dominate
+    solely because they have a larger range of values than the others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The process of z-score standardization rescales features so that they have a
+    mean of zero and a standard deviation of one. This transformation changes the
+    interpretation of the data in a way that may be useful here. Specifically, if
+    someone mentions football three times on their profile, without additional information,
+    we have no idea whether this implies they like football more or less than their
+    peers. On the other hand, if the z-score is three, we know that that they mentioned
+    football many more times than the average teenager.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To apply the z-score standardization to the `interests` data frame, we can
+    use the `scale()` function with `lapply()` as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since `lapply()` returns a matrix, it must be coerced back to data frame form
+    using the `as.data.frame()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our last decision involves deciding how many clusters to use for segmenting
+    the data. If we use too many clusters, we may find them too specific to be useful;
+    conversely, choosing too few may result in heterogeneous groupings. You should
+    feel comfortable experimenting with the values of *k*. If you don't like the result,
+    you can easily try another value and start over.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Choosing the number of clusters is easier if you are familiar with the analysis
+    population. Having a hunch about the true number of natural groupings can save
+    you some trial and error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To help us predict the number of clusters in the data, I''ll defer to one of
+    my favorite films, The *Breakfast Club*, a coming-of-age comedy released in 1985
+    and directed by John Hughes. The teenage characters in this movie are identified
+    in terms of five stereotypes: a brain, an athlete, a basket case, a princess,
+    and a criminal. Given that these identities prevail throughout popular teen fiction,
+    five seems like a reasonable starting point for *k*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To use the k-means algorithm to divide the teenagers'' interest data into five
+    clusters, we use the `kmeans()` function on the `interests` data frame. Because
+    the k-means algorithm utilizes random starting points, the `set.seed()` function
+    is used to ensure that the results match the output in the examples that follow.
+    If you recall from the previous chapters, this command initializes R''s random
+    number generator to a specific sequence. In the absence of this statement, the
+    results will vary each time the k-means algorithm is run:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: The result of the k-means clustering process is a list named `teen_clusters`
+    that stores the properties of each of the five clusters. Let's dig in and see
+    how well the algorithm has divided the teens' interest data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you find that your results differ from those shown here, ensure that the
+    `set.seed(2345)` command is run immediately prior to the `kmeans()` function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 4 – evaluating model performance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Evaluating clustering results can be somewhat subjective. Ultimately, the success
+    or failure of the model hinges on whether the clusters are useful for their intended
+    purpose. As the goal of this analysis was to identify clusters of teenagers with
+    similar interests for marketing purposes, we will largely measure our success
+    in qualitative terms. For other clustering applications, more quantitative measures
+    of success may be needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One of the most basic ways to evaluate the utility of a set of clusters is
+    to examine the number of examples falling in each of the groups. If the groups
+    are too large or too small, they are not likely to be very useful. To obtain the
+    size of the `kmeans()` clusters, use the `teen_clusters$size` component as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we see the five clusters we requested. The smallest cluster has 600 teenagers
+    (2 percent) while the largest cluster has 21,514 (72 percent). Although the large
+    gap between the number of people in the largest and smallest clusters is slightly
+    concerning, without examining these groups more carefully, we will not know whether
+    or not this indicates a problem. It may be the case that the clusters' size disparity
+    indicates something real, such as a big group of teens that share similar interests,
+    or it may be a random fluke caused by the initial k-means cluster centers. We'll
+    know more as we start to look at each cluster's homogeneity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Sometimes, k-means may find extremely small clusters—occasionally, as small
+    as a single point. This can happen if one of the initial cluster centers happens
+    to fall on an outlier far from the rest of the data. It is not always clear whether
+    to treat such small clusters as a true finding that represents a cluster of extreme
+    cases, or a problem caused by random chance. If you encounter this issue, it may
+    be worth re-running the k-means algorithm with a different random seed to see
+    whether the small cluster is robust to different starting points.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For a more in-depth look at the clusters, we can examine the coordinates of
+    the cluster centroids using the `teen_clusters$centers` component, which is as
+    follows for the first four interests:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: The rows of the output (labeled `1` to `5`) refer to the five clusters, while
+    the numbers across each row indicate the cluster's average value for the interest
+    listed at the top of the column. As the values are z-score standardized, positive
+    values are above the overall mean level for all the teens and negative values
+    are below the overall mean. For example, the third row has the highest value in
+    the basketball column, which means that cluster `3` has the highest average interest
+    in basketball among all the clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By examining whether the clusters fall above or below the mean level for each
+    interest category, we can begin to notice patterns that distinguish the clusters
+    from each other. In practice, this involves printing the cluster centers and searching
+    through them for any patterns or extreme values, much like a word search puzzle
+    but with numbers. The following screenshot shows a highlighted pattern for each
+    of the five clusters, for 19 of the 36 teen interests:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Step 4 – evaluating model performance](img/B03905_09_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Given this subset of the interest data, we can already infer some characteristics
+    of the clusters. **Cluster 3** is substantially above the mean interest level
+    on all the sports. This suggests that this may be a group of **Athletes** per
+    *The Breakfast Club* stereotype. **Cluster 1** includes the most mentions of "cheerleading,"
+    the word "hot," and is above the average level of football interest. Are these
+    the so-called **Princesses**?
+  prefs: []
+  type: TYPE_NORMAL
+- en: By continuing to examine the clusters in this way, it is possible to construct
+    a table listing the dominant interests of each of the groups. In the following
+    table, each cluster is shown with the features that most distinguish it from the
+    other clusters, and The *Breakfast Club* identity that most accurately captures
+    the group's characteristics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interestingly, **Cluster 5** is distinguished by the fact that it is unexceptional;
+    its members had lower-than-average levels of interest in every measured activity.
+    It is also the single largest group in terms of the number of members. One potential
+    explanation is that these users created a profile on the website but never posted
+    any interests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Step 4 – evaluating model performance](img/B03905_09_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When sharing the results of a segmentation analysis, it is often helpful to
+    apply informative labels that simplify and capture the essence of the groups such
+    as *The Breakfast Club* typology applied here. The risk in adding such labels
+    is that they can obscure the groups' nuances by stereotyping the group members.
+    As such labels can bias our thinking, important patterns can be missed if labels
+    are taken as the whole truth.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given the table, a marketing executive would have a clear depiction of five
+    types of teenage visitors to the social networking website. Based on these profiles,
+    the executive could sell targeted advertising impressions to businesses with products
+    relevant to one or more of the clusters. In the next section, we will see how
+    the cluster labels can be applied back to the original population for such uses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Step 5 – improving model performance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Because clustering creates new information, the performance of a clustering
+    algorithm depends at least somewhat on both the quality of the clusters themselves
+    as well as what is done with that information. In the preceding section, we already
+    demonstrated that the five clusters provided useful and novel insights into the
+    interests of teenagers. By that measure, the algorithm appears to be performing
+    quite well. Therefore, we can now focus our effort on turning these insights into
+    action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll begin by applying the clusters back onto the full dataset. The `teen_clusters`
+    object created by the `kmeans()` function includes a component named `cluster`
+    that contains the cluster assignments for all 30,000 individuals in the sample.
+    We can add this as a column on the `teens` data frame with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Given this new data, we can start to examine how the cluster assignment relates
+    to individual characteristics. For example, here''s the personal information for
+    the first five teens in the SNS data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using the `aggregate()` function, we can also look at the demographic characteristics
+    of the clusters. The mean age does not vary much by cluster, which is not too
+    surprising as these teen identities are often determined before high school. This
+    is depicted as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'On the other hand, there are some substantial differences in the proportion
+    of females by cluster. This is a very interesting finding as we didn''t use gender
+    data to create the clusters, yet the clusters are still predictive of gender:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Recall that overall about 74 percent of the SNS users are female. **Cluster
+    1**, the so-called **Princesses**, is nearly 84 percent female, while **Cluster
+    2** and **Cluster 5** are only about 70 percent female. These disparities imply
+    that there are differences in the interests that teen boys and girls discuss on
+    their social networking pages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Given our success in predicting gender, you might also suspect that the clusters
+    are predictive of the number of friends the users have. This hypothesis seems
+    to be supported by the data, which is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: On an average, **Princesses** have the most friends (41.4), followed by **Athletes**
+    (37.2) and **Brains** (32.6). On the low end are **Criminals** (30.5) and **Basket
+    Cases** (27.7). As with gender, the connection between a teen's number of friends
+    and their predicted cluster is remarkable, given that we did not use the friendship
+    data as an input to the clustering algorithm. Also interesting is the fact that
+    the number of friends seems to be related to the stereotype of each clusters'
+    high school popularity; the stereotypically popular groups tend to have more friends.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The association among group membership, gender, and number of friends suggests
+    that the clusters can be useful predictors of behavior. Validating their predictive
+    ability in this way may make the clusters an easier sell when they are pitched
+    to the marketing team, ultimately improving the performance of the algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Our findings support the popular adage that "birds of a feather flock together."
+    By using machine learning methods to cluster teenagers with others who have similar
+    interests, we were able to develop a typology of teen identities that was predictive
+    of personal characteristics, such as gender and the number of friends. These same
+    methods can be applied to other contexts with similar results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter covered only the fundamentals of clustering. As a very mature machine
+    learning method, there are many variants of the k-means algorithm as well as many
+    other clustering algorithms that bring unique biases and heuristics to the task.
+    Based on the foundation in this chapter, you will be able to understand and apply
+    other clustering methods to new problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will begin to look at methods for measuring the success
+    of a learning algorithm, which are applicable across many machine learning tasks.
+    While our process has always devoted some effort to evaluating the success of
+    learning, in order to obtain the highest degree of performance, it is crucial
+    to be able to define and measure it in the strictest terms.
+  prefs: []
+  type: TYPE_NORMAL

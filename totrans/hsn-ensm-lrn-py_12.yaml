@@ -1,0 +1,866 @@
+- en: Clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'One of the most widely used unsupervised learning methods is clustering. Clustering
+    aims to uncover structure in unlabeled data. The aim is to group together data
+    instances, such that there is great similarity between instances of the same cluster,
+    and little similarity between instances of different clusters. As with supervised
+    learning methods, clustering can benefit from combining many base learners. In
+    this chapter, we present k-means; a simple and widely used clustering algorithm.
+    Furthermore, we discuss how ensembles can be used to improve the algorithm''s
+    performance. Finally, we use OpenEnsembles, a scikit-learn compatible Python library
+    that implements ensemble clustering. The main topics covered in this chapter are
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How the K-means algorithm works
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Its strengths and weaknesses
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How ensembles can improve its performance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Utilizing OpenEnsembles to create clustering ensembles
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will require basic knowledge of machine learning techniques and algorithms.
+    Furthermore, a knowledge of python conventions and syntax is required. Finally,
+    familiarity with the NumPy library will greatly help the reader to understand
+    some custom algorithm implementations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code files of this chapter can be found on GitHub:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter08](https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter08)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Check out the following video to see the Code in Action: [http://bit.ly/2YYzniq](http://bit.ly/2YYzniq).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consensus clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Consensus clustering is an alias for ensemble learning when it is applied to
+    clustering methods. In clustering, each base learner assigns a label to each instance,
+    although it is not conditioned on a specific target. Instead, the base learner
+    generates a number of clusters and assigns each instance to a cluster. The label
+    is the cluster itself. As will be demonstrated later, two base learners, produced
+    by the same algorithm, can generate different clusters. Thus, it is not as straightforward
+    to combine their cluster predictions as it is to combine regression or classification
+    predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hierarchical clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Hierarchical clustering initially creates as many clusters as there are instances
+    in the dataset. Each cluster contains only a single instance. Following this,
+    it repeatedly finds the two clusters with the minimum distance between them (for
+    example, the Euclidean distance), and merges them together into a new cluster.
+    The process ends when there is only a single cluster. The method''s output is
+    a dendrogram, which indicates how instances are hierarchically organized. An example
+    is depicted in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e40c693f-709a-4126-ad88-1a66df010ba0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Dendrogram example
+  prefs: []
+  type: TYPE_NORMAL
+- en: K-means clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'K-means is a relatively simple and effective way to cluster data. The main
+    idea is that by starting with a number of *K* points as the initial cluster centers,
+    each instance is assigned to the nearest cluster center. Then, the centers are
+    re-calculated as the mean point of their respective members. This process repeats
+    until the cluster centers no longer change. The main steps are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Select the number of clusters, *K*
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Select *K* random instances as the initial cluster centers
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Assign each instance to the closest cluster center
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Re-calculate the cluster centers as the mean of each cluster's members
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If the new centers differ from the previous, go back to *Step 3*
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'A graphical example is depicted as follows. After four iterations, the algorithm
+    converges:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0da7eaa9-db67-4a6a-a122-453ddd902ad6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The first four iterations on a toy dataset. Stars represent the cluster centers
+  prefs: []
+  type: TYPE_NORMAL
+- en: Strengths and weaknesses
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'K-means is a simple algorithm, both to understand, as well as to implement.
+    Furthermore, it usually converges relatively fast, requiring small computing power.
+    Nonetheless, it has some disadvantages. The first one is its sensitivity to the
+    initial conditions. Depending on the examples chosen as the first cluster centers,
+    it can require more iterations in order to converge. For example, in the following
+    diagram we present three initial points that put the algorithm at a disadvantage.
+    In fact, in the third iteration, two cluster centers happen to coincide:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c931f880-88ab-426c-ac8b-40fa0b478679.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: An example of unfortunate initial cluster centers
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thus, the algorithm does not produce clusters deterministically. Another major
+    problem is the number of clusters. This is a parameter that the data analyst must
+    choose. There are usually three different solutions to this problem. The first
+    concerns problems where some prior knowledge about the problem exists. Such examples
+    are datasets where there is a need to uncover the structure of something that
+    is known, for example, what is the driving factor behind athletes who improve
+    their performance during a season, given their statistics? In this example, a
+    sports coach could advise that athletes actually either improve drastically, stay
+    the same, or deteriorate. Thus, the analyst could choose 3 as the number of clusters.
+    Another possible solution is to experiment with different values of *K*, and measure
+    the appropriateness of each value. This approach does not require any prior knowledge
+    about the problem domain, but introduces the problem of measuring the appropriateness
+    of each solution. We will see how we can solve these problems in the rest of this
+    chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using scikit-learn
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The scikit-learn has a number of clustering techniques available for use. Here,
+    we briefly present how to use K-means. The algorithm is implemented in the `KMeans`
+    class, which is contained in the `sklearn.cluster` package. This package contains
+    all the clustering algorithms that are available in scikit-learn. In this chapter,
+    we will use mainly K-means, as it is one of the most intuitive algorithms. Furthermore,
+    the techniques used in this chapter can be applied to almost any clustering algorithm.
+    For this experiment, we will try to cluster breast cancer data, in order to explore
+    the possibility of distinguishing malignant cases from benign cases. In order
+    to better visualize the results, we will first perform a **t-Distributed Stochastic
+    Neighbor Embedding** (**t-SNE**) decomposition, and use the two-dimensional embeddings
+    as features. In order to proceed, we first load the required data and libraries,
+    as well as set the seed for the NumPy random number generator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can read more about t-SNE at [https://lvdmaaten.github.io/tsne/](https://lvdmaaten.github.io/tsne/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Following this, we instantiate t-SNE, and transform our data. We plot the data
+    in order to visually inspect and examine the data structure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following plot. We observe two distinct areas.
+    The area populated by the blue points denotes embedding values that imply a high
+    risk that the tumor is malignant:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0ed097e9-49f9-42ea-a391-f349b0fa5e68.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Plot of the two embeddings (components) of the breast cancer data
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As we have identified that there exists some structure in the data, we will
+    try to use K-means clustering in order to model it. By intuition, we assume that
+    two clusters would suffice, as we try to separate two distinct regions, and we
+    know that there are two classes in the dataset. Nonetheless, we will also experiment
+    with four and six clusters, as they might provide more insight on the data. We
+    will measure the percentage of each class assigned to each cluster, in order to
+    gauge their quality. We do this by populating the `classified` dictionary. Each
+    key corresponds to a cluster. Each key also points to a second dictionary, where
+    the number of malignant and benign cases are recorded for the specific cluster.
+    Furthermore, we plot the cluster assignments, as we want to see how the data is
+    distributed among the clusters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The results are depicted on the following table and figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Cluster** | **Malignant** | **Benign** | **Malignant percentage** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **2 clusters** |  |  |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **0** | 206 | 97 | 0.68 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **1** | 6 | 260 | 0.023 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **4 clsuters** |  |  |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **0** | 2 | 124 | 0.016 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **1** | 134 | 1 | 0.993 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **2** | 72 | 96 | 0.429 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **3** | 4 | 136 | 0.029 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **6 clusters** |  |  |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **0** | 2 | 94 | 0.021 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **1** | 81 | 10 | 0.89 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **2** | 4 | 88 | 0.043 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **3** | 36 | 87 | 0.0293 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **4** | 0 | 78 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **5** | 89 | 0 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: Distribution of malignant and benign cases among the clusters
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We observe that the algorithm is able to separate the instances belonging to
+    each class quite effectively, even though it has no information about the labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/15320348-66ea-44be-b485-b046e535cca0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Cluster assignment of each instance; 2, 4, and 6 clusters
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Furthermore, we see that as we increase the number of clusters, the instances
+    assigned to dominantly malignant or benign clusters does not increase, but the
+    regions are better separated. This enables greater granularity and a more accurate
+    prediction of probability that a selected instance belongs to either class. If
+    we repeat the experiment without transforming the data, we get the following results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Cluster** | **Malignant** | **Benign** | **Malignant percentage** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **2 clusters** |  |  |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **0** | 82 | 356 | 0.187 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **1** | 130 | 1 | 0.992 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **4 clusters** |  |  |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **0** | 6 | 262 | 0.022 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **1** | 100 | 1 | 0.99 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **2** | 19 | 0 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **3** | 87 | 94 | 0.481 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **6 clusters** |  |  |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **0** | 37 | 145 | 0.203 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **1** | 37 | 0 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **2** | 11 | 0 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **3** | 62 | 9 | 0.873 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **4** | 5 | 203 | 0.024 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **5** | 60 | 0 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: Clustering results on the data without t-sne transform
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are also two metrics that can be used in order to determine cluster quality.
+    For data where the ground truth is known (essentially, labeled data), homogeneity
+    measures the rate by which each cluster is dominated by a single class. For data
+    where the ground truth is not known, the silhouette coefficient measures the intra-cluster
+    cohesiveness and the inter-cluster separability. These metrics are implemented
+    in scikit-learn under the `metrics` package, by the `silhouette_score` and `homogeneity_score`
+    functions. The two metrics for each method are depicted in the following table.
+    Homogeneity is higher for the transformed data, but the silhouette score is lower.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is expected, as the transformed data has only two dimensions, thus making
+    the possible distance between the instances themselves smaller:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Metric** | **Clusters** | **Raw data** | **Transformed data** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Homogeneity** | 2 | 0.422 | 0.418 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 0.575 | 0.603 |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 0.620 | 0.648 |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Silhouette** | 2 | 0.697 | 0.500 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 0.533 | 0.577 |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 0.481 | 0.555 |  |'
+  prefs: []
+  type: TYPE_TB
+- en: Homogeneity and silhouette scores for clusterings of the raw and transformed
+    data
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using voting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Voting can be utilized in order to combine different clusterings of the same
+    dataset. It is similar to voting for supervised learning, as each model (base
+    learner) contributes to the final result with a vote. Here arises a problem of
+    linking two clusters originating from two different clusterings. As each model
+    will produce different clusters with different centers, we have to link similar
+    clusters originating from different models. This is accomplished by linking together
+    clusters that share the greatest number of instances. For example, assume that
+    the following table and figure clusterings have occurred for a particular dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7cf15245-bc15-4d72-a42f-9c14cc35d94e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Three distinct clustering results
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following table depicts each instance's cluster assignments for the three
+    different clusterings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Instance** | **1** | **2** | **3** | **4** | **5** | **6** | **7** | **8**
+    | **9** | **10** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Clustering 1** | 0 | 0 | 2 | 2 | 2 | 0 | 0 | 1 | 0 | 2 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Clustering 2** | 1 | 1 | 2 | 2 | 2 | 1 | 0 | 1 | 1 | 2 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Clustering 3** | 0 | 0 | 2 | 2 | 2 | 1 | 0 | 1 | 1 | 2 |'
+  prefs: []
+  type: TYPE_TB
+- en: Cluster membership of each instance
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using the preceding mapping, we can calculate the co-association matrix for
+    each instance. This matrix indicates how many times a pair of instances has been
+    assigned to the same cluster:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Instances** | **1** | **2** | **3** | **4** | **5** | **6** | **7** | **8**
+    | **9** | **10** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **1** | 3 | 3 | 0 | 0 | 0 | 2 | 2 | 1 | 2 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **2** | 3 | 3 | 0 | 0 | 0 | 2 | 2 | 1 | 2 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **3** | 0 | 0 | 3 | 3 | 3 | 0 | 0 | 0 | 0 | 3 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **4** | 0 | 0 | 3 | 3 | 3 | 0 | 0 | 0 | 0 | 3 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **5** | 0 | 0 | 3 | 3 | 3 | 0 | 0 | 0 | 0 | 3 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **6** | 2 | 2 | 0 | 0 | 0 | 3 | 1 | 0 | 3 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **7** | 2 | 2 | 0 | 0 | 0 | 1 | 3 | 0 | 1 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **8** | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 3 | 2 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **9** | 2 | 2 | 0 | 0 | 0 | 3 | 1 | 2 | 3 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **10** | 0 | 0 | 3 | 3 | 3 | 0 | 0 | 0 | 0 | 3 |'
+  prefs: []
+  type: TYPE_TB
+- en: Co-association matrix for the previous example
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By dividing each element with the number of base learners in the ensemble,
+    and clustering together samples that have a value greater than 0.5, we get the
+    following cluster assignments:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Instance** | **1** | **2** | **3** | **4** | **5** | **6** | **7** | **8**
+    | **9** | **10** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Voting clustering** | 0 | 0 | 1 | 1 | 1 | 0 | 0 | 0 | 0 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: The voting cluster memberships
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As it is evident, the clustering is more stable. Furthermore, it is apparent
+    that two clusters are sufficient for this dataset. By plotting the data and their
+    cluster membership, we can see that there are two distinct groups, which is exactly
+    what the voting ensemble was able to model, although each base learner generated
+    three distinct cluster centers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/fc93b6c8-3fc2-4663-9673-7b5421a6e4c1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Final cluster memberships for the voting ensemble
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using OpenEnsembles
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'OpenEnsembles is a Python library that is dedicated to ensemble methods for
+    clustering. In this section, we will present its usage and utilize it in order
+    to cluster some of our example datasets. In order to install the library, the
+    `pip install openensembles` command must be executed in the Terminal. Although
+    it leverages scikit-learn, its interface is different. One major difference is
+    that data must be passed as a `data` class, implemented by OpenEnsembles. The
+    constructor has two input parameters: a pandas `DataFrame` which contains the
+    data, and a list which contains the feature names:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to create a `cluster` ensemble, a `cluster` class object is created,
+    passing the data as the parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this example, we will calculate the homogeneity score for a number of *K*
+    values and ensemble sizes. In order to add a base learner to the ensemble, the
+    `cluster` method of the `cluster` class must be called. The method accepts as
+    arguments, `source_name`, which denotes the source data matrix name, `algorithm`.
+    This dictates what algorithm the base learners will utilize, `output_name`, which
+    will be the dictionary key for accessing the results of the specific base learner
+    and `K`, the number of clusters for the specific base learner. Finally, in order
+    to compute the final cluster memberships through majority voting, the `finish_majority_vote`
+    method must be called. The only parameter that must be specified is the `threshold`
+    value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It is evident that five clusters produce the best results for all three ensemble
+    sizes. The results are summarized in the following table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **K** | **Size** | **Homogeneity** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 3 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 4 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 5 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 3 | 0.45 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 4 | 0.47 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 5 | 0.47 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 3 | 0.58 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 4 | 0.58 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 5 | 0.58 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 3 | 0.6 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 4 | 0.61 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 5 | 0.6 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 3 | 0.35 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 4 | 0.47 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 5 | 0.35 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 3 | 0.27 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 4 | 0.63 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 5 | 0.37 |'
+  prefs: []
+  type: TYPE_TB
+- en: OpenEnsembles majority vote cluster homogeneity for the breast cancer dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we transform the data into two embeddings with t-SNE, and repeat the experiment,
+    we get the following homogeneity scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **K** | **Size** | **Homogeneity** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 3 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 4 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 5 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 3 | 0.59 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 4 | 0.59 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 5 | 0.59 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 3 | 0.61 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 4 | 0.61 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 5 | 0.61 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 3 | 0.61 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 4 | 0.61 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 5 | 0.61 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 3 | 0.65 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 4 | 0.65 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 5 | 0.65 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 3 | 0.66 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 4 | 0.66 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 5 | 0.66 |'
+  prefs: []
+  type: TYPE_TB
+- en: Majority vote cluster homogeneity for the transformed breast cancer dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using graph closure and co-occurrence linkage
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Two other methods that can be used to combine cluster results are graph closure
+    and co-occurrence linkage. Here, we demonstrate how to use OpenEnsembles to create
+    both types of ensembles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Graph closure
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Graph closure creates a graph from the co-occurrence matrix. Every element
+    (instance pair) is treated as a node. Pairs that have a higher value than the
+    threshold are connected by an edge. Following this, a clique formation occurs,
+    according to a specified size (specified by the number of nodes in the clique).
+    Cliques are subsets of the graph''s nodes, such that every two nodes of the clique
+    are neighbors. Finally, the cliques are combined to form unique clusters. In OpenEnsembles,
+    it is implemented by the `finish_graph_closure` function, in the `cluster` class.
+    The `clique_size` parameter determines the number of nodes in each clique. The
+    `threshold` parameter determines the minimum co-occurrence that a pair must have
+    in order to be connected by an edge in the graph. Similar to the previous example,
+    we will use graph closure in order to cluster the breast cancer dataset. Notice
+    that the only change in the code will be the usage of `finish_graph_closure`,
+    instead of `finish_majority_vote`. First, we load the libraries and the dataset,
+    and create the OpenEnsembles data object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we create the ensemble and use `graph_closure` in order to combine the
+    cluster results. Notice that the dictionary key also changes to `''graph_closure''`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The effect of *K* and the ensemble size on the clustering quality is similar
+    to majority voting, although it does not achieve the same level of performance. The
+    results are depicted in the following table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **K** | **Size** | **Homogeneity** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 3 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 4 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 5 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 3 | 0.47 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 4 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 5 | 0.47 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 3 | 0.58 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 4 | 0.58 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 5 | 0.58 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 3 | 0.6 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 4 | 0.5 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 5 | 0.5 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 3 | 0.6 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 4 | 0.03 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 5 | 0.62 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 3 | 0.63 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 4 | 0.27 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 5 | 0.27 |'
+  prefs: []
+  type: TYPE_TB
+- en: Homogeneity for graph closure clustering on the raw breast cancer data
+  prefs: []
+  type: TYPE_NORMAL
+- en: Co-occurrence matrix linkage
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Co-occurrence matrix linkage treats the co-occurrence matrix as a distance
+    matrix between instances, and utilizes the distances in order to perform hierarchical
+    clustering. The clustering stops when there is no element on the matrix with a
+    value greater than the threshold. Again, we repeat the example. We use the `finish_co_occ_linkage`
+    function to utilize co-occurrence matrix linkage with `threshold=0.5`, and use
+    the `''co_occ_linkage''` key to access the results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following table summarizes the results. Notice that it outperforms the
+    other two methods. Furthermore, the results are more stable, and less time is
+    required to execute it than either of the other two methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **K** | **Size** | **Homogeneity** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 3 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 4 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 5 | 0.42 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 3 | 0.47 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 4 | 0.47 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 5 | 0.45 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 3 | 0.58 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 4 | 0.58 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | 5 | 0.58 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 3 | 0.6 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 4 | 0.6 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | 5 | 0.6 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 3 | 0.59 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 4 | 0.62 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | 5 | 0.62 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 3 | 0.62 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 4 | 0.63 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | 5 | 0.63 |'
+  prefs: []
+  type: TYPE_TB
+- en: Homogeneity results for co-occurrence cluster linkage on the raw breast cancer
+    dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we presented the K-means clustering algorithm and clustering
+    ensemble methods. We explained how majority voting can be used in order to combine
+    cluster assignments from an ensemble, and how it can outperform the individual
+    base learners. Furthermore, we presented the OpenEnsembles Python library, which
+    is dedicated to clustering ensembles. The chapter can be summarized as follows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**K-means** creates *K* clusters, and assigns instances to each cluster by
+    iteratively considering the cluster center to be the mean of its members. It can
+    be sensitive to the initial conditions, and the selected number of clusters. Majority
+    voting can help to overcome the algorithm''s disadvantages. **Majority voting**
+    clusters together instances that have a high co-occurrence. **Co-occurrence matrices**
+    show how frequently a pair of instances has been assigned to the same cluster
+    by the same base learner. **Graph closure** uses co-occurrence matrices in order
+    to create graphs, and clusters the data based on cliques. **Co-occurrence linkage**
+    uses a specific clustering algorithm, hierarchical (agglomerative) clustering,
+    by treating the co-occurrence matrix as a pairwise distance matrix. In the next
+    chapter, we will try to utilize all the ensemble learning techniques that we have
+    covered in this book, in order to classify fraudulent credit card transactions.'
+  prefs: []
+  type: TYPE_NORMAL

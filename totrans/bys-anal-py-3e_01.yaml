@@ -1,0 +1,1592 @@
+- en: Chapter 2
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Programming Probabilistically
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our golems rarely have a physical form, but they too are often made of clay
+    living in silicon as computer code. – Richard McElreath
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: Now that we have a very basic understanding of probability theory and Bayesian
+    statistics, we are going to learn how to build probabilistic models using computational
+    tools. Specifically, we are going to learn about probabilistic programming with
+    PyMC [[Abril-Pla et al.](Bibliography.xhtml#Xpymc2023), [2023](Bibliography.xhtml#Xpymc2023)].
+    The basic idea is that we use code to specify statistical models and then PyMC
+    will solve those models for us. We will not need to write Bayes’ theorem in explicit
+    form. This is a good strategy for two reasons. First, many models do not lead
+    to an analytic closed form, and thus we can only solve those models using numerical
+    techniques. Second, modern Bayesian statistics is mainly done by writing code.
+    We will be able to see that probabilistic programming offers an effective way
+    to build and solve complex models and allows us to focus more on model design,
+    evaluation, and interpretation, and less on mathematical or computational details.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Probabilistic programming
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A PyMC primer
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The coin-flipping problem revisited
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Summarizing the posterior
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The Gaussian and Student t models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Comparing groups and the effect size
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 2.1 Probabilistic programming
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Bayesian statistics is conceptually very simple. We have the *knowns* and the
+    *unknowns*, and we use Bayes’ theorem to condition the latter on the former. If
+    we are lucky, this process will reduce the uncertainty about the *unknowns*. Generally,
+    we refer to the *knowns* as **data** and treat it like constants, and the *unknowns*
+    as **parameters** and treat them as *random variables*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although conceptually simple, fully probabilistic models often lead to analytically
+    intractable expressions. For many years, this was a real problem and one of the
+    main issues that hindered the adoption of Bayesian methods beyond some niche applications.
+    The arrival of the computational era and the development of numerical methods
+    that, at least in principle, can be used to solve any inference problem, have
+    dramatically transformed the Bayesian data analysis practice. We can think of
+    these numerical methods as *universal inference engines*. The possibility of automating
+    the inference process has led to the development of **probabilistic programming
+    languages** (**PPLs**), which allows a clear separation between model creation
+    and inference. In the PPL framework, users specify a full probabilistic model
+    by writing a few lines of code, and then inference follows automatically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is expected that probabilistic programming will have a major impact on data
+    science and other disciplines by enabling practitioners to build complex probabilistic
+    models in a less time-consuming and less error-prone way. I think one good analogy
+    for the impact that programming languages can have on scientific computing is
+    the introduction of the Fortran programming language more than six decades ago.
+    While nowadays Fortran has lost its shine, at one time, it was considered revolutionary.
+    For the first time, scientists moved away from computational details and began
+    focusing on building numerical methods, models, and simulations more naturally.
+    It is interesting to see that some folks are working on making Fortran cool again,
+    if you are interested you can check their work at [https://fortran-lang.org/en](https://fortran-lang.org/en).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.1.1 Flipping coins the PyMC way
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s revisit the coin-flipping problem from *Chapter [1](CH01.xhtml#x1-160001)*,
+    but this time using PyMC. We will use the same synthetic data we used in that
+    chapter. Since we are generating the data, we know the true value of *θ*, called
+    `theta_real`, in the following block of code. Of course, for a real dataset, we
+    will not have this knowledge:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.1**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we have the data, we need to specify the model. Remember that this
+    is done by specifying the likelihood and the prior. For the likelihood, we will
+    use the Binomial distribution with parameters *n* = 1, *p* = *θ*, and for the
+    prior, a Beta distribution with the parameters *α* = *β* = 1\. A Beta distribution
+    with such parameters is equivalent to a Uniform distribution on the interval [0,
+    1]. Using mathematical notation we can write the model as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![θ ∼ Beta(𝛼 = 1,𝛽 = 1) Y ∼ Binomial(n = 1,p = θ) ](img/file59.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This statistical model has an almost one-to-one translation to PyMC:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.2**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first line of the code creates a container for our model. Everything inside
+    the `with` block will be automatically added to `our_first_model`. You can think
+    of this as syntactic sugar to ease model specification as we do not need to manually
+    assign variables to the model. The second line specifies the prior. As you can
+    see, the syntax follows the mathematical notation closely. The third line specifies
+    the likelihood; the syntax is almost the same as for the prior, except that we
+    pass the data using the `observed` argument. The observed values can be passed
+    as a Python list, a tuple, a NumPy array, or a pandas DataFrame. With that, we
+    are finished with the model specification! Pretty neat, right?
+  prefs: []
+  type: TYPE_NORMAL
+- en: We still have one more line of code to explain. The last line is where the magic
+    happens. Behind this innocent line, PyMC has hundreds of *oompa loompas* singing
+    and baking a delicious Bayesian inference just for you! Well, not exactly, but
+    PyMC is automating a lot of tasks. For the time being, we are going to treat that
+    line as a black box that will give us the correct result. What is important to
+    understand is that under the hood we will be using numerical methods to compute
+    the posterior distribution. In principle, these numerical methods are capable
+    of solving any model we can write. The cost we pay for this generality is that
+    the solution is going to take the form of samples from the posterior. Later, we
+    will be able to corroborate that these samples come from a Beta distribution,
+    as we learned from the previous chapter. Because the numerical methods are stochastic,
+    the samples will vary every time we run them. However, if the inference process
+    works as expected, the samples will be representative of the posterior distribution
+    and thus we will obtain the same conclusion from any of those samples. The details
+    of what happens under the hood and how to check if the samples are indeed trustworthy
+    will be explained in *Chapter [10](CH10.xhtml#x1-18900010)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One more thing: the `idata` variable is an `InferenceData` object, which is
+    a container for all the data generated by PyMC. We will learn more about this
+    later in this chapter.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'OK, so on the last line, we are asking for 1,000 samples from the posterior.
+    If you run the code, you will get a message like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The first and second lines tell us that PyMC has automatically assigned the
+    NUTS sampler (one inference engine that works very well for continuous variables),
+    and has used a method to initialize that sampler (these methods need some initial
+    guess of where to start sampling). The third line says that PyMC will run four
+    chains in parallel, thus we will get four independent samples from the posterior.
+    As PyMC attempts to parallelize these chains across the available processors in
+    your machine, we will get the four for the price of one. The exact number of chains
+    is computed taking into account the number of processors in your machine; you
+    can change it using the `chains` argument for the `sample` function. The next
+    line tells us which variables are being sampled by which sampler. For this particular
+    case, this line is not adding new information because NUTS is used to sample the
+    only variable we have, *θ*. However, this is not always the case because PyMC
+    can assign different samplers to different variables. PyMC has rules to ensure
+    that each variable is associated with the best possible sampler. Users can manually
+    assign samplers using the `step` argument of the `sample` function, but you will
+    hardly need to do that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, the last line is a progress bar, with several related metrics indicating
+    how fast the sampler is working, including the number of iterations per second.
+    If you run the code, you will see the progress bar get updated really fast. Here,
+    we are seeing the last stage when the sampler has finished its work. You will
+    notice that we have asked for 1,000 samples, but PyMC is computing 8,000 samples.
+    We have 1,000 draws per chain to tune the sampling algorithm (NUTS, in this example).
+    These draws will be discarded by default; PyMC uses them to increase the efficiency
+    and reliability of the sampling method, which are both important to obtain a useful
+    approximation to the posterior. We also have 1,000 productive draws per chain
+    for a total of 4,000\. These are the ones we are going to use as our posterior.
+    We can change the number of tuning steps with the `tune` argument of the sample
+    function and the number of draws with the `draw` argument.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Faster Sampling
+  prefs: []
+  type: TYPE_NORMAL
+- en: Under the hood, PyMC uses PyTensor, a library that allows one to define, optimize,
+    and efficiently evaluate mathematical expressions involving multi-dimensional
+    arrays. PyTensor significantly enhances the speed and performance of PyMC. Despite
+    the advantages, it’s worth noting that the samplers in PyMC are implemented in
+    Python, which may result in slower execution at times. To address this limitation,
+    PyMC allows external samplers. I recommend using nutpie, a sampler written in
+    Rust. For more information on how to install and call nutpie from PyMC, please
+    check *Chapter [10](CH10.xhtml#x1-18900010)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.2 Summarizing the posterior
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Generally, the first task we will perform after sampling from the posterior
+    is to check what the results look like. The `plot_trace` function from ArviZ is
+    ideally suited to this task:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.3**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![PIC](img/file60.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.1**: A trace plot for the posterior of `our_first_model`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [2.1](#x1-47005r1)* shows the default result when calling `az.plot_trace`;
+    we get two subplots for each unobserved variable. The only unobserved variable
+    in our model is *θ*. Notice that *y* is an observed variable representing the
+    data; we do not need to sample that because we already know those values. Thus
+    we only get two subplots. On the left, we have a **Kernel Density Estimation**
+    (**KDE**) plot; this is like the smooth version of the histogram. Ideally, we
+    want all chains to have a very similar KDE, like in *Figure [2.1](#x1-47005r1)*.
+    On the right, we get the individual values at each sampling step; we get as many
+    lines as chains. Ideally, we want it to be something that looks noisy, with no
+    clear pattern, and we should have a hard time identifying one chain from the others.
+    In *Chapter [10](CH10.xhtml#x1-18900010)*, we give more details on how to interpret
+    these plots. The gist is that if we ran many chains, we would expect them to be
+    practically indistinguishable from each other. The sampler did a good job and
+    we can trust the samples.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As with other ArviZ functions, `az.plot_trace` has many options. For instance,
+    we can run this function with the `combined` argument set to `True` to get a single
+    KDE plot for all chains and with `kind=rank_bars` to get a **rank** **plot**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.4**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![PIC](img/file61.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.2**: A trace plot for the posterior of `our_first_model`, using
+    the options `kind="rank_bars"`, `combined=True`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A rank plot is another way to check if we can trust the samples; for this plot,
+    we get one histogram per chain and we want all of them to be as uniform as possible,
+    like in *Figure [2.2](#x1-47009r2)*. Some small deviations for uniformity are
+    expected due to random sampling, but large deviations from uniformity are a signal
+    that chains are exploring different regions of the posteriors. Ideally, we want
+    all chains to explore the entire posterior. In *Chapter [10](CH10.xhtml#x1-18900010)*,
+    we provide further details on how to interpret rank plots and how they are constructed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ArviZ provides several other plots to help interpret the posterior, and we will
+    see them in the following pages. We may also want to have a numerical summary
+    of the posterior. We can get that using `az.summary`, which will return a pandas
+    DataFrame as shown in *Table [2.1](#x1-47014r1)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.5**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: '|  | mean | sd | hdi_3% | hdi_97% |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *θ* | 0.34 | 0.18 | 0.03 | 0.66 |'
+  prefs: []
+  type: TYPE_TB
+- en: '**Table 2.1**: Summary statistics'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the first column we have the name of the variable, the second column is the
+    mean of the posterior, the third column is the standard deviation of the posterior,
+    and the last two columns are the lower and upper boundaries of the 94% highest
+    density interval. Thus, according to our model and data, we think the value of
+    *θ* is likely to be 0.34 with a 94% probability that it is actually between 0.03
+    and 0.66\. We can report a similar summary using the standard deviation. The advantage
+    of the standard deviation over the HDI is that it is a more popular statistic.
+    As a disadvantage, we have to be more careful interpreting it; otherwise, it can
+    lead to meaningless results. For example, if we compute the mean ± 2 standard
+    deviations, we will get the intervals (-0.02, 0.7); the upper value is not that
+    far from 0.66, which we got from the HDI, but the lower bound is actually outside
+    the possible values of *θ*, which is between 0 and 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another way to visually summarize the posterior is to use the `az.plot_posterior`
+    function that comes with ArviZ (see *Figure [2.3](#x1-47019r3)*). We used this
+    function in the previous chapter for a fake posterior. We are going to use it
+    now for a real posterior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.6**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![PIC](img/file62.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.3**: The plot shows the posterior distribution of *θ* and the 94%
+    HDI'
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, `plot_posterior` shows a histogram for discrete variables and KDEs
+    for continuous variables. We also get the mean of the distribution (we can ask
+    for the median or mode using the `point_estimate` argument) and the 94% HDI as
+    a black line at the bottom of the plot. Different interval values can be set for
+    the HDI with the `hdi_prob` argument. This type of plot was introduced by John
+    K. Kruschke in his great book Doing Bayesian Data Analysis [[Kruschke](Bibliography.xhtml#Xkruschke_2014), [2014](Bibliography.xhtml#Xkruschke_2014)].
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3 Posterior-based decisions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Sometimes, describing the posterior is not enough. We may need to make decisions
+    based on our inferences and reduce a continuous estimation to a dichotomous one:
+    yes-no, healthy-sick, contaminated-safe, and so on. For instance, is the coin
+    fair? A fair coin is one with a *θ* value of exactly 0.5\. We can compare the
+    value of 0.5 against the HDI interval. From *Figure [2.3](#x1-47019r3)*, we can
+    see that the HDI goes from 0.03 to 0.7 and hence 0.5 is included in the HDI. We
+    can interpret this as an indication that the coin may be tail-biased, but we cannot
+    completely rule out the possibility that the coin is actually fair. If we want
+    a sharper decision, we will need to collect more data to reduce the spread of
+    the posterior, or maybe we need to find out how to define a more informative prior.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3.1 Savage-Dickey density ratio
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'One way to evaluate how much support the posterior provides for a given value
+    is to compare the ratio of the posterior and prior densities at that value. This
+    is called the Savage-Dickey density ratio and we can compute it with ArviZ using
+    the `az.plot_bf` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.7**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![PIC](img/file63.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.4**: The plot shows the prior and posterior for `our_first_model`;
+    the black dots represent their values evaluated at the reference value 0.5'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From *Figure [2.4](#x1-49008r4)*, we can see that the value of `BF_01` is 1.3,
+    which means that the value of *θ* = 0*.*5 is 1.3 times more likely under the posterior
+    distribution than under the prior distribution. To compute this value we just
+    divided the height of the posterior at *θ* = 0*.*5 by the height of the prior
+    at *θ* = 0*.*5\. The value of `BF_10` is just the inverse ![-1- 1.3](img/file64.jpg)
+    ≈ 0*.*8\. We can think of this as the value of **θ*≠*0*.*5 being 0.76 times more
+    likely under the posterior than under the prior. How do we interpret these numbers?
+    With a pinch of salt...the following table shows one possible interpretation originally
+    proposed by [Kass and Raftery](Bibliography.xhtml#Xkass_1995) [[1995](Bibliography.xhtml#Xkass_1995)]:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| BF_01 | Interpretation |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 to 3.2 | Not worth more than a bare mention |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3.2 to 10 | Substantial |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 10 to 100 | Strong |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *>* 100 | Decisive |'
+  prefs: []
+  type: TYPE_TB
+- en: '**Table 2.2**: Interpretation of Bayes Factors (BF_01)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Savage-Dickey density ratio is a particular way to compute what is called
+    the Bayes Factor. We will learn more about Bayes Factors, and their caveats, in
+    *Chapter [5](CH05.xhtml#x1-950005)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3.2 Region Of Practical Equivalence
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Strictly speaking, the chance of observing exactly 0.5 (that is, with infinite
+    trailing zeros) is zero. Also, in practice, we generally do not care about exact
+    results but results within a certain margin. Accordingly, in practice, we can
+    relax the definition of fairness and we can say that a fair coin is one with a
+    value of *around* 0.5\. For example, we could say that any value in the interval
+    [0.45, 0.55] will be, for our purposes, practically equivalent to 0.5\. We call
+    this interval a Region Of Practical Equivalence (ROPE). Once the ROPE is defined,
+    we compare it with the HDI. We can get at least three scenarios:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ROPE does not overlap the HDI; we can say the coin is not fair
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The ROPE contains the entire HDI; we can say the coin is fair
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The ROPE partially overlaps HDI; we cannot say the coin is fair or unfair
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If we choose the ROPE to match the support of a parameter, like [0, 1] for the
+    coin-flipping example, we will always say we have a fair coin. Notice that we
+    do not need to collect data to perform any type of inference.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The choice of ROPE is completely arbitrary: we can choose any value we want.
+    Some choices are not very useful. If, for the coin-flipping example, we choose
+    the ROPE to be [0, 1], then we will always say the coin is fair. Even more, we
+    don’t need to collect data or perform any analysis to reach this conclusion, this
+    is a trivial example. More worrisome is to pick the ROPE after performing the
+    analysis. This is problematic because we can accommodate the results to say whatever
+    we want them to say. But why do we even bother to do an analysis, if we are going
+    to accommodate the result to our expectations? The ROPE should be informed from
+    domain knowledge.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use the `plot_posterior` function to plot the posterior with the HDI
+    interval and the ROPE. The ROPE appears as a semi-transparent thick (gray) line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.8**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![PIC](img/file65.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.5**: The plot shows the posterior distribution of *θ* and the 94%
+    HDI. The ROPE is shown as a thick light-gray line'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another tool we can use to help us make a decision is to compare the posterior
+    against a reference value. We can do this using `plot_posterior`. As you can see
+    in *Figure [2.6](#x1-50011r6)*, we get a vertical (gray) line and the proportion
+    of the posterior above and below our reference value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.9**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![PIC](img/file66.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.6**: The plot shows the posterior distribution of *θ* and the 94%
+    HDI. The reference value is shown as a gray vertical line'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For a more detailed discussion on the use of the ROPE, you could read Chapter
+    12 of Doing Bayesian Data Analysis by [Kruschke](Bibliography.xhtml#Xkruschke_2014) [[2014](Bibliography.xhtml#Xkruschke_2014)].
+    That chapter also discusses how to perform hypothesis testing in a Bayesian framework
+    and the caveats of hypothesis testing, whether in a Bayesian or non-Bayesian setting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.3.3 Loss functions
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If you think these ROPE rules sound a little bit clunky and you want something
+    more formal, loss functions are what you are looking for! To make a good decision,
+    it is important to have the highest possible level of precision for the estimated
+    value of the relevant parameters, but it is also important to take into account
+    the cost of making a mistake. The cost/benefit trade-off can be mathematically
+    formalized using loss functions. The names for loss functions or their inverses
+    vary across different fields, and we could find names such as cost functions,
+    objective functions, fitness functions, utility functions, and so on. No matter
+    the name, the key idea is to use a function that captures how different the true
+    value and the estimated value of a parameter are. The larger the value of the
+    loss function, the worse the estimation is (according to the loss function). Some
+    common examples of loss functions are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The absolute loss function, |*θ* − ![](img/hat_theta.png)|
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The quadratic loss function, (*θ* − ![](img/hat_theta.png))²
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The 0-1 loss function, 1(**θ* ≠* ![](img/hat_theta.png)), where ![](img/one.PNG)
+    is the indicator function
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In practice, we don’t know the value of the true parameter. Instead, we have
+    an estimation in the form of a posterior distribution. Thus, what we can do is
+    find out the value of *θ* that minimizes the expected loss function. By expected
+    loss function, we mean the loss function averaged over the whole posterior distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following block of code, we have two loss functions: the absolute loss
+    (`lossf_a`) and the quadratic loss (`lossf_b`). We will explore the value of over
+    a grid of 200 points. We will then plot those curves and we will also include
+    the value of *θ* that minimizes each loss function. The following block shows
+    the Python code without the plotting part:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.10**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![PIC](img/file67.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.7**: The absolute (black) and quadratic (gray) loss functions applied
+    to the posterior from `our_first_model`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What is more interesting from *Figure [2.7](#x1-51011r7)* is that the value
+    we got from the absolute loss is equal to the median of the posterior and the
+    one we got from the quadratic loss is equal to the mean of the posterior. You
+    can check this for yourself by computing `np.mean(`*θ*`_pos)`, `np.median(`*θ*`_pos)`.
+    This is no coincidence: different loss functions are related to different point
+    estimates. The mean is the point estimate that minimizes the quadratic loss, the
+    median, the absolute loss, and the mode, the 1-0 loss.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we want to be formal and we want to compute a single-point estimate, we
+    must decide which loss function we want. Conversely, if we choose a point estimate,
+    we are implicitly (and maybe unconsciously) choosing a loss function. The advantage
+    of explicitly choosing a loss function is that we can tailor the function to our
+    problem instead of using a predefined rule. It is very common to observe that
+    the cost of making a decision is asymmetric; for example, vaccines can produce
+    an overreaction of the immune system, but the benefit to the vaccinated persons
+    and even non-vaccinated persons overcomes the risk, usually by many orders of
+    magnitude. Thus, if our problem demands it, we can construct an asymmetric loss
+    function. It is also important to notice that, as the posterior is in the form
+    of numerical samples, we can compute complex loss functions that don’t need to
+    be restricted by mathematical convenience or mere simplicity. The following code,
+    and *Figure [2.8](#x1-51021r8)* generated from it, is just a silly example of
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.11**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![PIC](img/file68.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.8**: A weird loss function applied to the posterior from `our_first_model`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Up until now, we have been discussing the main notions of Bayesian statistics
+    and probabilistic programming using the BetaBinomial model mainly because of its
+    simplicity. In our path to build more complex models, we now shift our focus to
+    delve into the realm of Gaussian inference.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.4 Gaussians all the way down
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Gaussians are very appealing from a mathematical point of view. Working with
+    them is relatively easy, and many operations applied to Guassians return another
+    Gaussian. Additionally, many natural phenomena can be nicely approximated using
+    Gaussians; essentially, almost every time that we measure the average of something,
+    using a *big enough* sample size, that average will be distributed as a Gaussian.
+    The details of when this is true, when this is not true, and when this is more
+    or less true, are elaborated in the **central limit theorem** (CLT); you may want
+    to stop reading now and search about this really *central* statistical concept
+    (terrible pun intended).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Well, we were saying that many phenomena are indeed averages. Just to follow
+    a cliché, the height (and almost any other trait of a person, for that matter)
+    is the result of many environmental factors and many genetic factors, and hence
+    we get a nice Gaussian distribution for the height of adult people. Indeed, we
+    get a mixture of two Gaussians, which is the result of overlapping the distribution
+    of heights of women and men, but you get the idea. In summary, Gaussians are easy
+    to work with and abundant in natural phenomena; hence, many of the statistical
+    methods you may already know assume normality. Thus, it is important to learn
+    how to build these models, and then it is equally important to learn how to relax
+    the normality assumptions, something that is surprisingly easy in a Bayesian framework
+    and with modern computational tools such as PyMC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.4.1 Gaussian inferences
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Nuclear magnetic resonance (NMR) is a powerful technique used to study molecules
+    and also living things such as humans, sunflowers, and yeast (because, after all,
+    *we are just a bunch of molecules*). NMR allows you to measure different kinds
+    of observable quantities related to interesting unobservable molecular properties
+    [Arroyuelo et al.](Bibliography.xhtml#Xarroyuelo_2021) [[2021](Bibliography.xhtml#Xarroyuelo_2021)].
+    One of these observables is known as chemical shift, which we can only get for
+    the nuclei of certain types of atoms. The details belong to quantum chemistry
+    and they are irrelevant to this discussion. For all we care at the moment, we
+    could have been measuring the height of a group of people, the average time to
+    travel back home, or the weights of bags of oranges. In these examples the variables
+    are continuous, and it makes sense to think of them as an average value plus a
+    dispersion. Sometimes we can use a Gaussian model for discrete variables if the
+    number of possible values is large enough; for example, bonobos are very promiscuous,
+    so maybe we can model the number of sexual partners of our cousins with a Gaussian.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Going back to our example, we have 48 chemical shift values represented in a
+    boxplot in *Figure [2.9](#x1-53004r9)*. We can see that the median (the line inside
+    the box) is around 53 and the interquartile range (the box) is around 52 and 55\.
+    We can see that there are two values far away from the rest of the data (empty
+    circles).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file69.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.9**: Boxplot of the 48 chemical shift values. We observed two values
+    above 60, far away from the rest of the data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s forget about those two points for a moment and assume that a Gaussian
+    distribution is a good description of the data. Since we do not know the mean
+    or the standard deviation, we must set priors for both of them. Therefore, a reasonable
+    model could be:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![μ ∼ 𝒰 (l,h ) σ ∼ ℋ 𝒩 (σσ) Y ∼ 𝒩 (μ, σ) ](img/file70.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/U.PNG)(*l,h*) is the Uniform distribution between *l*, and *h*, ![](img/HN.PNG)(*σ*[*σ*])
+    is the HalfNormal distribution with scale *σ*[*σ*], and ![](img/N.PNG)(*μ,σ*)
+    is the Gaussian distribution with mean *μ* and standard deviation *σ*. A HalfNormal
+    distribution considers the absolute values of Normal distribution centered around
+    zero. *Figure [2.10](#x1-53005r10)* shows the graphical representation of this
+    model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file71.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.10**: Graphical representation of `model_g`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we do not know the possible values of *μ* and *σ*, we can set priors reflecting
+    our ignorance. One option is to set the boundaries of the Uniform distribution
+    to be *l* = 40, *h* = 75, which is a range that is larger than the range of the
+    data. Alternatively, we can choose a range based on our previous knowledge. For
+    instance, we may know that this is not physically possible to have values below
+    0 or above 100 for this type of measurement and thus use those values as the boundaries
+    of the Uniform distribution. For the HalfNormal, and in the absence of more information,
+    we can choose a large value compared to the scale of the data. The PyMC code for
+    the model represented in *Figure [2.10](#x1-53005r10)* is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.12**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let’s see what the posterior looks like. *Figure [2.11](#x1-53013r11)* was generated
+    with the ArviZ function `plot_trace`. It has one row for each parameter. For this
+    model, the posterior is bidimensional, so each row shows one marginal distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file72.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.11**: Posterior from `model_g` ploted using `az.plot_trace(idata_g)`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use the `plot_pair` function from ArviZ to see what the bi-dimensional
+    posterior looks like, together with the marginal distributions for *μ* and *σ*.
+    See *Figure [2.12](#x1-53014r12)*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file73.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.12**: Posterior from `model_g` ploted using `az.plot_pair(idata_g,
+    kind=’kde’, marginals=True)`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We are going to print the summary for later use (see *Table [2.3](#x1-53018r3)*).
+    We use the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.13**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: '|  | mean | sd | hdi_3% | hdi_97% |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *μ* | 53.50 | 0.52 | 52.51 | 54.44 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *σ* | 3.52 | 0.38 | 2.86 | 4.25 |'
+  prefs: []
+  type: TYPE_TB
+- en: '**Table 2.3**: Summary statistics for *μ* and *σ*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.5 Posterior predictive checks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'One of the nice elements of the Bayesian toolkit is that once we have a posterior
+    *p*(*θ*|*Y* ), it is possible to use it to generate predictions *p*(*Ỹ*). Mathematically,
+    this can be done by computing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ∫ p(˜Y | Y ) = p(˜Y | θ) p(θ | Y )dθ ](img/file74.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This distribution is known as the **posterior predictive distribution**. It
+    is *predictive* because it is used to make predictions, and *posterior* because
+    it is computed using the posterior distribution. So we can think of this as the
+    distribution of future data given the model, and observed data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using PyMC is easy to get posterior predictive samples; we don’t need to compute
+    any integral. We just need to call the `sample_posterior_predictive` function
+    and pass the `InferenceData` object as the first argument. We also need to pass
+    the `model` object, and we can use the `extend_inferencedata` argument to add
+    the posterior predictive samples to the `InferenceData` object. The code is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.14**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'One common use of the posterior predictive distribution is to perform posterior
+    predictive checks. These are a set of tests that can be used to check if the model
+    is a good fit for the data. We can use the `plot_ppc` function from ArviZ to visualize
+    the posterior predictive distribution and the observed data. The code is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.15**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![PIC](img/file75.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.13**: Posterior predictive check for `model_g` ploted using `az.plot_ppc`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Figure [2.13](#x1-54009r13)*, the black line is a KDE of the data and the
+    gray lines are KDEs computed from each one of the 100 posterior predictive samples.
+    The gray lines reflect the uncertainty we have about the distribution of the predicted
+    data. The plots look *hairy* or *wonky*; this will happen when you have very few
+    data points. By default, the KDEs in ArviZ are estimated within the actual range
+    of the data and assumed to be zero outside. While some might consider this a bug,
+    I think it’s a feature, since it’s reflecting a property of the data instead of
+    over-smoothing it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From *Figure [2.13](#x1-54009r13)*, we can see that the mean of the simulated
+    data is slightly displaced to the right and that the variance seems to be larger
+    for the simulated data than for the actual data. The source of this discrepancy
+    can be attributed to the combination of our choice of likelihood and the two observations
+    away from the bulk of the data (the empty dots in *Figure [2.9](#x1-53004r9)*).
+    How can we interpret this plot? Is the model wrong or right? Can we use it or
+    do we need a different model? Well, it depends. The interpretation of a model
+    and its evaluation and criticism are always context-dependent. Based on my experience
+    with this kind of measurement, I would say this model is a reasonable enough representation
+    of the data and a useful one for most of my analysis. Nevertheless, it is important
+    to keep in mind that we could find other models that better accommodate the whole
+    dataset, including the two observations that are far from the bulk of the data.
+    Let’s see how we can do that.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.6 Robust inferences
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One objection we may have with `model_g` is that we are assuming a Normal distribution,
+    but we have two data points away from the bulk of the data. By using a Normal
+    distribution for the likelihood, we are indirectly assuming that we are not expecting
+    to see a lot of data points far away from the bulk. *Figure [2.13](#x1-54009r13)*
+    shows the result of combining these assumptions with the data. Since the tails
+    of the Normal distribution fall quickly as we move away from the mean, the Normal
+    distribution (at least an anthropomorphized one) is *surprised by seeing* those
+    two points and *reacts* in two ways, moving its mean towards those points and
+    increasing its standard deviation. Another intuitive way of interpreting this
+    is by saying that those points have an excessive weight in determining the parameters
+    of the Normal distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, what can we do? One option is to check for errors in the data. If we retrace
+    our steps we may find an error in the code while cleaning or preprocessing the
+    data, or we can relate the putative anomalous values to the malfunction of the
+    measuring equipment. Unfortunately, this is not always an option. Many times,
+    the data was collected by others and we don’t have a good register of how it was
+    collected, measured or processed. Anyway, inspecting the data before modeling
+    is always a good idea, that’s a good practice in general.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another option is to declare those points outliers and remove them from the
+    data. Two common rules of thumb for identifying outliers in a dataset are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using the interquartile range (IQR): Any data point that falls below 1.5 times
+    the IQR from the lower quartile, or above 1.5 times the IQR from the upper quartile,
+    is considered an outlier.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Using the standard deviation: Any data point that falls below or above *N*
+    times the standard deviation of the data is considered an outlier. With *N* usually
+    being 2 or 3.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: However, it’s important to note that, like any automatic method, these rules
+    of thumb are not perfect and may result in discarding valid data points.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From a modeling perspective, instead of blaming the data we can blame the model
+    and change it, as explained in the next section. As a general rule, Bayesians
+    prefer to encode assumptions directly into the model by using different priors
+    and likelihoods rather than through ad hoc heuristics such as outlier removal
+    rules.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.6.1 Degrees of normality
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'There is one distribution that looks very similar to a Normal distribution.
+    It has three parameters: a location parameter *μ*, a scale parameter *σ*, and
+    a normality parameter *ν*. This distribution’s name is Student’s t-distribution.
+    *Figure [2.14](#x1-56002r14)* shows members of this family. When *ν* = ∞ the distribution
+    is the Normal distribution, *μ* is the mean and *σ* is the standard deviation.
+    When *ν* = 1, we get the Cauchy or Lorentz distribution. *ν* can go from 0 to
+    ∞. The lower this number, the heavier their tails. We can also say that the lower
+    the value of *ν*, the higher the kurtosis. The kurtosis is the fourth moment,
+    as you may remember from the previous chapter. By heavy tails, we mean that it
+    is more probable to find values away from the mean compared to a Normal, or in
+    other words, values are not as concentrated around the mean as in a lighter tail
+    distribution like the Normal. For example, 95% of the values from a Student’s
+    t (*μ* = 0*,σ* = 1*,ν* = 1) are found between -12.7 and 12.7\. Instead, for a
+    Normal (*μ* = 0*,σ* = 1*,ν* = ∞), this occurs between -1.96 and 1.96.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file76.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.14**: The Student’s t-distribution'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A very curious feature of the Student’s t-distribution is that it has no defined
+    mean value when *ν* ≤ 1\. While any finite sample from a Student’s t-distribution
+    is just a bunch of numbers from which it is always possible to compute an empirical
+    mean, the theoretical distribution itself is the one without a defined value for
+    the mean. Intuitively, this can be understood as follows: the tails of the distribution
+    are so heavy that at any moment we might get a sampled value from almost anywhere
+    from the real line, so if we keep getting numbers, we will never approach a fixed
+    value. Instead, the estimate will keep wandering around.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Degrees of what?
+  prefs: []
+  type: TYPE_NORMAL
+- en: In most textbooks, the parameter *ν* from the Student’s t-distribution is referred
+    to as the degrees of freedom parameter. However, I prefer to follow Kruschke’s
+    suggestion and call it the normality parameter. This name is more descriptive
+    of the parameter’s role in the distribution, especially as used for robust regression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similarly, the variance of this distribution is only defined for values of *ν
+    >* 2\. So, it’s important to note that the scale of the Student’s t-distribution
+    isn’t the same as its standard deviation. The scale and the standard deviation
+    become closer and closer as *ν* approaches infinity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.6.2 A robust version of the Normal model
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We are going to rewrite the previous model (`model_g`) by replacing the Gaussian
+    distribution with the Student’s t-distribution. Because the Student’s t-distribution
+    has one more parameter, *ν*, than the Gaussian, we need to specify one more prior,
+    for this model we decided to use the exponential distribution, but other distributions
+    restricted to the positive interval could also work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![μ ∼ 𝒰(l,h) σ ∼ ℋ 𝒩 (σ ) σ ν ∼ Exp (λ ) Y ∼ 𝒯 (ν,μ, σ) ](img/file77.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '*Figure [2.15](#x1-57002r15)* shows the graphical representation of this model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file78.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.15**: Graphical representation of `model_t`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s write this model in PyMC; as usual, we can (re)write models by specifying
+    a few lines. The only cautionary word here is that by default the Exponential
+    distribution in PyMC is parameterized with the inverse of the mean. We are going
+    to set *ν* as an Exponential distribution with a mean of 30\. From *Figure [2.14](#x1-56002r14)*,
+    we can see that a Student’s t-distribution with *ν* = 30 looks pretty similar
+    to a Gaussian (even when it is not). In fact, from the same diagram, we can see
+    that *most of the action* happens for relatively small values of *ν*. Hence, we
+    can say that the Exponential prior with a mean of 30 is a weakly informative prior
+    telling the model we more or less think should be around 30 but can move to smaller
+    and larger values with ease. In many problems, estimating *ν* is of no direct
+    interest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.16**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Compare the trace from `model_g` (*Figure [2.11](#x1-53013r11)*) with the trace
+    of `model_t` (*Figure [2.16](#x1-57011r16)*):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file79.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.16**: Posterior from `model_t` plotted using `az.plot_trace(idata_t)`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, print the summary of `model_t`. You should get something like *Table [2.4](#x1-57012r4)*.
+    Compare the results with those from `model_g`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|  | mean | sd | hdi_3% | hdi_97% |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *μ* | 53.02 | 0.39 | 52.27 | 53.71 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *σ* | 2.21 | 0.42 | 1.46 | 3.01 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *ν* | 4.94 | 5.45 | 1.07 | 10.10 |'
+  prefs: []
+  type: TYPE_TB
+- en: '**Table 2.4**: Summary statistics for *μ*, *σ*, and *ν*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before you keep reading, take a moment to compare the preceding results with
+    those from `model_g` and spot the difference between both results. Did you notice
+    something interesting?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The estimation of *μ* between both models is similar, with a difference of ≈
+    0*.*5\. The estimation of *σ* is ≈ 3*.*5 for `model_g` and ≈ 2*.*2 for `model_t`.
+    This is a consequence of the Student’s t-distribution allocating less weight to
+    values away from the mean. Loosely speaking, the Student’s t-distribution is *less
+    surprised* by values away from the mean. We can also see that the mean of *ν*
+    is ≈ 5, meaning that we have a heavy-tailed distribution and not a Gaussian-like
+    distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [2.17](#x1-57014r17)* shows a posterior predictive check for `model_t`.
+    Let’s compare it with the one from `model_g` (*Figure [2.13](#x1-54009r13)*).
+    Using the Student’s t-distribution in our model leads to predictive samples that
+    seem to better fit the data in terms of the location of the peak of the distribution
+    and also its spread. Notice how the samples extend far away from the bulk of the
+    data, and how a few of the predictive samples look very flat. This is a direct
+    consequence of the Student’s t-distribution expecting to see data points far away
+    from the mean or bulk of the data. If you check the code used to generate *Figure
+    [2.17](#x1-57014r17)* you will see that we have used `ax.set_xlim(40, 70)`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file80.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.17**: Posterior predictive check for `model_t`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Student’s t-distribution allows us to have a more **robust estimation**
+    of the mean and standard deviation because the outliers have the effect of decreasing
+    *ν* instead of pulling the mean or increasing the standard deviation. Thus, the
+    mean and the scale are estimated by weighting the data points close to the bulk
+    more than those apart from it. As a rule of thumb, for values of *ν >* 2 and *not
+    too small*, we can consider the scale of a Student’s t-distribution as a reasonable
+    practical proxy for the standard deviation of the data after removing outliers.
+    This is a rule of thumb because we know that the scale is not the standard deviation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.7 InferenceData
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: InferenceData is a rich container for the results of Bayesian inference. A modern
+    Bayesian analysis potentially generates many sets of data including posterior
+    samples and posterior predictive samples. But we also have observed data, samples
+    from the prior, and even statistics generated by the sampler. All this data, and
+    more, can be stored in an InferenceData object. To help keep all this information
+    organized, each one of these sets of data has its own group. For instance, the
+    posterior samples are stored in the `posterior` group. The observed data is stored
+    in the `observed_data` group.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [2.18](#x1-58002r18)* shows an HTML representation of the InferenceData
+    for `model_g`. We can see 4 groups: `posterior`, `posterior_predictive`, `sample_stats`,
+    and `observed_data`. All of them are collapsed except for the `posterior` group.
+    We can see we have two coordinates `chain` and `draw` of dimensions 4 and 1000
+    respectively. We also have 2 variables *μ* and *σ*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file81.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.18**: InferenceData object for `model_g`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So far, PyMC has generated an InferenceData object and ArviZ has used that
+    to generate plots or numerical summaries. But we can also manipulate an InferenceData
+    object. Some common operations are to access specific groups. For instance, to
+    access the posterior group we can write:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.17**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will return an xarray dataset. If you are not familiar with xarray [[Hoyer
+    and Hamman](Bibliography.xhtml#Xxarray_2017), [2017](Bibliography.xhtml#Xxarray_2017)]
+    ( [https://docs.xarray.dev/en/stable/](https://docs.xarray.dev/en/stable/)), imagine
+    NumPy multidimensional arrays but with labels! This makes many operations easier
+    as you don’t have to remember the order of the dimensions. For example, the following
+    code will return the first draw from chain 0 and chain 2:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.18**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We use the `sel` method to select a range of values, like the first 100 draws
+    from all chains:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.19**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Additionally, the following returns the mean for *μ* and *σ* computed over
+    all draws and chains:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.20**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Meanwhile, the following code returns the mean over the draws, i.e., this returns
+    four values for *μ* and four values for *σ*, one per chain:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.21**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'More often than not, we don’t care about chains and draws, we just want to
+    get the posterior samples. In those cases, we can use the `az.extract` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.22**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This combines the `chain` and `draw` into a `sample` coordinate which can make
+    further operations easier. By default, `az.extract` works on the posterior, but
+    you can specify other groups with the `group` argument. You can also use `az.extract`
+    to get a random sample of the posterior:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.23**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: We are going to use the InferenceData object all the time in this book, so you
+    will have the time to get familiar with it and learn more about it in the coming
+    pages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.8 Groups comparison
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'One pretty common statistical analysis is group comparison. We may be interested
+    in how well patients respond to a certain drug, the reduction of car accidents
+    by the introduction of new traffic regulations, student performance under different
+    teaching approaches, and so on. Sometimes, this type of question is framed under
+    the hypothesis testing scenario and the goal is to declare a result *statistically
+    significant*. Relying only on statistical significance can be problematic for
+    many reasons: on the one hand, statistical significance is not equivalent to practical
+    significance; on the other hand, a really small effect can be declared significant
+    just by collecting enough data.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The idea of hypothesis testing is connected to the concept of p-values. This
+    is not a fundamental connection but a cultural one; people are used to thinking
+    that way mostly because that’s what they learn in most introductory statistical
+    courses. There is a long record of studies and essays showing that, more often
+    than not, p-values are used and interpreted the wrong way, even by people who
+    are using them daily. Instead of doing hypothesis testing, we are going to take
+    a different route and we are going to focus on estimating the effect size, that
+    is, quantifying the difference between two groups. One advantage of thinking in
+    terms of effect size is that we move away from yes-no questions like ”Does it
+    work?” or ”Is there any effect?” and into the more nuanced type of questions like
+    ”How well does it work?” or ”How large is the effect?”.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sometimes, when comparing groups, people talk about a control group and a treatment
+    group. For example, when we want to test a new drug, we want to compare the new
+    drug (the treatment) against a placebo (the control group). The placebo effect
+    is a psychological phenomenon where a patient experiences perceived improvements
+    in their symptoms or condition after receiving an inactive substance or treatment.
+    By comparing the effects of the drug with a placebo group in clinical trials,
+    researchers can discern whether the drug is genuinely effective. The placebo effect
+    is an example of the broader challenge in experimental design and statistical
+    analysis of the difficulty of accounting for all factors in an experiment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One interesting alternative to this design is to compare the new drug with the
+    commercially available most popular or efficient drug to treat that illness. In
+    such a case, the control group cannot be a placebo; it should be the other drug.
+    Bogus control groups are a splendid way to lie using statistics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, imagine you work for a dairy product company that wants to sell
+    overly sugared yogurts to kids by telling their dads and moms that this particular
+    yogurt boosts the immune system or helps their kids grow stronger. One way to
+    cheat with data is by using milk or even water as a control group, instead of
+    another cheaper, less sugary, less marketed yogurt. It may sound silly when I
+    put it this way, but I am describing actual experiments published in actual scientific
+    journals. When someone says something is harder, better, faster, or stronger,
+    remember to ask what the baseline used for the comparison was.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.8.1 The tips dataset
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To explore the subject matter of this section, we are going to use the tips
+    dataset [[Bryant and Smith](Bibliography.xhtml#Xbryant_1995), [1995](Bibliography.xhtml#Xbryant_1995)].
+    We want to study the effect of the day of the week on the tips earned at a restaurant.
+    For this example, the different groups are the days. Notice there is no control
+    group or treatment group. If we wish, we can arbitrarily establish one day (for
+    example, Thursday) as the reference or control. For now, let’s start the analysis
+    by loading the dataset as a pandas DataFrame using just one line of code. If you
+    are not familiar with pandas, the `tail` command is used to show the last rows
+    of a DataFrame (see *Table [2.5](#x1-60007r5)*), you may want to try using `head`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.24**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: '|  | total_bill | tip | sex | smoker | day | time | size |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 239 | 29.03 | 5.92 | Male | No | Sat | Dinner | 3 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 240 | 27.18 | 2.00 | Female | Yes | Sat | Dinner | 2 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 241 | 22.67 | 2.00 | Male | Yes | Sat | Dinner | 2 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 242 | 17.82 | 1.75 | Male | No | Sat | Dinner | 2 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 243 | 18.78 | 3.00 | Female | No | Thurs | Dinner | 2 |'
+  prefs: []
+  type: TYPE_TB
+- en: '**Table 2.5**: Sample data from a restaurant'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From this DataFrame, we are only going to use the day and tip columns. *Figure
+    [2.19](#x1-60009r19)* shows the distributions of this data using ridge plots.
+    This figure was done with ArviZ. Even though ArviZ is designed for Bayesian model
+    analysis, some of its functions can be useful for data analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file82.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.19**: Distribution of tips by day'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are going to do some small preprocessing of the data. First, we are going
+    to create the `tip` variable representing the tips in dollars. Then we create
+    the `idx` variable, a categorical dummy variable encoding the days with numbers,
+    that is, `[0, 1, 2, 3]` instead of `[’Thur’, ’Fri’, ’Sat’, ’Sun’]`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.25**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The model for this problem is almost the same as `model_g`; the only difference
+    is that now *μ* and *σ* are going to be vectors instead of scalars. PyMC syntax
+    is extremely helpful for this situation: instead of writing for loops, we can
+    write our model in a vectorized way.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.26**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice how we passed a `shape` argument for the prior distribution. For *μ*,
+    this means that we are specifying four independent ![](img/N.PNG)(0*,*10) and
+    for *σ* four independent ![](img/HN.PNG)(10). Also, notice how we use the `idx`
+    variable to properly index the values of *μ* and *σ* we pass to the likelihood.
+  prefs: []
+  type: TYPE_NORMAL
+- en: PyMC provides an alternative syntax, which consists of specifying coordinates
+    and dimensions. The advantage of this alternative is that it allows better integration
+    with ArviZ.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, we have 4 values for the means and 4 for the standard deviations,
+    and that’s why we use `shape=4`. The InferenceData will have 4 indices `0, 1,
+    2, 3` mapping to each of the 4 days. However, it is the user’s job to associate
+    those numerical indices with the days. By using coordinates and dimensions we,
+    and ArviZ, can use the labels `"Thur", "Fri", "Sat", "Sun"` to easily map parameters
+    to their associated days.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are going to specify two coordinates; `"days"`, with the dimensions `"Thur",
+    "Fri", "Sat", "Sun"`; and `"days_flat"`, which will contain the same labels but
+    repeated according to the order and length that corresponds to each observation.
+    `"days_flat"` will be useful later for posterior predictive tests.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.27**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once the posterior distribution is computed, we can do all the analyses that
+    we believe are pertinent. For instance, we can do a posterior predictive test.
+    With the help of ArviZ, we can do it by calling `az.plot_ppc`. We use the `coords`
+    and `flatten` parameters to get one subplot per day.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 2.28**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: From the following figure, we can see that the model can capture the general
+    shape of the distributions, but still, some details are elusive. This may be due
+    to the relatively small sample size, factors other than day influencing the tips,
+    or a combination of both.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file83.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.20**: Posterior predictive checks for the tips dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For now, we are going to consider that the model is good enough for us and move
+    to explore the posterior. We can explain the results in terms of their average
+    values and then find for which days that average is higher. But there are other
+    alternatives; for instance, we may want to express the results in terms of differences
+    in posterior means. In addition, we might want to use some measure of effect size
+    that is popular with our audiences, such as the probability of superiority or
+    Cohen’s d. In the next sections, we explain these alternatives.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.8.2 Cohen’s d
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'A common way to measure the effect size is Cohen’s d, which is defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![-μ2 −-μ1 ∘ σ21+σ22- --2-- ](img/file84.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Because we have a posterior distribution we can compute a distribution of Cohen’s
+    d, and if we want a single value we can compute the mean or median of that distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This expression tells us that the effect size is the difference between the
+    means scaled by the pooled standard deviation of both groups. By taking the pooled
+    standard deviation, we are standardizing the differences of means. This is important
+    because when you have a difference of 1 and a standard deviation of 0.1, the effect
+    size is larger than the same difference when the standard deviation is 10\. A
+    Cohen’s d can be interpreted as a Z-score (a standard score). A Z-score is the
+    signed number of standard deviations by which a value differs from the mean value
+    of what is being observed or measured. Thus, a value of 0.5 Cohen’s d could be
+    interpreted as a difference of 0.5 standard deviations from one group to the other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Even when the differences of means are standardized, we may still need to calibrate
+    ourselves based on the context of a given problem to be able to say if a given
+    value is big, small, medium, and so on. For instance, if we are used to performing
+    several analyses for the same or similar problems, we can get used to a Cohen’s
+    d of say 1\. So when we get a Cohen’s d of say 2, we know that we have something
+    important (or someone made a mistake somewhere!). If you do not have this practice
+    yet, you can ask a domain expert for their valuable input.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A very nice web page to explore what different values of Cohen’s d look like
+    is [http://rpsychologist.com/d3/cohend](http://rpsychologist.com/d3/cohend). On
+    that page, you will also find other ways to express an effect size; some of them
+    could be more intuitive, such as the probability of superiority, which we will
+    discuss next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.8.3 Probability of superiority
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'This is another way to report the effect size, and this is defined as the probability
+    that a data point taken at random from one group has a larger value than one also
+    taken at random from the other group. If we assume that the data we are using
+    is normally distributed, we can compute the probability of superiority from Cohen’s
+    d using the following expression:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ( δ ) ps = Φ √--- 2 ](img/file85.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Φ is the cumulative Normal distribution and *δ* is the Cohen’s d.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we are OK with the normality assumption, we can use this formula to get the
+    probability of superiority from the value of Cohen’s d. Otherwise, we can compute
+    the probability of superiority directly from the posterior samples just by taking
+    random samples from two groups and counting how many times one value is larger
+    than the other. To do that we don’t need Cohen’s d or assume normality (see the
+    Exercises section). This is an example of an advantage of using **Markov Chain
+    Monte Carlo** (**MCMC**) methods; once we get samples from the posterior, we can
+    compute many quantities from it often in ways that are easier than with other
+    methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.8.4 Posterior analysis of mean differences
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To conclude our previous discussions, let’s compute the posterior distributions
+    for differences in means, Cohen’s d, and the probability of superiority, and integrate
+    them into a single plot. *Figure [2.21](#x1-63003r21)* has a lot of information.
+    Depending on the audience, the plot may be overloaded, or too crowded. Perhaps
+    it is useful for a discussion within your team, but for the general public, it
+    may be convenient to remove elements or distribute the information between a figure
+    and a table or two figures. Anyway, here we show it precisely so you can compare
+    different ways of presenting the same information, so take some time to ponder
+    this figure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file86.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 2.21**: Posterior distributions of the differences of means, Cohen’s
+    d, and the probability of superiority for the tips dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: One way to read *Figure [2.21](#x1-63003r21)* is to compare the reference value,
+    of zero difference, with the HDI interval. We have only one case when the 94%
+    HDI excludes the reference value, that is, the difference in tips between Thursday
+    and Sunday. For all the other comparisons, we cannot rule out a difference of
+    zero, at least according to the HDI-reference-value-overlap criteria. But even
+    for that case, the average difference is ≈ 0*.*5 dollars. Is that difference large
+    enough? Is that difference enough to accept working on Sunday and missing the
+    opportunity to spend time with family or friends? Is that difference enough to
+    justify averaging the tips over the four days and giving every waitress and waiter
+    the same amount of tip money?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The short answer is that those kinds of questions cannot be answered by statistics;
+    they can only be informed by statistics. I hope you don’t feel cheated by that
+    answer, but we cannot get automatic answers unless we include in the analysis
+    all the values that are important to the stakeholders. Formally, that requires
+    the definition of a loss function or at least the definition of some threshold
+    value for the effect size, which should be informed by those values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.9 Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Although Bayesian statistics is conceptually simple, fully probabilistic models
+    often lead to analytically intractable expressions. For many years, this was a
+    huge barrier, hindering the wide adoption of Bayesian methods. Fortunately, maths,
+    statistics, physics, and computer science came to the rescue in the form of numerical
+    methods that are capable—at least in principle—of solving any inference problem.
+    The possibility of automating the inference process has led to the development
+    of probabilistic programming languages, allowing a clear separation between model
+    definition and inference. PyMC is a Python library for probabilistic programming
+    with a very simple, intuitive, and easy-to-read syntax that is also very close
+    to the statistical syntax used to describe probabilistic models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We introduced the PyMC library by revisiting the coin-flip model from *Chapter
+    [1](CH01.xhtml#x1-160001)*, this time without analytically deriving the posterior.
+    PyMC models are defined inside a context manager. To add a probability distribution
+    to a model, we just need to write a single line of code. Distributions can be
+    combined and can be used as priors (unobserved variables) or likelihoods (observed
+    variables). If we pass data to a distribution, it becomes a likelihood. Sampling
+    can be achieved with a single line as well. PyMC allows us to get samples from
+    the posterior distribution. If everything goes right, these samples will be representative
+    of the correct posterior distribution and thus they will be a representation of
+    the logical consequences of our model and data. We can explore the posterior generated
+    by PyMC using ArviZ, a Python library that works hand-in-hand with PyMC and can
+    be used, among other tasks, to help us interpret and visualize posterior distributions.
+    One way of using a posterior to help us make inference-driven decisions is by
+    comparing the ROPE against the HDI interval. We also briefly mentioned the notion
+    of loss functions, a formal way to quantify the trade-offs and costs associated
+    with making decisions in the presence of uncertainty. We learned that loss functions
+    and point estimates are intimately associated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Up to this point, the discussion was restricted to a simple one-parameter model.
+    Generalizing to an arbitrary number of parameters is trivial with PyMC; we exemplify
+    how to do this with the Gaussian and Student’s t models. The Gaussian distribution
+    is a special case of the Student’s t-distribution and we showed you how to use
+    the latter to perform robust inferences in the presence of outliers. In the next
+    chapters, we will look at how these models can be used as part of linear regression
+    models. We used a Gaussian model to compare groups. While this is sometimes framed
+    in the context of hypothesis testing, we take another route and frame this task
+    as a problem of inferring the effect size, an approach we generally consider to
+    be richer and more productive. We also explored different ways to interpret and
+    report effect sizes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With all that we have learned in this and the previous chapter, we are ready
+    to study one of the most important concepts in this book, hierarchical models.
+    That will be the topic of the next chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 2.10 Exercises
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Using PyMC, change the parameters of the prior Beta distribution in `our_first_model`
+    to match those of the previous chapter. Compare the results to the previous chapter.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Compare the model `our_first_model` with prior *θ* ∼ Beta(1*,*1) with a model
+    with prior *θ* ∼![](img/U.PNG)(0*,*1). Are the posteriors similar or different?
+    Is the sampling slower, faster, or the same? What about using a Uniform over a
+    different interval such as [-1, 2]? Does the model run? What errors do you get?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: PyMC has a function `pm.model_to_graphviz` that can be used to visualize the
+    model. Use it to visualize the model `our_first_model`. Compare the result with
+    the Kruschke diagram. Use `pm.model_to_graphviz` to visualize model `comparing_groups`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Read about the coal mining disaster model that is part of the PyMC documentation
+    ( [https://shorturl.at/hyCX2](https://shorturl.at/hyCX2)). Try to implement and
+    run this model by yourself.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Modify `model_g`, change the prior for the mean to a Gaussian distribution centered
+    at the empirical mean, and play with a couple of reasonable values for the standard
+    deviation of this prior. How robust/sensitive are the inferences to these changes?
+    What do you think of using a Gaussian, which is an unbounded distribution (goes
+    from −inf to inf), to model bounded data such as this? Remember that we said it
+    is not possible to observe values below 0 or above 100.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Using the data from the `chemical_shifts.csv` file, compute the empirical mean
+    and the standard deviation with and without outliers. Compare those results to
+    the Bayesian estimation using the Gaussian and Student’s t-distribution. What
+    do you observe?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Repeat the previous exercise by adding more outliers to `chemical_shifts.csv`,
+    and compute new posteriors for `model_g` and `model_t` using this new data. What
+    do you observe?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Explore the InferenceData object `idata_cg`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How many groups does it contain?
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Inspect the posterior distribution of the parameter *μ* for a specific day using
+    the `sel` method.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Compute the distributions of mean differences between Thursday and Sunday. What
+    are the coordinates and dimensions of the resulting DataArray?
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For the tips example compute the probability of superiority directly from the
+    posterior (without computing Cohen’s d first). You can use the `pm.sample_posterior_predictive()`
+    function to take a sample from each group. Is it different from the calculation
+    assuming normality? Can you explain the result?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Join our community Discord space
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Join our Discord community to meet like-minded people and learn alongside more
+    than 5000 members at: [https://packt.link/bayesian](https://packt.link/bayesian)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1.png)'
+  prefs: []
+  type: TYPE_IMG

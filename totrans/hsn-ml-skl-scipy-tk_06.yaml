@@ -1,0 +1,1001 @@
+- en: Image Processing with Nearest Neighbors
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter and the following one, we are going to take a different approach.
+    The nearest neighbors algorithm will take a supporting role here, while image
+    processing will be the main protagonist of the chapter. We will start by loading
+    images and we will use Python to represent them in a suitable format for the machine
+    learning algorithms to work with. We will be using the nearest neighbors algorithm
+    for classification and regression. We will also learn how to compress information
+    in images into a smaller space. Many of the concepts explained here are transferable
+    and can be used with other algorithms with slight tweaks. Later, in [Chapter 7](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=33&action=edit),
+    *Neural**Networks - Here Comes the Deep Learning*, we will build on the knowledge
+    acquired here and continue with image processing by using neural networks. In
+    this chapter, we are going to cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Nearest neighbors
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Loading and displaying images
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Image classification
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using custom distances
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using nearest neighbors for regression
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Reducing the dimensions of our image data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Nearest neighbors
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"We learn by example and by direct experience because there are real limits
+    to the adequacy of verbal instruction."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Malcolm Gladwell
+  prefs: []
+  type: TYPE_NORMAL
+- en: It feels as if Malcolm Gladwell is explaining the K-nearest neighbors algorithm
+    in the preceding quote; we only need to replace "*verbal instruction*" with "*mathematical
+    equation*." In cases such as linear models, training data is used to learn a mathematical
+    equation that models the data. Once a model is learned, we can easily put the
+    training data aside. Here, in the nearest neighbors algorithm, the data itself
+    is the model. Whenever we encounter a new data sample, we compare it to the training
+    dataset. We locate the K-nearest samples in the training set to the newly encountered
+    sample, and then we use the class labels of the K samples in the training set
+    to assign a label to the new sample.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A few things should be noted here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The concept of training doesn't really exist here. Unlike other algorithms,
+    where the training time is dependent on the amount of training data, the computational
+    cost is mostly spent in the nearest neighbors algorithm at prediction time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Most of the recent research done on the nearest neighbors algorithm is focused
+    on finding the optimum ways to quickly search through the training data during
+    prediction time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What does *nearest* mean? In this chapter, we will learn about the different
+    distance measures used to compare different data points to each other. Two data
+    points are deemed near to each other depending on the distance metric used.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What is *K*? We can compare a new data point to 1, 2, 3, or 50 other samples
+    in the training set. The number of samples we decide to compare to is *K*, and
+    we are going to see how different values of *K* affect the behavior of the algorithms.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Before using the nearest neighbors algorithm for image classification, we need
+    to firstlearn how to deal with images. In the next section, we will load and display
+    one of the most commonly used image datasets in the field of machine learning
+    and image processing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When finding the nearest neighbors of a sample, you can compare it to all the
+    other training samples. This is a naive brute-force approach that doesn't scale
+    well with the size of the training data. A more efficient approach for larger
+    datasets requires the training samples to be stored in a specific data structure
+    that is optimized for search. K-D tree and ball tree are two available data structures.
+    These two data structures are parameterized by `leaf_size`. As its value approaches
+    the size of the training set, the K-D tree and ball tree turn into a brute-force
+    search. Conversely, setting the leaf size to `1` introduces lots of overhead when
+    traversing the trees. A default leaf size of `30` is good middle ground for many
+    sample sizes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loading and displaying images
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"Photographs are two-dimensional. I work in four dimensions."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Tino Sehgal
+  prefs: []
+  type: TYPE_NORMAL
+- en: When asked about the number of dimensions that an image has, photographers,
+    painters, illustrators, and almost everyone else on this planet will agree that
+    images are two-dimensional objects. Only machine learning practitioners see images
+    differently. For us, every pixel in a black and white image is a separate dimension.
+    Dimensions expand even more with colored images, but that's something for later.
+    We see each pixel as a separate dimension so that we can deal with each pixel
+    and its value as a unique feature that defines the image, along with the other
+    pixels (features). So, unlike*Tino Sehgal, we can sometimes end up working with
+    4,000 dimensions.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*The **ModifiedNational Institute****of** **Standards****and** **Technology**(**MNIST**)
+    dataset is a collection of handwritten digits that is commonly used inimage processing.
+    Due to its popularity, it is included in `scikit-learn`, and we can load it as
+    we usually do with other datasets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The dataset has digits from `0` to `9`. We can access their targets (labels)
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Similarly, we can load the pixel values, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Each line is a picture and each integer is a pixel value. In this dataset, the
+    pixels take values between `0` and `16`. The shape of the dataset (`digits['data'].shape`)
+    is *1,797 x 64*. In other words, we have 1,797 square-shaped pictures, and each
+    of them has 64 pixels (width = height = 8).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Knowing this information, we can create the following function to display an
+    image. It takes an array of 64 values and reshapes it into a two-dimensional array
+    with 8 rows and 8 columns. It also uses the corresponding target of the image
+    to show on top of the digit. The `matplotlib` axis (`ax`) is given so that we
+    can display the image on it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can now use the function we just created to display the first eight digits
+    of our dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The digits look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a162711f-176a-4239-bc38-b37cc6ecee3f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Being able to display the digits is a good first step. Next, we need to convert
+    them into our usual training and test formats. This time, we want to keep each
+    image as one row, so there is no need to reshape it into *8 x 8* matrices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: At this point, the data is ready to be used with an image classification algorithm.
+    By learning to predict the targets when given a bunch of pixels, we are already
+    one step closer to making our computer understand the handwritten text.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Image classification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now that we have our data ready, we can predict the digits using the nearest
+    neighbors classifier, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: For this example, I set `n_neighbors` to `11` and `metric` to `manhattan`, meaning
+    at prediction time, we compare each new sample to the 11 nearest training samples,
+    using the Manhattan distance to evaluate how near they are. More on these parameters
+    in a bit. This model made predictions with an accuracy of 96.4% on the test set.
+    This might sound reasonable, but I'm sorry to break it to you; this isn't a fantastic
+    score for this particular dataset. Anyway, let's keep on dissecting the model's
+    performance further.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a confusion matrix to understand the model's mistakes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When dealing with a dataset with 10 class labels, a single accuracy score can
+    only tell us so much. To better understand what digits were harder to guess than
+    others, we can print the model''s confusion matrix. This is a square matrix where
+    the actual labels are shown as rows and the predicted labels are shown as columns.
+    Then, the numbers in each cell show the testing instances that fell into it. Let
+    me create it now, and it will become clearer in a moment. The `plot_confusion_matrix`
+    function needs the classifier''s instance, along with the test''s `x` and `y`
+    values, to display the matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once called, the function runs the model internally on the test data and displays
+    the following matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3cfef06e-3d56-4368-941f-b71cbb4f47a1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Ideally, all the cells should have zeros, except for the diagonal cells. Falling
+    into a diagonal cell means that a sample is correctly labeled. However, there
+    are only a few non-zero cells here. The four samples at the intersection of row
+    8 and column 1 signify that our model has classified four samples as `1`, while
+    their actual label was `8`. Most likely, those were too-skinny eights that looked
+    like ones to the algorithm. The same conclusions can be made for the remaining
+    non-diagonal non-zero cells.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Picking a suitable metric
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The images we are using are just lists of numbers (vectors). The distance metric
+    decides whether one image is close to another. This also applies to non-image
+    data, where distance metrics are used to decide whether one sample is close to
+    another. Two commonly used metrics are the **M****anhattan** and**Euclidean**
+    distances:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Name** | **Manhattan (L1 norm)** | **Euclidean (L2 norm)** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Formula | **![](img/e2930e27-c687-4f0f-b3bc-18888a658497.png)**  | **![](img/d4b9a9b8-1441-4eb6-8865-032cdb4295a5.png)**  |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Most likely, the equation for the Manhattan distance will remind you of the
+    mean absolute error and L1 regularization, while the Euclidean distance resembles
+    the mean squared error and L2 regularization. This resemblance is a nice reminder
+    of how many concepts stem from common ideas:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0a526191-f4f1-42b4-acbb-be335c7273f7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'For the **M****anhattan** distance, the distance between A and C is calculated
+    by going from A to D, and then from D to C. It gets its name from Manhattan Island
+    in New York, where its landscape is divided into blocks. For the **Euclidean**
+    distance, the distance between A and C is calculated via the diagonal line between
+    the two points. There is a generalized form for the two metrics, called the **Minkowski**
+    distance, and here is its formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/848895b2-14e8-47d2-97fb-6996b9c61839.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Setting `p` to `1` gives us the Manhattan distance, and we can get the Euclidean
+    distance by setting it to `2`. I am sure you can tell now where `1` and `2` in
+    the L1 and L2 norms come from. To be able to compare the different values of `p`,
+    we can run the following code. Here, we calculate the Minkowski distance for the
+    two points—`(1, 2)` and `(4, 6)`—for different values of `p`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Plotting the results shows us how the Minkowski distance changes with `p`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/969974fd-d414-48a7-b0af-3afff2ebe68f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Clearly, the Minkowski distance decreases with an increase in `p`. For `p =
+    1`, the distance is `7`, `(4 - 1) + (6 - 2)`, and for `p = 2`, the distance is
+    `5`, the square root of `(9 + 16)`. For higher values of `p`, the distance calculated
+    approaches `4`, which is `(6 - 2)` only. In other words, as `p` approaches infinity,
+    the distance is just the maximum of all the spans between the points on all the
+    axes, which is known as the Chebyshev distance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The term *metric* is used to describe a distance measure that follows the following
+    criteria:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It cannot be negative: ![](img/e1e821f0-1c45-4c76-9137-9850474e9a52.png), and
+    it is symmetric: ![](img/b98b8d27-e50e-4273-a005-ca7dbb7b1e35.png).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The distance from one point to itself is 0\. It follows the following triangle
+    inequality criterion: ![](img/73493af6-edf4-40b2-ad39-bf4f833fc034.png).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another common metric is the **cosine** distance, and its formula is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d1e22299-fe13-4583-b408-d19e09b01940.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Unlike the Euclidean distance, the cosine distance is scale-insensitive. I think
+    it would be better to show the difference between the two metrics with the following
+    example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we take one digit and multiply each pixel value by `2`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d95898c9-60d8-4961-bc9a-db69578ee328.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, let''s calculate the distances between the original image and the intensified
+    one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Running the preceding code gives us the values for each distance—Manhattan =
+    `294`, Euclidean = `55.41`, and cosine = `0`. As expected, the cosine distance
+    does not care about the constant we used to multiply the pixels with, and it considers
+    the two versions of the same images as one. The other two metrics, on the other
+    hand, saw the two versions as further apart.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting the correct K
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Equally important to metric selection is knowing how many neighbors to listen
+    to when making a decision. You don''t want to ask too few neighbors as maybe they
+    don''t know enough. You also don''t want to ask everyone as the very distant neighbors
+    probably don''t know much about the sample at hand. To put it formally, a decision
+    made based on too few neighbors introduces variance since any slight changes in
+    the data will result in different neighborhoods and different results. Conversely,
+    a decision made based on too many neighbors is a biased decision as it is less
+    sensitive to the differences between the neighborhoods. Keep this in mind. Here,
+    I used the model with different settings for *K* and plotted the resulting accuracy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/532bfe59-376d-4d7e-a533-4eb75efc66df.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The concept of bias-variance trade-off will follow us throughout this book.
+    When it comes to picking sides, we usually opt to use a biased model when we have
+    smaller training sets. A high-variance model will overfit if there isn't enough
+    data to learn from. The most biased model is one where *K* is set to the number
+    of training samples. Then, all the new data points will get the same prediction
+    and will be assigned to the same label as the majority class. Conversely, when
+    we have a good amount of data, the few closest neighbors within a smaller radius
+    are a better choice to consult, as it's more likely that they will belong to the
+    same class as our new sample.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we have two hyperparameters to set: the number of neighbors and the distance
+    metrics. In the next section, we are going to use a grid search to find the optimum
+    values for these parameters.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hyperparameter tuning using GridSearchCV
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`GridSearchCV` is a method for looping over all the possible hyperparameter
+    combinations and employing cross-validation to pick the optimum hyperparameters.
+    For each hyperparameter combination, we do not want to limit ourselves to just
+    one accuracy score. So, to get a better understanding of the estimator''s accuracy
+    of each combination, we make use of K-fold cross-validation. Then, the data is
+    split into a number of folds, and for each iteration, all folds but one are used
+    for training, and the remaining one is used for testing. This method for hyperparameter
+    tuning performs an exhaustive search over all possible parameter combinations,
+    hence the `Grid` prefix. In the following code, we give `GridSearchCV` a Python
+    dictionary with all the parameter values we want to loop over, as well as the
+    estimator we want to tune. We also specify the number of folds to split the data
+    into, and then we call the grid search''s `fit` method with the training data.
+    Remember, it is bad practice to learn anything from the test dataset, which should
+    be kept aside for now. Here is the code to do this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once done, we can show the best parameters found via `gscv.best_params_`. We
+    can also show the accuracy achieved when using the chosen parameter via `gscv.best_score_`.
+    Here, the `euclidean` distance was chosen as `metric` and `n_neighbors` was set
+    to `3`. I also got an accuracy score of 98.7% when using the chosen hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now use the resulting classifier to make predictions for the test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: This gave me an accuracy of 98.0% on the test set. Luckily, the grid search
+    helped us improve the accuracy of our estimator by picking the optimum hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`GridSearchCV` can become computationally expensive if we have too many hyperparameters
+    to search through and too many values for each one. When facing a problem like
+    this,`RandomizedSearchCV` may be an alternative solution since it randomly picks
+    hyperparameter values while searching. Both hyperparameter tuning algorithms use
+    the `accuracy` score by default for classifiers and `R`^(`2`)for regressors. We
+    can override this and specify different metrics to pick the best configuration.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using custom distances
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The digits here are written in white pixels over a black background. I don''t
+    think anyone would have a problem with identifying a digit if it was written in
+    black pixels over a white background instead. As for a computer algorithm, things
+    are a little different. Let''s train our classifier as usual and see whether it
+    will have any issues if the colors are inverted. We will start by training the
+    algorithm on the original images:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then create an inverted version of the data we have just used for training:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The nearest neighbors implementation has a method called `kneighbors`. When
+    given a sample, it returns a list of the K-nearest samples to it from the training
+    set, as well as their distances from the given sample. We are going to give this
+    method one of the inverted samples and see which samples it will consider as its
+    neighbors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Just to make things clearer, I ran the code twice—once with the original sample
+    and its seven neighbors, and once with the inverted sample and its neighbors.
+    The output of the two runs is displayed here. As you can see, unlike us humans,
+    the algorithm got totally confused by the adversarial example where the colors
+    were inverted:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2d65bf56-335e-41e9-b2c0-7d5f06cdca14.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: If you think about it, according to the distance we use, a sample and its inverted
+    version cannot be too much further from each other. Although we visually see the
+    two as one, the model sees them as different as day and night. Having that said,
+    it is clear that we need to come up with a different way to evaluate distances.
+    Since pixels take values between `0` and `16`, in an inverted sample, all of the
+    16s are turned into 0s, the 15s are turned into 1s, and so on. Therefore, a distance
+    that compares samples in relation to how far their pixels are from the midpoint
+    between `0` and `16` (`8`) can help us solve our problem here. Here is how to
+    create this custom distance. Let's call our new distance `contrast_distance`***:***
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once defined, we can use the custom metric in our classifier, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After this tweak, the inversion doesn''t bother the model anymore. For the
+    original and the inverted sets, we get the exact same accuracy of 89.3%. We can
+    also print the seven nearest neighbors according to the new metric to validate
+    the fact that the new model is alreadysmarter and no longer discriminates against
+    the black digits:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0182aaa3-96f7-4660-8d3a-813ef9a4b70a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: One thing to keep in mind when writing your own custom distances is that they
+    are not as optimized as the built-in ones, and running the algorithm will be more
+    computationally expensive at prediction time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using nearest neighbors for regression
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'At the end of the day, the targets we predict in the MNIST dataset are just
+    numbers between 0 and 9\. So, we can alternatively use a regressor algorithm for
+    the same problem. In this case, our predictions will not be integers anymore,
+    but rather floats. Training the regressor isn''t much different from training
+    the classifier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here are some of the incorrectly made predictions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0d85cc59-f732-415d-8c35-6edd0eb53706.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The first item's three nearest neighbors are `3`, `3`, and `5`. So, the regressor
+    used their mean (`3.67`) as the prediction. The second and third items' neighbors
+    are `8, 9, 8` and `7, 9, 7`, respectively. Remember to round these predictions
+    and convert them into integers if you want to use a classifier's evaluation metric
+    to evaluate this model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: More neighborhood algorithms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are other variations of K-nearest neighbors that I'd like to quickly go
+    through before moving on to the next section. These algorithms are less commonly
+    used, although they have their merits as well as certain disadvantages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Radius neighbors
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Contrary to the K-nearest neighbors algorithm, where a certain number of neighbors
+    are allowed to vote, in radius neighbors, all the neighbors within a certain radius
+    participate in the voting process. By setting a predefined radius, the decisions
+    in sparser neighborhoods are based on fewer neighbors than the ones made in denser
+    neighborhoods. This can be useful when dealing with imbalanced classes. Furthermore,
+    by using the haversine formula as our metric, we can use this algorithm to recommend
+    nearby venues or gas stations on a map to the users. Both radius neighbors and
+    K-nearest neighbors can give closer data points more voting power than distant
+    ones by specifying the algorithm's `weights` parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Nearest centroid classifier
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As we have seen, the K-nearest neighbors algorithm compares the test samples
+    to all of the samples in the training set. This exhaustive search causes the model
+    to become slower at prediction time. To deal with this, the nearest centroid classifier
+    summarizes all the training samples from each class into a pseudo-sample that
+    represents this class. This pseudo-sample is called the centroid as it is typically
+    created by calculating the mean value for each of the features in a class. At
+    prediction time, a test sample is compared to all the centroids and is classified
+    based on the class whose centroid is closest to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next section, we are going to use the centroid algorithm for training
+    and prediction, but for now, we are going to use it to generate new digits just
+    for fun. The algorithm is trained as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The learned centroids are stored in `centroids_`. The following code displays
+    these centroids, along with the class labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The generated digits are shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d40db71c-3169-4c18-8545-9756abdc83a6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: These digits do not exist in our dataset. They are just combinations of all
+    the samples in each class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The nearest centroid classifier is fairly simple, and I am sure you can implement
+    it from scratch using a few lines of code. Its accuracy is not as good as nearest
+    neighbors for the MNIST dataset, though. The centroid algorithm is more commonly
+    used in natural language processing, where it's better known as Rocchio (pronounced
+    like "we will rock you").
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, the centroid algorithm also has a hyperparameter called `shrink_threshold`.
+    When set, this can help to remove the irrelevant features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Reducing the dimensions of our image data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Earlier, we realized that the dimensionality of an image is equal to the number
+    of pixels in it. So, there is no way to visualize our 43-dimensional MNIST dataset.
+    It is true that we can display each digit separately, yet we cannot see where
+    each image falls in our feature space. This is important to understand the classifier's
+    decision boundaries. Furthermore, an estimator's memory requirements grow in proportion
+    to the number of features in the training data. As a result, we need a way to
+    reduce the number of features in our data to deal with the aforementioned issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this section, we are going to discover two dimensionality-reduction algorithms:
+    **Principal Component Analysis** (**PCA**) and **Neighborhood Component Analysis**
+    (**NCA**). After explaining them, we will use them to visualize the MNIST dataset
+    and generate additional samples to add to our training set. Finally, we will also
+    use **feature selection** algorithms to remove non-informative pixels from our
+    images.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Principal component analysis
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '"A good photograph is knowing where to stand."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: –Ansel Adams
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Imagine having the following set of data with two features—`x1` and `x2`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f7abe53f-e78e-4b77-a1e6-36a96a374ec7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'You can generate a previous data frame by using the following code snippet,
+    keeping in mind that the numbers may vary on your machine, given their randomness:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When we plot the data, we realize that `x1` and `x2` take the following form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c3c020b0-d3cd-4f75-b10b-9f3e2fefdb78.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: If you want, you can tilt your head to the left. Now, imagine we did not have
+    the `x1` and `x2` axes, but instead had one diagonal axis that goes through the
+    data. Wouldn't that axis be enough to represent our data? Then, we would have
+    reduced it from a two-dimensional dataset into a one-dimensional dataset. That's
+    exactly what PCA tries to achieve.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This new axis has one main characteristic—the distances between the points on
+    it are more than their distances on the `x1` or `x2` axes. Remember, the hypotenuse
+    of a triangle is always bigger than any of the two other sides. In conclusion,
+    PCA tries to find a set of new axes (principal components) where the data variance
+    is maximized.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Just like in the case of the correlation coefficient equation discussed in
+    [Chapter 4](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=27&action=edit),
+    *Preparing Your Data*, PCA also needs the data to be centered. For each column,
+    we subtract the mean of the column from each value in it. We can use the`with_std
+    =False` standard scaler to achieve this. Here is how to calculate the PCA and
+    convert our data into the new dimensions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting `x_new` value is a single column data frame instead of two. We
+    can also access the newly created component via `pca.components_`. Here, I plotted
+    the new component over the original data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/fc219789-a691-4219-8947-664a480ba334.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see, we were able to use the PCA algorithm to reduce the number of
+    features here from two to one. Since the dots don't fall exactly on the line,
+    some information is lost by only using one component. This information is stored
+    in the second component that we did not retrieve. You can transform your data
+    into any number of components from one up to the original number of features.
+    The components are ordered descendingly according to the amount of information
+    they carry. Therefore, ignoring the latter components may help to remove any noisy
+    and less-useful information. Aftertransforming the data, it can also be transformed
+    back (inverse transformation). The resulting data after the two operations only
+    matches the original data if all the components are retained; otherwise, we can
+    limit ourselves to the first few (principal) components to denoise the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the PCA assumption, the directions in the feature space with the highest
+    variance are expected to carry more information than the directions with lower
+    variance. This assumption may hold in some cases, but it is not guaranteed to
+    always be true. Remember that in PCA, the target is not used, only the features.
+    This makes it more suitable for unlabeled data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Neighborhood component analysis
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the nearest neighbors algorithms, the choice of the distance measure is paramount,
+    yet it is only set empirically. We used K-fold cross-validation earlier in this
+    chapter to decide which distance metric is better for our problem. This can be
+    time-consuming, which triggers many researchers to look for better solutions.
+    The main aim of NCA is to learn the distance metric from the data using gradient
+    descend. The distances it tries to learn are usually represented by a square matrix.
+    For *N* samples, we have ![](img/73d8334b-b8ad-4011-9da8-370f39c173c7.png) sample
+    pairs to compare, hence the square matrix. Nevertheless, this matrix can be restricted
+    to become a rectangular one, ![](img/64dcd70b-19c0-4a61-bf66-5ed6bc1db006.png),
+    where the small *n* is a lower number than *N* and represents the reduced components.
+    These reduced components are the building blocks of NCA.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The nearest neighbors algorithms belong to a class of learners called instance-based
+    learners. We use instances of the training set to make decisions. So, the matrix
+    that carries the distances between the instances is an essential part of it. This
+    matrix inspired many researchers to do research on it. For example, learning the
+    distances from data is what NCA and large-margin nearest neighbors do; other researchers
+    converted this matrix into a higher dimensional space—for example, with the kernel
+    trick—and others tried to embed feature selection into the instance-based learners
+    via regularization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will visually compare the two dimensionality-reduction
+    methods by using them to plot the MNIST dataset onto a two-dimensional graph.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Comparing PCA to NCA
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will reduce the dimensionality of the data by projecting it into a smaller
+    space. We will use **PCA** and **NCA** in addition to random projection. We will
+    start by importing the required models and putting the three algorithms into a
+    Python dictionary to loop over them later on:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we will create three plots side by side for the three algorithms, as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It is important to center your data before applying PCA. We used `StandardScaler`
+    to do this. Other algorithms shouldn''t mind the centering, anyway. Running the
+    code gives us the following graphs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9930f6ed-2feb-47eb-87a5-b66b9d94f28d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'PCA and NCA do a better job than random projection in clustering the same digits
+    together. In addition to the visual analysis, we can run the nearest neighbors
+    algorithm on the reduced data to judge which transformation represents the data
+    better. We can use similar code to the preceding one and replace the part inside
+    the `for` loop with the following two chunks of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need to scale and transform our data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we use cross-validation to set the optimum hyperparameters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since we do not need to visualize the data this time, we can set the number
+    of components to `6`. This gives us the following accuracy scores. Keep in mind
+    that your results may vary due to the random split of the data and the estimator''s
+    initial values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Projection** | **Accuracy** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Sparse random projection | 73% |'
+  prefs: []
+  type: TYPE_TB
+- en: '| PCA | 93% |'
+  prefs: []
+  type: TYPE_TB
+- en: '| NCA | 95% |'
+  prefs: []
+  type: TYPE_TB
+- en: In PCA, the class labels are not needed. I just passed them in the preceding
+    code for consistency, but they were simply ignored by the algorithm. In comparison,
+    in NCA, the class labels are used by the algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Picking the most informative components
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'After fitting PCA, `explained_variance_ratio_` contains the percentage of variance
+    explained by each of the selected components. According to the principal components
+    hypothesis, higher ratios should reflect more information. We can put this information
+    into a data frame, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, plot it to get the following graph. I am sure plotting data via bar charts
+    is becoming second nature to you by now:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3abc98a2-6cd8-41d0-bc5a-c531ff4e8599.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: From the graph, we can tell that starting from the eighth component, the remaining
+    components carry less than 5% of the information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also loop through different values for `n_components`, and then train
+    a model on the reduced data and see how the accuracy changes with the number of
+    components used. I''d trust this approach more than relying on the explained variance
+    since it is independent of the principal components assumption and evaluates the
+    feature reduction algorithm and the classifier as a single black box. This time,
+    I am going to use a different algorithm: nearest centroid.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the centroid classifier with PCA
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'In the following code, we will try the centroid algorithm with a different
+    number of principal components each time. Please don''t forget to scale and transform
+    your features with each iteration, and remember to store the resulting `x` values
+    in `x_train_embed` and `x_test_embed`. I used `StandardScaler` here, as well as
+    the PCA''s `transform` method, to transform the scaled data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Plotting the scores gives us the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/16bc1d1b-3393-4ec8-ae8d-cdd7be36711b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: When we use the centroid algorithm with this dataset, we can roughly see that
+    anything above 15 components doesn't add much value. With the help of cross-validation,
+    we can pick the exact number of components that gives the best results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Restoring the original image from its components
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Once an image is reduced to its principal components, it can also be restored
+    back, as follows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, you have to scale your data before using PCA:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once scaled, you can transform your data using 32 principal components, as follows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, you can restore the original data after transformation by using the `inverse_transform`
+    method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To keep the original images and the restored ones on the same scale, we can
+    use `MinMaxScaler`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, you can see a comparison between some digits and themselves, with the
+    less important components removed. These restored versions of the original data
+    can be useful to the classifier, either by using them in place of the training
+    and test sets, or by adding them as additional samples to the training set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2958362f-bb66-49ec-ba17-739dedb8d2be.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Finally, I used `x_train_embed` and `x_test_embed` in place of the original
+    features in our nearest neighbors classifier. I tried a different number of PCA
+    components each time. The darker bars in the following graph show the number of
+    PCA components that resulted in the highest accuracy scores:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/b886c5c5-427e-4681-8a9d-50433541bb53.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Not only did PCA help us reduce the number of features and the prediction time
+    consequently, but it also helped us achieve a score of 98.9%.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding the most informative pixels
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Since almost all of the digits are centered in the images, we can intuitively
+    deduce that the pixels on the right and left edges of the images do not carry
+    valuable information. To validate our intuition, we will let the feature selection
+    algorithms from [Chapter 4](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=27&action=edit),
+    *Preparing Your Data*, decide for us which pixels are most important. Here, we
+    can use the mutual information algorithm to return a list of pixels and their
+    corresponding importance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then use the preceding information to remove 75% of the pixels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following diagram, the pixels marked in black are the most informative
+    ones, and the rest are the 75% of the pixels that are deemed less important by
+    the mutual information algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5e056b18-96ab-4f33-b93b-ef6891058f42.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As expected, the pixels on the edges are less informative. Now that we have
+    identified the less informative pixels, we can reduce the number of features in
+    our data by removing the less informative pixels, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: Training a classifier on the reduced features gives us an accuracy score of
+    94%. Knowing that the complexity of the nearest neighbors algorithm and its prediction
+    time grows with the number of features, we can understand the value of a slightly
+    less accurate algorithm that only uses **25%** of the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Images are in abundance in our day-to-day life. Robots need computer vision
+    to understand their surroundings. The majority of the posts on social media include
+    pictures. Handwritten documents require image processing to make them consumable
+    by machines. These and many more uses cases are the reason why image processing
+    is an essential competency for machine learning practitioners to master. In this
+    chapter, we learned how to load images and make sense of their pixels. We also
+    learned how to classify images and reduce their dimensions for better visualization
+    and further manipulation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We used the nearest neighbor algorithm for image classification and regression.
+    This algorithm allowed us to plug our own metrics when needed. We also learned
+    about other algorithms, such as radius neighbors and nearest centroid. The concepts
+    behind these algorithms and their differences are omnipresent in the field of
+    machine learning. Later on, we will see how the clustering and anomaly detection
+    algorithms borrow ideas from the concepts discussed here. In addition to the main
+    algorithms discussed here, concepts such as distance metrics and dimensionality
+    reduction are also ubiquitous.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Due to the importance of image processing, we will not stop here, as we are
+    going to build on the knowledge acquired here in [Chapter 7](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=33&action=edit),
+    *Neural Networks – Here Comes the Deep Learning*, where we will use artificial
+    neural networks for image classification.*
+  prefs: []
+  type: TYPE_NORMAL

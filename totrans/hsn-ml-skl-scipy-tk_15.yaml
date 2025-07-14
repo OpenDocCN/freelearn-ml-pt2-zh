@@ -1,0 +1,422 @@
+- en: Anomaly Detection – Finding Outliers in Data
+  prefs: []
+  type: TYPE_NORMAL
+- en: Detecting anomalies in data is a recurring theme in machine learning. In [Chapter
+    10](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=32&action=edit)[,](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=32&action=edit)*Imbalanced
+    Learning – Not Even 1% Win the Lottery*, we learned how to spot these interesting
+    minorities in our data. Back then, the data was labeled and the classification
+    algorithms from the previous chapters were apt for the problem. Aside from **labeled
+    anomaly detection** problems, there are cases where data is unlabeled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we are going to learn how to identify outliers in our data,
+    even when no labels are provided. We will use three different algorithms and we
+    will learn about the two branches of **unlabeled anomaly detection**. Here are
+    the topics that will be covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unlabeled anomaly detection
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting anomalies using basic statistics
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting outliers using `EllipticEnvelope`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Outlier and novelty detection using **Local Outlier Factor** (**LOF**)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Detecting outliers using isolation forest
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Unlabeled anomaly detection
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we will start with some unlabeled data and we will need to
+    spot the anomalous samples in it. We may be given inliers only, and we want to
+    learn what normal data looks likefrom them. Then, after fitting a model on our
+    inliers, we are given new data and need to spot any outliers that diverge from
+    the data seen so far. These kinds of problems are referred to as **novelty detectio****n**.
+    On the other hand, if we fit our model on a dataset that consists of a combination
+    of inliers and outliers, then this problem is referred to as an **outlier detection**
+    problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Like any other unlabeled algorithm, the `fit` method ignores any labels given.
+    This method's interface allows you to pass in both *x* and *y*, for the sake of
+    consistency, but *y* is simply ignored. In cases of novelty detection, it is logical
+    to firstuse the`fit`method on a dataset that includes no outliers, and then use
+    the algorithm's`predict`method later on for data that includes both inliers and
+    outliers. Conversely, for outlier detection problems, it is common to apply your
+    `fit` method and predict all at once with the `fit_predict` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before using any of our algorithms, we need to create a sample dataset to be
+    used throughout this chapter. Our data will include 1,000 samples, with 98% of
+    them coming from certain distributions and the remaining 2% coming from different
+    distributions. In the next section, we are going to see how to create this sample
+    data in detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating sample data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `make_classification` function allows us to specify the number of samples,
+    as well as the number of features. We can limit the number of informative features
+    and make some features redundant—that is, dependent on the informative features.
+    We can also make some features copies of any of the informative or redundant features.
+    In our current use case, we will make sure that all our features are informative
+    since we are going to limit ourselves to two features only. Since the `make_classification`
+    function is meant to produce data for classification problems, it returns both
+    *x* and *y*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will ignore *y* when building our models and only use it for evaluation
+    later on. We will make sure each class comes from two different distributions
+    by setting `n_clusters_per_class` to `2`. We will keep the two features to the
+    same scale by setting `scale` to a single value. We will also make sure the data
+    is randomly shuffled (`shuffle=True`) and that no samples from one class are labeled
+    as members of the other class (`flip_y=0`). Finally, we will set `random_state`
+    to `0` to make sure we get the exact same random data when running the following
+    code on our computer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that the sample data is ready, it is time to think of ways to detect the
+    outliers in it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Detecting anomalies using basic statistics
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Rather than jumping straight into the available algorithms in scikit-learn,
+    let''s start by thinking about ways to detect the anomalous samples. Imagine measuring
+    the traffic to your website every hour, which gives you the following numbers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Looking at these numbers, `500` sounds quite high compared to the others. Formally
+    speaking, if the hourly traffic data is assumed to be normally distributed, then
+    `500` is further away from its mean or expected value. We can measure this by
+    calculating the mean of these numbers and then checking the numbers that are more
+    than 2 or 3 standard deviations away from the mean. Similarly, we can calculate
+    a high quantile and check which numbers are above it. Here, we find the values
+    above the 95^(th) percentile:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This code will give an array of the `False` values, except for the penultimate
+    value, which is the one corresponding to `500`. Before printing out the results,
+    let''s put the preceding code in the form of an estimator with its `fit` and `predict`
+    methods. The `fit` method calculates the threshold and saves it, and the `predict`
+    method compares the new data to the saved threshold. I also added a `fit_predict`
+    method that carries out these two operations in sequence. Here is the code for
+    the estimator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can now use our newly created estimator. In the following code snippet,
+    we use the 95^(th) percentile for our estimator. We then put the resulting predictions
+    alongside the original data into a data frame. Finally, I added some styling logic
+    to mark the rows with outliers in bold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is the resulting data frame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/252fef3a-a4df-40de-85fb-cf0a6cf8dedc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Can we apply the same logic to the dataset from the previous section? Well,
+    yes, but we need to figure out how to apply it to multi-dimensional data first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using percentiles for multi-dimensional data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Unlike the `hourly_traffic` data, the data we generated using the `make_classification`
+    function is multi-dimensional. We have more than one feature to check this time.
+    Obviously, we can check each feature separately. Here is the code for checking
+    the outliers with respect to the first feature:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can do the same for the other feature as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, we have ended up with two predictions. We can combine them in a way that
+    each sample is marked as an outlier if it is an outlier with respect to any of
+    the two features. In the following code snippet, we will tweak the `PercentileDetection`**estimator
+    to do that:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**[PRE7]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can use the tweaked estimator as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also use the labels we ignored earlier to calculate the precision and
+    recall of our new estimator. Since we care about the minority class, whose label
+    is `1`, we set `pos_label` to `1` in the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This gives a precision of `4%` and a recall of `5%`. Did you expect better
+    results? I did too. Maybe we need to plot our data to understand what might be
+    the problem with our method. Here is the dataset, where each sample is marked
+    according to its label:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c802e490-abac-42b3-a719-e7a2fcbf9e36.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Our method checks each point and sees whether it is extreme on one of the two
+    axes. Despite the fact that the outliers are further away from the inliers, there
+    are still inliers that share the same horizontal or vertical position of each
+    point of the outliers. In other words, if you project your points onto any of
+    the two axes, you will not be able to separate the outliers from the inliers anymore.
+    So, we need a way to consider the two axes at once. What if we find the mean point
+    of the two axes—that is, the center of our data—and then draw a circle or an ellipse
+    around it? Then, we can consider any point that falls outside this ellipse an
+    outlier. Would this new strategy help? Luckily, that's what the `EllipticEnvelope`
+    algorithm does.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Detecting outliers using EllipticEnvelope
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"I''m intimidated by the fear of being average."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Taylor Swift
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `EllipticEnvelope` algorithm finds the center of the data samples and then
+    draws an ellipsoid around that center. The radii of the ellipsoid in each axis
+    are measured in the **Mahalanobis** distance. You can think of the Mahalanobis
+    distance as a Euclideandistance whose units are the number of standard deviations
+    in each direction. After the ellipsoid is drawn, the points that fall outside
+    it can be considered outliers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **multivariate Gaussian distribution** is a key concept of the `EllipticEnvelope`
+    algorithm. It's a generalization of the one-dimensional Gaussian distribution.
+    If the Gaussian distribution is defined by single-valued mean and variance, then
+    the multivariate Gaussian distribution is defined by matrices for means and covariances.
+    The multivariate Gaussian distribution is then used to draw an ellipsoid that
+    defines what is normal and what is an outlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is how we use the `EllipticEnvelope` algorithm to detect the data outliers,
+    using the algorithm''s default settings. Keep in mind that the `predict` methods
+    for all the outlier detection algorithms in this chapter return `-1` for outliers
+    and `1` for inliers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can calculate the precision and the recall scores for the predictions using
+    the exact same code from the previous section:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: This time, we get a precision of `9%` and a recall of `45%`. That's already
+    better than the previous scores, but can we do better? Well, if you take another
+    look at the data, you will notice that it is non-convex. We already know that
+    the samples in each class come from more than one distribution, and so the shape
+    of the points doesn't seem like it would perfectly fit into an ellipse. This means
+    that we should instead use an algorithm that bases its decision on local distances
+    and densities, rather than comparing everything to a fixed centroid. The **Local
+    Outlier Factor** (**LOF**) gives us that feature. If the **k-means****clustering****algorithm**
+    of the previous chapter falls into the same group as the elliptic envelope algorithm,
+    then the LOF would be the counterpart of the **DBSCAN** algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Outlier and novelty detection using LOF
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"Madness is rare in individuals – but in groups, parties, nations, and ages,
+    it is the rule."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Friedrich Nietzsche
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'LOF takes an opposite approach to Nietzsche''s—it compares the density of a
+    sample to the local densities of its neighbors. A sample existing in a low-density
+    area compared to its neighbors is considered an outlier. Like any other neighbor-based
+    algorithms, we have parameters to specify the number of neighbors to consider
+    (`n_neighbors`) and the distance metric to use to find the neighbors (`metric`
+    and `p`). By default, the Euclidean distance is used—that is, `metric=''minkowski''`
+    and `p=2`. You can refer to [Chapter 5](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=28&action=edit),
+    *Image Processing with Nearest Neighbors*, for more information about the available
+    distance metrics. Here is how we use`LocalOutlierFactor` for outlier detection,
+    using 50 neighbors and its default distance metric:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The precision and recall scores have now further improved the event. We got
+    a precision value of `26%` and a recall value of `65%`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Just like the classifiers, which have the `predict` method as well as `predict_proba`,
+    outlier detection algorithms not only give us binary predictions, but can also
+    tell us how confident they are that a sample is an outlier. Once the LOF algorithm
+    is fitted, it stores its outlier factor scores in `negative_outlier_factor_`.
+    A sample is more likely to be an outlier if the score is closer to `-1`. So, we
+    can use this score and set its bottom 1%, 2%, or 10% values as outliers, and consider
+    the rest inliers. Here is a comparison for the different performance metrics at
+    each of the aforementioned thresholds:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here are the different precision and recall scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: As in the case with the classifiers' probabilities, there is a trade-off here
+    between the precision and recall scores for the different thresholds. This is
+    how you can fine-tune your predictions to suit your needs. You can also use `negative_outlier_factor_`
+    to plot the **Receiver Operating Characteristic** (**ROC**) or **Precision-Recall**
+    (**PR**) curves if the true labels are known.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Aside from its use for outlier detection, theLOF**algorithm can also be used
+    for novelty detection.**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**## Novelty detection using LOF'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When used for outlier detection, the algorithm has to be fitted on the dataset
+    with both its inliers and outliers. In the case of novelty detection, we are expected
+    to fit the algorithm on the inliers only, and then predict on a contaminated dataset
+    later on. Furthermore, to be used for novelty detection, you have `novelty=True`
+    during the algorithm''s initialization. Here, we remove the outliers from our
+    data and use the resulting subsample, `x_inliers`, with the `fit` function. Then,
+    we predict for the original dataset as normal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The resulting precision (`26.53%`) and recall (`65.00%`) values did not vary
+    much compared to when we used the algorithm for outlier detection. In the end,
+    the choice in terms of novelty detection versus the outlier detection approach
+    is a tactical one. It depends on the available data when the model is built and
+    whether it contains outliers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You probably already know by now that I like using the ensemble methods, and
+    so it is hard for me to end this chapter without presenting an ensemble algorithm
+    for outlier detection. In the next section, we are going to look at the **isola****tion****forest**
+    algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Detecting outliers using isolation forest
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In previous approaches, we started by defining what normal is, and then considered
+    anything that doesn't conform to this as outliers. The isolation forest algorithm
+    follows a different approach. Since the outliers are few and different, they are
+    easier to isolate from the rest. So, when building a forest of random trees, a
+    sample that ends in leaf nodes early in a tree—that is, it did not need a lot
+    of branching effort to be isolated—is more likely to be an outlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As a tree-based ensemble, this algorithm shares many hyperparameters with its
+    counterparts, such as the number of random trees to build (`n_estimators`), the
+    ratio of samples to use when building each tree (`max_samples`), the ratio of
+    features to consider when building each tree (`max_features`), and whether to
+    sample with a replacement or not (`bootstrap`). You can also build the trees in
+    parallel using all the available CPUs on your machine by setting `n_jobs` to `-1`.
+    Here, we will build an isolation forest algorithm of 200 trees, then use it to
+    predict the outliers in our dataset. Like all the other algorithms in this chapter,
+    a prediction of `-1` means that the sample is seen as an outlier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: The resulting precision (`6.5%`) and recall (`60.0%`) values are not as good
+    as the previous approaches. Clearly, LOF is the most suitable algorithm for the
+    data we have at hand here. We were able to compare the three algorithms since
+    the original labels were available to us. In reality, labels are usually unavailable,
+    and it is hard to decide which algorithm to use. The field of unlabeled anomaly
+    detection evaluation is actively being researched, and I hope to see scikit-learn
+    implement reliable evaluation metrics once they are available in the future.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the case of supervised learning, you can use true labels to evaluate models
+    using the PR curves. When it comes to unlabeled data, recent researchers are trying
+    to tailor evaluation criteria, such as the **Excess-Mass** (**EM**) and **Mass-Volume**
+    (**MV**) curves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far in this book, we have used supervised learning algorithms to spot anomalous
+    samples. This chapter offered additional solutions when no labels are provided.
+    The solutions explained here stem from different fields of machine learning, such
+    as statistical learning, nearest-neighbor, and tree-based ensembles. Each one
+    of the three tools explained here can excel, but also have disadvantages. We also
+    learned that evaluating machine learning algorithms when no labels are provided
+    is tricky.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter will deal with unlabeled data. In the previous chapter, we learned
+    how to cluster data, and then we learned how to detect the outliers in it here.
+    We still have one more unsupervised learning topic to discuss in this book, though.
+    In the next chapter, we will cover an important topic relating to e-commerce—recommendation
+    engines. Since it is the last chapter of this book, I'd alsolike to go through
+    the possible approaches to machine learning model deployment. We will learn how
+    to save and load our models and how to deploy them on **Application Programming
+    Interfaces** (**APIs**).****
+  prefs: []
+  type: TYPE_NORMAL

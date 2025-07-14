@@ -1,0 +1,1387 @@
+- en: '*Chapter 5*: XGBoost Unveiled'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you will finally see **Extreme Gradient Boosting**, or **XGBoost**,
+    as it is. XGBoost is presented in the context of the machine learning narrative
+    that we have built up, from decision trees to gradient boosting. The first half
+    of the chapter focuses on the theory behind the distinct advancements that XGBoost
+    brings to tree ensemble algorithms. The second half focuses on building XGBoost
+    models within the **Higgs Boson Kaggle Competition**, which unveiled XGBoost to
+    the world.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Specifically, you will identify speed enhancements that make XGBoost faster,
+    discover how XGBoost handles missing values, and learn the mathematical derivation
+    behind XGBoost's **regularized parameter selection**. You will establish model
+    templates for building XGBoost classifiers and regressors. Finally, you will look
+    at the **Large Hadron Collider**, where the Higgs boson was discovered, where
+    you will weigh data and make predictions using the original XGBoost Python API.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter covers the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Designing XGBoost
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Analyzing XGBoost parameters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Building XGBoost models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finding the Higgs boson – case study
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Designing XGBoost
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: XGBoost is a significant upgrade from gradient boosting. In this section, you
+    will identify the key features of XGBoost that distinguish it from gradient boosting
+    and other tree ensemble algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Historical narrative
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: With the acceleration of big data, the quest to find awesome machine learning
+    algorithms to produce accurate, optimal predictions began. Decision trees produced
+    machine learning models that were too accurate and failed to generalize well to
+    new data. Ensemble methods proved more effective by combining many decision trees
+    via **bagging** and **boosting**. A leading algorithm that emerged from the tree
+    ensemble trajectory was gradient boosting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The consistency, power, and outstanding results of gradient boosting convinced
+    Tianqi Chen from the University of Washington to enhance its capabilities. He
+    called the new algorithm XGBoost, short for **Extreme Gradient Boosting**. Chen's
+    new form of gradient boosting included built-in regularization and impressive
+    gains in speed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After finding initial success in Kaggle competitions, in 2016, Tianqi Chen
+    and Carlos Guestrin authored *XGBoost: A Scalable Tree Boosting System* to present
+    their algorithm to the larger machine learning community. You can check out the
+    original paper at [https://arxiv.org/pdf/1603.02754.pdf](https://arxiv.org/pdf/1603.02754.pdf).
+    The key points are summarized in the following section.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Design features
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As indicated in [*Chapter 4*](B15551_04_Final_NM_ePUB.xhtml#_idTextAnchor093),
+    *From Gradient Boosting to XGBoost*, the need for faster algorithms is evident
+    when dealing with big data. The *Extreme* in *Extreme Gradient Boosting* means
+    pushing computational limits to the extreme. Pushing computational limits requires
+    knowledge not just of model-building but also of disk-reading, compression, cache,
+    and cores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although the focus of this book remains on building XGBoost models, we will
+    take a glance under the hood of the XGBoost algorithm to distinguish key advancements,
+    such as handling missing values, speed gains, and accuracy gains that make XGBoost
+    faster, more accurate, and more desirable. Let's look at these key advancements
+    next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Handling missing values
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You spent significant time in [*Chapter 1*](B15551_01_Final_NM_ePUB.xhtml#_idTextAnchor022),
+    *Machine Learning Landscape*, practicing different ways to correct **null values**.
+    This is an essential skill for all machine learning practitioners.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XGBoost, however, is capable of handling missing values for you. There is a
+    `missing` hyperparameter that can be set to any value. When given a missing data
+    point, XGBoost scores different split options and chooses the one with the best
+    results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gaining speed
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'XGBoost was specifically designed for speed. Speed gains allow machine learning
+    models to build more quickly which is especially important when dealing with millions,
+    billions, or trillions of rows of data. This is not uncommon in the world of big
+    data, where each day, industry and science accumulate more data than ever before.
+    The following new design features give XGBoost a big edge in speed over comparable
+    ensemble algorithms:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Approximate split-finding algorithm**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Sparsity aware split-finding**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Parallel computing**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Cache-aware access**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Block compression and sharding**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let's learn about these features in a bit more detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Approximate split-finding algorithm
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Decision trees need optimal splits to produce optimal results. A *greedy algorithm*
+    selects the best split at each step and does not backtrack to look at previous
+    branches. Note that decision tree splitting is usually performed in a greedy manner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XGBoost presents an exact greedy algorithm in addition to a new approximate
+    split-finding algorithm. The split-finding algorithm uses **quantiles**, percentages
+    that split data, to propose candidate splits. In a global proposal, the same quantiles
+    are used throughout the entire training, and in a local proposal, new quantiles
+    are provided for each round of splitting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A previously known algorithm, **quantile sketch**, works well with equally weighted
+    datasets. XGBoost presents a novel weighted quantile sketch based on merging and
+    pruning with a theoretical guarantee. Although the mathematical details of this
+    algorithm are beyond the scope of this book, you are encouraged to check out the
+    appendix of the original XGBoost paper at [https://arxiv.org/pdf/1603.02754.pdf](https://arxiv.org/pdf/1603.02754.pdf).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sparsity-aware split finding
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: '`pd.get_dummies` to transform **categorical columns** into **numerical columns**.
+    This resulted in a larger dataset with many values of 0\. This method of converting
+    categorical columns into numerical columns, where 1 indicates presence and 0 indicates
+    absence, is generally referred to as one-hot encoding. You will gain practice
+    with one-hot-encoding in [*Chapter 10*](B15551_10_Final_NM_ePUB.xhtml#_idTextAnchor230),
+    *XGBoost Model Deployment*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sparse matrices are designed to only store data points with non-zero and non-null
+    values. This saves valuable space. A sparsity-aware split indicates that when
+    looking for splits, XGBoost is faster because its matrices are sparse.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'According to the original paper, *XGBoost: A Scalable Tree Boosting System*,
+    the sparsity-aware split-finding algorithm performed 50 times faster than the
+    standard approach on the **All-State-10K** dataset.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parallel computing
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Boosting is not ideal for **parallel computing** since each tree depends on
+    the results of the previous tree. There are opportunities, however, where parallelization
+    may take place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parallel computing occurs when multiple computational units are working together
+    on the same problem at the same time. XGBoost sorts and compresses the data into
+    blocks. These blocks may be distributed to multiple machines, or to external memory
+    (out of core).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sorting the data is faster with blocks. The split-finding algorithm takes advantage
+    of blocks and the search for quantiles is faster due to blocks. In each of these
+    cases, XGBoost provides parallel computing to expedite the model-building process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cache-aware access
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'The data on your computer is separated into **cache** and **main memory**.
+    The cache, what you use most often, is reserved for high-speed memory. The data
+    that you use less often is held back for lower-speed memory. Different cache levels
+    have different orders of magnitude of latency, as outlined here: [https://gist.github.com/jboner/2841832](https://gist.github.com/jboner/2841832).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When it comes to gradient statistics, XGBoost uses **cache-aware prefetching**.
+    XGBoost allocates an internal buffer, fetches the gradient statistics, and performs
+    accumulation with mini batches. According to *XGBoost: A Scalable Tree Boosting
+    System*, prefetching lengthens read/write dependency and reduces runtimes by approximately
+    50% for datasets with a large number of rows.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Block compression and sharding
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: XGBoost delivers additional speed gains through **block compression** and **block
+    sharding**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Block compression helps with computationally expensive disk reading by compressing
+    columns. Block sharding decreases read times by sharding the data into multiple
+    disks that alternate when reading the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Accuracy gains
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: XGBoost adds built-in regularization to achieve accuracy gains beyond gradient
+    boosting. **Regularization** is the process of adding information to reduce variance
+    and prevent overfitting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although data may be regularized through hyperparameter fine-tuning, regularized
+    algorithms may also be attempted. For example, `Ridge` and `Lasso` are regularized
+    machine learning alternatives to `LinearRegression`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XGBoost includes regularization as part of the learning objective, as contrasted
+    with gradient boosting and random forests. The regularized parameters penalize
+    complexity and smooth out the final weights to prevent overfitting. XGBoost is
+    a regularized version of gradient boosting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, you will meet the math behind the learning objective of
+    XGBoost, which combines regularization with the loss function. While you don't
+    need to know the math to use XGBoost effectively, mathematical knowledge may provide
+    a deeper understanding. You can skip the next section if desired.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Analyzing XGBoost parameters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we will analyze the parameters that XGBoost uses to create
+    state-of-the-art machine learning models with a mathematical derivation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will maintain the distinction between parameters and hyperparameters as presented
+    in [*Chapter 2*](B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047), *Decision Trees
+    in Depth*. Hyperparameters are chosen before the model is trained, whereas parameters
+    are chosen while the model is being trained. In other words, the parameters are
+    what the model learns from the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The derivation that follows is taken from the XGBoost official documentation,
+    *Introduction to Boosted Trees*, at [https://xgboost.readthedocs.io/en/latest/tutorials/model.html](https://xgboost.readthedocs.io/en/latest/tutorials/model.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Learning objective
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The learning objective of a machine learning model determines how well the
+    model fits the data. In the case of XGBoost, the learning objective consists of
+    two parts: the **loss function** and the **regularization term**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Mathematically, XGBoost''s learning objective may be defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, ![](img/Formula_05_002.png) is the loss function, which is the **Mean
+    Squared Error** (**MSE**) for regression, or the log loss for classification,
+    and ![](img/Formula_05_003.png) is the regularization function, a penalty term
+    to prevent over-fitting. Including a regularization term as part of the objective
+    function distinguishes XGBoost from most tree ensembles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's look at the objective function in more detail, by considering the MSE
+    for regression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loss function
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The loss function, defined as the MSE for regression, can be written in summation
+    notation, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_004.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, ![](img/Formula_05_005.png) is the target value for the ![](img/Formula_05_006.png)th
+    row and ![](img/Formula_05_007.png) is the value predicted by the machine learning
+    model for the ![](img/Formula_05_008.png)th row. The summation symbol, ![](img/Formula_05_009.png),
+    indicates that all rows are summed starting with ![](img/Formula_05_010.png) and
+    ending with ![](img/Formula_05_011.png), the number of rows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The prediction, ![](img/Formula_05_012.png), for a given tree requires a function
+    that starts at the tree root and ends at a leaf. Mathematically, this can be expressed
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_013.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, *x*i is a vector whose entries are the columns of the ![](img/Formula_05_014.png)th
+    row and ![](img/Formula_05_015.png) means that the function ![](img/Formula_05_016.png)
+    is a member of ![](img/Formula_05_017.png), the set of all possible CART functions.
+    **CART** is an acronym for **Classification And Regression Trees**. CART provides
+    a real value for all leaves, even for classification algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In gradient boosting, the function that determines the prediction for the ![](img/Formula_05_006.png)th
+    row includes the sum of all previous functions, as outlined in [*Chapter 4*](B15551_04_Final_NM_ePUB.xhtml#_idTextAnchor093),
+    *From Gradient Boosting to XGBoost*. Therefore, it''s possible to write the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_019.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, *T* is the number of boosted trees. In other words, to obtain the prediction
+    for the ![](img/Formula_05_020.png)th tree, sum the predictions of the previous
+    trees in addition to the prediction for the new tree. The notation ![](img/Formula_05_021.png)
+    insists that the functions belong to ![](img/Formula_05_022.png), the set of all
+    possible CART functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The learning objective for the ![](img/Formula_05_023.png)th boosted tree can
+    now be rewritten as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_024.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, ![](img/Formula_05_025.png) is the general loss function of the ![](img/Formula_05_026.png)th
+    boosted tree and ![](img/Formula_05_027.png) is the regularization term.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since boosted trees sum the predictions of previous trees, in addition to the
+    prediction of the new tree, it must be the case that ![](img/Formula_05_028.png).
+    This is the idea behind additive training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By substituting this into the preceding learning objective, we obtain the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_029.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This can be rewritten as follows for the least square regression case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_030.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Multiplying the polynomial out, we obtain the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_031.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, ![](img/Formula_05_032.png) is a constant term that does not depend on
+    ![](img/Formula_05_033.png). In terms of polynomials, this is a quadratic equation
+    with the variable ![](img/Formula_05_034.png). Recall that the goal is to find
+    an optimal value of ![](img/Formula_05_035.png), the optimal function mapping
+    the roots (samples) to the leaves (predictions).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Any sufficiently smooth function, such as second-degree polynomial (quadratic),
+    can be approximated by a **Taylor polynomial**. XGBoost uses Newton''s method
+    with a second-degree Taylor polynomial to obtain the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_036.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here, ![](img/Formula_05_037.png) and ![](img/Formula_05_038.png) can be written
+    as the following partial derivatives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_039.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/Formula_05_040.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: For a general discussion of how XGBoost uses the **Taylor expansion**, check
+    out [https://stats.stackexchange.com/questions/202858/xgboost-loss-function-approximation-with-taylor-expansion](https://stats.stackexchange.com/questions/202858/xgboost-loss-function-approximation-with-taylor-expansion).
+  prefs: []
+  type: TYPE_NORMAL
+- en: XGBoost implements this learning objective function by taking a solver that
+    uses only ![](img/Formula_05_041.png) and ![](img/Formula_05_038.png) as input.
+    Since the loss function is general, the same inputs can be used for regression
+    and classification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This leaves the regularization function, ![](img/Formula_05_043.png).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Regularization function
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let ![](img/Formula_05_044.png) be the vector space of leaves. Then, ![](img/Formula_05_045.png),
+    the function mapping the tree root to the leaves, can be recast in terms of ![](img/Formula_05_044.png),
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_047.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, *q* is the function assigning data points to leaves and *T* is the number
+    of leaves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After practice and experimentation, XGBoost settled on the following as the
+    regularization function where ![](img/Formula_05_048.png) and ![](img/Formula_05_049.png)
+    are penalty constants to reduce overfitting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_050.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Objective function
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Combining the loss function with the regularization function, the learning
+    objective function becomes the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_051.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can define the set of indices of data points assigned to the ![](img/Formula_05_052.png)th
+    leaf as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_053.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The objective function can then be written as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_054.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Finally, setting the ![](img/Formula_05_055.png) and ![](img/Formula_05_056.png),
+    after rearranging the indices and combining like terms, we obtain the final form
+    of the objective function, which is the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_057.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Minimizing the objective function by taking the derivative with respect to
+    ![](img/Formula_05_058.png) and setting the left side equal to zero, we obtain
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_059.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This can be substituted back into the objection function to give the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_060.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This is the result XGBoost uses to determine how well the model fits the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Congratulations on making it through a long and challenging derivation!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building XGBoost models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the first two sections, you learned how XGBoost works under the hood with
+    parameter derivations, regularization, speed enhancements, and new features such
+    as the `missing` parameter to compensate for null values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this book, we primarily build XGBoost models with scikit-learn. The scikit-learn
+    XGBoost wrapper was released in 2019\. Before full immersion with scikit-learn,
+    building XGBoost models required a steeper learning curve. Converting NumPy arrays
+    to `dmatrices`, for instance, was mandatory to take advantage of the XGBoost framework.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In scikit-learn, however, these conversions happen behind the scenes. Building
+    XGBoost models in scikit-learn is very similar to building other machine learning
+    models in scikit-learn, as you have experienced throughout this book. All standard
+    scikit-learn methods, such as `.fit`, and `.predict`, are available, in addition
+    to essential tools such as `train_test_split`, `cross_val_score`, `GridSearchCV`,
+    and `RandomizedSearchCV`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you will develop templates for building XGBoost models. Going
+    forward, these templates can be referenced as starting points for building XGBoost
+    classifiers and regressors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will build templates for two classic datasets: the **Iris dataset** for
+    classification and the **Diabetes dataset** for regression. Both datasets are
+    small, built into scikit-learn, and have been tested frequently throughout the
+    machine learning community. As part of the model-building process, you will explicitly
+    define default hyperparameters that give XGBoost great scores. These hyperparameters
+    are explicitly defined so that you can learn what they are in preparation for
+    adjusting them going forward.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Iris dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The Iris dataset, a staple of the machine learning community, was introduced
+    by statistician Robert Fischer in 1936\. Its easy accessibility, small size, clean
+    data, and symmetry of values have made it a popular choice for testing classification
+    algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will introduce the Iris dataset by downloading it directly from scikit-learn
+    using the `datasets` library with the `load_iris()` method, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Scikit-learn datasets are stored as `pandas` DataFrames are used more for data
+    analysis and data visualization. Viewing NumPy arrays as DataFrames requires the
+    `pandas` `DataFrame` method. This scikit-learn dataset is split into predictor
+    and target columns in advance. Bringing them together requires concatenating the
+    NumPy arrays with the code `np.c_` before conversion. Column names are also added,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You can view the first five rows of the DataFrame using `df.head()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting DataFrame will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.1 – The Iris dataset](img/B15551_05_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.1 – The Iris dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: The predictor columns are self-explanatory, measuring sepal and petal length
+    and width. The target column, according to the scikit-learn documentation, [https://scikit-learn.org/stable/auto_examples/datasets/plot_iris_dataset.html](https://scikit-learn.org/stable/auto_examples/datasets/plot_iris_dataset.html),
+    consists of three different iris flowers, **setosa**, **versicolor**, and **virginica**.
+    There are 150 rows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To prepare the data for machine learning, import `train_test_split`, then split
+    the data accordingly. You can use the original NumPy arrays, `iris[''data'']`
+    and `iris[''target'']`, as inputs for `train_test_split`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we have split the data, let's build the classification template.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XGBoost classification template
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The following template is for building an XGBoost classifier, assuming the
+    dataset has already been split into `X_train`, `X_test`, `y_train`, and `y_test`
+    sets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `XGBClassifier` from the `xgboost` library:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Import a classification scoring method as needed.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'While `accuracy_score` is standard, other scoring methods, such as `auc` (**Area
+    Under Curve**), will be discussed later:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Initialize the XGBoost classifier with hyperparameters.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Fine-tuning hyperparameters is the focus of [*Chapter 6*](B15551_06_Final_NM_ePUB.xhtml#_idTextAnchor136),
+    *XGBoost Hyperparameters*. In this chapter, the most important default hyperparameters
+    are explicitly stated ahead:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The brief descriptions of the preceding hyperparameters are as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'a) `booster=''gbtree''`: The booster is the `''gbtree''` stands for gradient
+    boosted tree, the XGBoost default base learner. It''s uncommon but possible to
+    work with other base learners, a strategy we employ in [*Chapter 8*](B15551_08_Final_NM_ePUB.xhtml#_idTextAnchor189),
+    *XGBoost Alternative Base Learners*.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'b) `objective=''multi:softprob''`: Standard options for the objective can be
+    viewed in the XGBoost official documentation, [https://xgboost.readthedocs.io/en/latest/parameter.html](https://xgboost.readthedocs.io/en/latest/parameter.html),
+    under *Learning Task Parameters*. The `multi:softprob` objective is a standard
+    alternative to `binary:logistic` when the dataset includes multiple classes. It
+    computes the probabilities of classification and chooses the highest one. If not
+    explicitly stated, XGBoost will often find the right objective for you.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'c) `max_depth=6`: The `max_depth` of a tree determines the number of branches
+    each tree has. It''s one of the most important hyperparameters in making balanced
+    predictions. XGBoost uses a default of `6`, unlike random forests, which don''t
+    provide a value unless explicitly programmed.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'd) `learning_rate=0.1`: Within XGBoost, this hyperparameter is often referred
+    to as `eta`. This hyperparameter limits the variance by reducing the weight of
+    each tree to the given percentage. The `learning_rate` hyperparameter was explored
+    in detail in [*Chapter 4*](B15551_04_Final_NM_ePUB.xhtml#_idTextAnchor093), *From
+    Gradient Boosting to XGBoost*.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'e) `n_estimators=100`: Popular among ensemble methods, `n_estimators` is the
+    number of boosted trees in the model. Increasing this number while decreasing
+    `learning_rate` can lead to more robust results.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Fit the classifier to the data.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'This is where the magic happens. The entire XGBoost system, the details explored
+    in the previous two sections, the selection of optimal parameters, including regularization
+    constraints, and speed enhancements, such as the approximate split-finding algorithm,
+    and blocking and sharding all occur during this one powerful line of scikit-learn
+    code:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Predict the *y* values as `y_pred`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Score the model by comparing `y_pred` against `y_test`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Display your results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Unfortunately, there is no official list of Iris dataset scores. There are too
+    many to compile in one place. An initial score of `97.4` percent on the Iris dataset
+    using default hyperparameters is very good (see [https://www.kaggle.com/c/serpro-iris/leaderboard](https://www.kaggle.com/c/serpro-iris/leaderboard)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The XGBoost classifier template provided in the preceding paragraphs is not
+    meant to be definitive, but rather a starting point going forward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Diabetes dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now that you are becoming familiar with scikit-learn and XGBoost, you are developing
+    the ability to build and score XGBoost models fairly quickly. In this section,
+    an XGBoost regressor template is provided using `cross_val_score` with scikit-learn's
+    Diabetes dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before building the template, import the predictor columns as `X` and the target
+    columns as `y`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we have imported the predictor and target columns, let's start building
+    the template.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The XGBoost regressor template (cross-validation)
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Here are the essential steps to build an XGBoost regression model in scikit-learn
+    using cross-validation, assuming that the predictor columns, `X`, and the target
+    column, `y`, have been defined:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `XGBRegressor` and `cross_val_score`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Initialize `XGBRegressor`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Here, we initialize `XGBRegressor` with `objective=''reg:squarederror''`, the
+    MSE. The most important hyperparameter defaults are explicitly given:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Fit and score the regressor with `cross_val_score`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'With `cross_val_score`, fitting and scoring are done in one step using the
+    model, the predictor columns, the target column, and the scoring as inputs:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Display the results.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Scores for regression are commonly displayed as the **Root Mean Squared Error**
+    (**RMSE**) to keep the units the same:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Without a baseline of comparison, we have no idea what that score means. Converting
+    the target column, `y`, into a `pandas` DataFrame with the `.describe()` method
+    will give the quartiles and the general statistics of the predictor column, as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is the expected output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.2 – Describing the statistics of y, the Diabetes target column](img/B15551_05_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.2 – Describing the statistics of y, the Diabetes target column
+  prefs: []
+  type: TYPE_NORMAL
+- en: A score of `63.124` is less than 1 standard deviation, a respectable result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You now have XGBoost classifier and regressor templates that can be used for
+    building models going forward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you are accustomed to building XGBoost models in scikit-learn, it's
+    time for a deep dive into high energy physics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding the Higgs boson – case study
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we will review the Higgs Boson Kaggle Competition, which brought
+    XGBoost into the machine learning spotlight. In order to set the stage, the historical
+    background is given before moving on to model development. The models that we
+    build include a default model provided by XGBoost at the time of the competition
+    and a reference to the winning solution provided by Gabor Melis. Kaggle accounts
+    are not required for this text, so we will not take the time to show you how to
+    make submissions. We have provided guidelines if you are interested.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Physics background
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In popular culture, the Higgs boson is known as the *God particle*. Theorized
+    by Peter Higgs in 1964, the Higgs boson was introduced to explain why particles
+    have mass.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The search to find the Higgs boson culminated in its discovery in 2012 in the
+    **Large Hadron Collider** at CERN (Geneva, Switzerland). Nobel Prizes were awarded
+    and the Standard Model of physics, the model that accounts for every force known
+    to physics except for gravity, stood taller than ever before.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Higgs boson was discovered by smashing protons into each other at extremely
+    high speeds and observing the results. Observations came from the **ATLAS** detector,
+    which records data resulting from *hundreds of millions of proton-proton collisions
+    per second*, according to the competition''s technical documentation, *Learning
+    to discover: the Higgs boson machine learning challenge*, [https://higgsml.lal.in2p3.fr/files/2014/04/documentation_v1.8.pdf](https://higgsml.lal.in2p3.fr/files/2014/04/documentation_v1.8.pdf).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: After discovering the Higgs boson, the next step was to precisely measure the
+    characteristics of its decay. The ATLAS experiment found the Higgs boson decaying
+    into two **tau** particles from data wrapped in background noise. To better understand
+    the data, ATLAS called upon the machine learning community.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kaggle competitions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The Kaggle competition is a machine learning competition designed to solve a
+    particular problem. Machine learning competitions became famous in 2006 when Netflix
+    offered 1 million dollars to anyone who could improve upon their movie recommendations
+    by 10%. In 2009, the 1 million dollar prize was awarded to *BellKor*'s *Pragmatic
+    Chaos* team ([https://www.wired.com/2009/09/bellkors-pragmatic-chaos-wins-1-million-netflix-prize/](https://www.wired.com/2009/09/bellkors-pragmatic-chaos-wins-1-million-netflix-prize/)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many businesses, computer scientists, mathematicians, and students became aware
+    of the increasing value that machine learning held in society. Machine learning
+    competitions became hot, with mutual benefits going to company hosts and machine
+    learning practitioners. Starting in 2010, many early adopters went to Kaggle to
+    try their hand at machine learning competitions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In 2014, Kaggle announced the *Higgs Boson Machine Learning Challenge* with
+    ATLAS ([https://www.kaggle.com/c/higgs-boson](https://www.kaggle.com/c/higgs-boson)).
+    With a $13,000 prize pool, 1,875 teams entered the competition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Kaggle competitions, training data is provided, along with a required scoring
+    method. Teams build machine learning models on the training data before submitting
+    their results. The target column of the test data is not provided. Multiple submissions
+    are permitted, however, and scores are returned so that competitors can improve
+    upon their models before the final date.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kaggle competitions are fertile ground for testing machine learning algorithms.
+    Unlike in industry, Kaggle competitions draw thousands of competitors, making
+    the machine learning models that win prizes very well tested.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XGBoost and the Higgs challenge
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: XGBoost was released to the general public on March 27, 2014, 6 months before
+    the Higgs challenge. In the competition, XGBoost soared, helping competitors climb
+    the Kaggle leaderboard while saving valuable time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's access the data to see what the competitors were working with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Instead of using the data provided by Kaggle, we use the original data provided
+    by the CERN open data portal where it originated: [http://opendata.cern.ch/record/328](http://opendata.cern.ch/record/328).
+    The difference between the CERN data and the Kaggle data is that the CERN dataset
+    is significantly larger. We will select the first 250,000 rows and make some modifications
+    to match the Kaggle data.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can download the CERN Higgs boson dataset directly from [https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter05](https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter05).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Read the `atlas-higgs-challenge-2014-v2.csv.gz` file into a `pandas` DataFrame.
+    Please note that we are selecting the first 250,000 rows only, and the `compression=gzip`
+    parameter is used since the dataset is zipped as a `csv.gz` file. After accessing
+    the data, view the first five rows, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The far-right columns of the output should be as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.3 – CERN Higgs boson data – Kaggle columns included](img/B15551_05_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.3 – CERN Higgs boson data – Kaggle columns included
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice the `Kaggleset` and `KaggleWeight` columns. Since the Kaggle dataset
+    was smaller, Kaggle used a different number for their weight column which is denoted
+    in the preceding diagram as `KaggleWeight`. The `t` value under `Kaggleset` indicates
+    that it's part of the training set for the Kaggle dataset. In other words, these
+    two columns, `Kaggleset` and `KaggleWeight`, are columns in the CERN dataset designed
+    to include information that will be used for the Kaggle dataset. In this chapter,
+    we will restrict our subset of the CERN data to the Kaggle training set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To match the Kaggle training data, let''s delete the `Kaggleset` and `Weight`
+    columns, convert `KaggleWeight` into `''Weight''`, and move the `''Label''` column
+    to the last column, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'One way to move the `Label` column is to store it as a variable, delete the
+    column, and add a new column by assigning it to the new variable. Whenever assigning
+    a new column to a DataFrame, the new column appears at the end:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that all changes have been made, the CERN data matches the Kaggle data.
+    Go ahead and view the first five rows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is the left side of the expected output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.4 – CERN Higgs boson data – physics columns](img/B15551_05_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 5.4 – CERN Higgs boson data – physics columns
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many columns are not shown, and an unusual value of `-999.00` occurs in multiple
+    places.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The columns beyond `EventId` include variables prefixed with `PRI`, which stands
+    for *primitives*, which are values directly measured by the detector during collisions.
+    By contrast, columns labeled `DER` are numerical derivations from these measurements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All column names and types are revealed by `df.info()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is a sample of the output, with the middle columns truncated to save space:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'All columns have non-null values, and only the final column, `Label`, is non-numerical.
+    The columns can be grouped as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Column `0` : `EventId` – irrelevant for the machine learning model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Columns `1-30`: Physics columns derived from LHC collisions. Details for these
+    columns can be found in the link to the technical documentation at [http://higgsml.lal.in2p3.fr/documentation](http://higgsml.lal.in2p3.fr/documentation).
+    These are the machine learning predictor columns.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Column `31` : `Weight` – this column is used to scale the data. The issue here
+    is that Higgs boson events are very rare, so a machine learning model with 99.9
+    percent accuracy may not be able to find them. Weights compensate for this imbalance,
+    but weights are not available for the test data. Strategies for dealing with weights
+    will be discussed later in this chapter, and in [*Chapter 7*](B15551_07_Final_NM_ePUB.xhtml#_idTextAnchor161),
+    *Discovering Exoplanets with XGBoost*.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Column `32`: `Label` – this is the target column, labeled `s` for signal and
+    `b` for background. The training data has been simulated from real data, so there
+    are many more signals than otherwise would be found. The signal is the occurrence
+    of the Higgs boson decay.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The only issue with the data is that the target column, `Label`, is not numerical.
+    Convert the `Label` column into a numerical column by replacing the `s` values
+    with `1` and the `b` values with `0`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that all columns are numerical with non-null values, you can split the
+    data into predictor and target columns. Recall that the predictor columns are
+    indexed 1–30 and the target column is the last column, indexed `32` (or -1). Note
+    that the `Weight` column should not be included because it''s not available for
+    the test data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Scoring
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The Higgs Challenge is not your average Kaggle competition. In addition to the
+    difficulty of understanding high energy physics for feature engineering (a route
+    we will not pursue), the scoring method is not standard. The Higgs Challenge requires
+    optimizing the **Approximate Median Significance** (**AMS**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The AMS is defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_05_061.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, ![](img/Formula_05_062.png) is the true positive rate, ![](img/Formula_05_063.png)
+    is the false positive rate, and ![](img/Formula_05_064.png) is a constant regularization
+    term given as `10`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, XGBoost provided an AMS scoring method for the competition, so
+    it does not need to be formally defined. A high AMS results from many true positives
+    and few false negatives. Justification for the AMS instead of other scoring methods
+    is given in the technical documentation at [http://higgsml.lal.in2p3.fr/documentation](http://higgsml.lal.in2p3.fr/documentation).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's possible to build your own scoring methods, but it's not usually needed.
+    In the rare event that you need to build your own scoring method, you can check
+    out [https://scikit-learn.org/stable/modules/model_evaluation.html](https://scikit-learn.org/stable/modules/model_evaluation.html)
+    for more information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Weights
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Before building a machine learning model for the Higgs boson, it's important
+    to understand and utilize weights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In machine learning, weights can be used to improve the accuracy of imbalanced
+    datasets. Consider the `s` (signal) and `b` (background) columns in the Higgs
+    challenge. In reality, `s` << `b`, so signals are very rare among the background
+    noise. Let's say, for example, that signals are 1,000 times rarer than background
+    noise. You can create a weight column where `b` = 1 and `s` = 1/1000 to compensate
+    for this imbalance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: According to the technical documentation of the competition, the weight column
+    is a `s` (signal) events.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The weights should first be scaled to match the test data since the test data
+    provides the expected number of signal and background events generated by the
+    test set. The test data has 550,000 rows, more than twice the 250,000 rows (`len(y)`)
+    provided by the training data. Scaling weights to match the test data can be achieved
+    by multiplying the weight column by the percentage of increase, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, XGBoost provides a hyperparameter, `scale_pos_weight`, which takes the
+    scaling factor into account. The scaling factor is the sum of the weights of the
+    background noises divided by the sum of the weight of the signal. The scaling
+    factor can be computed using `pandas` conditional notation, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the preceding code, `df[df['Label']==1]` narrows the DataFrame down to rows
+    where the `Label` column equals `1`, then `np.sum` adds the values of these rows
+    using the `test_Weight` column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, to see the actual rate, divide `b` by `s`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: In summary, the weights represent the expected number of signal and background
+    events generated by the data. We scale the weights to match the size of the test
+    data, then divide the sum of the background weights by the sum of the signal weights
+    to establish the `scale_pos_weight=b/s` hyperparameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: For a more detailed discussion on weights, check out the excellent introduction
+    from KDnuggets at [https://www.kdnuggets.com/2019/11/machine-learning-what-why-how-weighting.html](https://www.kdnuggets.com/2019/11/machine-learning-what-why-how-weighting.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It's time to build an XGBoost model to predict the signal – that is, the simulated
+    occurrences of the Higgs boson decay.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the time of the competition, XGBoost was new, and the scikit-learn wrapper
+    was not yet available. Even today (2020), the majority of information online about
+    implementing XGBoost in Python is pre-scikit-learn. Since you are likely to encounter
+    the pre-scikit-learn XGBoost Python API online, and this is what all competitors
+    used in the Higgs Challenge, we present code using the original Python API in
+    this chapter only.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the steps to build an XGBoost model for the Higgs Challenge:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `xgboost` as `xgb`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Initialize the XGBoost model as a `-999.0` are unknown values. Instead of converting
+    these values into the median, mean, mode, or other null replacement, in XGBoost,
+    unknown values can be set to the `missing` hyperparameter. During the model build
+    phase, XGBoost automatically chooses the value leading to the best split.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The `weight` hyperparameter can equal the new column, `df[''test_Weight'']`,
+    as defined in the `weight` section:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Set additional hyperparameters.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The hyperparameters that follow are defaults provided by XGBoost for the competition:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'a) Initialize a blank dictionary called `param`:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: b) Define the objective as `'binary:logitraw'`.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'This means a binary model is created from logistic regression probabilities.
+    This objective defines the model as a classifier and allows a ranking of the target
+    column, which is required of submissions for this particular Kaggle competition:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'c) Scale the positive examples using the background weights divided by the
+    signal weights. This will help the model perform better on the test set:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'd) The learning rate, `eta`, is given as `0.1`:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'e) `max_depth` is given as `6`:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'f) Set the scoring method as `''auc''` for display purposes:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Although the AMS score will be printed, the evaluation metric is given as `auc`,
+    which stands for `auc` is the true positive versus false positive curve that is
+    perfect when it equals `1`. Similar to accuracy, `auc` is a standard scoring metric
+    for classification, although it's often superior to accuracy since accuracy is
+    limited for imbalanced datasets, as discussed in [*Chapter 7*](B15551_07_Final_NM_ePUB.xhtml#_idTextAnchor161),
+    *Discovering Exoplanets with XGBoost*.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Create a list of parameters that includes the preceding items, along with the
+    evaluation metric (`auc`) and `ams@0.15`, XGBoost''s implementation of the AMS
+    score using a 15% threshold:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a watchlist that includes the initialized classifier and `''train''`
+    so that you can view scores as the trees continue to boost:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Set the number of boosting rounds to `120`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Train and save the model. Train the model by placing the parameter list, the
+    classifier, the number of rounds, and the watchlist as inputs. Save the model
+    using the `save_model` method so that you do not have to go through a time-consuming
+    training process a second time. Then, run the code and watch how the scores improve
+    as the trees are boosted:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The end of your results should have the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Congratulations on building an XGBoost classifier that can predict Higgs boson
+    decay!
+  prefs: []
+  type: TYPE_NORMAL
+- en: The model performs with `94.58` percent `auc`, and an AMS of `5.9`. As far as
+    the AMS is concerned, the top values of the competition were in the upper threes.
+    This model achieves an AMS of around `3.6` when submitted with the test data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The model that you just built was provided as a baseline by Tanqi Chen for XGBoost
+    users during the competition. The winner of the competition, Gabor Melis, used
+    this baseline to build his model. As can be seen from viewing the winning solution
+    at [https://github.com/melisgl/higgsml](https://github.com/melisgl/higgsml) and
+    clicking on **xgboost-scripts**, changes made to the baseline model are not significant.
+    Melis, like most Kaggle competitors, also performed feature engineering to add
+    more relevant columns to the data, a practice we will address in [*Chapter 9*](B15551_09_Final_NM_ePUB.xhtml#_idTextAnchor211),
+    *XGBoost Kaggle Masters*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is possible to build and train your own model after the deadline and submit
+    it through Kaggle. For Kaggle competitions, submissions must be ranked, properly
+    indexed, and delivered with the Kaggle API topics that require further explanation.
+    If you want to submit models for the actual competition, the XGBoost ranking code,
+    which you may find helpful, is available at [https://github.com/dmlc/xgboost/blob/master/demo/kaggle-higgs/higgs-pred.py](https://github.com/dmlc/xgboost/blob/master/demo/kaggle-higgs/higgs-pred.py).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you learned how XGBoost was designed to improve the accuracy
+    and speed of gradient boosting with missing values, sparse matrices, parallel
+    computing, sharding, and blocking. You learned the mathematical derivation behind
+    the XGBoost objective function that determines the parameters for gradient descent
+    and regularization. You built `XGBClassifier` and `XGBRegressor` templates from
+    classic scikit-learn datasets, obtaining very good scores. Finally, you built
+    the baseline model provided by XGBoost for the Higgs Challenge that led to the
+    winning solution and lifted XGBoost into the spotlight.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you have a solid understanding of the overall narrative, design, parameter
+    selection, and model-building templates of XGBoost, in the next chapter, you will
+    fine-tune XGBoost's hyperparameters to achieve optimal scores.
+  prefs: []
+  type: TYPE_NORMAL

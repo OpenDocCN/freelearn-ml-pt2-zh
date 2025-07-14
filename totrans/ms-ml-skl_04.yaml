@@ -1,0 +1,780 @@
+- en: Chapter 4. From Linear Regression to Logistic Regression
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [Chapter 2](ch02.html "Chapter 2. Linear Regression"), *Linear Regression*,
+    we discussed simple linear regression, multiple linear regression, and polynomial
+    regression. These models are special cases of the generalized linear model, a
+    flexible framework that requires fewer assumptions than ordinary linear regression.
+    In this chapter, we will discuss some of these assumptions as they relate to another
+    special case of the generalized linear model called **logistic regression**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unlike the models we discussed previously, logistic regression is used for classification
+    tasks. Recall that the goal in classification tasks is to find a function that
+    maps an observation to its associated class or label. A learning algorithm must
+    use pairs of feature vectors and their corresponding labels to induce the values
+    of the mapping function's parameters that produce the best classifier, as measured
+    by a particular performance metric. In binary classification, the classifier must
+    assign instances to one of the two classes. Examples of binary classification
+    include predicting whether or not a patient has a particular disease, whether
+    or not an audio sample contains human speech, or whether or not the Duke men's
+    basketball team will lose in the first round of the NCAA tournament. In multiclass
+    classification, the classifier must assign one of several labels to each instance.
+    In multilabel classification, the classifier must assign a subset of the labels
+    to each instance. In this chapter, we will work through several classification
+    problems using logistic regression, discuss performance measures for the classification
+    task, and apply some of the feature extraction techniques you learned in the previous
+    chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Binary classification with logistic regression
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Ordinary linear regression assumes that the response variable is normally distributed.
+    The **normal** **distribution**, also known as the **Gaussian distribution** or
+    **bell curve**, is a function that describes the probability that an observation
+    will have a value between any two real numbers. Normally distributed data is symmetrical.
+    That is, half of the values are greater than the mean and the other half of the
+    values are less than the mean. The mean, median, and mode of normally distributed
+    data are also equal. Many natural phenomena approximately follow normal distributions.
+    For instance, the height of people is normally distributed; most people are of
+    average height, a few are tall, and a few are short.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In some problems the response variable is not normally distributed. For instance,
+    a coin toss can result in two outcomes: heads or tails. The **Bernoulli distribution**
+    describes the probability distribution of a random variable that can take the
+    positive case with probability *P* or the negative case with probability *1-P*.
+    If the response variable represents a probability, it must be constrained to the
+    range {0,1}. Linear regression assumes that a constant change in the value of
+    an explanatory variable results in a constant change in the value of the response
+    variable, an assumption that does not hold if the value of the response variable
+    represents a probability. Generalized linear models remove this assumption by
+    relating a linear combination of the explanatory variables to the response variable
+    using a link function. In fact, we already used a link function in [Chapter 2](ch02.html
+    "Chapter 2. Linear Regression"), *Linear Regression*; ordinary linear regression
+    is a special case of the generalized linear model that relates a linear combination
+    of the explanatory variables to a normally distributed response variable using
+    the **identity link function**. We can use a different link function to relate
+    a linear combination of the explanatory variables to the response variable that
+    is not normally distributed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In logistic regression, the response variable describes the probability that
+    the outcome is the positive case. If the response variable is equal to or exceeds
+    a discrimination threshold, the positive class is predicted; otherwise, the negative
+    class is predicted. The response variable is modeled as a function of a linear
+    combination of the explanatory variables using the **logistic** **function**.
+    Given by the following equation, the logistic function always returns a value
+    between zero and one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Binary classification with logistic regression](img/8365OS_04_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following is a plot of the value of the logistic function for the range
+    {-6,6}:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Binary classification with logistic regression](img/8365OS_04_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'For logistic regression, ![Binary classification with logistic regression](img/8365OS_04_16.jpg)
+    is equal to a linear combination of explanatory variables, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Binary classification with logistic regression](img/8365OS_04_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The **logit function** is the inverse of the logistic function. It links ![Binary
+    classification with logistic regression](img/8365OS_04_17.jpg) back to a linear
+    combination of the explanatory variables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Binary classification with logistic regression](img/8365OS_04_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now that we have defined the model for logistic regression, let's apply it to
+    a binary classification task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Spam filtering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Our first problem is a modern version of the canonical binary classification
+    problem: spam classification. In our version, however, we will classify spam and
+    ham SMS messages rather than e-mail. We will extract TF-IDF features from the
+    messages using techniques you learned in [Chapter 3](ch03.html "Chapter 3. Feature
+    Extraction and Preprocessing"), *Feature Extraction and Preprocessing*, and classify
+    the messages using logistic regression.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will use the SMS Spam Classification Data Set from the UCI Machine Learning
+    Repository. The dataset can be downloaded from [http://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection](http://archive.ics.uci.edu/ml/datasets/SMS+Spam+Collection).
+    First, let''s explore the data set and calculate some basic summary statistics
+    using pandas:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A binary label and a text message comprise each row. The data set contains
+    5,574 instances; 4,827 messages are ham and the remaining 747 messages are spam.
+    The ham messages are labeled with zero, and the spam messages are labeled with
+    one. While the noteworthy, or case, outcome is often assigned the label one and
+    the non-case outcome is often assigned zero, these assignments are arbitrary.
+    Inspecting the data may reveal other attributes that should be captured in the
+    model. The following selection of messages characterizes both of the classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s make some predictions using scikit-learn''s `LogisticRegression` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'First, we load the `.csv` file using pandas and split the data set into training
+    and test sets. By default, `train_test_split()` assigns 75 percent of the samples
+    to the training set and allocates the remaining 25 percent of the samples to the
+    test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we create a `TfidfVectorizer`. Recall from [Chapter 3](ch03.html "Chapter 3. Feature
+    Extraction and Preprocessing"), *Feature Extraction and Preprocessing*, that `TfidfVectorizer`
+    combines `CountVectorizer` and `TfidfTransformer`. We fit it with the training
+    messages, and transform both the training and test messages:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we create an instance of `LogisticRegression` and train our model.
+    Like `LinearRegression`, `LogisticRegression` implements the `fit()` and `predict()`
+    methods. As a sanity check, we printed a few predictions for manual inspection:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output of the script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: How well does our classifier perform? The performance metrics we used for linear
+    regression are inappropriate for this task. We are only interested in whether
+    the predicted class was correct, not how far it was from the decision boundary.
+    In the next section, we will discuss some performance metrics that can be used
+    to evaluate binary classifiers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Binary classification performance metrics
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A variety of metrics exist to evaluate the performance of binary classifiers
+    against trusted labels. The most common metrics are **accuracy**, **precision**,
+    **recall**, **F1 measure**, and **ROC AUC score**. All of these measures depend
+    on the concepts of **true positives**, **true** **negatives**, **false positives**,
+    and **false negatives**. *Positive* and *negative* refer to the classes. *True*
+    and *false* denote whether the predicted class is the same as the true class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For our SMS spam classifier, a true positive prediction is when the classifier
+    correctly predicts that a message is spam. A true negative prediction is when
+    the classifier correctly predicts that a message is ham. A prediction that a ham
+    message is spam is a false positive prediction, and a spam message incorrectly
+    classified as ham is a false negative prediction. A **confusion matrix**, or **contingency
+    table**, can be used to visualize true and false positives and negatives. The
+    rows of the matrix are the true classes of the instances, and the columns are
+    the predicted classes of the instances:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The confusion matrix indicates that there were four true negative predictions,
+    three true positive predictions, two false negative predictions, and one false
+    positive prediction. Confusion matrices become more useful in multi-class problems,
+    in which it can be difficult to determine the most frequent types of errors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Binary classification performance metrics](img/8365OS_04_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Accuracy
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Accuracy measures a fraction of the classifier''s predictions that are correct.
+    scikit-learn provides a function to calculate the accuracy of a set of predictions
+    given the correct labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`LogisticRegression.score()` predicts and scores labels for a test set using
+    accuracy. Let''s evaluate our classifier''s accuracy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that your accuracy may differ as the training and test sets are assigned
+    randomly. While accuracy measures the overall correctness of the classifier, it
+    does not distinguish between false positive errors and false negative errors.
+    Some applications may be more sensitive to false negatives than false positives,
+    or vice versa. Furthermore, accuracy is not an informative metric if the proportions
+    of the classes are skewed in the population. For example, a classifier that predicts
+    whether or not credit card transactions are fraudulent may be more sensitive to
+    false negatives than to false positives. To promote customer satisfaction, the
+    credit card company may prefer to risk verifying legitimate transactions than
+    risk ignoring a fraudulent transaction. Because most transactions are legitimate,
+    accuracy is not an appropriate metric for this problem. A classifier that always
+    predicts that transactions are legitimate could have a high accuracy score, but
+    would not be useful. For these reasons, classifiers are often evaluated using
+    two additional measures called precision and recall.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Precision and recall
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Recall from [Chapter 1](ch01.html "Chapter 1. The Fundamentals of Machine Learning"),
+    *The Fundamentals of Machine Learning*, that precision is the fraction of positive
+    predictions that are correct. For instance, in our SMS spam classifier, precision
+    is the fraction of messages classified as spam that are actually spam. Precision
+    is given by the following ratio:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Precision and recall](img/8365OS_04_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Sometimes called sensitivity in medical domains, recall is the fraction of
+    the truly positive instances that the classifier recognizes. A recall score of
+    one indicates that the classifier did not make any false negative predictions.
+    For our SMS spam classifier, recall is the fraction of spam messages that were
+    truly classified as spam. Recall is calculated with the following ratio:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Precision and recall](img/8365OS_04_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Individually, precision and recall are seldom informative; they are both incomplete
+    views of a classifier''s performance. Both precision and recall can fail to distinguish
+    classifiers that perform well from certain types of classifiers that perform poorly.
+    A trivial classifier could easily achieve a perfect recall score by predicting
+    positive for every instance. For example, assume that a test set contains ten
+    positive examples and ten negative examples. A classifier that predicts positive
+    for every example will achieve a recall of one, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Precision and recall](img/8365OS_04_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: A classifier that predicts negative for every example, or that makes only false
+    positive and true negative predictions, will achieve a recall score of zero. Similarly,
+    a classifier that predicts that only a single instance is positive and happens
+    to be correct will achieve perfect precision.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'scikit-learn provides a function to calculate the precision and recall for
+    a classifier from a set of predictions and the corresponding set of trusted labels.
+    Let''s calculate our SMS classifier''s precision and recall:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Our classifier's precision is 0.992; almost all of the messages that it predicted
+    as spam were actually spam. Its recall is lower, indicating that it incorrectly
+    classified approximately 22 percent of the spam messages as ham. Your precision
+    and recall may vary since the training and test data are randomly partitioned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calculating the F1 measure
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The F1 measure is the harmonic mean, or weighted average, of the precision
+    and recall scores. Also called the f-measure or the f-score, the F1 score is calculated
+    using the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Calculating the F1 measure](img/8365OS_04_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The F1 measure penalizes classifiers with imbalanced precision and recall scores,
+    like the trivial classifier that always predicts the positive class. A model with
+    perfect precision and recall scores will achieve an F1 score of one. A model with
+    a perfect precision score and a recall score of zero will achieve an F1 score
+    of zero. As for precision and recall, scikit-learn provides a function to calculate
+    the F1 score for a set of predictions. Let''s compute our classifier''s F1 score.
+    The following snippet continues the previous code sample:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The arithmetic mean of our classifier's precision and recall scores is 0.803\.
+    As the difference between the classifier's precision and recall is small, the
+    F1 measure's penalty is small. Models are sometimes evaluated using the F0.5 and
+    F2 scores, which favor precision over recall and recall over precision, respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ROC AUC
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A **Receiver Operating Characteristic**, or **ROC curve**, visualizes a classifier''s
+    performance. Unlike accuracy, the ROC curve is insensitive to data sets with unbalanced
+    class proportions; unlike precision and recall, the ROC curve illustrates the
+    classifier''s performance for all values of the discrimination threshold. ROC
+    curves plot the classifier''s recall against its **fall-out**. Fall-out, or the
+    false positive rate, is the number of false positives divided by the total number
+    of negatives. It is calculated using the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ROC AUC](img/8365OS_04_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**AUC** is the area under the ROC curve; it reduces the ROC curve to a single
+    value, which represents the expected performance of the classifier. The dashed
+    line in the following figure is for a classifier that predicts classes randomly;
+    it has an AUC of 0.5\. The solid curve is for a classifier that outperforms random
+    guessing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ROC AUC](img/8365OS_04_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s plot the ROC curve for our SMS spam classifier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From the ROC AUC plot, it is apparent that our classifier outperforms random
+    guessing; most of the plot area lies under its curve:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ROC AUC](img/8365OS_04_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Tuning models with grid search
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Hyperparameters are parameters of the model that are not learned. For example,
+    hyperparameters of our logistic regression SMS classifier include the value of
+    the regularization term and thresholds used to remove words that appear too frequently
+    or infrequently. In scikit-learn, hyperparameters are set through the model''s
+    constructor. In the previous examples, we did not set any arguments for `LogisticRegression()`;
+    we used the default values for all of the hyperparameters. These default values
+    are often a good start, but they may not produce the optimal model. **Grid search**
+    is a common method to select the hyperparameter values that produce the best model.
+    Grid search takes a set of possible values for each hyperparameter that should
+    be tuned, and evaluates a model trained on each element of the Cartesian product
+    of the sets. That is, grid search is an exhaustive search that trains and evaluates
+    a model for each possible combination of the hyperparameter values supplied by
+    the developer. A disadvantage of grid search is that it is computationally costly
+    for even small sets of hyperparameter values. Fortunately, it is an **embarrassingly
+    parallel** problem; many models can easily be trained and evaluated concurrently
+    since no synchronization is required between the processes. Let''s use scikit-learn''s
+    `GridSearchCV()` function to find better hyperparameter values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`GridSearchCV()` takes an estimator, a parameter space, and performance measure.
+    The argument `n_jobs` specifies the maximum number of concurrent jobs; set `n_jobs`
+    to `-1` to use all CPU cores. Note that `fit()` must be called in a Python `main`
+    block in order to fork additional processes; this example must be executed as
+    a script, and not in an interactive interpreter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output of the script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Optimizing the values of the hyperparameters has improved our model's recall
+    score on the `test` set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multi-class classification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous sections you learned to use logistic regression for binary classification.
+    In many classification problems, however, there are more than two classes that
+    are of interest. We might wish to predict the genres of songs from samples of
+    audio, or classify images of galaxies by their types. The goal of **multi-class
+    classification** is to assign an instance to one of the set of classes. scikit-learn
+    uses a strategy called **one-vs.-all**, or **one-vs.-the-rest**, to support multi-class
+    classification. One-vs.-allclassification uses one binary classifier for each
+    of the possible classes. The class that is predicted with the greatest confidence
+    is assigned to the instance. `LogisticRegression` supports multi-class classification
+    using the one-versus-all strategy out of the box. Let's use `LogisticRegression`
+    for a multi-class classification problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Assume that you would like to watch a movie, but you have a strong aversion
+    to watching bad movies. To inform your decision, you could read reviews of the
+    movies you are considering, but unfortunately you also have a strong aversion
+    to reading movie reviews. Let's use scikit-learn to find the movies with good
+    reviews.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this example, we will classify the sentiments of phrases taken from movie
+    reviews in the Rotten Tomatoes data set. Each phrase can be classified as one
+    of the following sentiments: negative, somewhat negative, neutral, somewhat positive,
+    or positive. While the classes appear to be ordered, the explanatory variables
+    that we will use do not always corroborate this order due to sarcasm, negation,
+    and other linguistic phenomena. Instead, we will approach this problem as a multi-class
+    classification task.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The data can be downloaded from [http://www.kaggle.com/c/sentiment-analysis-on-movie-reviews/data](http://www.kaggle.com/c/sentiment-analysis-on-movie-reviews/data).
+    First, let''s explore the data set using pandas. Note that the import and data-loading
+    statements in the following snippet are required for the subsequent snippets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: The columns of the data set are tab delimited. The data set contains 1,56,060
+    instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `Sentiment` column contains the response variables. The `0` label corresponds
+    to the sentiment `negative`, `1` corresponds to `somewhat negative`, and so on.
+    The `Phrase` column contains the raw text. Each sentence from the movie reviews
+    has been parsed into smaller phrases. We will not require the `PhraseId` and `SentenceId`
+    columns in this example. Let''s print some of the phrases and examine them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now let''s examine the target classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The most common class, `Neutral`, includes more than 50 percent of the instances.
+    Accuracy will not be an informative performance measure for this problem, as a
+    degenerate classifier that predicts only `Neutral` can obtain an accuracy near
+    0.5\. Approximately one quarter of the reviews are positive or somewhat positive,
+    and approximately one fifth of the reviews are negative or somewhat negative.
+    Let''s train a classifier with scikit-learn:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output of the script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Multi-class classification performance metrics
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As with binary classification, confusion matrices are useful for visualizing
+    the types of errors made by the classifier. Precision, recall, and F1 score can
+    be computed for each of the classes, and accuracy for all of the predictions can
+    also be calculated. Let''s evaluate our classifier''s predictions. The following
+    snippet continues the previous example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following will be appended to the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: First, we make predictions using the best parameter set found by using grid
+    searching. While our classifier is an improvement over the baseline classifier,
+    it frequently mistakes `Somewhat Positive` and `Somewhat Negative` for `Neutral`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multi-label classification and problem transformation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous sections, we discussed binary classification, in which each
+    instance must be assigned to one of the two classes, and multi-class classification,
+    in which each instance must be assigned to one of the set of classes. The final
+    type of classification problem that we will discuss is multi-label classification,
+    in which each instance can be assigned a subset of the set of classes. Examples
+    of multi-label classification include assigning tags to messages posted on a forum,
+    and classifying the objects present in an image. There are two groups of approaches
+    for multi-label classification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Problem transformation** methods are techniques that cast the original multi-label
+    problem as a set of single-label classification problems. The first problem transformation
+    method that we will review converts each set of labels encountered in the training
+    data to a single label. For example, consider a multi-label classification problem
+    in which news articles must be assigned to one or more categories from a set.
+    The following training data contains seven articles that can pertain to one or
+    more of the five categories.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|   | Categories |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Instance** | **Local** | **US** | **Business** | **Science and Technology**
+    | **Sports** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | ✔ | ✔ |   |   |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | ✔ |   | ✔ |   |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 |   |   | ✔ | ✔ |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 |   |   |   |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | ✔ |   |   |   |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 |   |   | ✔ |   |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 |   | ✔ |   | ✔ |   |'
+  prefs: []
+  type: TYPE_TB
+- en: Transforming the problem into a single-label classification task using the power
+    set of labels seen in the training data results in the following training data.
+    Previously, the first instance was classified as `Local` and `US`. Now it has
+    a single label, `Local` ![Multi-label classification and problem transformation](img/8365OS_04_18.jpg)
+    ` US`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|   | Category |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Instance** | **Local** | **Local** ![Multi-label classification and problem
+    transformation](img/8365OS_04_18.jpg) ** US** | **Business** | **Local** ![Multi-label
+    classification and problem transformation](img/8365OS_04_18.jpg) ** Business**
+    | **US** ![Multi-label classification and problem transformation](img/8365OS_04_18.jpg)
+    ** Science and Technology** | **Business** ![Multi-label classification and problem
+    transformation](img/8365OS_04_18.jpg) ** Science and Technology** | **Sports**
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 |   | ✔ |   |   |   |   |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 |   |   |   | ✔ |   |   |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 |   |   |   |   |   | ✔ |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 |   |   |   |   |   |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | ✔ |   |   |   |   |   |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 |   |   | ✔ |   |   |   |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 |   |   |   |   | ✔ |   |   |'
+  prefs: []
+  type: TYPE_TB
+- en: The multi-label classification problem that had five classes is now a multi-class
+    classification problem with seven classes. While the power set problem transformation
+    is intuitive, increasing the number of classes is frequently impractical; this
+    transformation can produce many new labels that correspond to only a few training
+    instances. Furthermore, the classifier can only predict combinations of labels
+    that were seen in the training data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|   | Category |   | Category |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Instance** | **Local** | **¬Local** | **Instance** | **Business** | **¬Business**
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | ✔ |   | 1 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | ✔ |   | 2 | ✔ |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 |   | ✔ | 3 | ✔ |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 |   | ✔ | 4 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | ✔ |   | 5 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 |   | ✔ | 6 | ✔ |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 |   | ✔ | 7 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '|   |   |   |   |   |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '|   | **Category** |   | **Category** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Instance | US | ¬US | Instance | US | ¬US |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | ✔ |   | 1 | ✔ |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | ✔ |   | 2 | ✔ |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 |   | ✔ | 3 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 |   | ✔ | 4 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 |   | ✔ | 5 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 |   | ✔ | 6 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | ✔ |   | 7 | ✔ |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '|   |   |   |   |   |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '|   | **Category** |   | **Category** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Instance | Sci. and Tech. | ¬Sci. and Tech. | Instance | Sports | ¬Sports
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 |   | ✔ | 1 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 |   | ✔ | 2 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | ✔ |   | 3 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 |   | ✔ | 4 | ✔ |   |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 |   | ✔ | 5 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 |   | ✔ | 6 |   | ✔ |'
+  prefs: []
+  type: TYPE_TB
+- en: A second problem transformation is to train one binary classifier for each of
+    the labels in the training set. Each classifier predicts whether or not the instance
+    belongs to one label. Our example would require five binary classifiers; the first
+    classifier would predict whether or not an instance should be classified as `Local`,
+    the second classifier would predict whether or not an instance should be classified
+    as `US`, and so on. The final prediction is the union of the predictions from
+    all of the binary classifiers. The transformed training data is shown in the previous
+    figure. This problem transformation ensures that the single-label problems will
+    have the same number of training examples as the multilabel problem, but ignores
+    relationships between the labels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multi-label classification performance metrics
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Multi-label classification problems must be assessed using different performance
+    measures than single-label classification problems. Two of the most common performance
+    metrics are **Hamming loss** and **Jaccard similarity**. Hamming loss is the average
+    fraction of incorrect labels. Note that Hamming loss is a loss function, and that
+    the perfect score is zero. Jaccard similarity, or the Jaccard index, is the size
+    of the intersection of the predicted labels and the true labels divided by the
+    size of the union of the predicted and true labels. It ranges from zero to one,
+    and one is the perfect score. Jaccard similarity is calculated by the following
+    equation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Multi-label classification performance metrics](img/8365OS_04_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter we discussed generalized linear models, which extend ordinary
+    linear regression to support response variables with non-normal distributions.
+    Generalized linear models use a link function to relate a linear combination of
+    the explanatory variables to the response variable; unlike ordinary linear regression,
+    the relationship does not need to be linear. In particular, we examined the logistic
+    link function, a sigmoid function that returns a value between zero and one for
+    any real number.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We discussed logistic regression, a generalized linear model that uses the logistic
+    link function to relate explanatory variables to a Bernoulli-distributed response
+    variable. Logistic regression can be used for binary classification, a task in
+    which an instance must be assigned to one of the two classes; we used logistic
+    regression to classify spam and ham SMS messages. We then discussed multi-class
+    classification, a task in which each instance must be assigned one label from
+    a set of labels. We used the one-vs.-all strategy to classify the sentiments of
+    movie reviews. Finally, we discussed multi-label classification, in which instances
+    must be assigned a subset of a set of labels. Having completed our discussion
+    of regression and classification with generalized linear models, we will introduce
+    a non-linear model for regression and classification called the decision tree
+    in the next chapter.
+  prefs: []
+  type: TYPE_NORMAL

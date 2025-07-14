@@ -1,0 +1,710 @@
+- en: Boosting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The second generative method we will discuss is boosting. Boosting aims to combine
+    a number of weak learners into a strong ensemble. It is able to reduce bias, but
+    also variance. Here, weak learners are individual models that perform slightly
+    better than random. For example, in a classification dataset with two classes
+    and an equal number of instances belonging to each class, a weak learner will
+    be able to classify the dataset with an accuracy of slightly more than 50%.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will present two classic boosting algorithms, Gradient Boosting
+    and AdaBoost. Furthermore, we will explore the use of scikit-learn implementations
+    for classification and regression. Finally, we will experiment with a recent boosting
+    algorithm and its implementation, XGBoost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main topics covered are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The motivation behind using boosting ensembles
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The various algorithms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Leveraging scikit-learn to create boosting ensembles in Python
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Utilizing the XGBoost library for Python
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will require basic knowledge of machine learning techniques and algorithms.
+    Furthermore, a knowledge of python conventions and syntax is required. Finally,
+    familiarity with the NumPy library will greatly help the reader to understand
+    some custom algorithm implementations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code files of this chapter can be found on GitHub:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter06](https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter06)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Check out the following video to see the Code in Action: [http://bit.ly/2ShWstT](http://bit.ly/2ShWstT).
+  prefs: []
+  type: TYPE_NORMAL
+- en: AdaBoost
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: AdaBoost is one of the most popular boosting algorithms. Similar to bagging,
+    the main idea behind the algorithm is to create a number of uncorrelated weak
+    learners and then combine their predictions. The main difference with bagging
+    is that instead of creating a number of independent bootstrapped train sets, the
+    algorithm sequentially trains each weak learner, assigns weights to all instances,
+    samples the next train set based on the instance's weights, and repeats the whole
+    process. As a base learner algorithm, usually decision trees consisting of a single
+    node are used. These decision trees, with a depth of a single level, are called
+    **decision stumps**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Weighted sampling
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Weighted sampling is the sampling process were each candidate has a corresponding
+    weight, which determines its probability of being sampled. The weights are normalized,
+    in order for their sum to equal one. Then, the normalized weights correspond to
+    the probability that any individual will be sampled. For a simple example with
+    three candidates, assuming weights of 1, 5, and 10, the following table depicts
+    the normalized weights and the corresponding probability that any candidate will
+    be chosen.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Candidate | Weight | Normalized weight | Probability |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 1 | 0.0625 | 6.25% |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 5 | 0.3125 | 31.25% |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 10 | 0.625 | 62.50% |'
+  prefs: []
+  type: TYPE_TB
+- en: Instance weights to probabilities
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the ensemble
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Assuming a classification problem, the AdaBoost algorithm can be described
+    on a high-level basis, from its basic steps. For regression purposes, the steps
+    are similar:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Initialize all of the train set instance's weights equally, so their sum equals
+    1.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Generate a new set by sampling with replacement, according to the weights.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Train a weak learner on the sampled set.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate its error on the original train set.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Add the weak learner to the ensemble and save its error rate.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Adjust the weights, increasing the weights of misclassified instances and decreasing
+    the weights of correctly classified instances.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Repeat from *Step 2*.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The weak learners are combined by voting. Each learner's vote is weighted, according
+    to its error rate.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The whole process is depicted in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9001110e-758f-4230-aea5-a7077ac7453e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The process of creating the ensemble for the nth learner
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In essence, this makes each new classifier focus on the instances that the
+    previous learners could not handle correctly. Assuming a binary classification
+    problem, we may start with a dataset that looks like the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3dbe0e7c-9aa8-4189-866c-201c38baac6b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Our initial dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, all weights are equal. The first decision stump decides to partition
+    the problem space as follows. The dotted line represents the decision boundary.
+    The two black **+** and **-** symbols denote the sub-space that the decision stump
+    classifies every instance as positive or negative, respectively. This leaves two
+    misclassified instances. These instance weights will be increased, while all other
+    weights will be decreased:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/8d4ca482-4848-4991-8382-8f7fb365979c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The first decision stump's space partition and errors
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By creating another dataset, where the two misclassified instances are dominant
+    (they may be included several times, as we sample with replacement and their weights
+    are larger than the other instances), the second decision stump partitions the
+    space, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d2e1c6fb-3344-4296-9ab2-196542b77cf5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The second decision stump's space partition and errors
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, after repeating the process for a third decision stump, the final
+    ensemble has partitioned the space as depicted in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9290b515-08ea-41cf-8f59-160bdef9c1c5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The final ensemble's partition of the problem space
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing AdaBoost in Python
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In order to better understand how AdaBoost works, we will present a basic implementation
+    in Python. We will use the breast cancer classification dataset for this example.
+    As always, we first load the libraries and data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: We then create the ensemble. First, we declare the ensemble's size and the base
+    learner type. As mentioned earlier, we use decision stumps (decision trees only
+    a single level deep).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Furthermore, we create a NumPy array for the data instance weights, the learners''
+    weights, and the learners'' errors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For each base learner, we will create a `deepcopy` of the original classifier,
+    train it on a sample dataset, and evaluate it. First, we create the copy and sample
+    with replacement from the original test set, according to the instance''s weights:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then fit the learner on the sampled dataset and predict on the original
+    train set. We use the `predictions` to see which instances are correctly classified
+    and which instances are misclassified:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following, the weighted errors are classified. Both `errors` and `corrects`
+    are lists of Booleans (`True` or `False`), but Python handles them as 1 and 0\.
+    This allows us to multiply element-wise with `data_weights`. The learner''s error
+    is then calculated with the average weighted error:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, the learner''s weight can be calculated as half the natural logarithm
+    of the weighted accuracy over the weighted error. In turn, we can use the learner''s
+    weight to calculate the new data weights. For erroneously classified instances,
+    the new weight equals the natural exponent of the old weight times the learner''s
+    weight. For correctly classified instances, the negative multiple is used instead.
+    Finally, the new weights are normalized and the base learner is added to the `base_learners`
+    list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to make predictions with the ensemble, we combine each individual
+    prediction through a weighted majority voting. As this is a binary classification
+    problem, if the weighted average is more than `0.5`, the instance is classified
+    as `0`; otherwise, it''s classified as `1`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: The final accuracy achieved by this ensemble is 95%.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Strengths and weaknesses
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Boosting algorithms are able to reduce both bias and variance. For a long time,
+    they were considered immune to overfitting, but in fact they can overfit, although
+    they are extremely robust. One possible explanation is that the base learners,
+    in order to classify outliers, create very strong and complicated rules that rarely
+    fit other instances. In the following diagram, an example is depicted. The ensemble
+    has generated a set of rules in order to correctly classify the outlier, but the
+    rules are so strong that only an identical example (that is, with the exact same
+    feature values) could fit into the sub-space defined by the rules:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/74776589-d19e-405e-9f91-67f8937812d0.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Generated rules for an outlier
+  prefs: []
+  type: TYPE_NORMAL
+- en: One disadvantage of many boosting algorithms is that they are not easily parallelized,
+    as the models are created in a sequential fashion. Furthermore, they pose the
+    usual problems of ensemble learning techniques, such as reduction in interpretability
+    and additional computational costs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gradient boosting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Gradient boosting is another boosting algorithm. It is a more generalized boosting
+    framework compared to AdaBoost, which also makes it more complicated and math-intensive.
+    Instead of trying to emphasize problematic instances by assigning weights and
+    resampling the dataset, gradient boosting builds each base learner on the previous
+    learner's errors. Furthermore, gradient boosting uses decision trees of varying
+    depths. In this section, we will present gradient boosting, without delving much
+    into the math involved. Instead, we will present the basic concepts, as well as
+    a custom Python implementation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the ensemble
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The gradient boosting algorithm (for regression purposes) starts by calculating
+    the mean of the target variable for the train set and uses it as an initial prediction.
+    Then, it calculates the difference of each instance's target from the prediction
+    (mean), in order to calculate the error. These errors are also called **pseudo-residuals**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Following that, it creates a decision tree that tries to predict the pseudo-residuals.
+    By repeating this process, a number of times, the whole ensemble is created. Similar
+    to AdaBoost, gradient boosting assigns a weight to each tree. Contrary to AdaBoost,
+    this weight does not depend on the tree''s performance. Instead, it is a constant
+    term, which is called **learning rate**. Its purpose is to increase the ensemble''s
+    generalization ability, by restricting its over-fitting power. The algorithm''s
+    steps are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Define the learning rate (smaller than 1) and the ensemble's size.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate the train set's target mean.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Using the mean as a very simple initial prediction, calculate each instance's
+    target difference from the mean. These errors are called pseudo-residuals.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Build a decision tree, by using the original train set's features and the pseudo-residuals
+    as targets.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Make predictions on the train set, using the decision tree (we try to predict
+    the pseudo-residuals). Multiply the predicted values by the learning rate.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Add the multiplied values to the previously stored predicted values. Use the
+    newly calculated values as predictions.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate the new pseudo-residuals using the calculated predictions.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Repeat from *Step 4* until the desired ensemble size is achieved.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note that in order to produce the final ensemble's predictions, each base learner's
+    prediction is multiplied by the learning rate and added to the previous learner's
+    prediction. The calculated mean can be regarded as the first base learner's prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At each step *s*, for a learning rate *lr*, the prediction is calculated as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5f94494d-65fa-4f84-a396-2b9fb0b4e72a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The residuals are calculated as the difference from the actual target value
+    *t*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/78a02149-b4ed-4ee2-9fbc-f0f792bd2e71.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The whole process is depicted in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/136039d5-8c1c-4600-a6e8-a6e166d33c8f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Steps to create a gradient boosting ensemble
+  prefs: []
+  type: TYPE_NORMAL
+- en: Further reading
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As this is a hands-on book, we will not go further into the mathematical aspect
+    of the algorithm. Nonetheless, for the mathematically curious or inclined, we
+    recommend the following papers. The first is a more regression-specific framework,
+    while the second is more general:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Friedman, J.H., 2001\. Greedy function approximation: a gradient boosting machine. *Annals
+    of statistics*, pp.1189-1232.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Mason, L., Baxter, J., Bartlett, P.L. and Frean, M.R., 2000\. Boosting algorithms
+    as gradient descent. In *Advances in neural information processing systems *(pp.
+    512-518).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing gradient boosting in Python
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Although gradient boosting can be complex and mathematically intensive, if
+    we focus on conventional regression problems, it can be quite simple. In order
+    to demonstrate this, we present a custom implementation in Python, using standard
+    scikit-learn decision trees. For our implementation, we will use the diabetes
+    regression dataset. First, we load the libraries and data, and set the seed for
+    NumPy''s random number generator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Following this, we define the ensemble's size, learning rate, and the Decision
+    Tree's maximum depth. Furthermore, we create a list to store the individual base
+    learners, as well as a NumPy array to store the previous predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As mentioned earlier, our initial prediction is the train set''s target mean.
+    Instead of defining a maximum depth, we could also define a maximum number of
+    leaf nodes by passing the `max_leaf_nodes=3` argument to the constructor:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next step is to create and train the ensemble. We start by calculating
+    the pseudo-residuals, using the previous predictions. We then create a deep copy
+    of the base learner class and train it on the train set, using the pseudo-residuals
+    as targets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we use the trained base learner in order to predict the pseudo-residuals
+    on the train set. We multiply the predictions by the learning rate and add them
+    to our previous predictions. Finally, we append the base learner to the `base_learners`
+    list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to make predictions with our ensemble and evaluate it, we use the
+    test set''s features in order to predict pseudo-residuals, multiply them by the
+    learning rate, and add them to the train set''s target mean. It is important to
+    use the original train set''s mean as a starting point, because each tree predicts
+    deviation from that original mean:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The algorithm is able to achieve an R-squared value of 0.59 and an MSE of 2253.34
+    with this particular setup.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using scikit-learn
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Although for educational purposes it is useful to code our own algorithms, scikit-learn
+    has some very good implementations for both classification and regression problems.
+    In this section, we will go through the implementations, as well as see how we
+    can extract information about the generated ensembles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using AdaBoost
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Scikit-learn's Adaboost implementations exist in the `sklearn.ensemble` package,
+    in the `AdaBoostClassifier` and `AdaBoostRegressor` classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Like all scikit-learn classifiers, we use the `fit` and `predict` functions
+    in order to train the classifier and predict on the test set. The first parameter
+    is the base classifier that the algorithm will use. The `algorithm="SAMME"` parameter
+    forces the classifier to use a discrete boosting algorithm. For this example,
+    we use the hand-written digits recognition problem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This results in an ensemble with 81% accuracy on the test set. One advantage
+    of using the provided implementation is that we can access and plot each individual
+    base learner''s errors and weights. We can access them through `ensemble.estimator_errors_`
+    and `ensemble.estimator_weights_`, respectively. By plotting the weights, we can
+    gauge where the ensemble stops to benefit from additional base learners. By creating
+    an ensemble of 1,000 base learners, we see that from approximately the 200 base
+    learners mark, the weights are stabilized. Thus, there is little point in adding
+    more than 200\. This is further confirmed by the fact that the ensemble of size
+    1,000 achieves an 82% accuracy, a small increase over the 81% achieved with 200
+    base learners:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5ff5bdde-8046-483f-be0d-5d27d68ae112.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Base learner weights for an ensemble of 1,000 base learners
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The regression implementation adheres to the same principles. Here, we test
+    the algorithm on the diabetes dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The ensemble generates an R-squared of 0.59 and an MSE of 2256.5\. By plotting
+    the weights of the base learners, we see that the algorithm has stopped early,
+    due to negligible improvement in predictive power, after the 151^(st) base learner.
+    This is indicated by the zero valued weights in the plot. Furthermore, by printing
+    the length of `ensemble.estimators_`, we observe that its length is only 151\.
+    This is the equivalent of the `base_learners` list in our implementation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/61ab17f3-3d12-412e-ba29-ef48a5fad8bc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Base learner weights for the regression Adaboost
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using gradient boosting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Scikit-learn also implements gradient boosting regression and classification.
+    They too are included in the `ensemble` package, under `GradientBoostingRegressor`
+    and `GradientBoostingClassifier`, respectively. The two classes store the errors
+    at each step, in the `train_score_` attribute of the object. Here, we present
+    an example for the diabetes regression dataset. The train and validation processes
+    follow the scikit-learn standard, using the `fit` and `predict` functions. The
+    only parameter that needs to be specified is the learning rate, which is passed
+    to the `GradientBoostingRegressor` constructor through the `learning_rate` parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The ensemble achieves an R-squared of 0.44 and an MSE of 3092\. Furthermore,
+    if we use matplotlib to plot `ensemble.train_score_`, we can see that diminishing
+    returns appear after around 20 base learners. If we further analyze the errors,
+    by calculating the improvements (difference between base learners), we see that
+    after 25 base learners there are cases where adding a base learner worsens the
+    performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Although on average the performance continues to increase, after 50 base learners
+    there is no significant improvement. Thus, we repeat the experiment, with `ensemble_size
+    = 50`, yielding an R-squared of 0.61 and an MSE of 2152:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/37438d81-ae5f-4ac4-a072-0f60b54b397e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Errors and differences for gradient boost regression
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the classification example, we use the hand-written digit classification
+    dataset. Again, we define the `n_estimators` and `learning_rate` parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The accuracy achieved with the specific ensemble size is 89%. By plotting the
+    errors and their differences, we see that there are again diminishing returns,
+    but there are no cases where performance significantly drops. Thus, we do not
+    expect a predictive performance improvement by reducing the ensemble size.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XGBoost
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'XGBoost is a boosting library with parallel, GPU, and distributed execution
+    support. It has helped many machine learning engineers and data scientists to
+    win Kaggle.com competitions. Furthermore, it provides an interface that resembles
+    scikit-learn''s interface. Thus, someone already familiar with the interface is
+    able to quickly utilize the library. Additionally, it allows for very fine control
+    over the ensemble''s creation. It supports monotonic constraints (that is, the
+    predicted value should only increase or decrease, relative to a specific feature),
+    as well as feature interaction constraints (for example, if a decision tree creates
+    a node that splits by age, it should not use sex as a splitting feature for all
+    children of that specific node). Finally, it adds an additional regularization
+    parameter, gamma, which further reduces the overfitting capabilities of the generated
+    ensemble. The corresponding paper is Chen, T. and Guestrin, C., 2016, August.
+    Xgboost: A scalable tree boosting system. In *Proceedings of the 22nd acm sigkdd
+    international conference on knowledge discovery and data mining* (pp. 785-794).
+    ACM.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using XGBoost for regression
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We will present a simple regression example with XGBoost, using the diabetes
+    dataset. As it will be shown, its usage is quite simple and similar to the scikit-learn
+    classifiers. XGBoost implements regression with `XGBRegressor`. The constructor
+    has a respectably large number of parameters, which are very well-documented in
+    the official documentation. In our example, we will use the `n_estimators`, `n_jobs`,
+    `max_depth`, and `learning_rate` parameters. Following scikit-learn''s conventions,
+    they define the ensemble size, the number of parallel processes, the tree''s maximum
+    depth, and the learning rate, respectively:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The rest of the code evaluates the generated `ensemble`, and is similar to
+    any of the previous examples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: XGBoost achieves an R-squared of 0.65 and an MSE of 1932.9, the best performance
+    out of all the boosting methods we tested and implemented in this chapter. Furthermore,
+    we did not fine-tune any of its parameters, which further displays its modeling
+    power.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using XGBoost for classification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For classification purposes, the corresponding class is implemented in `XGBClassifier`.
+    The constructor''s parameters are the same as the regression implementation. For
+    our example, we use the hand-written digit classification problem. We set the
+    `n_estimators` parameter to `100` and `n_jobs` to `4`. The rest of the code follows
+    the usual template:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: The ensemble correctly classifies the test set with 89% accuracy, also the highest
+    achieved for any boosting algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other boosting libraries
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Two other boosting libraries that are gaining popularity are Microsoft's LightGBM
+    and Yandex' CatBoost. Both of these libraries can match (and even outperform)
+    XGBoost, under certain circumstances. Nonetheless, XGBoost is the best of all
+    three out of the box, without the need of fine-tuning and special data treatment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we presented one of the most powerful ensemble learning techniques,
+    boosting. We presented two popular boosting algorithms, AdaBoost and gradient
+    boosting. We presented custom implementations for both algorithms, as well as
+    usage examples for the scikit-learn implementations. Furthermore, we briefly presented
+    XGBoost, a library dedicated to regularized, distributed boosting. XGBoost was
+    able to outperform all other methods and implementations on both regression as
+    well as classification problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: AdaBoost creates a number of base learners by employing weak learners (slightly
+    better than random guessing). Each new base learner is trained on a weighted sample
+    from the original train set. Weighted sampling from a dataset assigns a weight
+    to each instance and then samples from the dataset, using the weights in order
+    to calculate the probability that each instance will be sampled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The data weights are calculated based on the previous base learner's errors.
+    The base learner's error is also used to calculate the learner's weight. The base
+    learners' predictions are combined through voting, using each learner's weight.
+    Gradient boosting builds its ensemble by training each new base learner using
+    the previous prediction's errors as a target. The initial prediction is the train
+    dataset's target mean. Boosting methods cannot be parallelized in the degree that
+    bagging methods can be. Although robust to overfitting, boosting methods can overfit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In scikit-learn, AdaBoost implementations store the individual learners' weights,
+    which can be used to identify the point where additional base learners do not
+    contribute to the ensemble's predictive power. Gradient Boosting implementations
+    store the ensemble's error at each step (base learner), which can also help to
+    identify an optimal number of base learners. XGBoost is a library dedicated to
+    boosting, with regularization capabilities that further reduce the overfitting
+    ability of the ensembles. XGBoost is frequently a part of winning machine learning
+    models in many Kaggle competitions.
+  prefs: []
+  type: TYPE_NORMAL

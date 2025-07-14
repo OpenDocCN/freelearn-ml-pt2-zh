@@ -1,0 +1,1157 @@
+- en: 'Chapter 3: AutoML with Amazon SageMaker Autopilot'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, you learned how Amazon SageMaker helps you build and
+    prepare datasets. In a typical machine learning project, the next step would be
+    to start experimenting with algorithms in order to find an early fit and get a
+    sense of the predictive power you could expect from the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Whether you work with traditional machine learning or deep learning, three
+    options are available when it comes to selecting an algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Write your own, or customize an existing one. This only makes sense if you have
+    strong skills in statistics and computer science, if you're quite sure that you
+    can do better than well-tuned, off-the-shelf algorithms, and if you're given enough
+    time to work on the project. Let's face it, these conditions are rarely met.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Use a built-in algorithm implemented in one of your favorite libraries, such
+    as **linear regression** or **XGBoost**. For deep learning problems, this includes
+    pre-trained models available in **TensorFlow**, **PyTorch**, and so on. This option
+    saves you the trouble of writing machine learning code. Instead, it lets you focus
+    on feature engineering and model optimization.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Use **AutoML**, a rising technique that lets you automatically build, train,
+    and optimize machine learning models.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In this chapter, you will learn about **Amazon SageMaker Autopilot**, an AutoML
+    capability part of Amazon SageMaker with built-in model explainability. We''ll
+    see how to use it in Amazon SageMaker Studio without writing a single line of
+    code, and also how to use it with the Amazon SageMaker SDK:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discovering Amazon SageMaker Autopilot
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using Amazon SageMaker Autopilot in SageMaker Studio
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using Amazon SageMaker Autopilot with the SageMaker SDK
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Diving deep on Amazon SageMaker Autopilot
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need an AWS account to run the examples included in this chapter. If
+    you haven't got one already, please point your browser at [https://aws.amazon.com/getting-started/](https://aws.amazon.com/getting-started/)
+    to create it. You should also familiarize yourself with the AWS Free Tier ([https://aws.amazon.com/free/](https://aws.amazon.com/free/)),
+    which lets you use many AWS services for free within certain usage limits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will need to install and configure the AWS **Command-Line Interface** (**CLI**)
+    for your account ([https://aws.amazon.com/cli/](https://aws.amazon.com/cli/)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will need a working Python 3.x environment. Installing the Anaconda distribution
+    ([https://www.anaconda.com/](https://www.anaconda.com/)) is not mandatory, but
+    is strongly encouraged as it includes many projects that we will need (Jupyter,
+    `pandas`, `numpy`, and more).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Code examples included in the book are available on GitHub at [https://github.com/PacktPublishing/Learn-Amazon-SageMaker-second-edition](https://github.com/PacktPublishing/Learn-Amazon-SageMaker-second-edition).
+    You will need to install a Git client to access them ([https://git-scm.com/](https://git-scm.com/)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discovering Amazon SageMaker Autopilot
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Added to Amazon SageMaker in late 2019, **Amazon SageMaker Autopilot** is an
+    AutoML capability that takes care of all the machine learning steps for you. You
+    only need to upload a columnar dataset to an Amazon S3 bucket and define the column
+    you want the model to learn (the **target attribute**). Then, you simply launch
+    an Autopilot job, with either a few clicks in the SageMaker Studio GUI or a couple
+    of lines of code with the SageMaker SDK.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The simplicity of SageMaker Autopilot doesn't come at the expense of transparency
+    and control. You can see how your models are built, and you can keep experimenting
+    to refine results. In that respect, SageMaker Autopilot should appeal to new and
+    seasoned practitioners alike.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this section, you''ll learn about the different steps of a SageMaker Autopilot
+    job and how they contribute to delivering high-quality models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Analyzing data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Feature engineering
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Model tuning
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let's start by seeing how SageMaker Autopilot analyzes data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Analyzing data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This step is responsible for understanding what type of machine learning problem
+    we're trying to solve. SageMaker Autopilot currently supports **linear regression**,
+    **binary classification**, and **multi-class classification**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: A frequent question is ”how much data is needed to build such models?” This
+    is a surprisingly difficult question. The answer—if there is one—depends on many
+    factors, such as the number of features and their quality. As a basic rule of
+    thumb, some practitioners recommend having 10-100 times more samples than features.
+    In any case, I'd advise you to collect no fewer than hundreds of samples (for
+    each class, if you're building a classification model). Thousands or tens of thousands
+    are better, especially if you have more features. For statistical machine learning,
+    there is rarely a need for millions of samples, so start with what you have, analyze
+    the results, and iterate before going on a data collection rampage!
+  prefs: []
+  type: TYPE_NORMAL
+- en: By analyzing the distribution of the target attribute, SageMaker Autopilot can
+    easily figure out which one is the right one. For instance, if the target attribute
+    has only two values (say, "yes" and "no"), you're likely trying to build a binary
+    classification model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, SageMaker Autopilot computes statistics on the dataset and individual
+    columns: the number of unique values, the mean, median, and so on. Machine learning
+    practitioners very often do this in order to get an initial feel for the data,
+    and it''s nice to see it automated. In addition, SageMaker Autopilot generates
+    a Jupyter notebook, the **data exploration notebook**, to present these statistics
+    in a user-friendly way.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once SageMaker Autopilot has analyzed the dataset, it builds **candidate pipelines**
+    that will be used to train candidate models. A pipeline is a combination of the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A data processing job, in charge of feature engineering. As you can guess, this
+    job runs on **Amazon SageMaker Processing**, which we studied in [*Chapter 2*](B17705_02_Final_JM_ePub.xhtml#_idTextAnchor030)*,*
+    *Handling Data Preparation Techniques*.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A training job, running on the processed dataset. Algorithms include the built-in
+    Linear Learner in SageMaker, XGBoost, and multi-layer perceptrons.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Next, let's see how Autopilot can be used in feature engineering.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature engineering
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This step is responsible for pre-processing the input dataset according to the
+    pipelines defined during data analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Candidate pipelines are fully documented in another autogenerated notebook
+    – the **candidate generation notebook**. This notebook isn''t just descriptive:
+    you can actually run its cells, and manually reproduce the steps performed by
+    SageMaker Autopilot. This level of transparency and control is extremely important
+    as it lets you understand exactly how the model was built. Thus, you''re able
+    to verify that it performs the way it should, and you''re able to explain it to
+    your stakeholders. Also, you can use the notebook as a starting point for additional
+    optimization and tweaking if you''re so inclined.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lastly, let's take a look at model tuning in Autopilot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Model tuning
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This step is responsible for training and tuning models according to the pipelines
+    defined during data analysis. For each pipeline, SageMaker Autopilot will launch
+    an **automatic model tuning** job (we'll cover this topic in detail in a later
+    chapter). In a nutshell, each tuning job will use **hyperparameter optimization**
+    to train a large number of increasingly accurate models on the processed dataset.
+    As usual, all of this happens on managed infrastructure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the model tuning is complete, you can view the model information and metrics
+    in Amazon SageMaker Studio, build visualizations, and so on. You can do the same
+    programmatically with the **Amazon SageMaker Experiments** SDK.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, you can deploy your model of choice just like any other SageMaker model
+    using either the SageMaker Studio GUI or the SageMaker SDK.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we understand the different steps of an Autopilot job, let's run a
+    job in SageMaker Studio.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Amazon SageMaker Autopilot in SageMaker Studio
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will build a model using only SageMaker Studio. We won't write a line of
+    machine learning code, so get ready for zero-code AI.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this section, you''ll learn how to do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Launch a SageMaker Autopilot job in SageMaker Studio.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Monitor the different steps of the job.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Visualize models and compare their properties.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Launching a job
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'First, we need a dataset. We''ll reuse the direct marketing dataset used in
+    [*Chapter 2*](B17705_02_Final_JM_ePub.xhtml#_idTextAnchor030), *Handling Data
+    Preparation Techniques*. This dataset describes a binary classification problem:
+    will a customer accept a marketing offer, yes or no? It contains a little more
+    than 41,000 labeled customer samples. Let''s dive in:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's open SageMaker Studio. Create a new Python 3 notebook using the **Data
+    Science** kernel, as shown in the following screenshot:![Figure 3.1 – Creating
+    a notebook
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_001.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.1 – Creating a notebook
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now, let''s download and extract the dataset as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In [*Chapter 2*](B17705_02_Final_JM_ePub.xhtml#_idTextAnchor030), *Handling
+    Data Preparation Techniques*, we ran a feature engineering script with Amazon
+    SageMaker Processing. We will do no such thing here: we simply upload the dataset
+    as is to S3, into the **default bucket** created by SageMaker:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The dataset will be available in S3 at the following location:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now, we click on the **Components and registries** icon in the left-hand vertical
+    icon bar, as can be seen in the following screenshot. This opens the **Experiments**
+    tab, and we click on the **Create Autopilot Experiment** button to create a new
+    Autopilot job.![Figure 3.2 – Viewing experiments
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_002.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.2 – Viewing experiments
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The next screen is where we configure the job. Let's enter `my-first-autopilot-job`
+    as the experiment name.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: We set the location of the input dataset using the path returned in *step 3*.
+    As can be seen in the following screenshot, we can either browse S3 buckets or
+    enter the S3 location directly:![Figure 3.3 – Defining the input location
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_003.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.3 – Defining the input location
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The next step is to define the name of the **target attribute**, as shown in
+    the following screenshot. The column storing the "yes" or "no" label is called
+    "y".![Figure 3.4 – Defining the target attribute
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_004.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.4 – Defining the target attribute
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As shown in the following screenshot, we set the S3 output location where job
+    artifacts will be copied to. I use `s3://sagemaker-us-east-2-123456789012/sagemaker/DEMO-autopilot/output/`
+    here, and you should, of course, update it with your own region and account number.![Figure
+    3.5 – Defining the output location
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_005.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.5 – Defining the output location
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We set the type of job we want to train, as shown in the following screenshot.
+    Here, we select **Auto** in order to let SageMaker Autopilot figure out the problem
+    type. Alternatively, we could select **Binary classification**, and pick our metric:
+    **Accuracy**, **AUC**, or **F1** (the default setting).![Figure 3.6 – Setting
+    the problem type'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_006.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.6 – Setting the problem type
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Finally, we decide whether we want to run a full job, or simply generate notebooks.
+    We'll go with the former, as shown in the following screenshot. The latter would
+    be a good option if we wanted to train and tweak the parameters manually. We also
+    decide not to deploy the best model automatically for now.![Figure 3.7 – Running
+    a complete experiment
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_007.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.7 – Running a complete experiment
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Optionally, in the **Advanced Settings** section, we would change the IAM role,
+    set an encryption key for job artifacts, define the VPC where we'd like to launch
+    job instances, and so on. Let's keep default values here.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The job setup is complete: all it took was this one screen. Then, we click
+    on **Create Experiment**, and off it goes!'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Monitoring a job
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Once the job is launched, it goes through the three steps that we already discussed,
+    which should take around 5 hours to complete. The new experiment is listed in
+    the **Experiments** tab, and we can right-click **Describe AutoML Job** to describe
+    its current status. This opens the following screen, where we can see the progress
+    of the job:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As expected, the job starts by analyzing data, as highlighted in the following
+    screenshot:![Figure 3.8 – Viewing job progress
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_008.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.8 – Viewing job progress
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'About 10 minutes later, data analysis is complete, and the job moves on to
+    feature engineering, where the input dataset will be transformed according to
+    the steps defined in the candidate pipelines. As shown in the following screenshot,
+    we can also see new two buttons in the top-right corner, pointing at the **candidate
+    generation** and **data exploration** notebooks: don''t worry, we''ll take a deeper
+    look at both later in the chapter.![Figure 3.9 – Viewing job progress'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_009.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.9 – Viewing job progress
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Once feature engineering is complete, the job then moves on to model tuning,
+    where candidate models are trained and tuned. As can be seen in the following
+    screenshot, the first training jobs quickly show up in the **Trials** tab. A "trial"
+    is the name SageMaker uses for a collection of related jobs, such as processing
+    jobs, batch transform jobs, and training jobs. We can see the **Objective**, that
+    is to say, the metric that the job tried to optimize (in this case, it's the F1
+    score). We can sort jobs based on this metric, and the best tuning job so far
+    is highlighted with a star.![Figure 3.10 – Viewing tuning jobs
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_010.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.10 – Viewing tuning jobs
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Once the AutoPilot job is complete, your screen should look similar to the following
+    screenshot. Here, the top model has reached an F1 score of 0.8031.![Figure 3.11
+    – Viewing results
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_011.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.11 – Viewing results
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: If we select the best job and right-click **Open in model details**, we can
+    see a model explainability graph showing us the most important features, as can
+    be seen in the following screenshot. This graph is based on global **SHapley Additive
+    exPlanations** (**SHAP**) ([https://github.com/slundberg/shap](https://github.com/slundberg/shap))
+    values computed automatically by AutoPilot.![Figure 3.12 – Viewing the most important
+    features
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_012.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.12 – Viewing the most important features
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'In the **Artifacts** tab, we can also see a list of training artifacts and
+    parameters involved in building the model: input data, training and validation
+    splits, transformed datasets, feature engineering code, the algorithm (XGBoost
+    in my case), and more.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: At this point, we could simply deploy the best job, but instead, let's compare
+    the top 10 ones using the visualization tools built into SageMaker Studio.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Comparing jobs
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'A single SageMaker Autopilot job trains 250 jobs by default. Over time, you
+    may end up with tens of thousands of jobs, and you may wish to compare their properties.
+    Let''s see how:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Going to the **Experiments** tab on the left, we locate our job and right-click
+    **Open in trial component list**, as can be seen in the following screenshot:![Figure
+    3.13 – Opening the list of trials
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_013.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.13 – Opening the list of trials
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This opens **Trial Component List**, as shown in the following screenshot.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We open the **Table Properties** panel on the right by clicking on the icon
+    representing a cog, and we untick everything except **Experiment name**, **Trial
+    component name**, and **ObjectiveMetric**. In the main panel, we sort jobs by
+    descending objective metrics by clicking on the arrow. We hold down the *Shift*
+    key and click the top 10 jobs to select them, as shown in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 3.14 – Comparing jobs'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_014.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.14 – Comparing jobs
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Then, we click on the **Add chart** button. This opens a new view that can be
+    seen in the following screenshot. Click inside the chart box at the bottom to
+    open the **Chart properties** panel on the right.![Figure 3.15 – Building a chart
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_015.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.15 – Building a chart
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As our training jobs are very short (about a minute), there won't be enough
+    data for **Time series** charts, so let's select **Summary statistics** instead.
+    We're going to build a **scatter plot**, putting the eta and lambda hyperparameters
+    in perspective, as shown in the following screenshot. We also color data points
+    with our trial names.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 3.16 – Creating a chart'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_016.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.16 – Creating a chart
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Zooming in on the following chart, we can quickly visualize our jobs and their
+    respective parameters. We could build additional charts showing the impact of
+    certain hyperparameters on accuracy. This would help us shortlist a few models
+    for further testing. Maybe we would end up considering several of them for ensemble
+    prediction.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 3.17 – Plotting hyperparameters'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_017.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 3.17 – Plotting hyperparameters
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next step is to deploy a model and start testing it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying and invoking a model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'SageMaker Studio makes it extremely easy to deploy a model. Let''s see how:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Going back to the **Experiments** tab, we right-click the name of our experiment
+    and select **Describe AutoML Job**. This opens the list of training jobs. Making
+    sure that they're sorted by descending objective, we select the best one (it's
+    highlighted with a star), as shown in the screenshot that follows, and then we
+    click on the **Deploy model** button:![Figure 3.18 – Deploying a model
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_018.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.18 – Deploying a model
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Under `my-first-autopilot-endpoint`), leave all other settings as is, and click
+    on `ml.m5.xlarge` instance:![Figure 3.19 – Deploying a model
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_019.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.19 – Deploying a model
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Heading to the **Endpoints** section in the left-hand vertical panel, we can
+    see the endpoint being created. As shown in the following screenshot, it will
+    initially be in the **Creating** state. After a few minutes, it's **In service**:![Figure
+    3.20 – Creating an endpoint
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_020.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 3.20 – Creating an endpoint
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Moving to a Jupyter notebook (we can reuse the one we wrote to download the
+    dataset), we define the name of the endpoint, and a sample to predict. Here, I''m
+    using the first line of the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We create a `boto3` client for the SageMaker runtime. This runtime contains
+    a single API, `invoke_endpoint` ([https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-runtime.html](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker-runtime.html)).
+    This makes it efficient to embed in client applications that just need to invoke
+    models:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We send the sample to the endpoint, also passing the input and output content
+    types:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We decode the prediction and print it – this customer is not likely to accept
+    the offer:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This sample is predicted as a "no":'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'When we''re done testing the endpoint, we should delete it to avoid unnecessary
+    charges. We can do this with the `delete_endpoint` API in `boto3` ([https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.delete_endpoint](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html#SageMaker.Client.delete_endpoint)):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Congratulations! You've successfully built, trained, and deployed your first
+    machine learning model on Amazon SageMaker. That was pretty simple, wasn't it?
+    The only code we wrote was to download the dataset and to predict with our model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using **SageMaker Studio** is a great way to quickly experiment with a new dataset,
+    and also to let fewer technical users build models on their own. Advanced users
+    can also add their own custom images to SageMaker Studio, and they'll find more
+    details at [https://docs.aws.amazon.com/sagemaker/latest/dg/studio-byoi.html](https://docs.aws.amazon.com/sagemaker/latest/dg/studio-byoi.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's see how we can use SageMaker Autopilot programmatically with the
+    **SageMaker SDK**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the SageMaker Autopilot SDK
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The Amazon SageMaker SDK includes a simple API for SageMaker Autopilot. You
+    can find its documentation at [https://sagemaker.readthedocs.io/en/stable/automl.html](https://sagemaker.readthedocs.io/en/stable/automl.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, you'll learn how to use this API to train a model on the same
+    dataset as in the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Launching a job
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The SageMaker SDK makes it extremely easy to launch an Autopilot job – just
+    upload your data in S3, and call a single API! Let''s see how:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we import the SageMaker SDK:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we download the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we upload the dataset to S3:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We then configure the AutoML job, which only takes one line of code. We define
+    the **target attribute** (remember, that column is named "y"), and where to store
+    training artifacts. Optionally, we can also set a maximum runtime for the job,
+    a maximum runtime per job, or reduce the number of candidate models that will
+    be tuned. Please note that restricting the job''s duration too much is likely
+    to impact its accuracy. For development purposes, this isn''t a problem, so let''s
+    cap our job at one hour, or 250 tuning jobs (whichever limit it hits first):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we launch the Autopilot job, passing it the location of the training
+    set. We turn logs off (who wants to read hundreds of tuning logs?), and we set
+    the call to non-blocking, as we''d like to query the job status in the next cells:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The job starts right away. Now let's see how we can monitor its status.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Monitoring a job
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'While the job is running, we can use the `describe_auto_ml_job()` API to monitor
+    its progress:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, the following code will check the job''s status every 60 seconds
+    until the data analysis step completes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Once the data analysis is complete, the two autogenerated notebooks are available.
+    We can find their location using the same API:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This prints out the S3 paths for the two notebooks:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Using the AWS CLI, we can copy the two notebooks locally. We''ll take a look
+    at them later in this chapter:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: While the feature engineering runs, we can wait for completion using the same
+    code snippet as the preceding, looping while `job_sec_status` is equal to `FeatureEngineering`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Once model tuning is complete, we can very easily find the best candidate:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This prints out the name of the best tuning job, along with its validation
+    accuracy:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Then, we can deploy and test the model using the SageMaker SDK. We've covered
+    a lot of ground already, so let's save that for future chapters, where we'll revisit
+    this example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cleaning up
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'SageMaker Autopilot creates many underlying artifacts, such as dataset splits,
+    pre-processing scripts, pre-processed datasets, and models. If you''d like to
+    clean up completely, the following code snippet will do that. Of course, you could
+    also use the AWS CLI:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we know how to train models using both the SageMaker Studio GUI and
+    the SageMaker SDK, let's take a look under the hood. Engineers like to understand
+    how things really work, right?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Diving deep on SageMaker Autopilot
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we're going to learn in detail how SageMaker Autopilot processes
+    data and trains models. If this feels too advanced for now, you're welcome to
+    skip this material. You can always revisit it later once you've gained more experience
+    with the service.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, let's look at the artifacts that SageMaker Autopilot produces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The job artifacts
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Listing our S3 bucket confirms the existence of many different artifacts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can see many new prefixes. Let''s figure out what''s what:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `preprocessed-data/tuning_data` prefix contains the training and validation
+    splits generated from the input dataset. Each split is broken down further into
+    small CSV chunks.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `sagemaker-automl-candidates` prefix contains 10 data pre-processing scripts
+    (`dpp[0-9].py`), one for each pipeline. It also contains the code to train them
+    (`trainer.py`) on the input dataset, and the code to process the input dataset
+    with each one of the 10 resulting models (`sagemaker_serve.py`). Last but not
+    least, it contains the autogenerated notebooks.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `data-processor-models` prefix contains the 10 data processing models trained
+    by the `dpp` scripts.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `transformed-data` prefix contains the 10 processed versions of the training
+    and validation splits.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `tuning` prefix contains the actual models trained during the **Model Tuning**
+    step.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `documentation` prefix contains the explainability report.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following diagram summarizes the relationship between these artifacts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.21 – Summing up the Autopilot process'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_021.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 3.21 – Summing up the Autopilot process
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next sections, we'll take a look at the two **autogenerated notebooks**,
+    which are one of the most important features in SageMaker Autopilot.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The data exploration notebook
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This notebook is available in Amazon S3 once the data analysis step is complete.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first section, seen in the following screenshot, simply displays a sample
+    of the dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.22 – Viewing dataset statistics'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_022.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 3.22 – Viewing dataset statistics
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Shown in the following screenshot, the second section focuses on column analysis:
+    percentages of missing values, counts of unique values, and descriptive statistics.
+    For instance, it appears that the `pdays` field has both a maximum value and a
+    median of 999, which looks suspicious. As explained in the previous chapter, 999
+    is indeed a placeholder value, meaning that a customer has never been contacted
+    before.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 3.23 – Viewing dataset statistics'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_023.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 3.23 – Viewing dataset statistics
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, this notebook saves us the trouble of computing these statistics
+    ourselves, and we can use them to quickly check that the dataset is what we expect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's look at the second notebook. As you will see, it's extremely insightful!
+  prefs: []
+  type: TYPE_NORMAL
+- en: The candidate generation notebook
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This notebook contains the definition of the 10 candidate pipelines, and how
+    they're trained. This is a **runnable notebook**, and advanced practitioners can
+    use it to replay the AutoML process, and keep refining their experiment. Please
+    note that this is totally optional! It's perfectly OK to deploy the top model
+    directly and start testing it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Having said that, let''s run one of the pipelines manually:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We open the notebook and save a read-write copy by clicking on the **Import
+    notebook** link in the top-right corner.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then, we run the cells in the **SageMaker Setup** section to import all the
+    required artifacts and parameters.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Moving to the **Candidate Pipelines** section, we create a runner object that
+    will launch jobs for selected candidate pipelines:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we add the first pipeline (`dpp0`). The notebook tells us: "*This data
+    transformation strategy first transforms ''numeric'' features using* `RobustImputer`
+    *(converts missing values to nan) and ''categorical'' features using* `ThresholdOneHotEncoder`*.
+    It merges all the generated features and applies* `RobustStandardScaler`*. The
+    transformed data will be used to tune an XGBoost model*". We just need to run
+    the following cell to add it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: If you're curious about the implementation of `RobustImputer` or `ThresholdOneHotEncoder`,
+    hyperlinks take you to the appropriate source file in the `sagemaker_sklearn_extension`
+    module (https://github.com/aws/sagemaker-scikit-learn-extension/).
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This way, you can understand exactly how data has been processed. As these objects
+    are based on scikit-learn objects, they should quickly look very familiar. For
+    instance, we can see that `RobustImputer` is built on top of `sklearn.impute.SimpleImputer`,
+    with added functionality. Likewise, `ThresholdOneHotEncoder` is an extension of
+    `sklearn.preprocessing.OneHotEncoder`.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Taking a quick look at other pipelines, we see different processing strategies
+    and algorithms. You should see the **Linear Learner** algorithm used in some pipelines.
+    It's one of the **built-in algorithms** in SageMaker, and we'll cover it in the
+    next chapter. You should also see the **mlp** algorithm, which is based on neural
+    networks.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Scrolling down, we get to the `dpp0.py` script and that the model will be trained
+    using the XGBoost algorithm.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Clicking on the **dpp0** hyperlink opens the script. As expected, we see that
+    it builds a scikit-learn transformer pipeline (not to be confused with the SageMaker
+    pipeline composed of pre-processing and training jobs). Missing values are imputed
+    in the numerical features, and the categorical features are one-hot encoded. Then,
+    all features are scaled and the labels are encoded:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Back in the notebook, we launch this script in the **Run Data Transformation
+    Steps** section:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This creates two sequential SageMaker jobs and their artifacts are stored in
+    a new prefix created for the notebook run:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Going back to SageMaker Studio, let's find out more about these two jobs. Starting
+    from the `my-first-a-notebook-run-24-13-17-22-dpp0-train-24-13-38-38-aws-training-job`
+    and `my-first-a-notebook-run-24-13-17-22-dpp0-transform-24-13-38-38-aws-transform-job`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Double-clicking a job name opens the **Open in trial details** window, as shown
+    in the following screenshot. It tells us everything there is to know about the
+    job: the parameters, location of artifacts, and more:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 3.25 – Describing a trial'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_03_025.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 3.25 – Describing a trial
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once data processing is complete, the notebook proceeds with **automatic model
+    tuning** and **model deployment**. We haven't yet discussed these topics, so let's
+    stop there for now. I encourage you to go through the rest of the notebook once
+    you're comfortable with them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As you can see, Amazon SageMaker Autopilot makes it easy to build, train, and
+    optimize machine learning models for beginners and advanced users alike.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you learned about the different steps of an Autopilot job,
+    and what they mean from a machine learning perspective. You also learned how to
+    use both the SageMaker Studio GUI and the SageMaker SDK to build a classification
+    model with minimal coding. Then, we dived deep into the autogenerated notebooks,
+    which give you full control and transparency over the modeling processing. In
+    particular, you learned how to run the candidate generation notebook manually
+    to replay all the steps involved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you will learn how to use the built-in algorithms in Amazon
+    SageMaker to train models for a variety of machine learning problems.
+  prefs: []
+  type: TYPE_NORMAL

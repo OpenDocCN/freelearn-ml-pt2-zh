@@ -1,0 +1,1119 @@
+- en: '*Chapter 6*: XGBoost Hyperparameters'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: XGBoost has many hyperparameters. XGBoost base learner hyperparameters incorporate
+    all decision tree hyperparameters as a starting point. There are gradient boosting
+    hyperparameters, since XGBoost is an enhanced version of gradient boosting. Hyperparameters
+    unique to XGBoost are designed to improve upon accuracy and speed. However, trying
+    to tackle all XGBoost hyperparameters at once can be dizzying.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In [*Chapter 2*](B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047), *Decision
+    Trees in Depth*, we reviewed and applied base learner hyperparameters such as
+    `max_depth`, while in [*Chapter 4*](B15551_04_Final_NM_ePUB.xhtml#_idTextAnchor093),
+    *From Gradient Boosting to XGBoost*, we applied important XGBoost hyperparameters,
+    including `n_estimators` and `learning_rate`. We will revisit these hyperparameters
+    in this chapter in the context of XGBoost. Additionally, we will also learn about
+    novel XGBoost hyperparameters such as `gamma` and a technique called **early stopping**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, to gain proficiency in fine-tuning XGBoost hyperparameters,
+    we will cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing data and base models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tuning core XGBoost hyperparameters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Applying early stopping
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Putting it all together
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The code for this chapter can be found at [https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter06](https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter06).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing data and base models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before introducing and applying XGBoost hyperparameters, let''s prepare by
+    doing the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting the **heart disease dataset**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Building an `XGBClassifier` model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing `StratifiedKFold`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Scoring a **baseline XGBoost model**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Combining `GridSearchCV` with `RandomizedSearchCV` to form one powerful function
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Good preparation is essential for gaining accuracy, consistency, and speed when
+    fine-tuning hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The heart disease dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The dataset used throughout this chapter is the heart disease dataset originally
+    presented in [*Chapter 2*](B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047), *Decision
+    Trees in Depth*. We have chosen the same dataset to maximize the time spent doing
+    hyperparameter fine-tuning, and to minimize the time spent on data analysis. Let''s
+    begin the process:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Go to [https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter06](https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter06)
+    to load `heart_disease.csv` into a DataFrame and display the first five rows.
+    Here is the code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The result should look as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.1 – The first five rows](img/B15551_06_01.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 6.1 – The first five rows
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The last column, **target**, is the target column, where **1** indicates presence,
+    meaning the patient has a heart disease, and **2** indicates absence. For detailed
+    information on the other columns, visit [https://archive.ics.uci.edu/ml/datasets/Heart+Disease](https://archive.ics.uci.edu/ml/datasets/Heart+Disease)
+    at the UCI Machine Learning Repository, or see [*Chapter 2*](B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047),
+    *Decision Trees in Depth*.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now, check `df.info()` to ensure that the data is all numerical with no null
+    values:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Since all data points are non-null and numerical, the data is machine learning-ready.
+    It's time to build a classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XGBClassifier
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Before tuning hyperparameters, let's build a classifier so that we can obtain
+    a baseline score as a starting point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To build an XGBoost classifier, follow these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Download `XGBClassifier` and `accuracy_score` from their respective libraries.
+    The code is as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Declare `X` as the predictor columns and `y` as the target column, where the
+    last row is the target column:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Initialize `XGBClassifier` with the `booster=''gbtree''` and `objective=''binary:logistic''`
+    defaults along with `random_state=2`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The `'gbtree'` booster, the base learner, is a gradient boosted tree. The `'binary:logistic'`
+    objective is standard for binary classification in determining the loss function.
+    Although `XGBClassifier` includes these values by default, we include them here
+    to gain familiarity in preparation of modifying them in later chapters.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'To score the baseline model, import `cross_val_score` and `numpy` to fit, score,
+    and display results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The accuracy score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: An accuracy score of 81% is an excellent starting point, considerably higher
+    than the 76% cross-validation obtained by `DecisionTreeClassifier` in [*Chapter
+    2*](B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047), *Decision Trees in Depth*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We used `cross_val_score` here, and we will use `GridSearchCV` to tune hyperparameters.
+    Next, let's find a way to ensure that the test folds are the same using `StratifiedKFold`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: StratifiedKFold
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When fine-tuning hyperparameters, `GridSearchCV` and `RandomizedSearchCV` are
+    the standard options. An issue from [*Chapter 2*](B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047),
+    *Decision Trees in Depth*, is that `cross_val_score` and `GridSearchCV`/`RandomizedSearchCV`
+    do not split data the same way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One solution is to use `StratifiedKFold` whenever cross-validation is used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A stratified fold includes the same percentage of target values in each fold.
+    If a dataset contains 60% 1s and 40% 0s in the target column, each stratified
+    test set contains 60% 1s and 40% 0s. When folds are random, it's possible that
+    one test set contains a 70-30 split while another contains a 50-50 split of target
+    values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: When using `train_test_split`, the shuffle and stratify parameters use defaults
+    to stratify the data for you. See [https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html)
+    for general information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To use `StratifiedKFold`, do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Implement `StratifiedKFold` from `sklearn.model_selection`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, define the number of folds as `kfold` by selecting `n_splits=5`, `shuffle=True`,
+    and `random_state=2` as the `StratifiedKFold` parameters. Note that `random_state`
+    provides a consistent ordering of indices, while `shuffle=True` allows rows to
+    be initially shuffled:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The `kfold` variable can now be used inside `cross_val_score`, `GridSeachCV`,
+    and `RandomizedSearchCV` to ensure consistent results.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Now, let's return to `cross_val_score` using `kfold` so that we have an appropriate
+    baseline for comparison.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Baseline model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now that we have a method for obtaining consistent folds, it''s time to score
+    an official baseline model using `cv=kfold` inside `cross_val_score`. The code
+    is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The accuracy score is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The score has gone down. What does this mean?
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's important not to become too invested in obtaining the highest possible
+    score. In this case, we trained the same `XGBClassifier` model on different folds
+    and obtained different scores. This shows the importance of being consistent with
+    test folds when training models, and why the score is not necessarily the most
+    important thing. Although when choosing between models, obtaining the best possible
+    score is an optimal strategy, the difference in scores here reveals that the model
+    is not necessarily better. In this case, the two models have the same hyperparameters,
+    and the difference in scores is attributed to the different folds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The point here is to use the same folds to obtain new scores when fine-tuning
+    hyperparameters with `GridSearchCV` and `RandomizedSearchCV` so that the comparison
+    of scores is fair.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Combining GridSearchCV and RandomizedSearchCV
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`GridSearchCV` searches all possible combinations in a hyperparameter grid
+    to find the best results. `RandomizedSearchCV` selects 10 random hyperparameter
+    combinations by default. `RandomizedSearchCV` is typically used when `GridSearchCV`
+    becomes unwieldy because there are too many hyperparameter combinations to exhaustively
+    check each one.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instead of writing two separate functions for `GridSearchCV` and `RandomizedSearchCV`,
+    we will combine them into one streamlined function with the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `GridSearchCV` and `RandomizedSearchCV` from `sklearn.model_selection`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Define a `grid_search` function with the `params` dictionary as input, along
+    with `random=False`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Initialize an XGBoost classifier using the standard defaults:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'If `random=True`, initialize `RandomizedSearchCV` with `xgb` and the `params`
+    dictionary. Set `n_iter=20` to allow 20 random combinations instead of 10\. Otherwise,
+    initialize `GridSearchCV` with the same inputs. Make sure to set `cv=kfold` for
+    consistent results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Fit `X` and `y` to the `grid` model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Obtain and print `best_params_`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Obtain and print `best_score_`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The `grid_search` function can now be used to fine-tune all hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tuning XGBoost hyperparameters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are many XGBoost hyperparameters, some of which have been introduced in
+    previous chapters. The following table summarizes key XGBoost hyperparameters,
+    most of which we cover in this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The XGBoost hyperparameters presented here are not meant to be exhaustive, but
+    they are meant to be comprehensive. For a complete list of hyperparameters, read
+    the official documentation, *XGBoost Parameters*, at [https://xgboost.readthedocs.io/en/latest/parameter.html](https://xgboost.readthedocs.io/en/latest/parameter.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Following the table, further explanations and examples are provided:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.2 – XGBoost hyperparameter table](img/B15551_06_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 6.2 – XGBoost hyperparameter table
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that the key XGBoost hyperparameters have been presented, let's get to know
+    them better by tuning them one at a time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applying XGBoost hyperparameters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The XGBoost hyperparameters presented in this section are frequently fine-tuned
+    by machine learning practitioners. After a brief explanation of each hyperparameter,
+    we will test standard variations using the `grid_search` function defined in the
+    previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: n_estimators
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Recall that `n_estimators` provides the number of trees in the ensemble. In
+    the case of XGBoost, `n_estimators` is the number of trees trained on the residuals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Initialize a grid search of `n_estimators` with the default of `100`, then
+    double the number of trees through `800` as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since our dataset is small, increasing `n_estimators` did not produce better
+    results. One strategy for finding an ideal value of `n_estimators` is discussed
+    in the *Applying early stopping* section in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: learning_rate
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`learning_rate` shrinks the weights of trees for each round of boosting. By
+    lowering `learning_rate`, more trees are required to produce better scores. Lowering
+    `learning_rate` prevents overfitting because the size of the weights carried forward
+    is smaller.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A default value of `0.3` is used, though previous versions of scikit-learn
+    have used `0.1`. Here is a starting range for `learning_rate` as placed inside
+    our `grid_search` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Changing the learning rate has resulted in a slight increase. As described in
+    [*Chapter 4*](B15551_04_Final_NM_ePUB.xhtml#_idTextAnchor093), *From Gradient
+    Boosting to XGBoost*, lowering `learning_rate` may be advantageous when `n_estimators`
+    goes up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: max_depth
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`max_depth` determines the length of the tree, equivalent to the number of
+    rounds of splitting. Limiting `max_depth` prevents overfitting because the individual
+    trees can only grow as far as `max_depth` allows. XGBoost provides a default `max_depth`
+    value of six:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Changing `max_depth` from `6` to `2` gave a better score. The lower value for
+    `max_depth` means variance has been reduced.
+  prefs: []
+  type: TYPE_NORMAL
+- en: gamma
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Known as a `gamma` provides a threshold that nodes must surpass before making
+    further splits according to the loss function. There is no upper limit to the
+    value of `gamma`. The default is `0`, and anything over `10` is considered very
+    high. Increasing `gamma` results in a more conservative model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Changing `gamma` from `0` to `0.5` has resulted in a slight improvement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: min_child_weight
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`min_child_weight` refers to the minimum sum of weights required for a node
+    to split into a child. If the sum of the weights is less than the value of `min_child_weight`,
+    no further splits are made. `min_child_weight` reduces overfitting by increasing
+    its value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: A slight adjustment to `min_child_weight` gives the best results yet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: subsample
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The `subsample` hyperparameter limits the percentage of training instances
+    (rows) for each boosting round. Decreasing `subsample` from 100% reduces overfitting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: The score has improved by a slight amount once again, indicating a small presence
+    of overfitting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: colsample_bytree
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Similar to `subsample`, `colsample_bytree` randomly selects particular columns
+    according to the given percentage. `colsample_bytree` is useful for limiting the
+    influence of columns and reducing variance. Note that `colsample_bytree` takes
+    a percentage as input, not the number of columns:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Gains here are minimal at best. You are encouraged to try `colsample_bylevel`
+    and `colsample_bynode` on your own. `colsample_bylevel` randomly selects columns
+    for each tree depth, and `colsample_bynode` randomly selects columns when evaluating
+    each tree split.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fine-tuning hyperparameters is an art and a science. As with both disciplines,
+    varied approaches work. Next, we will look into early stopping as a specific strategy
+    for fine-tuning `n_estimators`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applying early stopping
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Early stopping is a general method to limit the number of training rounds in
+    iterative machine learning algorithms. In this section, we look at `eval_set`,
+    `eval_metric`, and `early_stopping_rounds` to apply early stopping.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is early stopping?
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Early stopping provides a limit to the number of rounds that iterative machine
+    learning algorithms train on. Instead of predefining the number of training rounds,
+    early stopping allows training to continue until *n* consecutive rounds fail to
+    produce any gains, where *n* is a number decided by the user.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It doesn't make sense to only choose multiples of 100 when looking for `n_estimators`.
+    It's possible that the best value is 737 instead of 700\. Finding a value this
+    precise manually can be tiring, especially when hyperparameter adjustments may
+    require changes down the road.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With XGBoost, a score may be determined after each boosting round. Although
+    scores go up and down, eventually scores will level off or move in the wrong direction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A peak score is reached when all subsequent scores fail to provide any gains.
+    You determine the peak after 10, 20, or 100 training rounds fail to improve upon
+    the score. You choose the number of rounds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In early stopping, it's important to give the model sufficient time to fail.
+    If the model stops too early, say, after five rounds of no improvement, the model
+    may miss general patterns that it could pick up on later. As with deep learning,
+    where early stopping is used frequently, gradient boosting needs sufficient time
+    to find intricate patterns within data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For XGBoost, `early_stopping_rounds` is the key parameter for applying early
+    stopping. If `early_stopping_rounds=10`, the model will stop training after 10
+    consecutive training rounds fail to improve the model. Similarly, if `early_stopping_rounds=100`,
+    training continues until 100 consecutive rounds fail to improve the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you understand what early stopping is, let's take a look at `eval_set`
+    and `eval_metric`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: eval_set and eval_metric
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`early_stopping_rounds` is not a hyperparameter, but a strategy for optimizing
+    the `n_estimators` hyperparameter.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normally when choosing hyperparameters, a test score is given after all boosting
+    rounds are complete. To use early stopping, we need a test score after each round.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`eval_metric` and `eval_set` may be used as parameters for `.fit` to generate
+    test scores for each training round. `eval_metric` provides the scoring method,
+    commonly `''error''` for classification, and `''rmse''` for regression. `eval_set`
+    provides the test to be evaluated, commonly `X_test` and `y_test`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following six steps display an evaluation metric for each round of training
+    with the default `n_estimators=100`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Split the data into training and test sets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Initialize the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Declare `eval_set`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Declare `eval_metric`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Fit the model with `eval_metric` and `eval_set`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Check the final score:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the truncated output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Do not get too excited about the score as we have not used cross-validation.
+    In fact, we know that `StratifiedKFold` cross-validation gives a mean accuracy
+    of 78% when `n_estimators=100`. The disparity in scores comes from the difference
+    in test sets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: early_stopping_rounds
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`early_stopping_rounds` is an optional parameter to include with `eval_metric`
+    and `eval_set` when fitting a model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's try `early_stopping_rounds=10`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The previous code is repeated with `early_stopping_rounds=10` added in:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: The result may come as a surprise. Early stopping reveals that `n_estimators=2`
+    gives the best result, which may be an account of the test fold.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why only two trees? By only giving the model 10 rounds to improve upon accuracy,
+    it's possible that patterns within the data have not yet been discovered. However,
+    the dataset is very small, so it's possible that two boosting rounds gives the
+    best possible result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A more thorough approach is to use larger values, say, `n_estimators = 5000`
+    and `early_stopping_rounds=100`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By setting `early_stopping_rounds=100`, you are guaranteed to reach the default
+    of `100` boosted trees presented by XGBoost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the code that gives a maximum of 5,000 trees and that will stop after
+    100 consecutive rounds fail to find any improvement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is the truncated output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: After 100 rounds of boosting, the score provided by two trees remains the best.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a final note, consider that early stopping is particularly useful for large
+    datasets when it's unclear how high you should aim.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's use the results from early stopping with all the hyperparameters
+    previously tuned to generate the best possible model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Combining hyperparameters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It's time to combine all the components of this chapter to improve upon the
+    78% score obtained through cross-validation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you know, there is no one-size-fits-all approach to hyperparameter fine-tuning.
+    One approach is to input all hyperparameter ranges with `RandomizedSearchCV`.
+    A more systematic approach is to tackle hyperparameters one at a time, using the
+    best results for subsequent iterations. All approaches have advantages and limitations.
+    Regardless of strategy, it's essential to try multiple variations and make adjustments
+    when the data comes in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One hyperparameter at a time
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Using a systematic approach, we add one hyperparameter at a time, aggregating
+    results along the way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: n_estimators
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Even though the `n_estimators` value of `2` gave the best result, it''s worth
+    trying a range on the `grid_search` function, which uses cross-validation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: It's no surprise that `n_estimators=50`, between the previous best value of
+    2, and the default of 100, gives the best result. Since cross-validation was not
+    used in early stopping, the results here are different.
+  prefs: []
+  type: TYPE_NORMAL
+- en: max_depth
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The `max_depth` hyperparameter determines the length of each tree. Here is
+    a nice range:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is a very substanial gain. A tree with a depth of 1 is called a **decision
+    tree stump**. We have gained four percentage points from our baseline model by
+    adjusting just two hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A limitation with the approach of keeping the top values is that we may miss
+    out on better combinations. Perhaps `n_estimators=2` or `n_esimtators=100` gives
+    better results in conjunction with `max_depth`. Let''s find out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`n_estimators=50` and `max_depth=1` still give the best results, so we will
+    use them going forward, returning to our early stopping analysis later.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: learning_rate
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Since `n_esimtators` is reasonably low, adjusting `learning_rate` may improve
+    results. Here is a standard range:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is the same score as previously obtained. Note that a `learning_rate` value
+    of 0.3 is the default value provided by XGBoost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: min_child_weight
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s see whether adjusting the sum of weights required to split into child
+    nodes increases the score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this case, the best score is the same. Note that 1 is the default for `min_child_weight`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: subsample
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If reducing variance is beneficial, `subsample` may work by limiting the percentage
+    of samples. In this case, however, there are only 303 samples to begin with, and
+    a small number of samples makes it difficult to adjust hyperparameters to improve
+    scores. Here is the code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs: []
+  type: TYPE_PRE
+- en: Still no gains. At this point, you may be wondering whether new gains would
+    have continued with `n_esimtators=2`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's find out by using a comprehensive grid search of the values used thus
+    far.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs: []
+  type: TYPE_PRE
+- en: It's not surprising that a classifier with only two trees performs worse. Even
+    though the initial scores were better, it does not go through enough iterations
+    for the hyperparameters to make significant adjustments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hyperparameter adjustments
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When shifting directions with hyperparameters, `RandomizedSearchCV` is useful
+    due to the extensive range of inputs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a range of hyperparameter values combining new inputs with previous
+    knowledge. Limiting ranges with `RandomizedSearchCV` increases the odds of finding
+    the best combination. Recall that `RandomizedSearchCV` is useful when the total
+    number of combinations is too time-consuming for a grid search. There are 4,500
+    possible combinations with the following options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is interesting. Different values are obtaining good results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We use the hyperparameters from the best score going forward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Colsample
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Now, let's try `colsample_bytree`, `colsample_bylevel`, and `colsample_bynode`,
+    in that order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: colsample_bytree
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Let''s start with `colsample_bytree`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: The score has not improved. Next, try `colsample_bylevel`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: colsample_bylevel
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Use the following code to try out `colsample_bylevel`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs: []
+  type: TYPE_PRE
+- en: Still no gain.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It seems that we are peaking out with the shallow dataset. Let's try a different
+    approach. Instead of using `colsample_bynode` alone, let's tune all colsamples
+    together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: colsample_bynode
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Try the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs: []
+  type: TYPE_PRE
+- en: Outstanding. Working together, the colsamples have combined to deliver the highest
+    score yet, 5 percentage points higher than the original.
+  prefs: []
+  type: TYPE_NORMAL
+- en: gamma
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The last hyperparameter that we will attempt to fine-tune is `gamma`. Here
+    is a range of `gamma` values designed to reduce overfitting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`gamma` remains at the default value of `0`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since our best score is over five percentage points higher than the original,
+    no small feat with XGBoost, we will stop here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you prepared for hyperparameter fine-tuning by establishing
+    a baseline XGBoost model using `StratifiedKFold`. Then, you combined `GridSearchCV`
+    and `RandomizedSearchCV` to form one powerful function. You learned the standard
+    definitions, ranges, and applications of key XGBoost hyperparameters, in addition
+    to a new technique called early stopping. You synthesized all functions, hyperparameters,
+    and techniques to fine-tune the heart disease dataset, gaining an impressive five
+    percentage points from the default XGBoost classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XGBoost hyperparameter fine-tuning takes time to master, and you are well on
+    your way. Fine-tuning hyperparameters is a key skill that separates machine learning
+    experts from machine learning novices. Knowledge of XGBoost hyperparameters is
+    not just useful, it's essential to get the most out of the machine learning models
+    that you build.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Congratulations on completing this important chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we present a case study of XGBoost regression from beginning to end, highlighting
+    the power, range, and applications of `XGBClassifier`.
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,1229 @@
+- en: Chapter 12. Bigger Data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'It''s not easy to say what big data is. We will adopt an operational definition:
+    when data is so large that it becomes cumbersome to work with, we will talk about
+    **big data**. In some areas, this might mean petabytes of data or trillions of
+    transactions: data which will not fit into a single hard drive. In other cases,
+    it may be one hundred times smaller, but still difficult to work with.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why has data itself become an issue? While computers keep getting faster and
+    have more memory, the size of the data has grown as well. In fact, data has grown
+    faster than computational speed and few algorithms scale linearly with the size
+    of the input data—taken together, this means that data has grown faster than our
+    ability to process it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will first build on some of the experience of the previous chapters and
+    work with what we can call medium data setting (not quite big data, but not small
+    either). For this, we will use a package called **jug**, which allows us to perform
+    the following tasks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Break up your pipeline into tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Cache (memoize) intermediate results
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Make use of multiple cores, including multiple computers on a grid
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The next step is to move to true *big data* and we will see how to use the cloud
+    for computation purpose. In particular, you will learn about the Amazon Web Services
+    infrastructure. In this section, we introduce another Python package called StarCluster
+    to manage clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Learning about big data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The expression "big data" does not mean a specific amount of data, neither
+    in the number of examples nor in the number of gigabytes, terabytes, or petabytes
+    occupied by the data. It means that data has been growing faster than processing
+    power. This implies the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some of the methods and techniques that worked well in the past now need to
+    be redone or replaced as they do not scale well to the new size of the input data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Algorithms cannot assume that all the input data can fit in RAM
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Managing data becomes a major task in itself
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using computer clusters or multicore machines becomes a necessity and not a
+    luxury
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'This chapter will focus on this last piece of the puzzle: how to use multiple
+    cores (either on the same machine or on separate machines) to speed up and organize
+    your computations. This will also be useful in other medium-sized data tasks.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using jug to break up your pipeline into tasks
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Often, we have a simple pipeline: we preprocess the initial data, compute features,
+    and then call a machine learning algorithm with the resulting features.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Jug is a package developed by Luis Pedro Coelho, one of the authors of this
+    book. It''s open source (using the liberal MIT License) and can be useful in many
+    areas, but was designed specifically around data analysis problems. It simultaneously
+    solves several problems, for example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It can *memoize* results to disk (or a database), which means that if you ask
+    it to compute something you have already computed before, the result is instead
+    read from disk.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It can use multiple cores or even multiple computers on a cluster. Jug was also
+    designed to work very well in batch computing environments, which use queuing
+    systems such as **PBS** (**Portable Batch System**), **LSF** (**Load Sharing Facility**),
+    or **Grid Engine**. This will be used in the second half of the chapter as we
+    build online clusters and dispatch jobs to them.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An introduction to tasks in jug
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Tasks are the basic building block of jug. A task is composed of a function
+    and values for its arguments. Consider this simple example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this chapter, the code examples will generally have to be typed in script
+    files. Thus, they will not be shown with the `>>>` marker. Commands that should
+    be typed at the shell will be indicated by preceding them with `$`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A task could be "call double with argument 3". Another task would be "call
+    double with argument 642.34". Using jug, we can build these tasks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Save this to a file called `jugfile.py` (which is just a regular Python file).
+    Now, we can run `jug execute` to run the tasks. This is something you type on
+    the command line, not at the Python prompt, so we show it marked with a dollar
+    sign (`$`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will also get some feedback on the tasks (jug will say that two tasks named
+    `double` were run). Run `jug execute` again and it will tell you that it did nothing!
+    It does not need to. In this case, we gained little, but if the tasks took a long
+    time to compute, it would have been very useful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may notice that a new directory also appeared on your hard drive named `jugfile.jugdata`
+    with a few weirdly named files. This is the memoization cache. If you remove it,
+    `jug execute` will run all your tasks again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Often, it's good to distinguish between pure functions, which simply take their
+    inputs and return a result, from more general functions that can perform actions
+    (such as reading from files, writing to files, accessing global variables, modify
+    their arguments, or anything that the language allows). Some programming languages,
+    such as Haskell, even have syntactic ways to distinguish pure from impure functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With jug, your tasks do not need to be perfectly pure. It''s even recommended
+    that you use tasks to read in your data or write out your results. However, accessing
+    and modifying global variables will not work well: the tasks may be run in any
+    order in different processors. The exceptions are global constants, but even this
+    may confuse the memoization system (if the value is changed between runs). Similarly,
+    you should not modify the input values. Jug has a debug mode (use `jug execute
+    --debug`), which slows down your computation, but will give you useful error messages
+    if you make this sort of mistake.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The preceding code works, but is a bit cumbersome. You are always repeating
+    the `Task(function, argument)` construct. Using a bit of Python magic, we can
+    make the code even more natural as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Except for the use of `TaskGenerator`, the preceding code could be a standard
+    Python file! However, using `TaskGenerator`, it actually creates a series of tasks
+    and it is now possible to run it in a way that takes advantage of multiple processors.
+    Behind the scenes, the decorator transforms your functions so that they do not
+    actually execute when called, but create a `Task` object. We also take advantage
+    of the fact that we can pass tasks to other tasks and this results in a dependency
+    being generated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may have noticed that we added a few `sleep(4)` calls in the preceding code.
+    This simulates running a long computation. Otherwise, this example is so fast
+    that there is no point in using multiple processors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start by running `jug status`, which results in the output shown in the
+    following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![An introduction to tasks in jug](img/2772OS_12_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, we start two processes simultaneously (using the `&` operator in the background):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we run `jug status` again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![An introduction to tasks in jug](img/2772OS_12_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can see that the two initial double operators are running at the same time.
+    After about 8 seconds, the whole process will finish and the `output.txt` file
+    will be written.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By the way, if your file was called anything other than `jugfile.py`, you would
+    then have to specify it explicitly on the command line. For example, if your file
+    was called `analysis.py`, you would run the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is the only disadvantage of not using the name `jugfile.py`. So, feel free
+    to use more meaningful names.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Looking under the hood
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: How does jug work? At the basic level, it's very simple. A `Task` is a function
+    plus its argument. Its arguments may be either values or other tasks. If a task
+    takes other tasks, there is a dependency between the two tasks (and the second
+    one cannot be run until the results of the first task are available).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Based on this, jug recursively computes a hash for each task. This hash value
+    encodes the whole computation to get the result. When you run `jug execute`, for
+    each task, there is a little loop that runs the logic depicted in the following
+    flowchart:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Looking under the hood](img/2772OS_12_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The default backend writes the file to disk (in this funny directory named `jugfile.jugdata/`).
+    Another backend is available, which uses a Redis database. With proper locking,
+    which jug takes care of, this also allows for many processors to execute tasks;
+    each process will independently look at all the tasks and run the ones that have
+    not run yet and then write them back to the shared backend. This works on either
+    the same machine (using multicore processors) or in multiple machines as long
+    as they all have access to the same backend (for example, using a network disk
+    or the Redis databases). In the second half of this chapter, we will discuss computer
+    clusters, but for now let's focus on multiple cores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also understand why it's able to memoize intermediate results. If the
+    backend already has the result of a task, it's not run again. On the other hand,
+    if you change the task, even in minute ways (by altering one of the parameters),
+    its hash will change. Therefore, it will be rerun. Furthermore, all tasks that
+    depend on it will also have their hashes changed and they will be rerun as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using jug for data analysis
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Jug is a generic framework, but it's ideally suited for medium-scale data analysis.
+    As you develop your analysis pipeline, it's good to have intermediate results
+    automatically saved. If you have already computed the preprocessing step before
+    and are only changing the features you compute, you do not want to recompute the
+    preprocessing step. If you have already computed the features, but want to try
+    combining a few new ones into the mix, you also do not want to recompute all your
+    other features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Jug is also specifically optimized to work with NumPy arrays. Whenever your
+    tasks return or receive NumPy arrays, you are taking advantage of this optimization.
+    Jug is another piece of this ecosystem where everything works together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will now look back at [Chapter 10](ch10.html "Chapter 10. Computer Vision"),
+    *Computer Vision*. In that chapter, we learned how to compute features on images.
+    Remember that the basic pipeline consisted of the following features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loading image files
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Computing features
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Combining these features
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Normalizing the features
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Creating a classifier
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We are going to redo this exercise, but this time with the use of jug. The advantage
+    of this version is that it's now possible to add a new feature or classifier without
+    having to recompute all of the pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start with a few imports as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we define the first task generators and feature computation functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `features` module we import is the one from [Chapter 10](ch10.html "Chapter 10. Computer
+    Vision"), *Computer Vision*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We write functions that take the filename as input instead of the image array.
+    Using the full images would also work, of course, but this is a small optimization.
+    A filename is a string, which is small if it gets written to the backend. It's
+    also very fast to compute a hash if needed. It also ensures that the images are
+    only loaded by the processes that need them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use `TaskGenerator` on any function. This is true even for functions,
+    which we did not write, such as `np.array`, `np.hstack`, or the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: One small inconvenience of using jug is that we must always write functions
+    to output the results to files, as shown in the preceding examples. This is a
+    small price to pay for the extra convenience of using jug.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that we are only importing `sklearn` inside this function. This is a small
+    optimization. This way, `sklearn` is only imported when it''s really needed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we write and call a function to print out all results. It expects
+    its argument to be a list of pairs with the name of the algorithm and the results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That''s it. Now, on the shell, run the following command to run this pipeline
+    using jug:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Reusing partial results
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For example, let's say you want to add a new feature (or even a set of features).
+    As we saw in [Chapter 10](ch10.html "Chapter 10. Computer Vision"), *Computer
+    Vision*, this is easy to do by changing the feature computation code. However,
+    this would imply recomputing all the features again, which is wasteful, particularly,
+    if you want to test new features and techniques quickly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We now add a set of features, that is, another type of texture feature called
+    linear binary patterns. This is implemented in mahotas; we just need to call a
+    function, but we wrap it in `TaskGenerator`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We replace the previous loop to have an extra function call:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We call accuracy with these newer features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, when you run `jug execute` again, the new features will be computed, but
+    the old features will be loaded from the cache. This is when jug can be very powerful.
+    It ensures that you always get the results you want while saving you from unnecessarily
+    recomputing cached results. You will also see that adding this feature set improves
+    on the previous methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Not all features of jug could be mentioned in this chapter, but here is a summary
+    of the most potentially interesting ones we didn''t cover in the main text:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`jug invalidate`: This declares that all results from a given function should
+    be considered invalid and in need of recomputation. This will also recompute any
+    downstream computation, which depended (even indirectly) on the invalidated results.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`jug status --cache`: If `jug status` takes too long, you can use the `--cache`
+    flag to cache the status and speed it up. Note that this will not detect any changes
+    to the jugfile, but you can always use `--cache --clear` to remove the cache and
+    start again.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`jug cleanup`: This removes any extra files in the memoization cache. This
+    is a garbage collection operation.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There are other, more advanced features, which allow you to look at values that
+    have been computed inside the jugfile. Read up on features such as barriers in
+    the jug documentation online at [http://jug.rtfd.org](http://jug.rtfd.org).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Amazon Web Services
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When you have a lot of data and a lot of computation to be performed, you might
+    start to crave more computing power. Amazon ([http://aws.amazon.com](http://aws.amazon.com))
+    allows you to rent computing power by the hour. Thus, you can access a large amount
+    of computing power without having to precommit by purchasing a large number of
+    machines (including the costs of managing the infrastructure). There are other
+    competitors in this market, but Amazon is the largest player, so we briefly cover
+    it here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Amazon Web Services** (**AWS**) is a large set of services. We will focus
+    only on the **Elastic Compute Cloud** (**EC2**) service. This service offers you
+    virtual machines and disk space, which can be allocated and deallocated quickly.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are three modes of use. First is a reserved mode, whereby you prepay to
+    have cheaper per-hour access, a fixed per-hour rate, and a variable rate, which
+    depends on the overall compute market (when there is less demand, the costs are
+    lower; when there is more demand, the prices go up).
+  prefs: []
+  type: TYPE_NORMAL
+- en: On top of this general system, there are several types of machines available
+    with varying costs, from a single core to a multicore system with a lot of RAM
+    or even graphical processing units (GPUs). We will later see that you can also
+    get several of the cheaper machines and build yourself a virtual cluster. You
+    can also choose to get a Linux or Windows server (with Linux being slightly cheaper).
+    In this chapter, we will work on our examples on Linux, but most of this information
+    will be valid for Windows machines as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For testing, you can use a single machine in the **free tier**. This allows
+    you to play around with the system, get used to the interface, and so on. Note,
+    though, that this machine contains a slow CPU.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The resources can be managed through a web interface. However, it's also possible
+    to do so programmatically and to write scripts that allocate virtual machines,
+    format hard disks, and perform all operations that are possible through the web
+    interface. In fact, while the web interface changes very frequently (and some
+    of the screenshots we show in the book may be out of date by the time it goes
+    to press), the programmatic interface is more stable and the general architecture
+    has remained stable since the service was introduced.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Access to AWS services is performed through a traditional username/password
+    system, although Amazon calls the username an *access key* and the password a
+    *secret key*. They probably do so to keep it separate from the username/password
+    you use to access the web interface. In fact, you can create as many access/secret
+    key pairs as you wish and give them different permissions. This is helpful for
+    a larger team where a senior user with access to the full web panel can create
+    other keys for developers with fewer privileges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Amazon.com has several regions. These correspond to physical regions of the
+    world: West coast US, East coast US, several Asian locations, a South American
+    one, and two European ones. If you will be transferring data, it''s best to keep
+    it close to where you will be transferring to and from. Additionally, keep in
+    mind that if you are handling user information, there may be regulatory issues
+    regulating their transfer to another jurisdiction. In this case, do check with
+    an informed counsel on the implications of transferring data about European customers
+    to the US or any other similar transfer.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Amazon Web Services is a very large topic and there are various books exclusively
+    available to cover AWS. The purpose of this chapter is to give you an overall
+    impression of what is available and what is possible with AWS. In the practical
+    spirit of this book, we do this by working through examples, but we will not exhaust
+    all possibilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating your first virtual machines
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The first step is to go to [http://aws.amazon.com/](http://aws.amazon.com/)
+    and create an account. These steps are similar to any other online service. A
+    single machine is free, but to get more, you will need a credit card. In this
+    example, we will use a few machines, so it may cost you a few dollars if you want
+    to run through it. If you are not ready to take out a credit card just yet, you
+    can certainly read the chapter to learn what AWS provides without going through
+    the examples. Then you can make a more informed decision on whether to sign up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once you sign up for AWS and log in, you will be taken to the console. Here,
+    you will see the many services that AWS provides, as depicted in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating your first virtual machines](img/2772OS_12_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We pick and click on **EC2** (the top element on the leftmost column—this is
+    the panel shown as it was when this book was written. Amazon regularly makes minor
+    changes, so you may see something slightly different from what we present in the
+    book). We now see the EC2 management console, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating your first virtual machines](img/2772OS_12_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the top-right corner, you can pick your region (see the Amazon regions information
+    box). Note that *you will only see information about the region that you have
+    selected at the moment*. Thus, if you mistakenly select the wrong region (or have
+    machines running in multiple regions), your machines may not appear (this seems
+    to be a common pitfall of using the EC2 web management console).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In EC2 parlance, a running server is called an **instance**. We select **Launch
+    Instance**, which leads to the following screen asking us to select the operating
+    system to use:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating your first virtual machines](img/2772OS_12_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Select the **Amazon Linux** option (if you are familiar with one of the other
+    offered Linux distributions, such as Red Hat, SUSE, or Ubuntu, you can also select
+    one of these, but the configurations will be slightly different). Now that you
+    have selected the software, you will need to select the hardware. In the next
+    screen, you will be asked to select which type of machine to use:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating your first virtual machines](img/2772OS_12_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We will start with one instance of the **t2.micro** type (the **t1.micro**
+    type was an older, even less powerful machine). This is the smallest possible
+    machine and it''s free. Keep clicking on **Next** and accept all of the defaults
+    until you come to the screen mentioning a key pair:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating your first virtual machines](img/2772OS_12_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: We will pick the name `awskeys` for the key pair. Then check **Create a new
+    key pair**. Name the key pair file `awskeys.pem`. Download and save this file
+    somewhere safe! This is the SSH (Secure Shell) key that will enable you to log
+    in to your cloud machine. Accept the remaining defaults and your instance will
+    launch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You will now need to wait a few minutes for your instance to come up. Eventually,
+    the instance will be shown in green with the status as **running**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating your first virtual machines](img/2772OS_12_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the preceding screenshot, you should see the Public IP which can be used
+    to log in to the instance as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Therefore, we will be calling the `ssh` command and passing it the key files
+    that we downloaded earlier as the identity (using the `-i` option). We are logging
+    in as user `ec2-user` at the machine with the IP address as 54.93.165.5\. This
+    address will, of course, be different in your case. If you choose another distribution
+    for your instance, the username may also change. In this case, try logging in
+    as `root`, `ubuntu` (for Ubuntu distribution), or `fedora` (for fedora distribution).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, if you are running a Unix-style operating system (including Mac OS),
+    you may have to tweak its permissions by calling the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: This sets the read/write permission for the current user only. SSH will otherwise
+    give you an ugly warning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now you should be able to log in to your machine. If everything is okay, you
+    should see the banner, as shown in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating your first virtual machines](img/2772OS_12_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This is a regular Linux box where you have `sudo` permission: you can run any
+    command as the superuser by prefixing it with `sudo`. You can run the `update`
+    command it recommends to get your machine up to speed.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing Python packages on Amazon Linux
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'If you prefer another distribution, you can use your knowledge of that distribution
+    to install Python, NumPy, and others. Here, we will do it on the standard Amazon
+    distribution. We start by installing several basic Python packages as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To compile mahotas, we will also need a C++ compiler:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we install `git` to make sure that we can get the latest version of
+    the code for the book:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In this system, pip is installed as `python-pip`. For convenience, we will
+    use pip to upgrade itself. We will then use pip to install the necessary packages
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: At this point, you can install any other package you wish using pip.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running jug on our cloud machine
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can now download the data and code for the book using this sequence of commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we run this following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: This would work just fine, but we would have to wait a long time for the results.
+    Our free tier machine (of type t2.micro) is not very fast and only has a single
+    processor. So, we will *upgrade our machine*!
+  prefs: []
+  type: TYPE_NORMAL
+- en: We go back to the EC2 console, and right-click on the running instance to get
+    the pop-up menu. We need to first stop the instance. This is the virtual machine
+    equivalent to powering off. You can stop your machines at any time. At this point,
+    you stop paying for them. Note that you are still using disk space, which also
+    has a cost, billed separately. You can terminate the instance, which will also
+    destroy the disk. This loses any information saved on the machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the machine is stopped, the **Change instance type** option becomes available.
+    Now, we can select a more powerful instance, for example, a **c1.xlarge** instance
+    with eight cores. The machine is still off, so you need to start it again (the
+    virtual equivalent to booting up).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: AWS offers several instance types at different price points. As this information
+    is constantly being revised as more powerful options are introduced and prices
+    change (generally, getting cheaper), we cannot give you many details in the book,
+    but you can find the most up-to-date information on Amazon's website.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need to wait for the instance to come back up. Once it has, look up its IP
+    address in the same fashion as we did before. When you change instance types,
+    your instance will get a new address assigned to it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You can assign a fixed IP to an instance using Amazon.com's Elastic IPs functionality,
+    which you will find on the left-hand side of the EC2 console. This is useful if
+    you find yourself creating and modifying instances very often. There is a small
+    cost associated with this feature.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With eight cores, you can run eight jug processes simultaneously, as illustrated
+    in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Use `jug status` to check whether these eight jobs are, in fact, running. After
+    your jobs are finished (which should now happen pretty fast), you can stop the
+    machine and downgrade it again to a **t2.micro** instance to save money. The micro
+    instance can be used for free (within certain limits), while the **c1.xlarge**
+    one we used costs 0.064 US dollars per hour (as of February 2015—check the AWS
+    website for up-to-date information).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Automating the generation of clusters with StarCluster
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As we just learned, we can spawn machines using the web interface, but it quickly
+    becomes tedious and error prone. Fortunately, Amazon has an API. This means that
+    we can write scripts, which perform all the operations we discussed earlier, automatically.
+    Even better, others have already developed tools that can be used to mechanize
+    and automate many of the processes you want to perform with AWS.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A group at MIT developed exactly such a tool called StarCluster. It happens
+    to be a Python package, so you can install it with Python tools as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can run this from an Amazon machine or from your local machine. Either option
+    will work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will need to specify what our cluster will look like. We do so by editing
+    a configuration file. We generate a template configuration file by running the
+    following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Then pick the option of generating the configuration file in `~/.starcluster/config`.
+    Once this is done, we will manually edit it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Keys, keys, and more keys**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are three completely different types of keys that are important when dealing
+    with AWS. First, there is a standard username/password combination, which you
+    use to log in to the website. Second, there is the SSH key system, which is a
+    public/private key system implemented with files; with your public key file, you
+    can log in to remote machines. Third, there is the AWS access key/secret key system,
+    which is just a form of username/password that allows you to have multiple users
+    on the same account (including adding different permissions to each one, but we
+    will not cover these advanced features in this book).
+  prefs: []
+  type: TYPE_NORMAL
+- en: To look up our access/secret keys, we go back to the AWS Console, click on our
+    name on the top-right, and select **Security Credentials**. Now at the bottom
+    of the screen, there should be our access key, which may look something like **AAKIIT7HHF6IUSN3OCAA**,
+    which we will use as an example in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, edit the configuration file. This is a standard `.ini` file: a text file
+    where sections start by having their names in brackets and options are specified
+    in the `name=value` format. The first section is the `aws info` section and you
+    should copy and paste your keys here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we come to the fun part, that is, defining a cluster. StarCluster allows
+    you to define as many different clusters as you wish. The starting file has one
+    called smallcluster. It''s defined in the `cluster smallcluster` section. We will
+    edit it to read as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: This changes the number of nodes to 16 instead of the default of two. We can
+    additionally specify which type of instance each node will be and what the initial
+    image is (remember, an image is used to initialized the virtual hard disk, which
+    defines what operating system you will be running and what software is installed).
+    StarCluster has a few predefined images, but you can also build your own.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We need to create a new SSH key with the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we have configured a sixteen node cluster and set up the keys, let''s
+    try it out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: This may take a few minutes as it allocates seventeen new machines. Why seventeen
+    when our cluster is only sixteen nodes? StarCluster always creates a master node.
+    All of these nodes have the same filesystem, so anything we create on the master
+    node will also be seen by the worker nodes. This also means that we can use jug
+    on these clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These clusters can be used as you wish, but they come pre-equipped with a job
+    queue engine, which makes it ideal for batch processing. The process of using
+    them is simple:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You log in to the master node.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You prepare your scripts on the master (or better yet, have them prepared before
+    hand).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You submit jobs to the queue. A job can be any Unix command. The scheduler will
+    find free nodes and run your job.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You wait for the jobs to finish.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You read the results on the master node. You can also now kill all the slave
+    nodes to save money. In any case, do not leave your system running when you do
+    not need it anymore! Otherwise, this will cost you (in dollars-and-cents).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Before logging in to the cluster, we will copy our data to it (remember we
+    had earlier cloned the repository onto `BuildingMachineLearningSystemsWithPython`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We used the `$dir` variable to make the command line fit in a single line.
+    We can log in to the master node with a single command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: We could also have looked up the address of the machine that was generated and
+    used an `ssh` command as we did earlier, but using the preceding command, it does
+    not matter what the address was, as StarCluster takes care of it behind the scenes
+    for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we said earlier, StarCluster provides a batch queuing system for its clusters;
+    you write a script to perform your actions, put it on the queue, and it will run
+    in any available node.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At this point, we need to install some packages again. Fortunately, StarCluster
+    has already done half the work. If this was a real project, we would set up a
+    script to perform all the initialization for us. StarCluster can do this. As this
+    is a tutorial, we just run the installation step again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can use the same jugfile system as before, except that now, instead of running
+    it directly on the master, we schedule it on the cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, write a very simple wrapper script as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Call it `run-jugfile.sh` and use `chmod +x run-jugfile.sh` to give it executable
+    permission. Now, we can schedule sixteen jobs on the cluster by using the following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will create 16 jobs, each of which will run the `run-jugfile.sh` script,
+    which we will simply call jug. You can still use the master as you wish. In particular,
+    you can, at any moment, run `jug status` and see the status of the computation.
+    In fact, jug was developed in exactly such an environment, so it works very well
+    in it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Eventually, the computation will finish. At this point, we need to first save
+    our results. Then, we can kill off all the nodes. We create a directory `~/results`
+    and copy our results here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, log off the cluster back to our worker machine:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we are back at our AWS machine (notice the `$` sign in the next code examples).
+    First, we copy the results back to this computer using the `starcluster get` command
+    (which is the mirror image of `put` we used before):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we should kill all the nodes to save money as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Note that terminating will really destroy the filesystem and all your results.
+    In our case, we have copied the final results to safety manually. Another possibility
+    is to have the cluster write to a filesystem, which is not allocated and destroyed
+    by StarCluster, but is available to you on a regular instance; in fact, the flexibility
+    of these tools is immense. However, these advanced manipulations could not all
+    fit in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: StarCluster has excellent documentation online at [http://star.mit.edu/cluster/](http://star.mit.edu/cluster/),
+    which you should read for more information about all the possibilities of this
+    tool. We have seen only a small fraction of the functionality and used only the
+    default settings here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We saw how to use jug, a little Python framework to manage computations in a
+    way that takes advantage of multiple cores or multiple machines. Although this
+    framework is generic, it was built specifically to address the data analysis needs
+    of its author (who is also an author of this book). Therefore, it has several
+    aspects that make it fit in with the rest of the Python machine learning environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You also learned about AWS, the Amazon Cloud. Using cloud computing is often
+    a more effective use of resources than building in-house computing capacity. This
+    is particularly true if your needs are not constant and are changing. StarCluster
+    even allows for clusters that automatically grow as you launch more jobs and shrink
+    as they terminate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is the end of the book. We have come a long way. You learned how to perform
+    classification when we labeled data and clustering when we do not. You learned
+    about dimensionality reduction and topic modeling to make sense of large datasets.
+    Towards the end, we looked at some specific applications (such as music genre
+    classification and computer vision). For implementations, we relied on Python.
+    This language has an increasingly expanding ecosystem of numeric computing packages
+    built on top of NumPy. Whenever possible, we relied on scikit-learn, but used
+    other packages when necessary. Due to the fact that they all use the same basic
+    data structure (the NumPy multidimensional array), it's possible to mix functionality
+    from different packages seamlessly. All of the packages used in this book are
+    open source and available for use in any project.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Naturally, we did not cover every machine learning topic. In the Appendix, we
+    provide pointers to a selection of other resources that will help interested readers
+    learn more about machine learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Appendix A. Where to Learn More Machine Learning
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We are at the end of our book and now take a moment to look at what else is
+    out there that could be useful for our readers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are many wonderful resources out there to learn more about machine learning—way
+    too much to cover them all here. The following list can therefore represent only
+    a small, and very biased, sampling of the resources the authors think are best
+    at the time of writing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Online courses
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Andrew Ng is a professor at Stanford who runs an online course in machine learning
+    as a massive open online course at Coursera ([http://www.coursera.org](http://www.coursera.org)).
+    It is free of charge, but may represent a significant time investment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Books
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This book is focused on the practical side of machine learning. We did not present
+    the thinking behind the algorithms or the theory that justifies them. If you are
+    interested in that aspect of machine learning, then we recommend *Pattern Recognition
+    and Machine Learning* by Christopher Bishop. This is a classical introductory
+    text in the field. It will teach you the nitty-gritty of most of the algorithms
+    we used in this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you want to move beyond the introduction and learn all the gory mathematical
+    details, then *Machine Learning: A Probabilistic Perspective* by Kevin P. Murphy
+    is an excellent option ([www.cs.ubc.ca/~murphyk/MLbook](http://www.cs.ubc.ca/~murphyk/MLbook)).
+    It''s very recent (published in 2012) and contains the cutting edge of ML research.
+    This 1100 page book can also serve as a reference as very little of machine learning
+    has been left out.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Question and answer sites
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: MetaOptimize ([http://metaoptimize.com/qa](http://metaoptimize.com/qa)) is a
+    machine learning question and answer website where many very knowledgeable researchers
+    and practitioners interact.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cross Validated ([http://stats.stackexchange.com](http://stats.stackexchange.com))
+    is a general statistics question and answer site, which often features machine
+    learning questions as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As mentioned in the beginning of the book, if you have questions specific to
+    particular parts of the book, feel free to ask them at TwoToReal ([http://www.twotoreal.com](http://www.twotoreal.com)).
+    We try to be as quick as possible to jump in and help as best as we can.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Blogs
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here is an obviously non-exhaustive list of blogs, which are interesting to
+    someone working in machine learning:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Machine Learning Theory: [http://hunch.net](http://hunch.net)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The average pace is approximately one post per month. Posts are more theoretical.
+    They offer additional value in brain teasers.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Text & Data Mining by practical means: [http://textanddatamining.blogspot.de](http://textanddatamining.blogspot.de)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Average pace is one post per month, very practical, always surprising approaches.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Edwin Chen''s Blog: [http://blog.echen.me](http://blog.echen.me)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The average pace is one post per month, providing more applied topics.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Machined Learnings: [http://www.machinedlearnings.com](http://www.machinedlearnings.com)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The average pace is one post per month, providing more applied topics.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'FlowingData: [http://flowingdata.com](http://flowingdata.com)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The average pace is one post per day, with the posts revolving more around statistics.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Simply Statistics: [http://simplystatistics.org](http://simplystatistics.org)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Several posts per month, focusing on statistics and big data.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Statistical Modeling, Causal Inference, and Social Science: [http://andrewgelman.com](http://andrewgelman.com)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: One post per day with often funny reads when the author points out flaws in
+    popular media, using statistics.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Data sources
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If you want to play around with algorithms, you can obtain many datasets from
+    the Machine Learning Repository at the University of California at Irvine (UCI).
+    You can find it at [http://archive.ics.uci.edu/ml](http://archive.ics.uci.edu/ml).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting competitive
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An excellent way to learn more about machine learning is by trying out a competition!
+    Kaggle ([http://www.kaggle.com](http://www.kaggle.com)) is a marketplace of ML
+    competitions and was already mentioned in the introduction. On the website, you
+    will find several different competitions with different structures and often cash
+    prizes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The supervised learning competitions almost always follow the following format:
+    you (and every other competitor) are given access to labeled training data and
+    testing data (without labels). Your task is to submit predictions for testing
+    data. When the competition closes, whoever has the best accuracy wins. The prizes
+    range from glory to cash.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, winning something is nice, but you can gain a lot of useful experience
+    just by participating. So, you have to stay tuned after the competition is over
+    as participants start sharing their approaches in the forum. Most of the time,
+    winning is not about developing a new algorithm, but cleverly preprocessing, normalizing,
+    and combining existing methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: All that was left out
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We did not cover every machine learning package available for Python. Given
+    the limited space, we chose to focus on scikit-learn. However, there are other
+    options and we list a few of them here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'MDP toolkit ([http://mdp-toolkit.sourceforge.net](http://mdp-toolkit.sourceforge.net)):
+    Modular toolkit for data processing'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'PyBrain ([http://pybrain.org](http://pybrain.org)): Python-based Reinforcement
+    Learning, Artificial Intelligence, and Neural Network Library'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Machine Learning Toolkit (Milk) ([http://luispedro.org/software/milk](http://luispedro.org/software/milk)):
+    This package was developed by one of the authors of this book and covers some
+    algorithms and techniques that are not included in scikit-learn'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Pattern ([http://www.clips.ua.ac.be/pattern](http://www.clips.ua.ac.be/pattern)):
+    A package that combines web mining, natural language processing, and machine learning,
+    having wrapper APIs for Google, Twitter, and Wikipedia.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A more general resource is [http://mloss.org](http://mloss.org), which is a
+    repository of open source machine learning software. As is usually the case with
+    repositories such as this one, the quality varies between excellent well maintained
+    software and projects that were one-offs and then abandoned. It may be worth checking
+    out whether your problem is very specific and none of the more general packages
+    address it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We are now truly at the end. We hope you enjoyed the book and feel well equipped
+    to start your own machine learning adventure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also hope you learned the importance of carefully testing your methods. In
+    particular, the importance of using correct cross-validation method and not report
+    training test results, which are an over-inflated estimate of how good your method
+    really is.
+  prefs: []
+  type: TYPE_NORMAL

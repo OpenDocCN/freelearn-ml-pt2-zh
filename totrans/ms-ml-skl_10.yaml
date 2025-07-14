@@ -1,0 +1,524 @@
+- en: Chapter 10. From the Perceptron to Artificial Neural Networks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [Chapter 8](ch08.html "Chapter 8. The Perceptron"), *The Perceptron*, we
+    introduced the perceptron, which is a linear model for binary classification.
+    You learned that the perceptron is not a universal function approximator; its
+    decision boundary must be a hyperplane. In the previous chapter we introduced
+    the support vector machine, which redresses some of the perceptron's limitations
+    by using kernels to efficiently map the feature representations to a higher dimensional
+    space in which the instances are linearly separable. In this chapter, we will
+    discuss **artificial neural networks**, which are powerful nonlinear models for
+    classification and regression that use a different strategy to overcome the perceptron's
+    limitations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If the perceptron is analogous to a neuron, an artificial neural network, or
+    **neural net**, is analogous to a brain. As billions of neurons with trillions
+    of synapses comprise a human brain, an artificial neural network is a directed
+    graph of perceptrons or other artificial neurons. The graph's edges are weighted;
+    these weights are the parameters of the model that must be learned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Entire books describe individual aspects of artificial neural networks; this
+    chapter will provide an overview of their structure and training. At the time
+    of writing, some artificial neural networks have been developed for scikit-learn,
+    but they are not available in Version 0.15.2\. Readers can follow the examples
+    in this chapter by checking out a fork of scikit-learn 0.15.1 that includes the
+    neural network module. The implementations in this fork are likely to be merged
+    into future versions of scikit-learn without any changes to the API described
+    in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Nonlinear decision boundaries
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Recall from [Chapter 8](ch08.html "Chapter 8. The Perceptron"), *The Perceptron*,
+    that while some Boolean functions such as AND, OR, and NAND can be approximated
+    by the perceptron, the linearly inseparable function XOR cannot, as shown in the
+    following plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Nonlinear decision boundaries](img/8365OS_10_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Let's review XOR in more detail to develop an intuition for the power of artificial
+    neural networks. In contrast to AND, which outputs 1 when both of its inputs are
+    equal to 1, and OR, which outputs 1 when at least one of the inputs are equal
+    to 1, the output of XOR is 1 when exactly one of its inputs are equal to 1\. We
+    could view XOR as outputting 1 when two conditions are true. The first condition
+    is that at least one of the inputs must be equal to 1; this is the same condition
+    that OR tests. The second condition is that not both of the inputs are equal to
+    1; NAND tests this condition. We can produce the same output as XOR by processing
+    the input with both OR and NAND and then verifying that the outputs of both functions
+    are equal to 1 using AND. That is, the functions OR, NAND, and AND can be composed
+    to produce the same output as XOR.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following tables provide the truth tables for XOR, OR, AND, and NAND for
+    the inputs *A* and *B*. From these tables we can verify that inputting the output
+    of OR and NAND to AND produces the same output as inputting *A* and *B* to XOR:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| A | B | A AND B | A NAND B | A OR B | A XOR B |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0 | 0 | 0 | 1 | 0 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0 | 1 | 0 | 1 | 1 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 0 | 0 | 1 | 1 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 1 | 1 | 0 | 1 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| A | B | A OR B | A NAND B | (A OR B) AND (A NAND B) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0 | 0 | 0 | 1 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0 | 1 | 1 | 1 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 0 | 1 | 1 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 1 | 1 | 0 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: Instead of trying to represent XOR with a single perceptron, we will build an
+    artificial neural network from multiple artificial neurons that each approximate
+    a linear function. Each instance's feature representation will be input to two
+    neurons; one neuron will represent NAND and the other will represent OR. The output
+    of these neurons will be received by a third neuron that represents AND to test
+    whether both of XOR's conditions are true.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feedforward and feedback artificial neural networks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Artificial neural networks are described by three components. The first is the
+    model's **architecture**, or topology, which describes the layers of neurons and
+    structure of the connections between them. The second component is the activation
+    function used by the artificial neurons. The third component is the learning algorithm
+    that finds the optimal values of the weights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are two main types of artificial neural networks. **Feedforward neural
+    networks** are the most common type of neural net, and are defined by their directed
+    acyclic graphs. Signals only travel in one direction—towards the output layer—in
+    feedforward neural networks. Conversely, **feedback neural networks**, or recurrent
+    neural networks, do contain cycles. The feedback cycles can represent an internal
+    state for the network that can cause the network's behavior to change over time
+    based on its input. Feedforward neural networks are commonly used to learn a function
+    to map an input to an output. The temporal behavior of feedback neural networks
+    makes them suitable for processing sequences of inputs. Because feedback neural
+    networks are not implemented in scikit-learn, we will limit our discussion to
+    only feedforward neural networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multilayer perceptrons
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **multilayer perceptron** (**MLP**) is the one of the most commonly used
+    artificial neural networks. The name is a slight misnomer; a multilayer perceptron
+    is not a single perceptron with multiple layers, but rather multiple layers of
+    artificial neurons that can be perceptrons. The layers of the MLP form a directed,
+    acyclic graph. Generally, each layer is fully connected to the subsequent layer;
+    the output of each artificial neuron in a layer is an input to every artificial
+    neuron in the next layer towards the output. MLPs have three or more layers of
+    artificial neurons.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **input layer** consists of simple input neurons. The input neurons are
+    connected to at least one **hidden layer** of artificial neurons. The hidden layer
+    represents latent variables; the input and output of this layer cannot be observed
+    in the training data. Finally, the last hidden layer is connected to an **output**
+    **layer**. The following diagram depicts the architecture of a multilayer perceptron
+    with three layers. The neurons labeled **+1** are bias neurons and are not depicted
+    in most architecture diagrams.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Multilayer perceptrons](img/8365OS_10_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The artificial neurons, or **units**, in the hidden layer commonly use nonlinear
+    activation functions such as the hyperbolic tangent function and the logistic
+    function, which are given by the following equations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Multilayer perceptrons](img/8365OS_10_03.jpg)![Multilayer perceptrons](img/8365OS_10_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As with other supervised models, our goal is to find the values of the weights
+    that minimize the value of a cost function. The mean squared error cost function
+    is commonly used with multilayer perceptrons. It is given by the following equation,
+    where *m* is the number of training instances:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Multilayer perceptrons](img/8365OS_10_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Minimizing the cost function
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **backpropagation** algorithm is commonly used in conjunction with an optimization
+    algorithm such as gradient descent to minimize the value of the cost function.
+    The algorithm takes its name from a portmanteau of *backward propagation*, and
+    refers to the direction in which errors flow through the layers of the network.
+    Backpropagation can theoretically be used to train a feedforward network with
+    any number of hidden units arranged in any number of layers, though computational
+    power constrains this capability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Backpropagation is similar to gradient descent in that it uses the gradient
+    of the cost function to update the values of the model parameters. Unlike the
+    linear models we have previously seen, neural nets contain hidden units that represent
+    latent variables; we can't tell what the hidden units should do from the training
+    data. If we do not know what the hidden units should do, we cannot calculate their
+    errors and we cannot calculate the gradient of cost function with respect to their
+    weights. A naive solution to overcome this is to randomly perturb the weights
+    for the hidden units. If a random change to one of the weights decreases the value
+    of the cost function, we save the change and randomly change the value of another
+    weight. An obvious problem with this solution is its prohibitive computational
+    cost. Backpropagation provides a more efficient solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will step through training a feedforward neural network using backpropagation.
+    This network has two input units, two hidden layers that both have three hidden
+    units, and two output units. The input units are both fully connected to the first
+    hidden layer's units, called `Hidden1`, `Hidden2`, and `Hidden3`. The edges connecting
+    the units are initialized to small random weights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Forward propagation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'During the forward propagation stage, the features are input to the network
+    and fed through the subsequent layers to produce the output activations. First,
+    we compute the activation for the unit `Hidden1`. We find the weighted sum of
+    input to `Hidden1`, and then process the sum with the activation function. Note
+    that `Hidden1` receives a constant input from a bias unit that is not depicted
+    in the diagram in addition to the inputs from the input units. In the following
+    diagram, ![Forward propagation](img/8365OS_10_42.jpg) is the activation function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Forward propagation](img/8365OS_10_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, we compute the activation for the second hidden unit. Like the first
+    hidden unit, it receives weighted inputs from both of the input units and a constant
+    input from a bias unit. We then process the weighted sum of the inputs, or **preactivation**,
+    with the activation function as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Forward propagation](img/8365OS_10_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We then compute the activation for `Hidden3` in the same manner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Forward propagation](img/8365OS_10_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Having computed the activations of all of the hidden units in the first layer,
+    we proceed to the second hidden layer. In this network, the first hidden layer
+    is fully connected to the second hidden layer. Similar to the units in the first
+    hidden layer, the units in the second hidden layer receive a constant input from
+    bias units that are not depicted in the diagram. We proceed to compute the activation
+    of `Hidden4`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Forward propagation](img/8365OS_10_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We next compute the activations of `Hidden5` and `Hidden6`. Having computed
+    the activations of all of the hidden units in the second hidden layer, we proceed
+    to the output layer in the following figure. The activation of `Output1` is the
+    weighted sum of the second hidden layer''s activations processed through an activation
+    function. Similar to the hidden units, the output units both receive a constant
+    input from a bias unit:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Forward propagation](img/8365OS_10_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We calculate the activation of `Output2` in the same manner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Forward propagation](img/8365OS_10_26.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: We computed the activations of all of the units in the network, and we have
+    now completed forward propagation. The network is not likely to approximate the
+    true function well using the initial random values of the weights. We must now
+    update the values of the weights so that the network can better approximate our
+    function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Backpropagation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can calculate the error of the network only at the output units. The hidden
+    units represent latent variables; we cannot observe their true values in the training
+    data and thus, we have nothing to compute their error against. In order to update
+    their weights, we must propagate the network''s errors backwards through its layers.
+    We will begin with `Output1`. Its error is equal to the difference between the
+    true and predicted outputs, multiplied by the partial derivative of the unit''s
+    activation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_27.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We then calculate the error of the second output unit:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_28.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We computed the errors of the output layer. We can now propagate these errors
+    backwards to the second hidden layer. First, we will compute the error of hidden
+    unit `Hidden4`. We multiply the error of `Output1` by the value of the weight
+    connecting `Hidden4` and `Output1`. We similarly weigh the error of `Output2`.
+    We then add these errors and calculate the product of their sum and the partial
+    derivative of `Hidden4`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_38.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We similarly compute the errors of `Hidden5`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_29.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We then compute the `Hidden6` error in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_30.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We calculated the error of the second hidden layer with respect to the output
+    layer. Next, we will continue to propagate the errors backwards towards the input
+    layer. The error of the hidden unit `Hidden1` is the product of its partial derivative
+    and the weighted sums of the errors in the second hidden layer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_31.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We similarly compute the error for hidden unit `Hidden2`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_32.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We similarly compute the error for `Hidden3`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_33.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: We computed the errors of the first hidden layer. We can now use these errors
+    to update the values of the weights. We will first update the weights for the
+    edges connecting the input units to `Hidden1` as well as the weight for the edge
+    connecting the bias unit to `Hidden1`. We will increment the value of the weight
+    connecting `Input1` and `Hidden1` by the product of the learning rate, error of
+    `Hidden1`, and the value of `Input1`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will similarly increment the value of `Weight2` by the product of the learning
+    rate, error of `Hidden1`, and the value of `Input2`. Finally, we will increment
+    the value of the weight connecting the bias unit to `Hidden1` by the product of
+    the learning rate, error of `Hidden1`, and one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_34.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We will then update the values of the weights connecting hidden unit `Hidden2`
+    to the input units and the bias unit using the same method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_35.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, we will update the values of the weights connecting the input layer to
+    `Hidden3`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_36.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Since the values of the weights connecting the input layer to the first hidden
+    layer is updated, we can continue to the weights connecting the first hidden layer
+    to the second hidden layer. We will increment the value of `Weight7` by the product
+    of the learning rate, error of `Hidden4`, and the output of `Hidden1`. We continue
+    to similarly update the values of weights `Weight8` to `Weight15`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_37.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The weights for `Hidden5` and `Hidden6` are updated in the same way. We updated
+    the values of the weights connecting the two hidden layers. We can now update
+    the values of the weights connecting the second hidden layer and the output layer.
+    We increment the values of weights `W16` through `W21` using the same method that
+    we used for the weights in the previous layers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Backpropagation](img/8365OS_10_40.jpg)![Backpropagation](img/8365OS_10_41.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: After incrementing the value of `Weight21` by the product of the learning rate,
+    error of `Output2`, and the activation of `Hidden6`, we have finished updating
+    the values of the weights for the network. We can now perform another forward
+    pass using the new values of the weights; the value of the cost function produced
+    using the updated weights should be smaller. We will repeat this process until
+    the model converges or another stopping criterion is satisfied. Unlike the linear
+    models we have discussed, backpropagation does not optimize a convex function.
+    It is possible that backpropagation will converge on parameter values that specify
+    a local, rather than global, minimum. In practice, local optima are frequently
+    adequate for many applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Approximating XOR with Multilayer perceptrons
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let's train a multilayer perceptron to approximate the XOR function. At the
+    time of writing, multilayer perceptrons have been implemented as part of a 2014
+    Google Summer of Code project, but have not been merged or released. Subsequent
+    versions of scikit-learn are likely to include this implementation of multilayer
+    perceptrons without any changes to the API described in this section. In the interim,
+    a fork of scikit-learn 0.15.1 that includes the multilayer perceptron implementation
+    can be cloned from [https://github.com/IssamLaradji/scikit-learn.git](https://github.com/IssamLaradji/scikit-learn.git).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we will create a toy binary classification dataset that represents XOR
+    and split it into training and testing sets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next we instantiate `MultilayerPerceptronClassifier`. We specify the architecture
+    of the network through the `n_hidden` keyword argument, which takes a list of
+    the number of hidden units in each hidden layer. We create a hidden layer with
+    two units that use the logistic activation function. The `MultilayerPerceptronClassifier`
+    class automatically creates two input units and one output unit. In multi-class
+    problems the classifier will create one output unit for each of the possible classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Selecting an architecture is challenging. There are some rules of thumb to choose
+    the numbers of hidden units and layers, but these tend to be supported only by
+    anecdotal evidence. The optimal number of hidden units depends on the number of
+    training instances, the noise in the training data, the complexity of the function
+    that is being approximated, the hidden units' activation function, the learning
+    algorithm, and the regularization employed. In practice, architectures can only
+    be evaluated by comparing their performances through cross validation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We train the network by calling the fit() method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we print some predictions for manual inspection and evaluate the model''s
+    accuracy on the test set. The network perfectly approximates the XOR function
+    on the test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Classifying handwritten digits
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the previous chapter we used a support vector machine to classify the handwritten
+    digits in the MNIST dataset. In this section we will classify the images using
+    an artificial neural network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'First we use the `load_digits` convenience function to load the MNIST dataset.
+    We will fork additional processes during cross validation, which requires execution
+    from a `main-`protected block:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Scaling the features is particularly important for artificial neural networks
+    and will help some learning algorithms to converge more quickly. Next, we create
+    a `Pipeline` class that scales the data before fitting a `MultilayerPerceptronClassifier`.
+    This network contains an input layer, a hidden layer with 150 units, a hidden
+    layer with 100 units, and an output layer. We also increased the value of the
+    regularization hyperparameter `alpha` argument. Finally, we print the accuracies
+    of the three cross validation folds. The code is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The mean accuracy is comparable to the accuracy of the support vector classifier.
+    Adding more hidden units or hidden layers and grid searching to tune the hyperparameters
+    could further improve the accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we introduced artificial neural networks, powerful models for
+    classification and regression that can represent complex functions by composing
+    several artificial neurons. In particular, we discussed directed acyclic graphs
+    of artificial neurons called feedforward neural networks. Multilayer perceptrons
+    are a type of feedforward network in which each layer is fully connected to the
+    subsequent layer. An MLP with one hidden layer and a finite number of hidden units
+    is a universal function approximator. It can represent any continuous function,
+    though it will not necessarily be able to learn appropriate weights automatically.
+    We described how the hidden layers of a network represent latent variables and
+    how their weights can be learned using the backpropagation algorithm. Finally,
+    we used scikit-learn's multilayer perceptron implementation to approximate the
+    function XOR and to classify handwritten digits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This chapter concludes the book. We discussed a variety of models, learning
+    algorithms, and performance measures, as well as their implementations in scikit-learn.
+    In the first chapter, we described machine learning programs as those that learn
+    from experience to improve their performance at a task. Then, we worked through
+    examples that demonstrated some of the most common experiences, tasks, and performance
+    measures in machine learning. We regressed the prices of pizzas onto their diameters
+    and classified spam and ham text messages. We clustered colors to compress images
+    and clustered the SURF descriptors to recognize photographs of cats and dogs.
+    We used principal component analysis for facial recognition, built a random forest
+    to block banner advertisements, and used support vector machines and artificial
+    neural networks for optical character recognition. Thank you for reading; I hope
+    that you will be able to use scikit-learn and this book's examples to apply machine
+    learning to your own experiences.
+  prefs: []
+  type: TYPE_NORMAL

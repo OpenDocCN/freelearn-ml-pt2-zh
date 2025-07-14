@@ -1,0 +1,1274 @@
+- en: '11'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Categorizing Images of Clothing with Convolutional Neural Networks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The previous chapter wrapped up our coverage of the best practices for general
+    machine learning. Starting from this chapter, we will dive into the more advanced
+    topics of deep learning and reinforcement learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we deal with image classification, we usually flatten the images, get vectors
+    of pixels, and feed them to a neural network (or another model). Although this
+    might do the job, we lose critical spatial information. In this chapter, we will
+    use **Convolutional Neural Networks** (**CNNs**) to extract rich and distinguishable
+    representations from images. You will see how CNN representations make a “9” a
+    “9”, a “4” a “4”, a cat a cat, or a dog a dog.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will start by exploring individual building blocks in the CNN architecture.
+    Then, we will develop a CNN classifier in PyTorch to categorize clothing images
+    and demystify the convolutional mechanism. Finally, we will introduce data augmentation
+    to boost the performance of CNN models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will cover the following topics in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting started with CNN building blocks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Architecting a CNN for classification
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploring the clothing image dataset
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Classifying clothing images with CNNs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Boosting the CNN classifier with data augmentation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Advancing the CNN classifier with transfer learning
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Getting started with CNN building blocks
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Although regular hidden layers (the fully connected layers we have seen so far)
+    do a good job of extracting features from data at certain levels, these representations
+    might not be useful in differentiating images of different classes. CNNs can be
+    used to extract richer, more distinguishable representations that, for example,
+    make a car a car, a plane a plane, or the handwritten letters “y” and “z” recognizably
+    a “y” and a “z,” and so on. CNNs are a type of neural network that is biologically
+    inspired by the human visual cortex. To demystify CNNs, I will start by introducing
+    the components of a typical CNN, including the convolutional layer, the non-linear
+    layer, and the pooling layer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The convolutional layer
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The **convolutional layer** is the first layer in a CNN, or the first few layers
+    in a CNN if it has multiple convolutional layers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'CNNs, specifically their convolutional layers, mimic the way our visual cells
+    work, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our visual cortex has a set of complex neuronal cells that are sensitive to
+    specific sub-regions of the visual field and that are called **receptive fields**.
+    For instance, some cells only respond in the presence of vertical edges; some
+    cells fire only when they are exposed to horizontal edges; some react more strongly
+    when they are shown edges of a certain orientation. These cells are organized
+    together to produce the entire visual perception, with each cell being specialized
+    in a specific component. A convolutional layer in a CNN is composed of a set of
+    filters that act like those cells in humans’ visual cortexes.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A simple cell only responds when edge-like patterns are presented within its
+    receptive sub-regions. A more complex cell is sensitive to larger sub-regions,
+    and as a result, can respond to edge-like patterns across the entire visual field.
+    A stack of convolutional layers is a bunch of complex cells that can detect patterns
+    in a bigger scope.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The convolutional layer processes input images or matrices and mimics how neural
+    cells react to the particular regions they are attuned to by employing a convolutional
+    operation on the input. Mathematically, it computes the **dot product** between
+    the nodes of the convolutional layer and individual small regions in the input
+    layer. The small region is the receptive field, and the nodes of the convolutional
+    layer can be viewed as the values on a filter. As the filter moves along on the
+    input layer, the dot product between the filter and the current receptive field
+    (sub-region) is computed. A new layer called the **feature map** is obtained after
+    the filter has convolved over all the sub-regions. Let’s look at a simple example,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A diagram of a network  Description automatically generated with low confidence](img/B21047_11_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.1: How a feature map is generated'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, layer *l* has 5 nodes and the filter is composed of 3 nodes
+    [*w*[1], *w*[2], *w*[3]]. We first compute the dot product between the filter
+    and the first three nodes in layer *l* and obtain the first node in the output
+    feature map; then, we compute the dot product between the filter and the middle
+    three nodes and generate the second node in the output feature map; finally, the
+    third node is generated from the convolution on the last three nodes in layer
+    *l*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we’ll take a closer look at how convolution works in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_11_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.2: How convolution works'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this example, a 3*3 filter is sliding around a 5*5 input matrix from the
+    top-left sub-region to the bottom-right sub-region. For each sub-region, the dot
+    product is computed using the filter. Take the top-left sub-region (in the orange
+    rectangle) as an example: we have 1 * 1 + 1 * 0 + 1 * 1 = 2, therefore the top-left
+    node (in the upper-left orange rectangle) in the feature map is of value 2\. For
+    the next leftmost sub-region (in the blue dash rectangle), we calculate the convolution
+    as 1 * 1 + 1 * 1 + 1 * 1 = 3, so the value of the next node (in the upper-middle
+    blue dash rectangle) in the resulting feature map becomes 3\. At the end, a 3*3
+    feature map is generated as a result.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: So what do we use convolutional layers for? They are actually used to extract
+    features such as edges and curves. The pixel in the output feature map will be
+    of high value if the corresponding receptive field contains an edge or curve that
+    is recognized by the filter. For instance, in the preceding example, the filter
+    portrays a backslash-shape “\” diagonal edge; the receptive field in the blue
+    dash rectangle contains a similar curve and hence the highest intensity 3 is created.
+    However, the receptive field in the top-right corner does not contain such a backslash
+    shape, hence it results in a pixel of value 0 in the output feature map. The convolutional
+    layer acts as a curve detector or a shape detector.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Also, a convolutional layer usually has multiple filters detecting different
+    curves and shapes. In the simple preceding example, we only apply one filter and
+    generate one feature map, which indicates how well the shape in the input image
+    resembles the curve represented in the filter. In order to detect more patterns
+    from the input data, we can employ more filters, such as horizontal, vertical
+    curve, 30-degree, and right-angle shape.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additionally, we can stack several convolutional layers to produce higher-level
+    representations such as the overall shape and contour. Chaining more layers will
+    result in larger receptive fields that are able to capture more global patterns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Right after each convolutional layer, we often apply a non-linear layer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The non-linear layer
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The non-linear layer is basically the activation layer we saw in *Chapter 6*,
+    *Predicting Stock Prices with Artificial Neural Networks*. It is used to introduce
+    non-linearity, obviously. Recall that in the convolutional layer, we only perform
+    linear operations (multiplication and addition). And no matter how many linear
+    hidden layers a neural network has, it will just behave as a single-layer perceptron.
+    Hence, we need a non-linear activation right after the convolutional layer. Again,
+    ReLU is the most popular candidate for the non-linear layer in deep neural networks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The pooling layer
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Normally after one or more convolutional layers (along with non-linear activation),
+    we can directly use the derived features for classification. For example, we can
+    apply a softmax layer in the multiclass classification case. But let’s do some
+    math first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given 28 * 28 input images, supposing that we apply 20 5 * 5 filters in the
+    first convolutional layer, we will obtain 20 output feature maps and each feature
+    map layer will be of size (28 – 5 + 1) * (28 – 5 + 1) = 24 * 24 = 576\. This means
+    that the number of features as inputs for the next layer increases to 11,520 (20
+    * 576) from 784 (28 * 28). We then apply 50 5 * 5 filters in the second convolutional
+    layer. The size of the output grows to 50 * 20 * (24 – 5 + 1) * (24 – 5 + 1) =
+    400,000\. This is a lot higher than our initial size of 784\. We can see that
+    the dimensionality increases dramatically with every convolutional layer before
+    the final softmax layer. This can be problematic as it leads to overfitting easily,
+    not to mention the cost of training such a large number of weights.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To address the issue of drastically growing dimensionality, we often employ
+    a **pooling layer** after the convolutional and non-linear layers. The pooling
+    layer is also called the **downsampling layer**. As you can imagine, it reduces
+    the dimensions of the feature maps. This is done by aggregating the statistics
+    of features over sub-regions. Typical pooling methods include:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Max pooling, which takes the max values over all non-overlapping sub-regions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Mean pooling, which takes the mean values over all non-overlapping sub-regions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In the following example, we apply a 2 * 2 max-pooling filter on a 4 * 4 feature
+    map and output a 2 * 2 one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing screenshot, number  Description automatically generated](img/B21047_11_03.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.3: How max pooling works'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Besides dimensionality reduction, the pooling layer has another advantage:
+    translation invariance. This means that its output doesn’t change even if the
+    input matrix undergoes a small amount of translation. For example, if we shift
+    the input image a couple of pixels to the left or right, as long as the highest
+    pixels remain the same in the sub-regions, the output of the max-pooling layer
+    will still be the same. In other words, the prediction becomes less position-sensitive
+    with pooling layers. The following example illustrates how max pooling achieves
+    translation invariance.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the 4 * 4 original image, along with the output from max pooling with
+    a 2 * 2 filter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing screenshot, diagram, number  Description automatically
+    generated](img/B21047_11_04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.4: The original image and the output from max pooling'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And if we shift the image 1 pixel to the right, we have the following shifted
+    image and the corresponding output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing text, diagram, number, screenshot  Description automatically
+    generated](img/B21047_11_05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.5: The shifted image and the output'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We have the same output even if we horizontally move the input image. Pooling
+    layers increase the robustness of image translation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You’ve now learned about all of the components of a CNN. It was easier than
+    you thought, right? Let’s see how they compose a CNN next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Architecting a CNN for classification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Putting the three types of convolutional-related layers together, along with
+    the fully connected layer(s), we can structure the CNN model for classification
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing text, screenshot, diagram, plot  Description automatically
+    generated](img/B21047_11_06.png)Figure 11.6: CNN architecture'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this example, the input images are first fed into a convolutional layer (with
+    ReLU activation) composed of a bunch of filters. The coefficients of the convolutional
+    filters are trainable. A well-trained initial convolutional layer is able to derive
+    good low-level representations of the input images, which will be critical to
+    downstream convolutional layers if there are any, and also downstream classification
+    tasks. Each resulting feature map is then downsampled by the pooling layer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, the aggregated feature maps are fed into the second convolutional layer.
+    Similarly, the second pooling layer reduces the size of the output feature maps.
+    You can chain as many pairs of convolutional and pooling layers as you want. The
+    second (or more, if any) convolutional layer tries to compose high-level representations,
+    such as the overall shape and contour, through a series of low-level representations
+    derived from previous layers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Up until this point, the feature maps are matrices. We need to flatten them
+    into a vector before performing any downstream classification. The flattened features
+    are just treated as the input to one or more fully connected hidden layers. We
+    can think of a CNN as a hierarchical feature extractor on top of a regular neural
+    network. CNNs are well suited to exploiting strong and unique features that differentiate
+    images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The network ends up with a logistic function if we deal with a binary classification
+    problem, a softmax function for a multiclass case, or a set of logistic functions
+    for multi-label cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By now, you should have a good understanding of CNNs and should be ready to
+    solve the clothing image classification problem. Let’s start by exploring the
+    dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring the clothing image dataset
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The clothing dataset Fashion-MNIST ([https://github.com/zalandoresearch/fashion-mnist](https://github.com/zalandoresearch/fashion-mnist))
+    is a dataset of images from Zalando (Europe’s biggest online fashion retailer).
+    It consists of 60,000 training samples and 10,000 test samples. Each sample is
+    a 28 * 28 grayscale image, associated with a label from the following 10 classes,
+    each representing articles of clothing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '0: T-shirt/top'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '1: Trouser'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '2: Pullover'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '3: Dress'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '4: Coat'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '5: Sandal'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '6: Shirt'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '7: Sneaker'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '8: Bag'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '9: Ankle boot'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Zalando aims to make the dataset as popular as the handwritten digits MNIST
+    dataset for benchmarking algorithms and hence calls it Fashion-MNIST.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can download the dataset from the direct links in the *Get the data* section
+    using the GitHub link or simply import it from PyTorch, which already includes
+    the dataset and its data loader API. We will take the latter approach, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: We just import `torchvision`, a package in PyTorch that provides access to datasets,
+    model architectures, and various image transformation utilities for computer vision
+    tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `torchvision` library includes the following key components:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Datasets and data loaders**: `torchvision.datasets` provides access to standard
+    datasets for tasks like image classification, object detection, semantic segmentation,
+    etc. Examples include MNIST, CIFAR-10, ImageNet, `FashionMNIST`, etc. `torch.utils.data.DataLoader`
+    helps in creating data loaders to efficiently load and preprocess batches of data
+    from datasets.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Transformations**: `torchvision.transforms` offers a variety of image transformations
+    for data augmentation, normalization, and preprocessing. Common transformations
+    include resizing, cropping, normalization, and more.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Model architectures**: `torchvision.models` provides pre-trained model architectures
+    for various computer vision tasks.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Utilities**: `torchvision.utils` includes utility functions for visualizing
+    images, converting images into different formats, and more.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The Fashion-MNIST dataset we just loaded comes with a pre-specified training
+    and test dataset partitioning scheme. The training set is stored at `image_path`.
+    Then we convert them into Tensor format. Output these two dataset objects to obtain
+    additional details:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, there are 60,000 training samples and 10,000 test samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we load the training set into batches of 64 samples, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: In PyTorch, `DataLoader` is a utility that provides an efficient way to load
+    and preprocess data from a dataset during training or evaluation of machine learning
+    models. It essentially wraps around a dataset and provides methods to iterate
+    over batches of data. This is particularly useful when working with large datasets
+    that do not fit entirely in memory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Key features of DataLoader:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Batching**: It automatically divides the dataset into batches of specified
+    size, allowing you to work with mini-batches of data during training.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Shuffling**: You can set the `shuffle` parameter to `True` to shuffle the
+    data before each epoch, which helps in reducing bias and improving convergence.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Feel free to inspect the image samples and their labels from the first batch,
+    for example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The label arrays do not include class names. Hence, we define them as follows
+    and will use them for plotting later on:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Take a look at the format of the image data as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Each image is represented as 28 * 28 pixels, whose values are in the range `[0,
+    1]`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s now display an image as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: In PyTorch, `np.transpose(npimg, (1, 2, 0))` is used when visualizing images
+    using `matplotlib`. `(1, 2, 0)` is a tuple representing the new order of dimensions.
+    In PyTorch, images are represented in the format `(channels, height, width)`.
+    However, matplotlib expects images to be in the format `(height, width, channels)`.
+    `np.transpose(npimg, (1, 2, 0))` is used to rearrange the dimensions of the image
+    array to match the format that matplotlib expects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Refer to the following sneaker image – the end result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A green and blue color scheme  Description automatically generated with medium
+    confidence](img/B21047_11_07.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.7: A training sample from Fashion-MNIST'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, we display the first 16 training samples, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Refer to the following image for the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A collection of different clothes  Description automatically generated](img/B21047_11_08.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.8: 16 training samples from Fashion-MNIST'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will be building our CNN model to classify these clothing
+    images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classifying clothing images with CNNs
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As mentioned, the CNN model has two main components: the feature extractor
+    composed of a set of convolutional and pooling layers, and the classifier backend,
+    similar to a regular neural network.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let’s start this project by architecting the CNN model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Architecting the CNN model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We import the necessary module and initialize a Sequential-based model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For the convolutional extractor, we are going to use three convolutional layers.
+    We start with the first convolutional layer with 32 small-sized 3 * 3 filters.
+    This is implemented with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note that we use ReLU as the activation function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The convolutional layer is followed by a max-pooling layer with a 2 * 2 filter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here comes the second convolutional layer. It has 64 3 * 3 filters and comes
+    with a ReLU activation function as well:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The second convolutional layer is followed by another max-pooling layer with
+    a 2 * 2 filter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We continue adding the third convolutional layer. It has 128 3 * 3 filters
+    at this time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s take a pause here and see what the resulting filter maps are. We feed
+    a random batch (of 64 samples) into the model we have built so far:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: By providing the input shape as `(64, 1, 28, 28)`, which means 64 images within
+    the batch, and image size 28 * 28, the output has a shape of `(64, 128, 3, 3)`,
+    indicating feature maps with 128 channels and a spatial size of 3 * 3.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we need to flatten these small 128 * 3 * 3 spatial representations to
+    provide features to the downstream classifier backend:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As a result, we have a flattened output of shape `(64, 1152)`, as computed
+    by the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For the classifier backend, we just use one hidden layer with 64 nodes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: The hidden layer here is the regular fully connected dense layer, with ReLU
+    as the activation function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, the output layer has 10 nodes representing 10 different classes in
+    our case, along with a softmax activation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s take a look at the model architecture, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you want to display each layer in detail, including the shape of its output,
+    and the number of its trainable parameters, you can use the `torchsummary` library.
+    You can install it via `pip` and use it as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you may notice, the output from a convolutional layer is three-dimensional,
+    where the first two are the dimensions of the feature maps and the third is the
+    number of filters used in the convolutional layer. The size (the first two dimensions)
+    of the max-pooling output is half of its input feature map in the example. Feature
+    maps are downsampled by the pooling layer. You may want to see how many parameters
+    there would be to be trained if you took out all the pooling layers. Actually,
+    it is 4,058,314! So, the benefits of applying pooling are obvious: avoiding overfitting
+    and reducing training costs.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You may wonder why the number of convolutional filters keeps increasing over
+    the layers. Recall that each convolutional layer attempts to capture patterns
+    of a specific hierarchy. The first convolutional layer captures low-level patterns,
+    such as edges, dots, and curves. Then, the subsequent layers combine those patterns
+    extracted in previous layers to form high-level patterns, such as shapes and contours.
+    As we move forward in these convolutional layers, there are more and more combinations
+    of patterns to capture in most cases. As a result, we need to keep increasing
+    (or at least not decreasing) the number of filters in the convolutional layers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fitting the CNN model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now it’s time to train the model we just built.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we compile the model with Adam as the optimizer, cross-entropy as the
+    loss function, and classification accuracy as the metric:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we employ the GPU for training, so we run `torch.device("cuda:0")` to
+    specify the GPU device (the first device, with index 0) and allocate tensors on
+    it. Opting for the CPU is a working, but comparatively slower option.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we train the model by defining the following function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will train the CNN model for 30 iterations and monitor the learning progress:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We are able to achieve an accuracy of around 94% on the training set. If you
+    want to check the performance on the test set, you can do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: The model achieves an accuracy of 90% on the test dataset. Note that this result
+    may vary due to factors like differences in hidden layer initializations, or non-deterministic
+    operations in GPUs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Best practice**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Operations that are better suited to execution on a GPU compared to a CPU typically
+    involve parallelizable tasks that benefit from the massive parallelism and computational
+    power offered by GPU architectures. Here are some examples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Matrix and convolutional operations
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Processing large batches of data simultaneously. Tasks that involve batch processing,
+    such as training and inference on mini-batches in machine learning models, benefit
+    from the parallel processing capabilities of GPUs.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Forward and backward propagation in neural networks, which are typically faster
+    on GPUs due to hardware acceleration.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Best practice**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Operations that are better suited to execution on a CPU compared to a GPU typically
+    involve less parallelizable tasks and require more sequential processing or small
+    data sizes. Here are some examples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preprocessing such as data loading, feature extraction, and data augmentation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Inference on small models. For small models or inference tasks with low computational
+    requirements, performing operations on the CPU can be more cost-effective.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Control flow operations. Operations involving conditional statements or loops
+    are generally more efficient on the CPU due to its sequential processing nature.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You have seen how the trained model performs, and you may wonder what the convolutional
+    filters look like. You will find out in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing the convolutional filters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We extract the convolutional filters from the trained model and visualize them
+    with the following steps.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'From the model summary, we know that the layers of `conv1`, `conv2`, and `conv3`
+    in the model are convolutional layers. Using the third convolutional layer as
+    an example, we obtain its filters as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: It’s apparent that there are 128 filters, where each filter possesses dimensions
+    of 3x3 and contains 64 channels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, for simplification, we visualize only the first channel from the first
+    16 filters in four rows and four columns:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Refer to the following screenshot for the end result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing square, pattern, rectangle, symmetry  Description automatically
+    generated](img/B21047_11_09.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.9: Trained convolutional filters'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a convolutional filter, the dark squares represent small weights and the
+    white squares indicate large weights. Based on this intuition, we can see that
+    the second filter in the second row detects the vertical line in a receptive field,
+    while the third filter in the first row detects a gradient from light at the bottom
+    right to dark at the top left.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the previous example, we trained the clothing image classifier with 60,000
+    labeled samples. However, it is not easy to gather such a big labeled dataset
+    in reality. Specifically, image labeling is expensive and time-consuming. How
+    can we effectively train an image classifier with a limited number of samples?
+    One solution is data augmentation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Boosting the CNN classifier with data augmentation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Data augmentation** means expanding the size of an existing training dataset
+    in order to improve the generalization performance. It overcomes the cost involved
+    in collecting and labeling more data. In PyTorch, we use the `torchvision.transforms`
+    module to implement image augmentation in real time.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Flipping for data augmentation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'There are many ways to augment image data. The simplest one is probably flipping
+    an image horizontally or vertically. For instance, we will have a new image if
+    we flip an existing image horizontally. To create a horizontally flipped image,
+    we utilize `transforms.functional.hflip`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s take a look at the flipped image:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Refer to the following screenshot for the end result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A screenshot of a computer screen  Description automatically generated](img/B21047_11_10.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.10: Horizontally flipped image for data augmentation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In training using data augmentation, we will create manipulated images using
+    a random generator. For horizontal flipping, we will use `transforms.RandomHorizontalFlip`,
+    which randomly flips images horizontally with a 50% chance, effectively augmenting
+    the dataset. Let’s see three output samples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Refer to the following screenshot for the end result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A close-up of a pair of shoes  Description automatically generated](img/B21047_11_11.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.11: Randomly horizontally flipped images for data augmentation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, the generated images are either horizontally flipped or not
+    flipped.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In general, the horizontally flipped images convey the same message as the original
+    ones. Vertically flipped images are not frequently seen, although you can generate
+    them using `transforms.RandomVerticalFlip`. It is also worth noting that flipping
+    only works in orientation-insensitive cases, such as classifying cats and dogs
+    or recognizing parts of cars. On the contrary, it is dangerous to do so in cases
+    where orientation matters, such as classifying between right and left turn signs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Rotation for data augmentation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Instead of rotating every 90 degrees as in horizontal or vertical flipping,
+    a small-to-medium degree rotation can also be applied in image data augmentation.
+    Let’s look at random rotation using `transforms`. We use `RandomRotation` in the
+    following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Refer to the following screenshot for the end result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A close-up of a pair of images  Description automatically generated](img/B21047_11_12.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.12: Rotated images for data augmentation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the preceding example, the image is rotated by any degree ranging from -20
+    (counterclockwise) to 20 (clockwise).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cropping for data augmentation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Cropping is another commonly used augmentation method. It generates new images
+    by selecting a segment of the original image. Typically, this process is accompanied
+    by resizing the cropped area to a predetermined output size to ensure uniform
+    dimensions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s explore how to utilize `transforms.RandomResizedCrop` to randomly
+    select the aspect ratio of the cropped section and subsequently resize the result
+    to match the original dimensions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, `size` specifies the size of the output image after cropping and resizing;
+    `scale` defines the range of scaling for cropping. If set to (`min_scale`, `max_scale`),
+    the crop area’s size will be randomly chosen to be between `min_scale` and `max_scale`
+    times the original image’s size.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Refer to the following screenshot for the end result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A close-up of a pair of shoes  Description automatically generated](img/B21047_11_13.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 11.13: Cropped images for data augmentation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, `scale=(0.7, 1.0)` indicates that the crop area’s size can vary
+    between 70% and 100% of the original image’s size.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving the clothing image classifier with data augmentation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Armed with several common augmentation methods, we will now apply them to train
+    our image classifier on a small dataset in the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start by constructing the transform function by combining all the data augmentation
+    techniques we just discussed:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, we employ horizontal flip, rotation of up to 10 degrees, and cropping,
+    with dimensions ranging from 90% to 100% of the original size.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We reload the training dataset with this transform function and only use 500
+    samples for training:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We will see how data augmentation improves generalization and performance with
+    a very small training set available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load this small but augmented training set into batches of 64 samples as we
+    did previously:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Note that even for the same original image, iterating using this data loader
+    will produce different augmented images, which could be flipped, rotated, or cropped
+    within the specified ranges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we initialize the CNN model using the same architecture we used previously
+    and the optimizer accordingly:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now we train the model on the augmented small dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We train the model for 1,000 iterations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s see how it performs on the test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The model with data augmentation has a classification accuracy of 79.24% on
+    the test set. Note that this result may vary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We also experimented with training without data augmentation, resulting in a
+    test set accuracy of approximately 76%. When employing data augmentation, the
+    accuracy improved to 79%. As always, feel free to fine-tune the hyperparameters
+    as we did in *Chapter 6*, *Predicting Stock Prices with Artificial Neural Networks*,
+    and see if you can further improve the classification performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Transfer learning is an alternative method to enhance the performance of a CNN
+    classifier. Let’s proceed to the following section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Advancing the CNN classifier with transfer learning
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Transfer learning** is a machine learning technique where a model trained
+    on one task is adapted or fine-tuned for a second related task. In transfer learning,
+    the knowledge acquired during the training of the first task (source task) is
+    leveraged to improve the learning of the second task (target task). This can be
+    particularly useful when you have limited data for the target task because it
+    allows you to transfer knowledge from a larger or more diverse dataset.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The typical workflow of transfer learning involves:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Pretrained model**: Start with a pretrained model that has already been trained
+    on a large and relevant dataset for a different but related task. This model is
+    often a deep neural network, such as a CNN model for image tasks.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Feature Extraction**: Use the pretrained model as a feature extractor. Remove
+    the final classification layers (if they exist) and use the output of one of the
+    intermediate layers as a feature representation for your data. These features
+    can capture high-level patterns and information from the source task.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Fine-Tuning**: Add new layers to the feature extractor. These new layers
+    are specific to your target task and are typically randomly initialized. You then
+    train the entire model, including the feature extractor and the new layers, on
+    your target dataset. Fine-tuning allows the model to adapt to the specifics of
+    the target task.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Prior to implementing transfer learning for our clothing image classification
+    task, let’s begin by exploring the evolution of CNN architectures and pretrained
+    models. Even the early CNN architecture is still actively used today! The key
+    point here is that all of these architectures are valuable tools in the modern
+    DL toolbox, particularly when employed for transfer learning tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Development of CNN architectures and pretrained models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The concept of CNNs for image processing dates back to the 1990s. Early architectures
+    like **LeNet-5** (1998) demonstrated the potential of deep neural networks for
+    image classification. LeNet-5 consists of two sets of convolutional layers, followed
+    by two fully connected layers and one output layer. Each convolutional layer uses
+    5x5 kernels. LeNet-5 played a significant role in demonstrating the effectiveness
+    of deep learning for image classification tasks. It was able to achieve high accuracy
+    on the MNIST dataset, a widely used benchmark dataset for handwritten digit recognition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The achievements of LeNet-5 paved the way for the creation of more complex architectures,
+    such as **AlexNet** (2012). It consists of eight layers – five sets of convolutional
+    layers followed by three fully connected layers. It used a ReLU activation function
+    for the first time in a deep CNN and utilized dropout in the fully connected layers
+    to prevent overfitting. Data augmentation techniques, such as random cropping
+    and horizontal flipping, were employed to improve the model’s generalization.
+    The success of AlexNet triggered a renewed interest in neural networks and led
+    to the development of even deeper and more complex architectures, including VGGNet,
+    GoogLeNet, and ResNet, which have become foundational in computer vision.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**VGGNet** was introduced by the Visual Geometry Group at the University of
+    Oxford in 2014\. VGGNet follows a straightforward and uniform architecture. It
+    consists of a series of convolutional layers, followed by max-pooling layers,
+    with a stack of fully connected layers at the end. It primarily uses 3x3 convolutional
+    filters, allowing the network to capture fine-grained spatial information. The
+    most commonly used versions are VGG16 and VGG19, which have 16 and 19 layers in
+    the network. They are often used as a starting point for transfer learning in
+    various computer vision tasks.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the same year, **GoogLeNet**, better known as **Inception**, was developed
+    by Google. The hallmark of GoogLeNet is the inception module. Instead of using
+    a single convolutional layer with a fixed filter size, inception modules use multiple
+    filter sizes (1x1, 3x3, 5x5) in parallel. These parallel operations capture features
+    at different scales and provide richer representations. Similar to VGGNet, pretrained
+    GoogLeNet comes in different versions, such as InceptionV1, InceptionV2, InceptionV3,
+    and Inception V4, each with variations and improvements in architecture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**ResNet**, short for **Residual Network**, was introduced by Kaiming He et
+    al. in 2015, to address the vanishing gradient problem – gradients of the loss
+    function becoming extremely small in CNNs. Its core innovation is the use of residual
+    connections. These blocks allow the network to skip certain layers during training.
+    Instead of directly learning the desired mapping from input to output, residual
+    blocks learn a residual mapping, which is added to the original input. Deeper
+    networks were made possible this way. Its pretrained models come in various versions,
+    such as ResNet-18, ResNet-34, ResNet-50, ResNet-101, and the extremely deep ResNet-152\.
+    Again, the numbers denote the depth of the network.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The development of CNN architectures and pretrained models continues with innovations
+    like EfficientNet, MobileNet, and custom architectures for specific tasks. For
+    instance, **MobileNet** models are designed to be highly efficient in terms of
+    computational resources and memory usage. They are tailored for deployment on
+    devices with limited hardware capabilities, such as smartphones, IoT devices,
+    and edge devices.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can see all available pretrained models in PyTorch on this page: https://pytorch.org/vision/stable/models.html#classification.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The evolution of CNN architectures and the availability of pretrained models
+    have revolutionized computer vision tasks. They have significantly improved the
+    state of the art in image classification, object detection, segmentation, and
+    many other applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s explore using a pretrained model to enhance our clothing image classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving the clothing image classifier by fine-tuning ResNets
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will use the pre-trained ResNets, ResNet-18 to be specific, for transfer
+    learning in the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start by importing the pretrained ResNet-18 model from `torchvision`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, `IMAGENET1K` refers to the pretrained model that was trained on the ImageNet-1K
+    dataset ([https://www.image-net.org/download.php](https://www.image-net.org/download.php))
+    and `V1` refers to version 1 of the pretrained model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is the pretrained model step.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since the ImageNet-1K dataset comprises RGB images, the first convolutional
+    layer in the original `ResNet` is designed for three-dimensional inputs. However,
+    our `FashionMNIST` dataset contains grayscale images, so we need to modify it
+    to accept one-dimensional inputs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We just change the first argument, the input dimension, from 3 to 1 in the
+    original definition of the first convolutional:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Change the output layer to output 10 classes from 1,000 classes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, we only update the output size of the output layer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Steps 2 and 3 prepare for the **fine-tuning** process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, we **fine-tune** the adapted pretrained model by training it on the
+    full training set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: After only 10 iterations, an accuracy of 94% is achieved with the fine-tuned
+    ResNet model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'How about its performance on the test set? Let’s see the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We are able to boost the accuracy on the test set from 90% to 91%, with only
+    10 training iterations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Transfer learning with CNNs is a powerful technique that allows you to leverage
+    pretrained models and adapt them for your specific image classification tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we worked on classifying clothing images using CNNs. We started
+    with a detailed explanation of the individual components of a CNN model and learned
+    how CNNs are inspired by the way our visual cells work. We then developed a CNN
+    model to categorize fashion-MNIST clothing images from Zalando. We also talked
+    about data augmentation and several popular image augmentation methods. We practiced
+    transfer learning with ResNets, after discussing the evolution of CNN architectures
+    and pretrained models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next chapter, we will focus on another type of deep learning network:
+    **Recurrent Neural Networks** (**RNNs**). CNNs and RNNs are the two most powerful
+    deep neural networks that make deep learning so popular nowadays.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exercises
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As mentioned before, can you try to fine-tune the CNN image classifier and see
+    if you can beat what we have achieved?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Can you also employ the dropout technique to improve the CNN model?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Can you experiment with using the pretrained Vision Transformer model: [https://huggingface.co/google/vit-base-patch16-224?](https://huggingface.co/google/vit-base-patch16-224?)'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Join our book’s Discord space
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Join our community’s Discord space for discussions with the authors and other
+    readers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.link/yuxi](https://packt.link/yuxi)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/QR_Code187846872178698968.png)'
+  prefs: []
+  type: TYPE_IMG

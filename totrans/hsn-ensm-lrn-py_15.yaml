@@ -1,0 +1,680 @@
+- en: Predicting Bitcoin Prices
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Bitcoin and other cryptocurrencies have attracted the attention of many parties
+    over the years, mainly due to their explosion in price levels, as well as the
+    business opportunities that blockchain technologies offer. In this chapter, we
+    will attempt to predict the next day's Bitcoin (BTC) price using historical data.
+    There are many sources that offer cryptocurrency's historical price data. We will
+    use Yahoo finance data, available at [https://finance.yahoo.com/quote/BTC-USD/history/](https://finance.yahoo.com/quote/BTC-USD/history/).
+    In this chapter, we will focus on predicting future prices and leveraging that
+    knowledge to invest in bitcoin.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following topics will be covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Time series data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Voting
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Stacking
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Bagging
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Boosting
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Random forests
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will require basic knowledge of machine learning techniques and algorithms.
+    Furthermore, a knowledge of python conventions and syntax is required. Finally,
+    familiarity with the NumPy library will greatly help the reader to understand
+    some custom algorithm implementations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code files of this chapter can be found on GitHub:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter10](https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter10)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Check out the following video to see the Code in Action: [http://bit.ly/2JOsR7d](http://bit.ly/2JOsR7d).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Time series data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Time series data is concerned with data instances in which each instance relates
+    to a specific point in time or interval. How often we measure the variable of
+    choice defines the time series' sampling frequency. For example, atmospheric temperature
+    differs throughout the day and throughout the year. We can choose to measure the
+    temperature every hour, so we have an hourly frequency, or we can choose to measure
+    it each day, so we have a daily frequency. In finance, it is not unusual to have
+    frequencies that are between major time intervals; this could be every 10 minutes
+    (10m frequency) or every 4 hours (4h frequency). Another interesting characteristic
+    of time series is that there is usually a correlation between instances that refer
+    to proximal time points.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is called **autocorrelation**. For example, the atmospheric temperature
+    cannot vary by a great magnitude between consecutive minutes. Furthermore, this
+    enables us to utilize earlier data points to predict future data points. An example
+    of temperatures (an average of 3 hours) for Athens and Greece for the years 2016–2019
+    is provided in figure. Notice how most temperatures are relatively close to the
+    previous day''s temperature, even though there are variations. Furthermore, we
+    see a repeating pattern of hot and cold months (seasons), which is called seasonality:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b95a1076-0053-49d1-93bb-3973b7a8adfc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Temperatures for Athens, Greece 2016–2019
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To examine the level of correlation between different points in time, we utilize
+    the **autocorrelation function** (**ACF**). ACF measures the linear correlation
+    between a data point and previous points (called **lags**). In the following figure,
+    the ACF for the temperature data (resampled as the month''s average) is provided.
+    It indicates a strong positive correlation with the first lag. This means that
+    a month''s temperature cannot deviate much from the previous month, which is logical.
+    For example, December and January are cold months, and usually, their average
+    temperatures are closer than December and March, for example. Furthermore, there
+    is a strong negative correlation between lags 5 and 6, indicating that a cold
+    winter results in a hot summer and vice versa:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/4c446b11-ddeb-42b5-8471-c3ce092915e5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: ACF for the temperature data
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bitcoin data analysis
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Bitcoin data is very different from temperature data. Temperatures have more
+    or less the same value for the same month of each year. This indicates that the
+    distribution of temperatures does not change over time. Time series that exhibit
+    this behavior are called **stationary**. This allows for relatively easy modeling
+    with time series analysis tools, such as **auto regressive** (**AR**), **moving
+    average** (**MA**), and **auto regressive integrated moving average** (**ARIMA**)
+    models. Financial data is usually non-stationary, as seen in the daily Bitcoin
+    close data, depicted in figure. This means that the data does not exhibit the
+    same behavior throughout its entire history, but instead its behavior varies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Financial data usually provides open (the first price for the day), high (the
+    highest price for the day), low (the lowest price for the day), and close (the
+    last price for the day) values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are clear trends in the data (time intervals where the price, on average,
+    increases or decreases), as well as heteroskedasticity (variable variance over
+    time). One way to identify stationarity is to study the ACF function.If there
+    is a very strong correlation between lags of a very high order that do not decay,
+    the time series is most probably non-stationary. The ACF for the BTC data is also
+    provided, showing weakly decaying correlations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/129b0c46-e882-4541-a670-1d541ddf4316.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: BTC/USD prices for mid-2014 to present
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure depicts the ACF for BTC. We can clearly see that the correlations
+    do not drop for very high lag values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6922b6d5-ebf1-4adb-baaf-c350a321c8ea.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: ACF for BTC data
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Take a look at the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/11504a16-70f1-401c-a372-b973ab8ac221.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Where *p* is the percentage change, *t[n ]*is the price at time *n*, and *tn-1*
+    is the price at time *n-1*. By applying the transformation to the data, we get
+    a time series that is stationary, but less correlated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure shows the plots for the data, and the ACF and the average
+    30-day standard deviation are provided:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3d5ca1aa-f104-46e5-b543-34423bdd6d24.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Transformed data
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/95c24465-fecb-4957-a51e-cdffdd6030cd.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Rolling 30-day standard deviation and ACF for transformed data
+  prefs: []
+  type: TYPE_NORMAL
+- en: Establishing a baseline
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In order to establish a baseline, we will try to model the data using linear
+    regression. Although it is a time series, we will not directly take time into
+    account. Instead, we will utilize sliding windows of size *S* to generate features
+    at each time point and use those features to predict the next point. Next, we
+    will move the window one step forward in time to include the true value of the
+    data point we predicted and discard the oldest data point inside the window. We
+    will continue this process until all data points have been predicted. This is
+    called walk-forward validation. One drawback is that we cannot predict the first
+    *S* data points, as we do not have enough data to generate features for them.
+    Another point of concern is that we need to re-train the model *L*-*S* times,
+    in which *L* is the total number of points in the time series. A graphical representation
+    of the first two steps is provided in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/fc41a330-90f5-468a-8c7e-79c5d9d43514.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Walk-forward validation procedure, first two steps. The procedure continues
+    for the whole time series.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we load the required libraries and data from the `BTC-USD.csv` file.
+    We also set the seed for a NumPy random number generator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then clean the data by removing entries that contain NaN values, using `data.dropna()`,
+    parse the dates using `pd.to_datetime`, and set the dates as an index. Finally,
+    we calculate the percentage differences of `Close` values (and discard the first
+    value, as it is a NaN) and save the Pandas series'' length:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We have created a function that generates the features at each data point.
+    Features are essentially the different percentages at previous lags. Thus, to
+    fill a dataset''s feature with values, we only have to shift the data forward
+    by as many points as the lags indicate. Any features that do not have available
+    data to calculate lags, will have a value of zero. The following figureshows a
+    toy example of a time series containing the numbers 1, 2, 3, and 4:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/425b19c2-be6f-4814-814d-a7089a444894.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: How lag features are filled
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The actual function, to fill lag *t*, selects all of the data from the time
+    series except for the last *t* and places it in the corresponding feature, starting
+    from index *t*. We chose to use the past 20 days as there does not seem to be
+    any significant linear correlations after that point. Furthermore, we scale the
+    features and targets by a factor of 100 and round them to 8 decimal points. This
+    is important, as it allows the reproducibility of results. If the data is not
+    rounded, overflow errors introduce stochasticity to the results, as shown in the
+    following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we execute the walk-forward validation. We chose a training window
+    of 150 points, which equates to roughly 5 months. Given the data''s nature and
+    volatility, it provides a good trade-off between having a large enough train set
+    and capturing recent market behaviors. A larger window would include market conditions
+    that no longer reflect reality. A shorter window would provide too little data
+    and would be prone to overfitting. We measure our model''s predictive quality
+    by utilizing the mean squared error between our predictions and the original percentage
+    differences:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Simple linear regression might produce an MSE of 18.41\. We could also attempt
+    to reconstruct the time series by multiplying each data point by (1 + prediction)
+    to get the next predicted point. Furthermore, we could attempt to take advantage
+    of the dataset''s nature and simulate trading activity. Each time the prediction
+    is greater than +0.5% change, we invest 100 USD in buying Bitcoins. If we have
+    Bitcoins in our possession and the prediction is lower than -0.5%, we sell the
+    Bitcoins at the current market close. To assess the quality of our model as a
+    trading strategy, we utilize a simplified **Sharpe** ratio, which is calculated
+    as the ratio of mean returns (percentage profits) over the standard deviation
+    of the returns. Higher Sharpe values indicate a better trading strategy. The formula
+    utilized here is calculated as follows. Usually, an alternative **safe** return
+    percentage is subtracted from the expected return, but as we only want to compare
+    the models we will generate with each other, we''ll omit it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/292cc638-9c04-4f53-85ce-75ca3ccaf8e2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'When utilized as a trading strategy, linear regression is able to produce a
+    Sharpe value of 0.19\. The following figure indicates the trades and profits generated
+    by our model. The blue triangles indicate time points at which the strategy bought
+    Bitcoins worth 100 USD and the red triangles indicate the time points at which
+    it sold the previously bought Bitcoins:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2be506f8-c88d-449b-b6ce-7802d6e07a5f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Profits and entry/exit points of our model
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the rest of this chapter, we will try to improve the MSE and Sharpe values
+    by utilizing the ensemble methods we presented in the previous chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The simulator
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Here, we''ll provide a brief explanation of how the simulator works. It is
+    implemented as a function that accepts our standard Pandas DataFrame data and
+    the model''s predictions as inputs. First, we''ll define the buying threshold
+    and the stake size (how much money we invest in each buy), as well as placeholder
+    variables. The variables will be used to store the true and predicted time series,
+    as well as the profits of our model (`balances`). Furthermore, we define the `buy_price` variable, which
+    stores the price at which we bought the Bitcoins. If the price is `0`, we assume
+    that we do not hold any Bitcoins. The `buy_points` and `sell_points` lists indicate
+    the points in time when we bought or sold the Bitcoins and are used only for plotting.
+    Furthermore, we store the starting index, which is equivalent to the sliding window''s
+    size as shown in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, for each point, we store the actual and predicted values. If the predicted
+    value is greater than 0.5 and we do not hold any Bitcoins, we buy 100 USD worth
+    of Bitcoins. If the predicted value is less than -0.5 and we have already bought
+    Bitcoins, we sell them at the current close value. We add the current profit (or
+    loss) to our balances, cast the true and predicted values as NumPy arrays, and
+    produce the plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Voting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We will try to combine three basic regression algorithms by voting to improve
+    the MSE of the simple regression. To combine the algorithms, we will utilize the
+    average of their predictions. Thus, we code a simple class that creates a dictionary
+    of base learners and handles their training and prediction averaging. The main
+    logic is the same as with the custom voting classifier we implemented in [Chapter
+    3](ad9aa66b-7b30-4779-8914-0ff58140b3e8.xhtml), *Voting*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The predictions are stored in a NumPy matrix, in which each row corresponds
+    to a single instance and each column corresponds to a single base learner. The
+    row-averaged values are the ensemble''s output, as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We chose to utilize a support vector machine, a K-Nearest Neighbors Regressor,
+    and a linear regression as a base learners, as they provide diverse learning paradigms.
+    To utilize the ensemble, we first import the required modules:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, in the code we presented earlier, we replace the `lr = LinearRegression()` line with
+    the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: By adding the two additional regressors, we are able to reduce the MSE to 16.22
+    and produce a Sharpe value of 0.22.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving voting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Although our results are better than linear regression, we can further improve
+    them by removing the linear regression, thus, leaving the base learners as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This further improves the MSE, reducing it to 15.71\. If we utilize this model
+    as a trading strategy, we can achieve a Sharpe value of 0.21; considerably better
+    than simple linear regression. The following table summarizes our results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Metric** | **SVR-KNN** | **SVR-LR-KNN** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **MSE** | 15.71 | 16.22 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Sharpe** | 0.21 | 0.22 |'
+  prefs: []
+  type: TYPE_TB
+- en: Voting ensemble results
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stacking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Moving on to more complex ensembles, we will utilize stacking to combine basic
+    regressors more efficiently. Using `StackingRegressor` from [Chapter 4](49a05219-d6cb-4893-aaac-49280842b647.xhtml), *Stacking*,
+    we will try to combine the same algorithms as we did with voting. First, we modify
+    the `predict` function of our ensemble (to allow for single-instance prediction)
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Again, we modify the code to use the stacking regressor, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this setup, the ensemble yields a model with an MSE of 16.17 and a Sharpe
+    value of 0.21.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving stacking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Our results are slightly worse than the final Voting ensemble, so we will attempt
+    to improve them by removing the linear regression, as we did with the voting ensemble.
+    By doing so, we can slightly improve our model, achieving an MSE of 16.16 and
+    a Sharpe value of 0.22\. Comparing it to voting, stacking is slightly better as
+    part of an investing strategy (the same Sharpe value and a slightly better MSE),
+    although it is unable to achieve the same level of predictive accuracy. Its results
+    are summarized in the following table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Metric** | **SVR-KNN** | **SVR-LR-KNN** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **MSE** | 16.17 | 16.16 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Sharpe** | 0.21 | 0.22 |'
+  prefs: []
+  type: TYPE_TB
+- en: Stacking results
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bagging
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Usually, when fitting predictive models onto financial data, variance is our
+    main problem. Bagging is a very useful tool to counter variance; thus, we hope
+    that it will be able to produce better performing models compared to simple voting
+    and stacking. To utilize bagging, we will use scikit''s `BaggingRegressor`, presented
+    in [Chapter 5](a0e9eea5-bc95-4d15-9679-fafce5718525.xhtml), *Bagging*. To implement
+    it in our experiment, we simply call it using `lr = BaggingRegressor()` instead
+    of the previous regressors. This results in an MSE of 19.45 and a Sharpe of 0.09\.
+    The following figure depicts the profits and trades that our model generates:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c0e89628-fedc-4663-935e-94dc46540cde.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Bagging profits and trades
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving bagging
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We can further improve bagging as its performance is worse than any previous
+    model. First, we can experiment with shallow trees, which will further reduce
+    variance in the ensemble. By utilizing trees with a maximum depth of `3`, using
+    `lr = BaggingRegressor(base_estimator=DecisionTreeRegressor(max_depth=3))`, we
+    can improve the model's performance, generating an MSE of 17.59 and a Sharpe value
+    of 0.15\. Further restricting the trees' growth to `max_depth=1`, allows the model
+    to achieve an MSE of 16.7 and a Sharpe value of 0.27\. If we examine the model's
+    trading plots, we observe a reduction in the number of trades, as well as a considerable
+    improvement in performance during periods in which Bitcoin's price significantly
+    drops. This indicates that the model can filter noise from actual signals more
+    efficiently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The reduction in variance has indeed helped our model to improve its performance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/acf5e8a5-4203-4c40-a5d2-ce2033618a61.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Final Bagging profits and trades
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following table summarizes the results for the various bagging models we
+    tested:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Metric** | **DT_max_depth=1** | **DT_max_depth=3** | **DT** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **MSE** | 16.70 | 17.59 | 19.45 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Sharpe** | 0.27 | 0.15 | 0.09 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 3: Bagging results'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Boosting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: One of the most powerful ensemble learning techniques is boosting. It allows
+    complicated models to be generated. In this section, we will utilize XGBoost to
+    model our time series data. As there are many degrees of freedom (hyperparameters)
+    when modeling with XGBoost, we expect some level of fine-tuning to be needed to
+    achieve satisfactory results. By replacing our example's regressor with `lr =
+    XGBRegressor()`, we can utilize XGBoost and fit it onto our data. This results
+    in an MSE of 19.20 and a Sharpe value of 0.13.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure depicts the profits and trades generated by the model. Although the
+    Sharpe value is lower than for other models, we can see that it continues to generate
+    profit, even during periods in which the Bitcoin price drops:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/27b520e4-28f1-4251-b82c-50d9b794fc52.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Trades generated by the Boosting model
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving boosting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Due to the out-of-sample performance and the frequency at which boosting is
+    bought and sold, we can assume it is overfitting the training data. Therefore,
+    we'll will try to regularize its learning. The first step is to limit the maximum
+    depth of individual trees. We start by imposing an upper limit of 2, using `max_depth=2`.
+    This slightly improves our model, yielding an MSE of 19.14 and a Sharpe value
+    of 0.17\. Further limiting the overfitting capabilities of the model by using
+    only 10 base learners (`n_estimators=10`), the model achieves additional improvement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The MSE of the model is reduced to 16.39 and the Sharpe value is increased
+    to 0.21\. Adding an L1 regularization term of 0.5 (`reg_alpha=0.5`) only reduces
+    the MSE to 16.37\. We have come to a point where further fine-tuning will not
+    contribute much performance to our model. At this point, our regressor looks like
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Given the capabilities of XGBoost, we will try to increase the amount of information
+    available to the model. We will increase the available feature lags to 30 and
+    add a rolling mean of the previous 15 lags to the features. To do this, we modify
+    the feature creation section of the code as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This increases the trading performance of our model, achieving a Sharpe value
+    of 0.32—the highest of all of the models, while it also increases its MSE to 16.78\.
+    The trades generated by this model are depicted in figure and in the table that
+    follows. It is interesting to note that the number of buys has greatly reduced,
+    a behavior that bagging also exhibited when we managed to improve its performance
+    as an investment strategy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0e1ed186-97e3-4188-bddb-daf4bd6207c1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Final boosting model performance
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Metric** | **md=2/ne=10/reg=0.5+data** | **md=2/ne=10/reg=0.5** | **md=2/ne=10**
+    | **md=2** | **xgb** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **MSE** | 16.78 | 16.37 | 16.39 | 19.14 | 19.20 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Sharpe** | 0.32 | 0.21 | 0.21 | 0.17 | 0.13 |'
+  prefs: []
+  type: TYPE_TB
+- en: Metrics for all boosting models
+  prefs: []
+  type: TYPE_NORMAL
+- en: Random forests
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Finally, we will utilize random forests to model our data. Although we expect
+    that the ensemble to be able to utilize the information from additional lags and
+    the rolling average, we will start with only 20 lags and the return percentages
+    as inputs. Thus, our initial regressor is simply `RandomForestRegressor()`. This
+    results in a model that does not perform very well. Its MSE is 19.02 and its Sharpe
+    value is 0.11.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure depicts the trades that the model generates:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7b9348f6-e878-4eb9-befc-ce907de295e9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Trades of random forest model
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving random forest
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In an attempt to improve our model, we try to restrict its overfitting capabilities,
+    imposing a maximum depth of `3` for each tree. This results in considerable performance
+    improvement as the model achieves an MSE of 17.42 and a Sharpe value of 0.17\.
+    Further restricting the maximum depth to `2` improves the MSE score slightly more
+    to 17.13, but reduces its Sharpe value to 0.16\. Finally, increasing the ensemble''s
+    size to 50, using `n_estimators=50`, produces a considerably better model, with
+    an MSE of 16.88 and a Sharpe value of 0.23\. As we have only used the original
+    feature set (20 lags of return percentages), we wish to also experiment with the
+    expanded dataset we utilized in the boosting section. By adding the 15-day rolling
+    average, as well as increasing the number of available lags to 30, the model can
+    increase its Sharpe value to 0.24, although its MSE also increases to 18.31\.
+    The trades generated by the model are depicted in figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/8b6ca443-a5e6-4393-abba-2496fe75180d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Random forest's results with the expanded dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The model''s results are summarized in the following table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Metric** | **md=2/ne=50+data** | **md=2/ne=50** | **md=2** | **md=3** |
+    **RF** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **MSE** | 18.31 | 16.88 | 17.13 | 17.42 | 19.02 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Sharpe** | 0.24 | 0.23 | 0.16 | 0.17 | 0.11 |'
+  prefs: []
+  type: TYPE_TB
+- en: Metrics for all random forest models
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we tried to model historical Bitcoin prices using all of the
+    ensemble methods presented in earlier chapters of this book. As with most datasets,
+    there are many decisions that affect a model's quality. Data preprocessing and
+    feature engineering are some of the most important factors, especially when the
+    dataset's nature does not allow direct modeling of the data. Time series datasets
+    fall into this category, in which the construction of appropriate features and
+    targets is required. By transforming our non-stationary time series to stationary,
+    we improved the algorithm's ability to model the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To assess the quality of our models, we used the MSE of return percentages,
+    as well as the Sharpe ratio (in which we assumed that the model was utilized as
+    a trading strategy). When MSE is concerned, the best performing ensemble proved
+    to be the simple voting ensemble. The ensemble consisted of an SVM and KNN regressor,
+    without any hyperparameter fine-tuning, achieving an MSE of 15.71\. As a trading
+    strategy, XGBoost proved to be the best ensemble, achieving a Sharpe value of
+    0.32\. Although not exhaustive, this chapter has explored the possibilities and
+    techniques used in time series modeling using ensemble learning methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will leverage the capabilities of ensemble learning
+    methods, in order to predict the sentiment of various tweets.
+  prefs: []
+  type: TYPE_NORMAL

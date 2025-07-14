@@ -1,0 +1,1211 @@
+- en: '*Chapter 2*: Decision Trees in Depth'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you will gain proficiency with **decision trees**, the primary
+    machine learning algorithm from which XGBoost models are built. You will also
+    gain first-hand experience in the science and art of **hyperparameter fine-tuning**.
+    Since decision trees are the foundation of XGBoost models, the skills that you
+    learn in this chapter are essential to building robust XGBoost models going forward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will build and evaluate **decision tree classifiers** and
+    **decision tree regressors**, visualize and analyze decision trees in terms of
+    variance and bias, and fine-tune decision tree hyperparameters. In addition, you
+    will apply decision trees to a case study that predicts heart disease in patients.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter covers the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing decision trees with XGBoost
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Exploring decision trees
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Contrasting variance and bias
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tuning decision tree hyperparameters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Predicting heart disease – a case study
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Introducing decision trees with XGBoost
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: XGBoost is an **ensemble method**, meaning that it is composed of different
+    machine learning models that combine to work together. The individual models that
+    make up the ensemble in XGBoost are called **base learners**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision trees, the most commonly used XGBoost base learners, are unique in
+    the machine learning landscape. Instead of multiplying column values by numeric
+    weights, as in linear regression and logistic regression ([*Chapter 1*](B15551_01_Final_NM_ePUB.xhtml#_idTextAnchor022),
+    *Machine Learning Landscape*), decision trees split the data by asking questions
+    about the columns. In fact, building decision trees is like playing a game of
+    20 Questions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For instance, a decision tree may have a temperature column, and that column
+    could branch into two groups, one with temperatures above 70 degrees, and one
+    with temperatures below 70 degrees. The next split could be based on the seasons,
+    following one branch if it's summer and another branch otherwise. Now the data
+    has been split into four separate groups. This process of splitting data into
+    new groups via branching continues until the algorithm reaches a desired level
+    of accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A decision tree can create thousands of branches until it uniquely maps each
+    sample to the correct target in the training set. This means that the training
+    set can have 100% accuracy. Such a model, however, will not generalize well to
+    new data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision trees are prone to overfitting the data. In other words, decision trees
+    can map too closely to the training data, a problem explored later in this chapter
+    in terms of variance and bias. Hyperparameter fine-tuning is one solution to prevent
+    overfitting. Another solution is to aggregate the predictions of many trees, a
+    strategy that **Random Forests** and XGBoost employ.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While Random Forests and XGBoost will be the focus of subsequent chapters, we
+    now take a deep look inside decision trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring decision trees
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Decision Trees work by splitting the data into *branches*. The branches are
+    followed down to *leaves* where predictions are made. Understanding how branches
+    and leaves are created is much easier with a practical example. Before going into
+    further detail, let's build our first decision tree model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First decision tree model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We start by building a decision tree to predict whether someone makes over
+    50K US dollars using the Census dataset from [*Chapter 1*](B15551_01_Final_NM_ePUB.xhtml#_idTextAnchor022),
+    *Machine Learning Landscape*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, open a new Jupyter Notebook and start with the following imports:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, open the file `''census_cleaned.csv''` that has been uploaded for you
+    at [https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter02](https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter02).
+    If you downloaded all files for this book from the Packt GitHub page, as recommended
+    in the *preface*, you can navigate to [*Chapter 2*](B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047)*,
+    Decision Trees in Depth*, after launching Anaconda in the same way that you navigate
+    to other chapters. Otherwise, go our GitHub page and clone the files now:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After uploading the data into a DataFrame, declare your predictor and target
+    columns, `X` and `y`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, import `train_test_split` to split the data into training and tests set
+    with `random_state=2` to ensure consistent results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As with other machine learning classifiers, when using decision trees, we initialize
+    the model, fit it on the training set, and test it using `accuracy_score`.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The `accuracy_score` determines the number of correct predictions divided by
+    the total number of predictions. If 19 of 20 predictions are correct, the `accuracy_score`
+    is 95%.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, import the `DecisionTreeClassifier` and `accuracy_score`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we build a decision tree classifier with the standard steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Initialize a machine learning model with `random_state=2` to ensure consistent
+    results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Fit the model on the training set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Make predictions for the test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Compare predictions with the test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The `accuracy_score` is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: An accuracy of 81% is comparable to the accuracy of Logistic Regression from
+    the same dataset in [*Chapter 1*](B15551_01_Final_NM_ePUB.xhtml#_idTextAnchor022)*,
+    Machine Learning Landscape*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you have seen how to build a decision tree, let's take a look inside.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inside a decision tree
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Decision Trees come with nice visuals that reveal their inner workings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a decision tree from the Census dataset with only two splits:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.1 – Census dataset decision tree](img/B15551_02_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.1 – Census dataset decision tree
+  prefs: []
+  type: TYPE_NORMAL
+- en: The top of the tree is the root, the **True**/**False** arrows are branches,
+    and the data points are nodes. At the end of the tree, the nodes are classified
+    as leaves. Let's study the preceding diagram in depth.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Root
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The root of the tree is at the top. The first line reads **marital-status_Married-civ-spouse
+    <=5**. **marital-status** is a binary column, so all values are **0** (negative)
+    or **1** (positive). The first split is based on whether someone is married or
+    not. The left side of the tree is the **True** branch, meaning the user is unmarried,
+    and the right side is the **False** branch, meaning the user is married.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gini criterion
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The second line of the root reads `Gini` index of 0 means 0 errors. A gini index
+    of 1 means all errors. A gini index of 0.5, which shows an equal distribution
+    of elements, means the predictions are no better than random guessing. The closer
+    to 0, the lower the error. At the root, a gini of 0.364 means the training set
+    is imbalanced with 36.4 percent of class 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The equation for the gini index is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.2 – gini index equation](img/Formula_02_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.2 – gini index equation
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_02_002.png)is the probability that the split results in the
+    correct value, and c is the total number of classes: 2 in the preceding example.
+    Another way of looking at this is that ![](img/Formula_02_003.png) is the fraction
+    of items in the set with the correct output label.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Samples, values, class
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The root of the tree states that there are 24,420 samples. This is the total
+    number of samples in the training set. The following line reads **[18575 , 5845]**.
+    The ordering is 0 then 1, so 18,575 samples have a value of 0 (they make less
+    than 50K) and 5,845 have a value of 1 (they make more than 50K).
+  prefs: []
+  type: TYPE_NORMAL
+- en: True/false nodes
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Following the first branch, you see **True** on the left side, and **False**
+    on the right. The pattern of True – left and False – right continues throughout
+    the tree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the left node in the second row, the split **capital_gain <= 7073.5** is
+    applied to subsequent nodes. The remaining information comes from the split above
+    the previous branch. Of the 13,160 unmarried people, 12,311 have an income of
+    less than 50K, while 849 have an income of more than 50K. The gini index, **0.121**,
+    is a very good score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stumps
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: It's possible to have a tree with only one split. Such a tree is called a **stump**.
+    Although stumps are not powerful predictors in themselves, stumps can become powerful
+    when used as boosters, as covered in [*Chapter 4*](B15551_04_Final_NM_ePUB.xhtml#_idTextAnchor093)*,
+    From Gradient Boosting to XGBoost*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Leaves
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The nodes at the end of the tree are leaves. The leaves contain all final predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The far-left leaf has a gini index of **0.093**, correctly predicting 12,304
+    of 12,938 cases, which is 95%. We are 95% confident that unmarried users with
+    capital gains of less than 7,073.50 do not make more than 50K.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other leaves may be interpreted similarly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now let's see where these predictions go wrong.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Contrasting variance and bias
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Imagine that you have the data points displayed in the following graph. Your
+    task is to fit a line or curve that will allow you to make predictions for new
+    points.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a graph of random points:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.3 – Graph of random points](img/B15551_02_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.3 – Graph of random points
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One idea is to use Linear Regression, which minimizes the square of the distance
+    between each point and the line, as shown in the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.4 – Minimizing distance using Linear Regression](img/B15551_02_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.4 – Minimizing distance using Linear Regression
+  prefs: []
+  type: TYPE_NORMAL
+- en: A straight line generally has high **bias**. In machine learning bias is a mathematical
+    term that comes from estimating the error when applying the model to a real-life
+    problem. The bias of the straight line is high because the predictions are restricted
+    to the line and fail to account for changes in the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In many cases, a straight line is not complex enough to make accurate predictions.
+    When this happens, we say that the machine learning model has underfit the data
+    with high bias.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A second option is to fit the points with an eight-degree polynomial. Since
+    there are only nine points, an eight-degree polynomial will fit the data perfectly,
+    as you can see in the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.5 – Eight-degree poynomial](img/B15551_02_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.5 – Eight-degree poynomial
+  prefs: []
+  type: TYPE_NORMAL
+- en: This model has high **variance**. In machine learning, variance is a mathematical
+    term indicating how much a model will change given a different set of training
+    data. Formally, variance is the measure of the squared deviation between a random
+    variable and its mean. Given nine different data points in the training set, the
+    eighth-degree polynomial will be completely different, resulting in high variance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Models with high variance often overfit the data. These models do not generalize
+    well to new data points because they have fit the training data too closely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the world of big data, overfitting is a big problem. More data results in
+    larger training sets, and machine learning models like decision trees fit the
+    training data too well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As a final option, consider a third-degree polynomial that fits the data points
+    as shown in the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.6 – Third-degree polynomial](img/B15551_02_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.6 – Third-degree polynomial
+  prefs: []
+  type: TYPE_NORMAL
+- en: This third-degree polynomial provides a nice balance between variance and bias,
+    following the curve generally, yet adapting to the variation. Low variance means
+    that a different training set will not result in a curve that differs by a significant
+    amount. Low bias indicates that the error when applying this model to a real-world
+    situation will not be too high. In machine learning, the combination of low variance
+    and low bias is ideal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the best machine learning strategies to strike a nice balance between
+    variance and bias is to fine-tune hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tuning decision tree hyperparameters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Hyperparameters are not the same as parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In machine learning, parameters are adjusted when the model is being tuned.
+    The weights in linear and Logistic Regression, for example, are parameters adjusted
+    during the build phase to minimize errors. Hyperparameters, by contrast, are chosen
+    in advance of the build phase. If no hyperparameters are selected, default values
+    are used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision Tree regressor
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The best way to learn about hyperparameters is through experimentation. Although
+    there are theories behind the range of hyperparameters chosen, results trump theory.
+    Different datasets see improvements with different hyperparameter values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before selecting hyperparameters, let''s start by finding a baseline score
+    using a `DecisionTreeRegressor` and `cross_val_score` with the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Download the `''bike_rentals_cleaned''` dataset and split it into `X_bikes`
+    (predictor columns) and `y_bikes` (training columns):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Import the `DecisionTreeRegressor` and `cross_val_score`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Initialize `DecisionTreeRegressor` and fit the model in `cross_val_score`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Compute the `1233.36`. This is worse than the `972.06` obtained from Linear
+    Regression in [*Chapter 1*](B15551_01_Final_NM_ePUB.xhtml#_idTextAnchor022)*,
+    Machine Learning Landscape*, and from the `887.31` obtained by XGBoost.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Is the model overfitting the data because the variance is too high?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This question may be answered by seeing how well the decision tree makes predictions
+    on the training set alone. The following code checks the error of the training
+    set, before it makes predictions on the test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: A RMSE of `0.0` means that the model has perfectly fit every data point! This
+    perfect score combined with a cross-validation error of `1233.36` is proof that
+    the decision tree is overfitting the data with high variance. The training set
+    fit perfectly, but the test set missed badly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hyperparameters may rectify the situation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hyperparameters in general
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Hyperparameter details for all scikit-learn models may be viewed on scikit-learn's
+    official documentation pages.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here is an excerpt from the DecisionTreeRegressor website ([https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeRegressor.html](https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeRegressor.html)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*sklearn* is short for *scikit-learn*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.7\. Excerpt of DecisionTreeRegressor official documentation page](img/B15551_02_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.7\. Excerpt of DecisionTreeRegressor official documentation page
+  prefs: []
+  type: TYPE_NORMAL
+- en: The official documentation explains the meaning behind the hyperparameters.
+    Note that `Parameters` here is short for *hyperparameters*. When working on your
+    own, checking the official documentation is your most reliable resource.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's go over the hyperparameters one at a time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: max_depth
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`max_depth` defines the depth of the tree, determined by the number of times
+    splits are made. By default, there is no limit to `max_depth`, so there may be
+    hundreds or thousands of splits that result in overfitting. By limiting `max_depth` to
+    smaller numbers, variance is reduced, and the model generalizes better to new
+    data.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How can you choose the best number for `max_depth`?
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can always try `max_depth=1`, then `max_depth=2`, then `max_depth=3`, and
+    so on, but this process would be exhausting. Instead, you may use a wonderful
+    tool called `GridSearchCV`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: GridSearchCV
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`GridSearchCV` searches a grid of hyperparameters using cross-validation to
+    deliver the best results.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`GridSearchCV` functions as any machine learning algorithm, meaning that it''s
+    fit on a training set, and scored on a test set. The primary difference is that
+    `GridSearchCV` checks all hyperparameters before finalizing a model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The key with `GridSearchCV` is to establish a dictionary of hyperparameter values.
+    There is no correct set of values to try. One strategy is to select a smallest
+    and largest value with evenly spaced numbers in between. Since we are trying to
+    reduce overfitting, the general idea is to try more values on the lower side for
+    `max_depth`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `GridSearchCV` and define a list of hyperparameters for `max_depth`
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `params` dictionary contains one key, `'max_depth'`, written as a string,
+    and one value, a list of numbers that we have chosen. Note that `None` is the
+    default, meaning that there is no limit to `max_depth`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally speaking, decreasing max hyperparameters and increasing min hyperparameters
+    will reduce variation and prevent overfitting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, initialize a `DecisionTreeRegressor`, and place it inside of `GridSearchCV`
+    along with `params` and the scoring metric:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that `GridSearchCV` has been fit on the data, you can view the best hyperparameters
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, a `max_depth` value of `6` resulted in the best cross-validation
+    score in the training set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The training score may be displayed using the `best_score` attribute:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The test score may be displayed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Variance has been substantially reduced.
+  prefs: []
+  type: TYPE_NORMAL
+- en: min_samples_leaf
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`min_samples_leaf` provides a restriction by increasing the number of samples
+    that a leaf may have. As with `max_depth`, `min_samples_leaf` is designed to reduce
+    overfitting.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When there are no restrictions, `min_samples_leaf=1` is the default, meaning
+    that leaves may consist of unique samples (prone to overfitting). Increasing `min_samples_leaf` reduces
+    variance. If `min_samples_leaf=8`, all leaves must contain eight or more samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Testing a range of values for `min_samples_leaf` requires going through the
+    same process as before. Instead of copying and pasting, we write a function that
+    displays the best parameters, training score, and test score using `GridSearchCV`
+    with `DecisionTreeRegressor(random_state=2)` assigned to `reg` as a default parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: When writing your own functions, it's advantageous to include default keyword
+    arguments. A default keyword argument is a named parameter with a default value
+    that may be changed for later use and testing. Default keyword arguments greatly
+    enhance the capabilities of Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When choosing the range of hyperparameters, it''s helpful to know the size
+    of the training set on which the model is built. Pandas comes with a nice method, `.shape`,
+    that returns the rows and columns of the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The rows and columns of data are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since the training set has `548` rows, this helps determine reasonable values
+    for `min_samples_leaf`. Let''s try `[1, 2, 4, 6, 8, 10, 20, 30]` as the input
+    of our `grid_search`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since the test score is better than the training score, variance has been reduced.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What happens when we put `min_samples_leaf` and `max_depth` together? Let''s
+    see:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: The result may be a surprise. Even though the training score has improved, the
+    test score has not. `min_samples_leaf` has decreased from `8` to `2`, while `max_depth` has
+    remained the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a valuable lesson in hyperparameter tuning: Hyperparameters should not
+    be chosen in isolation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As for reducing variance in the preceding example, limiting `min_samples_leaf`
+    to values greater than three may help:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, the test score has improved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will now explore the remaining decision tree hyperparameters without individual
+    testing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: max_leaf_nodes
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`max_leaf_nodes` is similar to `min_samples_leaf`. Instead of specifying the
+    number of samples per leaf, it specifies the total number of leaves. So, `max_leaf_nodes=10`
+    means that the model cannot have more than 10 leaves. It could have fewer.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: max_features
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '`max_features` is an effective hyperparameter for reducing variance. Instead
+    of considering every possible feature for a split, it chooses from a select number
+    of features each round.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It''s standard to see `max_features` with the following options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`''auto''` is the default, which provides no limitations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`''sqrt''` is the square root of the total number of features.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`''log2''` is the log of the total number of features in base 2\. 32 columns
+    resolves to 5 since 2 ^5 = 32.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: min_samples_split
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Another splitting technique is `min_samples_split`. As the name indicates, `min_samples_split` provides
+    a limit to the number of samples required before a split can be made. The default
+    is `2`, since two samples may be split into one sample each, ending as single
+    leaves. If the limit is increased to `5`, no further splits are permitted for
+    nodes with five samples or fewer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: splitter
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There are two options for `splitter`, `'random'` and `'best'`. Splitter tells
+    the model how to select the feature to split each branch. The `'best'` option,
+    the default, selects the feature that results in the greatest gain of information.
+    The `'random'` option, by contrast, selects the split randomly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Changing `splitter` to `'random'` is a great way to prevent overfitting and
+    diversify trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: criterion
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `criterion` for splitting decision tree regressors and classifiers are different.
+    The `criterion` provides the method the machine learning model uses to determine
+    how splits should be made. It's the scoring method for splits. For each possible
+    split, the `criterion` calculates a number for a possible split and compares it
+    to other options. The split with the best score wins.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The options for decision tree regressors are `mse` (mean squared error), `friedman_mse`,
+    (which includes Friedman's adjustment), and `mae` (mean absolute error). The default
+    is `mse`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For classifiers, `gini`, which was described earlier, and `entropy` usually
+    give similar results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: min_impurity_decrease
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Previously known as `min_impurity_split`, `min_impurity_decrease` results in
+    a split when the impurity is greater than or equal to this value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Impurity* is a measure of how pure the predictions are for every node. A tree
+    with 100% accuracy would have an impurity of 0.0\. A tree with 80% accuracy would
+    have an impurity of 0.20.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Impurity is an important idea in Decision Trees. Throughout the tree-building
+    process, impurity should continually decrease. Splits that result in the greatest
+    decrease of impurity are chosen for each node.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The default value is `0.0`. This number can be increased so that trees stop
+    building when a certain threshold is reached.
+  prefs: []
+  type: TYPE_NORMAL
+- en: min_weight_fraction_leaf
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: '`min_weight_fraction_leaf` is the minimum weighted fraction of the total weights
+    required to be a leaf. According to the documentation, *Samples have equal weight
+    when sample_weight is not provided*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For practical purposes, `min_weight_fraction_leaf` is another hyperparameter
+    that reduces variance and prevents overfitting. The default is 0.0\. Assuming
+    equal weights, a restriction of 1%, 0.01, would require at least 5 of the 500
+    samples to be a leaf.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ccp_alpha
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'The `ccp_alpha` hyperparameter will not be discussed here, as it is designed
+    for pruning after the tree has been built. For a full discussion, check out minimal
+    cost complexity pruning: [https://scikit-learn.org/stable/modules/tree.html#minimal-cost-complexity-pruning](https://scikit-learn.org/stable/modules/tree.html#minimal-cost-complexity-pruning).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Putting it all together
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When fine-tuning hyperparameters, several factors come into play:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The amount of time allotted
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The number of hyperparameters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The number of decimal places of accuracy desired
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The time spent, number of hyperparameters fine-tuned, and accuracy desired depend
+    on you, the dataset, and the project at hand. Since hyperparameters are interrelated,
+    it's not required to modify them all. Fine-tuning a smaller range may lead to
+    better results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you understand the fundamentals of decision trees and decision tree
+    hyperparameters, it's time to apply what you have learned.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are too many decision tree hyperparameters to consistently use them all.
+    In my experience, `max_depth`, `max_features`, `min_samples_leaf`, `max_leaf_nodes`,
+    `min_impurity_decrease`, and `min_samples_split` are often sufficient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Predicting heart disease – a case study
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You have been asked by a hospital to use machine learning to predict heart disease.
+    Your job is to develop a model and highlight two to three important features that
+    doctors and nurses can focus on to improve patient health.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You decide to use a decision tree classifier with fine-tuned hyperparameters.
+    After the model has been built, you will interpret results using `feature_importances_`,
+    an attribute that determines the most important features in predicting heart disease.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Heart Disease dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The Heart Disease dataset has been uploaded to GitHub as `heart_disease.csv`.
+    This is a slight modification to the original Heart Disease dataset ([https://archive.ics.uci.edu/ml/datasets/Heart+Disease](https://archive.ics.uci.edu/ml/datasets/Heart+Disease)) provided
+    by the UCI Machine Learning Repository ([https://archive.ics.uci.edu/ml/index.php](https://archive.ics.uci.edu/ml/index.php)) with
+    null values cleaned up for your convenience.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Upload the file and display the first five rows as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code produces the following table:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 2.8 – heart_disease.csv output](img/B15551_02_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 2.8 – heart_disease.csv output
+  prefs: []
+  type: TYPE_NORMAL
+- en: The target column, conveniently labeled '`target`' is binary, with `1` indicating
+    that the patient has heart disease and `0` indicating that they do not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the meanings of the predictor columns, taken from the data source
+    linked previously:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`age`: Age in years'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`sex`: Sex (`1` = male; `0` = female)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`cp`: Chest pain type (`1` = typical angina, `2` = atypical angina, `3` = non-anginal
+    pain, `4` = asymptomatic)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`trestbps`: Resting blood pressure (in mm Hg on admission to the hospital)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`chol`: Serum cholesterol in mg/dl 6 fbs: (fasting blood sugar > 120 mg/dl)
+    (`1` = true; `0` = false)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`fbs`: Fasting blood sugar > 120 mg/dl (`1` = true; `0` = false)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`restecg`: Resting electrocardiographic results (`0` = normal, `1` = having
+    ST-T wave abnormality (T wave inversions and/or ST elevation or depression of
+    > 0.05 mV), `2` = showing probable or definite left ventricular hypertrophy by
+    Estes'' criteria)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`thalach`: Maximum heart rate achieved'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`exang`: Exercise induced angina (`1` = yes; `0` = no)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`oldpeak`: ST depression induced by exercise relative to rest'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`slope`: The slope of the peak exercise ST segment (`1` = upsloping, `2` =
+    flat, `3` = downsloping)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`ca`: Number of major vessels (0-3) colored by fluoroscopy'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`thal`: `3` = normal; `6` = fixed defect; `7` = reversible defect'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Split the data into training and test sets in preparation for machine learning:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: You are now ready to make predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision Tree classifier
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Before implementing hyperparameters, it's helpful to have a baseline model for
+    comparison.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use `cross_val_score` with a `DecisionTreeClassifier` as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: The initial accuracy is 76%. Let's see what gains can be made with hyperparameter
+    fine-tuning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: RandomizedSearch CLF function
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When fine-tuning many hyperparameters, `GridSearchCV` can take too much time.
+    The scikit-learn library provides `RandomizedSearchCV` as a wonderful alternative.
+    `RandomizedSearchCV` works in the same way as `GridSearchCV`, but instead of trying
+    all hyperparameters, it tries a random number of combinations. It's not meant
+    to be exhaustive. It's meant to find the best combinations in limited time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s a function that uses `RandomizedSearchCV` to return the best model
+    along with the scores. The inputs are `params` (a dictionary of hyperparameters
+    to test), `runs` (number of hyperparameter combinations to check), and `DecisionTreeClassifier`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, let's pick a range of hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choosing hyperparameters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'There is no single correct approach for choosing hyperparameters. Experimentation
+    is the name of the game. Here is an initial list, placed inside the `randomized_search_clf` function.
+    These numbers have been chosen with the aim of reducing variance and trying an
+    expansive range:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is a definite improvement, and the model generalizes well on the test set.
+    Let's see if we can do better by narrowing the range.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Narrowing the range
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Narrowing the range is one strategy to improve hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As an example, using a baseline of `max_depth=8` chosen from the best model,
+    we may narrow the range to from `7` to `9`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another strategy is to stop checking hyperparameters whose defaults are working
+    fine. `entropy`, for instance, is not recommended over `'gini'` as the differences
+    are very slight. `min_impurity_split` and `min_impurity_decrease` may also be
+    left at their defaults.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a new hyperparameter range with an increase of `100` runs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: This model is more accurate in the training and test score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For a proper baseline of comparison, however, it''s essential to put the new
+    model into `cross_val_clf`. This may be achieved by copying and pasting the preceding
+    model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is six percentage points higher than the default model. When it comes to
+    predicting heart disease, more accuracy can save lives.
+  prefs: []
+  type: TYPE_NORMAL
+- en: feature_importances_
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The final piece of the puzzle is to communicate the most important features
+    of the machine learning model. Decision trees come with a nice attribute, `feature_importances_`,
+    that does exactly this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we need to finalize the best model. Our function returned the best model,
+    but it has not been saved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When testing, it's important not to mix and match training and test sets. After
+    a final model has been selected, however, fitting the model on the entire dataset
+    can be beneficial. Why? Because the goal is to test the model on data that has
+    never been seen and fitting the model on the entire dataset may lead to additional
+    gains in accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s define the model using the best hyperparameters and fit it on the entire
+    dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to determine the most important features, we can run the `feature_importances_` attribute
+    on `best_clf`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'It''s not easy to interpret these results. The following code zips the columns
+    along with the most important features into a dictionary before displaying them
+    in reverse order for a clean output that is easy to interpret:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The three most important features are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`''cp''`: Chest pain type (`1` = typical angina, `2` = atypical angina, `3`
+    = non-anginal pain, `4` = asymptomatic)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`''thalach''`: Maximum heart rate achieved'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`''ca''`: Number of major vessels (0-3) colored by fluoroscopy'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: These numbers may be interpreted as their explanation of variance, so `'cp'`
+    accounts for 48% of the variance, which is more than `'thal'` and `'ca'` combined.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can tell the doctors and nurses that your model predicts if the patient
+    has a heart disease with 82% accuracy using chest pain, maximum heart rate, and
+    fluoroscopy as the three most important characteristics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you have taken a big leap toward mastering XGBoost by examining
+    decision trees, the primary XGBoost base learners. You built decision tree regressors
+    and classifiers by fine-tuning hyperparameters with `GridSearchCV` and `RandomizedSearchCV`.
+    You visualized decision trees and analyzed their errors and accuracy in terms
+    of variance and bias. Furthermore, you learned about an indispensable tool, `feature_importances_`,
+    which is used to communicate the most important features of your model that is
+    also an attribute of XGBoost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you will learn how to build Random Forests, our first ensemble
+    method and a rival of XGBoost. The applications of Random Forests are important
+    for comprehending the difference between bagging and boosting, generating machine
+    learning models comparable to XGBoost, and learning about the limitations of Random
+    Forests that facilitated the development of XGBoost in the first place.
+  prefs: []
+  type: TYPE_NORMAL

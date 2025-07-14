@@ -1,0 +1,714 @@
+- en: Chapter 9
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Bayesian Additive Regression Trees
+  prefs: []
+  type: TYPE_NORMAL
+- en: Individually, we are one drop. Together, we are an ocean. – Ryunosuke Satoro
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: In the last chapter, we discussed the **Gaussian process** (**GPs**), a non-parametric
+    model for regression. In this chapter, we will learn about another non-parametric
+    model for regression known as Bayesian additive regression trees, or BART to friends.
+    We can consider BART from many different perspectives. It can be an ensemble of
+    decision trees, each with a distinct role and contribution to the overall understanding
+    of the data. These trees, guided by Bayesian priors, work harmoniously to capture
+    the nuances of the data, avoiding the pitfall of individual overfitting. Usually,
+    BART is discussed as a standalone model, and software that implements it is usually
+    limited to one or a few models. In this chapter, we will take a different approach
+    and use PyMC-BART, a Python library that allows the use of BART models within
+    PyMC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Decision trees
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: BART models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Flexible regression with BART
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Partial dependence plots
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Individual conditional expectation plots
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Variable selection
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 9.1 Decision trees
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Before jumping into BART models, let’s take a moment to discuss what decision
+    trees are. A decision tree is like a flowchart that guides you through different
+    questions until you reach a final choice. For instance, suppose you need to decide
+    what type of shoes to wear every morning. To do so, you may ask yourself a series
+    of questions. ”Is it warm?” If yes, you then ask something more specific, like
+    ”Do I have to go to the office?” Eventually, you will stop asking questions and
+    reach an output value like flip-flops, sneakers, boots, moccasins, etc.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This flowchart can be conveniently encoded in a tree structure, where at the
+    root of the tree we place more general questions, then proceed along the tree
+    to more and more specific ones, and finally arrive at the leaves of the tree with
+    the output of the different types of shoes. Trees are very common data structures
+    in computer science and data analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: More formally, we can say that a tree is a collection of nodes and vertices
+    linking those nodes. The nodes that have questions are called decision nodes,
+    and the nodes with the output of the trees (like the shoes) are called leaf nodes.
+    When the answers are ”yes” or ”no,” then we have a binary tree, because each node
+    can have at most two children. *Figure [9.1](#x1-177003r1)* shows a decision tree.
+    The rounded squares are leaf nodes. The regular squares are decision nodes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file240.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 9.1**: A decision tree to choose footwear.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can use decision trees to classify, that is, to return discrete categories,
+    like sneakers, flip-flops, slippers, etc. But we can also use them to perform
+    regression, that is, to return continuous outcomes like 4.24 or 20.9 (and anything
+    in between). Usually, these trees are called regression trees. *Figure [9.2](#x1-177006r2)*
+    shows a regression tree on the left. We can also see a regression tree as a representation
+    of a piece-wise step-function as shown in the right panel of *Figure [9.2](#x1-177006r2)*.
+    This contrasts with cubic splines or GPs, which represent smooth functions (at
+    least to some degree). Trees can be flexible enough to provide good practical
+    approximations of smooth functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file241.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 9.2**: On the left, a regression tree; on the right is the corresponding
+    piece-wise step function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Trees can be very flexible; in an extreme case, we could have a tree with as
+    many leaf nodes as observations, and this tree will perfectly fit the data. As
+    we saw in *Chapter [5](CH05.xhtml#x1-950005)*, this may not be a great idea unless
+    we add some regularization. In Bayesian terms, we can achieve such regularization
+    through priors. For instance, we could set a prior that induces shallow trees.
+    In this way, we make it very unlikely that we will end up with a tree with as
+    many nodes as data points.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 9.2 BART models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A **Bayesian additive regression trees** (**BART**) model is a sum of *m* trees
+    that we use to approximate a function [[Chipman et al.](Bibliography.xhtml#Xchipman2010), [2010](Bibliography.xhtml#Xchipman2010)].
+    To complete the model, we need to set priors over trees. The main function of
+    such priors is to prevent overfitting while retaining the flexibility that trees
+    provide. Priors are designed to keep the individual trees relatively shallow and
+    the values at the leaf nodes relatively small.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'PyMC does not support BART models directly but we can use PyMC-BART, a Python
+    module that extends PyMC functionality to support BART models. PyMC-BART offers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A BART random variable that works very similar to other distributions in PyMC
+    like `pm.Normal`, `pm.Poisson`, etc.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A sampler called PGBART as trees cannot be sampled with PyMC’s default step
+    methods such as NUTS or Metropolis.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following utility functions to help work with the result of a BART model:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pmb.plot_pdp`: A function to generate partial dependence plots [[Friedman](Bibliography.xhtml#Xfriedman2001), [2001](Bibliography.xhtml#Xfriedman2001)].'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pmb.plot_ice`: A function to generate individual conditional expectation plots [[Goldstein
+    et al.](Bibliography.xhtml#XGoldstein2013PeekingIT), [2013](Bibliography.xhtml#XGoldstein2013PeekingIT)].'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pmb.plot_variable_importance`: A function to estimate the variable importance.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pmb.plot_convergence`: A function that plots the empirical cumulative distribution
+    for the effective sample size and ![](img/hat_R.png) values for the BART random
+    variables.'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: BARTs Are Priors Over Step Functions
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can think of BART as priors over piece-wise constant functions. Furthermore,
+    in the limit of the number of trees *m* → ∞, BART converges to a nowhere-differentiable
+    Gaussian process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following sections, we will focus on the applied side of BART, specifically
+    examining how to use PyMC-BART. If you are interested in reading more about the
+    details of how BART models work, the implementation details of PyMC-BART, and
+    how changing the hyperparameters of PyMC-BART affects the results, I recommend
+    reading [Quiroga et al.](Bibliography.xhtml#Xquiroga2022) [[2022](Bibliography.xhtml#Xquiroga2022)].
+  prefs: []
+  type: TYPE_NORMAL
+- en: 9.2.1 Bartian penguins
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let’s imagine that, for some reason, we are interested in modeling the body
+    mass of penguins as a function of other body measures. The following code block
+    shows a BART model for such a problem. In this example, `X = "flipper_length",
+    "bill_depth", "bill_length"]` and `Y` is the `body_mass`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 9.1**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see that using PyMC-BART to define a BART model with PyMC is straightforward.
+    Essentially, we need to define a BART random variable with the arguments `X`,
+    the covariates, and `Y` the response variable. Other than that, the rest of the
+    model should look very familiar. As in other regression models, the length of
+    *μ* will be the same as the observations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While theoretically, the trees are only a function of `X`, PyMC-BART asks for
+    `Y` to obtain an estimate for the initial value for the variance at the leaf nodes
+    of the trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we have fitted a model with a BART variable, the rest of the workflow is
+    as usual. For instance, we can compute a posterior predictive check simply by
+    calling `az.plot_ppc(.)` and we will get something like *Figure [9.3](#x1-179011r3)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file242.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 9.3**: Posterior predictive check for `model_pen`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [9.3](#x1-179011r3)*, shows a reasonable fit. Remarkably, we don’t
+    get negative masses even when we use a Normal likelihood. But with PyMC and PyMC-BART,
+    it is super easy to try other likelihoods; just replace the Normal with another
+    distribution like Gamma or a Truncated Normal as you would do in a regular PyMC
+    model and you are good to go. You can then use posterior predictive checks and
+    LOO, as discussed in *Chapter [5](CH05.xhtml#x1-950005)*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next few sections, we are going to discuss how to use and interpret the
+    utility function provided by PyMC-BART (except for `pmb.plot_convergence`, which
+    is discussed in *Chapter [10](CH10.xhtml#x1-18900010)* with other diagnostic methods).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 9.2.2 Partial dependence plots
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A **partial dependence plot** (**PDP**) is a graphical tool widespread in the
+    BART literature, but it is not exclusive to BART. In principle, it can be used
+    with any method or model. It consists of plotting the predicted response as a
+    function of a given covariate *X*[*i*], while averaging over the rest of the covariates
+    *X*[−*i*]. So, essentially, we are plotting how much each covariate contributes
+    to the response variable while keeping all other variables constant. One thing
+    that is particular to BART and other tree-based methods is that the computation
+    of PDPs can be done without refitting the model to synthetic data; instead, it
+    can be efficiently computed from the already fitted trees. This makes BART an
+    attractive choice for model interpretability and understanding the impact of individual
+    features on predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once a model like `model_pen` has been fitted, we can compute a PDP with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 9.2**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice we passed the BART random variable, the covariates, and the response
+    variable. The response variable is not really needed, but if passed, and if it
+    is a pandas Series, it will use its name for the y-axis label.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [9.4](#x1-180006r4)* shows one example of a partial dependence plot
+    from `model_pen`. We can see that `flipper_length` shows the largest effect, which
+    is approximately linear, while the other two variables show mostly a flat response,
+    indicating their partial contribution is not very large. For a variable with a
+    null contribution to the response, its expected PDP will be a flat, constant line
+    at a value of the average of the response variable.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file243.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 9.4**: Partial dependence plot for `model_pen`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Figure [9.4](#x1-180006r4)*, we can see that the largest contribution comes
+    from `flipper_length`, but this does not mean the other two variables are not
+    related to `body_mass`. We can only say that considering we have `flipper_length`
+    in the model, the effect of the other two is minimal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 9.2.3 Individual conditional plots
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When computing partial dependence plots, we assume that variables *X*[*i*] and
+    *X*[−*i*] are uncorrelated. In many real-world problems, this is hardly the case,
+    and partial dependence plots can hide relationships in the data. Nevertheless,
+    if the dependence between the subset of chosen variables is not too strong, then
+    partial dependence plots can be useful summaries [Friedman](Bibliography.xhtml#Xfriedman2001) [[2001](Bibliography.xhtml#Xfriedman2001)].
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Individual Conditional Expectation** (**ICE**) plots are closely related
+    to PDPs. The difference is that instead of plotting the target covariates’ average
+    partial effect on the predicted response, we plot *n* conditional expectation
+    curves at given fixed values (10 by default). That is, each curve in an ICE plot
+    reflects the partial predicted response as a function of covariate *X*[*i*] for
+    a fixed value of *X*[−*ij*].'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once a model like `model_pen` has been fitted, we can compute an ICE plot with
+    the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 9.3**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The signature is the same as for PDPs. The result is shown in *Figure [9.5](#x1-181006r5)*.
+    The gray curves are the conditional expectation curves at different values. If
+    we average them, we should get the PDP curve (in black). If the curves in an ICE
+    plot are mostly parallel to each other, it is because the contributions of the
+    covariates to the response variable are mostly independent. This is the case for
+    `flipper_length` and `bill_length`. In this case, the ICE and PDP plots convey
+    the same information. However, if the curve is crossed, it indicates non-independent
+    contributions. In such cases, the PDP would hide the effects. We can see an example
+    of this in the following figure for `bill_depth`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file244.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 9.5**: Individual conditional expectation plot for `model_pen`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By default, ICE plots are centered, meaning that the gray curves are centered
+    around the partial response evaluated at the lowest value on the x-axis. This
+    helps interpret the plots: for instance, it is easier to see whether the lines
+    cross. This also explains why the scale for the y-axis in *Figure [9.5](#x1-181006r5)*
+    is different from the scale in *Figure [9.4](#x1-180006r4)*. You can change it
+    with the argument `centered=False`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 9.2.4 Variable selection with BART
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In *Chapter [6](CH06.xhtml#x1-1200006)*, we already discussed variable selection
+    and explained under which scenarios we may be interested in selecting a subset
+    of variables. PyMC-BART offers a very simple, and almost computational-free, heuristic
+    to estimate variable importance. It keeps track of how many times a covariate
+    is used as a splitting variable. For BART models, the variable importance is computed
+    by averaging over the *m* trees and over all posterior samples. To further ease
+    interpretation, we can report the values normalized so each value is in the interval
+    [0*,*1] and the total importance is 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In some implementations of BART, the estimation of the variable importance is
+    very sensitive to the number of trees *m*. The authors of those implementations
+    recommend that you use a relatively low number of trees for variable selection
+    and a higher number of trees for model fitting/predictions. This is not the case
+    with PyMC-BART, for which the estimates of variable importance are robust to the
+    number of trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once we have fitted a model like `model_pen` to perform variable selection
+    with PyMC-BART, we need to do something like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 9.4**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Notice we passed the inference data, the BART random variable, and the covariates.
+    The result is shown in *Figure [9.6](#x1-182005r6)*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file245.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 9.6**: Variable importance plot for `model_pen`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the top panel, we can see that `flipper_length` has the largest value of
+    variable importance, followed by `bill_depth` and `fill_length`. Notice that this
+    qualitatively agrees with the partial dependence plots and individual conditional
+    expectation plots.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The simple heuristic of counting how many times a variable enters a tree has
+    some issues. One concerns interpretability, as the lack of a clear threshold separating
+    the *important* variables from the *unimportant* ones is problematic. PyMC-BART
+    offers some help. The bottom panel of *Figure [9.6](#x1-182005r6)* shows the square
+    of the Pearson correlation coefficient between the predictions generated with
+    the reference model, that is, the model with all covariates, and the predictions
+    generated with the submodels, with fewer covariates. We can use this plot to find
+    the minimal model capable of making predictions that are as close as possible
+    to the reference model. *Figure [9.6](#x1-182005r6)* tells us that a model with
+    just `flipper_length` will have almost the same predictive performance as the
+    model with all three variables. Notice we may add some small gain by adding `bill_depth`,
+    but it would probably be too small.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let me briefly explain what `pmb.plot_variable_importance` is doing under
+    the hood. Primarily, two approximations are taking place:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It does not evaluate all possible combinations of covariates. Instead, it adds
+    one variable at a time, following their relative importance (the top subplot in
+    *Figure [9.6](#x1-182005r6)*).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It does not refit all models from 1 to n covariates. Instead, it approximates
+    the effect of removing a variable by traversing the trees from the posterior distribution
+    for the reference model and it prunes the branches without the variable of interest.
+    This is similar to the procedure to compute the partial dependence plots, with
+    the difference that for the plots, we excluded all but one variable, while for
+    the variable importance we start by excluding all but the most important one,
+    then all but the two most important ones, and so on until we include all variables.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: If this procedure for variable selection sounds familiar to you, it is highly
+    likely that you have been paying attention to this chapter and also *Chapter [6](CH06.xhtml#x1-1200006)*.
+    The procedure is conceptually similar to what Kulprit does. Here, we also make
+    use of the concept of a reference model, and we evaluate a model in terms of its
+    predictive distribution. But the similarities stop there. PyMC-BART does not use
+    the ELPD, instead using the square of the Pearson correlation coefficient, and
+    estimating the submodels by pruning the trees fitted with the reference model,
+    not via a Kullback-Liebler divergence projection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before moving on to another topic, let me just add some words of caution. As
+    we discussed in *Chapter [6](CH06.xhtml#x1-1200006)*, with the output of Kulprit,
+    we should not over-interpret the order of the variables. The sample applies to
+    figures generated with `pmb.plot_variable_importance` like *Figure [9.6](#x1-182005r6)*.
+    If the importance of two variables is very similar, it can easily happen that
+    the order changes if we refit the model with a different random seed or if the
+    data slightly changes, such as after adding or removing a data point. The error
+    bars for the variable importance could help, but it is likely that they underestimate
+    the true variability. Thus, take the order with a pinch of salt, and use it as
+    a guide in the context of your problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 9.3 Distributional BART models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As we saw in *Chapter [6](CH06.xhtml#x1-1200006)*, for generalized linear models,
+    we are not restricted to creating linear models for the mean or location parameter;
+    we can also model other parameters, for example, the standard deviation of a Gaussian
+    or even both the mean and standard deviation. The same applies to BART models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To exemplify this, let’s model the bike dataset. We will use `rented` as the
+    response variable and `hour`, `temperature`, `humidity`, and `workday` as predictor
+    variables. As we did previously, we are going to use a NegativeBinomial distribution
+    as likelihood. This distribution has two parameters *μ* and *alpha*. We are going
+    to use a sum of trees for both parameters. The following code block shows the
+    model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 9.5**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let’s take a moment to be sure we understand this model. First, notice that
+    we passed a `shape` argument to `pmb.BART()`. When `separate_trees = True`, this
+    instructs PyMC-BART to fit two separate sets of sum-of-trees. Then we index *μ*
+    in order to use the first dimension for the *μ* parameter of the NegativeBinomial
+    and the second dimension for the *α* parameter. If, instead, `separate_trees =
+    False`, then we tell PyMC-BART to fit a single sum-of-trees but each tree will
+    return 2 values at each leaf node, instead of 1\. The advantage of this is that
+    the algorithm will run faster and use less memory, as we are only fitting one
+    set of trees. The disadvantage is that we get a less flexible model. In practice,
+    both options can be useful, so which one you should use is another modeling decision.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another important aspect of `model_bb` is that we take the exponential of *μ*.
+    We do this to ensure that the NegativeBinomial distribution gets only positive
+    values, both for *μ* and *α*. This is the same type of transformation we discussed
+    in the context of generalized linear models. What is particular about PyMC-BART
+    is that we applied its inverse to the value of *Y* we passed to `pmb.BART()`.
+    In my experience, this helps PyMC-BART to find better solutions. For a model with
+    a Binomial or Categorical likelihood, it is not necessary to apply the inverse
+    of the logistic or softmax, respectively. PyMC-BART handles the Binomial as a
+    particular case and for the Categorical, we have empirically seen good results
+    without the inverse. It is important to remark that the value of *Y* we passed
+    to `pmb.BART()` is only used to initialize the sampling of the BART variables.
+    The initialization seems to be robust to the values we pass and passing *Y* or
+    some transformation of it works well in most cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The third aspect I want you to pay attention to is that we are passing a new
+    argument to `pm.sample`, namely `pgbart`. The value for this argument is the dictionary
+    `"batch":(0.05, 0.15)`. Why are we doing this? Occasionally, to obtain good-quality
+    samples, it becomes necessary to tweak the hyperparameters of the sampler. In
+    previous examples, we opted to omit this aspect to maintain simplicity and focus.
+    However, as we later discuss in more depth in *Chapter [10](CH10.xhtml#x1-18900010)*,
+    paying attention to these adjustments can become important. For the particular
+    case of the PGBART sampler, there are two hyperparameters we can change. One is
+    `num_particles` (defaults to 10), where the larger the number of particles, the
+    more accurate the sampling of BART, but also the more expensive it is. The other
+    is `batch`; by default, this is a tuple `(0.1, 0.1)`, meaning that at each step,
+    the sampler fits 10% of the `m` trees during the tuning phase and the same for
+    the sampling phase. For the `model_bb` model, we used `(0.05, 0.15)`, meaning
+    5% during tuning (2 trees) and 15% (7 trees) during the actual sampling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file246.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 9.7**: Partial dependence plot for `model_bb`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can explore the relationship of the covariates to the response for both
+    parameters as in *Figure [9.7](#x1-183010r7)*. Notice that variables appear twice:
+    the first column corresponds to parameter *μ* and the second column to parameter
+    *α*. We can see that `hour` has the largest effect on the response variable for
+    both parameters of the NegativeBinomial.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 9.4 Constant and linear response
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: By default, PyMC-BART will fit trees that return a single value at each leaf
+    node. This is a simple approach that usually works just fine. However, it is important
+    to understand its implications. For instance, this means that predictions for
+    any value outside the range of the observed data used to fit the model will be
+    constants. To see this, go back and check *Figure [9.2](#x1-177006r2)*. This tree
+    will return 1.9 for any value below `c1`. Notice that this will still be the case
+    if we, instead, sum a bunch of trees, because summing a bunch of constant values
+    results in yet another constant value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Whether this is a problem or not is up to you and the context in which you apply
+    the BART model. Nevertheless, PyMC-BART offers a `response` argument that you
+    pass to the BART random variable. Its default value is `"constant"`. You can change
+    it to `"linear"`, in which case PyMC-BART will return a linear fit at each leaf
+    node or `"mix"`, which will propose (during sampling) trees with either constant
+    or linear values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To exemplify the difference, let us fit a very simple example: the number of
+    rented bikes versus the temperature. The observed temperature values go from ≈−5
+    to ≈ 35\. After fitting this model, we will ask for out-of-sample posterior predictive
+    values in the range [-20, 45]. For that reason, we will set up a model with a
+    mutable variable as introduced in *Chapter [4](CH04.xhtml#x1-760004)*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 9.6**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that we passed `shape=`*μ*`.shape` to the likelihood. This is something
+    we need to do to be able to change the shape of `X_mut1`, which is also a requirement
+    of PyMC, so this is something you should also do for non-BART models like linear
+    regression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: OK, to continue with the example, in the accompanying code, you will find the
+    code for the `model_tmp0` model, which is exactly the same as **model_tmp1**,
+    except that it has the default constant response. The results from both models
+    are shown in *Figure [9.8](#x1-184010r8)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file247.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 9.8**: Mean predictions with constant and linear responses'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice how outside of the range of the data (dashed gray lines), the predictions
+    for the model with constant response are indeed constant. Which one is providing
+    better predictions? I am not sure. I will argue that for predictions on the lower
+    end of temperatures, the linear response is better as it predicts that the number
+    of rented bikes will keep decreasing until eventually reaching 0\. But on the
+    higher end of temperatures, a plateau or even a decrease should be more likely
+    than an increase. I mean, I have tried riding my bike at 40 or maybe even 42 degrees,
+    and it is not a super nice experience. What do you think?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 9.5 Choosing the number of trees
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The number of trees (`m`) controls the flexibility of the BART function. As
+    a rule of thumb, the default value of 50 should be enough to get a good approximation.
+    And larger values, like 100 or 200, should provide a more refined answer. Usually,
+    it is hard to overfit by increasing the number of trees, because the larger the
+    number of trees, the smaller the values at the leaf nodes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In practice, you may be worried about overshooting `m` because the computational
+    cost of BART, both in terms of time and memory, will increase. One way to tune
+    `m` is to perform K-fold cross-validation, as recommended by [Chipman et al.](Bibliography.xhtml#Xchipman2010) [[2010](Bibliography.xhtml#Xchipman2010)].
+    Another option is to approximate cross-validation by using LOO as discussed in
+    *Chapter [5](CH05.xhtml#x1-950005)*. We have observed that LOO can indeed be of
+    help to provide a reasonable value of `m` [[Quiroga et al.](Bibliography.xhtml#Xquiroga2022), [2022](Bibliography.xhtml#Xquiroga2022)].
+  prefs: []
+  type: TYPE_NORMAL
+- en: 9.6 Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: BART is a flexible non-parametric model where a sum of trees is used to approximate
+    an unknown function from the data. Priors are used to regularize inference, mainly
+    by restricting trees’ learning capacity so that no individual tree is able to
+    explain the data, but rather the sum of trees. PyMC-BART is a Python library that
+    extends PyMC to work with BART models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We built a few BART models in this chapter, and learned how to perform variable
+    selection and use partial dependence plots and individual conditional plots to
+    interpret the output of BART models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 9.7 Exercises
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Explain each of the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: How is BART different from linear regression and splines?
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When might you want to use linear regression over BART?
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When might you want to use Gaussian processes over BART?
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In your own words, explain why it can be the case that multiple small trees
+    can fit patterns better than one single large tree. What is the difference in
+    the two approaches? What are the trade-offs?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Below, we provide two simple synthetic datasets. Fit a BART model with m=50
+    to each of them. Plot the data and the mean fitted function. Describe the fit.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: x = np.linspace(-1, 1., 200) and y = np.random.normal(2*x, 0.25)
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: x = np.linspace(-1, 1., 200) and y = np.random.normal(x**2, 0.25)
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Create your own synthetic dataset.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Create the following dataset *Y* = 10sin(*πX*[0]*X*[1])+20(*X*[2] −0*.*5)² +10*X*[3]
+    +5*X*[4] + ![](img/e.png), where ![](img/e.png) ∼![](img/N.PNG)(0*,*1) and ***X***[0:9]
+    ∼![](img/U.PNG)(0*,*1). This is called Friedman’s five-dimensional function. Notice
+    that we actually have 10 dimensions, but the last 5 are pure noise.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Fit a BART model to this data.
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Compute a PDP and the variable importance (VI).
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Do the PDP and VI qualitatively agree? How?
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Use BART with the penguins dataset. Use `bill_length`, `flipper_length`, `bill_depth`,
+    `bill_length`, and `body_mass` as covariates and the species `Adelie` and `Chistrap`
+    as the response. Try different values of `m` –, 10, 20, 50, and 100\. Use LOO
+    to pick a suitable value.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Check the variable importance for the model in the previous question. Compare
+    the result with one obtained with Kulprit for a generalized linear model with
+    the same covariates and response, built with Bambi.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Join our community Discord space
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Join our Discord community to meet like-minded people and learn alongside more
+    than 5000 members at: [https://packt.link/bayesian](https://packt.link/bayesian)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1.png)'
+  prefs: []
+  type: TYPE_IMG

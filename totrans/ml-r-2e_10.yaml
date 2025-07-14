@@ -1,0 +1,1494 @@
+- en: Chapter 10. Evaluating Model Performance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When only the wealthy could afford education, tests and exams did not evaluate
+    students' potential. Instead, teachers were judged for parents who wanted to know
+    whether their children had learned enough to justify the instructors' wages. Obviously,
+    this has changed over the years. Now, such evaluations are used to distinguish
+    between high- and low-achieving students, filtering them into careers and other
+    opportunities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given the significance of this process, a great deal of effort is invested in
+    developing accurate student assessments. Fair assessments have a large number
+    of questions that cover a wide breadth of topics and reward true knowledge over
+    lucky guesses. They also require students to think about problems they have never
+    faced before. Correct responses therefore indicate that students can generalize
+    their knowledge more broadly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The process of evaluating machine learning algorithms is very similar to the
+    process of evaluating students. Since algorithms have varying strengths and weaknesses,
+    tests should distinguish among the learners. It is also important to forecast
+    how a learner will perform on future data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter provides the information needed to assess machine learners, such
+    as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The reasons why predictive accuracy is not sufficient to measure performance,
+    and the performance measures you might use instead
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Methods to ensure that the performance measures reasonably reflect a model's
+    ability to predict or forecast unseen cases
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to use R to apply these more useful measures and methods to the predictive
+    models covered in the previous chapters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Just as the best way to learn a topic is to attempt to teach it to someone else,
+    the process of teaching and evaluating machine learners will provide you with
+    greater insight into the methods you've learned so far.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Measuring performance for classification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapters, we measured classifier accuracy by dividing the proportion
+    of correct predictions by the total number of predictions. This indicates the
+    percentage of cases in which the learner is right or wrong. For example, suppose
+    that for 99,990 out of 100,000 newborn babies a classifier correctly predicted
+    whether they were a carrier of a treatable but potentially fatal genetic defect.
+    This would imply an accuracy of 99.99 percent and an error rate of only 0.01 percent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At first glance, this appears to be an extremely accurate classifier. However,
+    it would be wise to collect additional information before trusting your child's
+    life to the test. What if the genetic defect is found in only 10 out of every
+    100,000 babies? A test that predicts *no defect* regardless of the circumstances
+    will be correct for 99.99 percent of all cases, but incorrect for 100 percent
+    of the cases that matter most. In other words, even though the predictions are
+    extremely accurate, the classifier is not very useful to prevent treatable birth
+    defects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: This is one consequence of the **class imbalance problem**, which refers to
+    the trouble associated with data having a large majority of records belonging
+    to a single class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Though there are many ways to measure a classifier's performance, the best measure
+    is always the one that captures whether the classifier is successful at its intended
+    purpose. It is crucial to define the performance measures for utility rather than
+    raw accuracy. To this end, we will begin exploring a variety of alternative performance
+    measures derived from the confusion matrix. Before we get started, however, we
+    need to consider how to prepare a classifier for evaluation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with classification prediction data in R
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The goal of evaluating a classification model is to have a better understanding
+    of how its performance will extrapolate to future cases. Since it is usually unfeasible
+    to test a still-unproven model in a live environment, we typically simulate future
+    conditions by asking the model to classify a dataset made of cases that resemble
+    what it will be asked to do in the future. By observing the learner's responses
+    to this examination, we can learn about its strengths and weaknesses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Though we''ve evaluated classifiers in the prior chapters, it''s worth reflecting
+    on the types of data at our disposal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Actual class values
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Predicted class values
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Estimated probability of the prediction
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The actual and predicted class values may be self-evident, but they are the
+    key to evaluation. Just like a teacher uses an answer key to assess the student''s
+    answers, we need to know the correct answer for a machine learner''s predictions.
+    The goal is to maintain two vectors of data: one holding the correct or actual
+    class values, and the other holding the predicted class values. Both vectors must
+    have the same number of values stored in the same order. The predicted and actual
+    values may be stored as separate R vectors or columns in a single R data frame.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Obtaining this data is easy. The actual class values come directly from the
+    target feature in the test dataset. Predicted class values are obtained from the
+    classifier built upon the training data, and applied to the test data. For most
+    machine learning packages, this involves applying the `predict()` function to
+    a model object and a data frame of test data, such as: `predicted_outcome <- predict(model,
+    test_data)`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Until now, we have only examined classification predictions using these two
+    vectors of data. Yet most models can supply another piece of useful information.
+    Even though the classifier makes a single prediction about each example, it may
+    be more confident about some decisions than others. For instance, a classifier
+    may be 99 percent certain that an SMS with the words "free" and "ringtones" is
+    spam, but is only 51 percent certain that an SMS with the word "tonight" is spam.
+    In both cases, the classifier classifies the message as spam, but it is far more
+    certain about one decision than the other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Working with classification prediction data in R](img/B03905_10_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Studying these internal prediction probabilities provides useful data to evaluate
+    a model's performance. If two models make the same number of mistakes, but one
+    is more capable of accurately assessing its uncertainty, then it is a smarter
+    model. It's ideal to fid a learner that is extremely confident when making a correct
+    prediction, but timid in the face of doubt. The balance between confidence and
+    caution is a key part of model evaluation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unfortunately, obtaining internal prediction probabilities can be tricky because
+    the method to do so varies across classifiers. In general, for most classifiers,
+    the `predict()` function is used to specify the desired type of prediction. To
+    obtain a single predicted class, such as spam or ham, you typically set the `type
+    = "class"` parameter. To obtain the prediction probability, the `type` parameter
+    should be set to one of `"prob"`, `"posterior"`, `"raw"`, or `"probability"` depending
+    on the classifier used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Nearly all of the classifiers presented in this book will provide prediction
+    probabilities. The `type` parameter is included in the syntax box introducing
+    each model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For example, to output the predicted probabilities for the C5.0 classifier
+    built in [Chapter 5](ch05.html "Chapter 5. Divide and Conquer – Classification
+    Using Decision Trees and Rules"), *Divide and Conquer – Classification Using Decision
+    Trees and Rules*, use the `predict()` function with `type = "prob"` as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To further illustrate the process of evaluating learning algorithms, let''s
+    look more closely at the performance of the SMS spam classification model developed
+    in [Chapter 4](ch04.html "Chapter 4. Probabilistic Learning – Classification Using
+    Naive Bayes"), *Probabilistic Learning – Classification Using Naive Bayes*. To
+    output the naive Bayes predicted probabilities, use `predict()` with `type = "raw"`
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In most cases, the `predict()` function returns a probability for each category
+    of the outcome. For example, in the case of a two-outcome model like the SMS classifier,
+    the predicted probabilities might be a matrix or data frame as shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Each line in this output shows the classifier's predicted probability of `spam`
+    and `ham`, which always sum up to 1 because these are the only two outcomes. While
+    constructing an evaluation dataset, it is important to ensure that you are using
+    the correct probability for the class level of interest. To avoid confusion, in
+    the case of a binary outcome, you might even consider dropping the vector for
+    one of the two alternatives.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For convenience during the evaluation process, it can be helpful to construct
+    a data frame containing the predicted class values, actual class values, as well
+    as the estimated probabilities of interest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The steps required to construct the evaluation dataset have been omitted for
+    brevity, but are included in this chapter's code on the Packt Publishing website.
+    To follow along with the examples here, download the `sms_results.csv` file, and
+    load to a data frame using the `sms_results <- read.csv("sms_results.csv")` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `sms_results` data frame is simple. It contains four vectors of 1,390 values.
+    One vector contains values indicating the actual type of SMS message (`spam` or
+    `ham`), one vector indicates the naive Bayes model''s predicted type, and the
+    third and fourth vectors indicate the probability that the message was `spam`
+    or `ham`, respectively:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: For these six test cases, the predicted and actual SMS message types agree;
+    the model predicted their status correctly. Furthermore, the prediction probabilities
+    suggest that model was extremely confident about these predictions, because they
+    all fall close to zero or one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What happens when the predicted and actual values are further from zero and
+    one? Using the `subset()` function, we can identify a few of these records. The
+    following output shows test cases where the model estimated the probability of
+    `spam` somewhere between 40 and 60 percent:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By the model''s own admission, these were cases in which a correct prediction
+    was virtually a coin flip. Yet all three predictions were wrong—an unlucky result.
+    Let''s look at a few more cases where the model was wrong:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: These cases illustrate the important fact that a model can be extremely confident
+    and yet it can be extremely wrong. All six of these test cases were `spam` that
+    the classifier believed to have no less than a 98 percent chance of being `ham`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In spite of such mistakes, is the model still useful? We can answer this question
+    by applying various error metrics to the evaluation data. In fact, many such metrics
+    are based on a tool we've already used extensively in the previous chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A closer look at confusion matrices
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A **confusion** **matrix** is a table that categorizes predictions according
+    to whether they match the actual value. One of the table's dimensions indicates
+    the possible categories of predicted values, while the other dimension indicates
+    the same for actual values. Although we have only seen 2 x 2 confusion matrices
+    so far, a matrix can be created for models that predict any number of class values.
+    The following figure depicts the familiar confusion matrix for a two-class binary
+    model as well as the 3 x 3 confusion matrix for a three-class model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'When the predicted value is the same as the actual value, it is a correct classification.
+    Correct predictions fall on the diagonal in the confusion matrix (denoted by **O**).
+    The off-diagonal matrix cells (denoted by **X**) indicate the cases where the
+    predicted value differs from the actual value. These are incorrect predictions.
+    The performance measures for classification models are based on the counts of
+    predictions falling on and off the diagonal in these tables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A closer look at confusion matrices](img/B03905_10_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The most common performance measures consider the model's ability to discern
+    one class versus all others. The class of interest is known as the **positive**
+    class, while all others are known as **negative**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The use of the terms positive and negative is not intended to imply any value
+    judgment (that is, good versus bad), nor does it necessarily suggest that the
+    outcome is present or absent (such as birth defect versus none). The choice of
+    the positive outcome can even be arbitrary, as in cases where a model is predicting
+    categories such as sunny versus rainy or dog versus cat.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The relationship between the positive class and negative class predictions
+    can be depicted as a 2 x 2 confusion matrix that tabulates whether predictions
+    fall into one of the four categories:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**True Positive (TP)**: Correctly classified as the class of interest'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**True Negative (TN)**: Correctly classified as not the class of interest'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**False Positive (FP)**: Incorrectly classified as the class of interest'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**False Negative (FN)**: Incorrectly classified as not the class of interest'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For the spam classifier, the positive class is `spam`, as this is the outcome
+    we hope to detect. We can then imagine the confusion matrix as shown in the following
+    diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A closer look at confusion matrices](img/B03905_10_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The confusion matrix, presented in this way, is the basis for many of the most
+    important measures of model's performance. In the next section, we'll use this
+    matrix to have a better understanding of what is meant by accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using confusion matrices to measure performance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'With the 2 x 2 confusion matrix, we can formalize our definition of prediction
+    **accuracy** (sometimes called the **success rate**) as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using confusion matrices to measure performance](img/B03905_10_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this formula, the terms *TP*, *TN*, *FP*, and *FN* refer to the number of
+    times the model's predictions fell into each of these categories. The accuracy
+    is therefore a proportion that represents the number of true positives and true
+    negatives, divided by the total number of predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **error rate** or the proportion of the incorrectly classified examples
+    is specified as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using confusion matrices to measure performance](img/B03905_10_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Notice that the error rate can be calculated as one minus the accuracy. Intuitively,
+    this makes sense; a model that is correct 95 percent of the time is incorrect
+    5 percent of the time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An easy way to tabulate a classifier''s predictions into a confusion matrix
+    is to use R''s `table()` function. The command to create a confusion matrix for
+    the SMS data is shown as follows. The counts in this table could then be used
+    to calculate accuracy and other statistics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you like to create a confusion matrix with a more informative output, the
+    `CrossTable()` function in the `gmodels` package offers a customizable solution.
+    If you recall, we first used this function in [Chapter 2](ch02.html "Chapter 2. Managing
+    and Understanding Data"), *Managing and Understanding Data*. If you didn't install
+    the package at that time, you will need to do so using the `install.packages("gmodels")`
+    command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By default, the `CrossTable()` output includes proportions in each cell that
+    indicate the cell count as a percentage of table''s row, column, or overall total
+    counts. The output also includes row and column totals. As shown in the following
+    code, the syntax is similar to the `table()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is a confusion matrix with a wealth of additional detail:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using confusion matrices to measure performance](img/B03905_10_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: We've used `CrossTable()` in several of the previous chapters, so by now you
+    should be familiar with the output. If you ever forget how to interpret the output,
+    simply refer to the key (labeled `Cell Contents`), which provides the definition
+    of each number in the table cells.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use the confusion matrix to obtain the accuracy and error rate. Since
+    the accuracy is *(TP + TN) / (TP + TN + FP + FN)*, we can calculate it using following
+    command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also calculate the error rate *(FP + FN) / (TP + TN + FP + FN)* as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the same as one minus accuracy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Although these calculations may seem simple, it is important to practice thinking
+    about how the components of the confusion matrix relate to one another. In the
+    next section, you will see how these same pieces can be combined in different
+    ways to create a variety of additional performance measures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Beyond accuracy – other measures of performance
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Countless performance measures have been developed and used for specific purposes
+    in disciplines as diverse as medicine, information retrieval, marketing, and signal
+    detection theory, among others. Covering all of them could fill hundreds of pages
+    and makes a comprehensive description infeasible here. Instead, we'll consider
+    only some of the most useful and commonly cited measures in the machine learning
+    literature.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Classification and Regression Training package `caret` by Max Kuhn includes
+    functions to compute many such performance measures. This package provides a large
+    number of tools to prepare, train, evaluate, and visualize machine learning models
+    and data. In addition to its use here, we will also employ `caret` extensively
+    in [Chapter 11](ch11.html "Chapter 11. Improving Model Performance"), *Improving
+    Model Performance*. Before proceeding, you will need to install the package using
+    the `install.packages("caret")` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For more information on `caret`, please refer to: Kuhn M. Building predictive
+    models in R using the caret package. *Journal of Statistical* Software. 2008;
+    28.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `caret` package adds yet another function to create a confusion matrix.
+    As shown in the following command, the syntax is similar to `table()`, but with
+    a minor difference. Because `caret` provides measures of model performance that
+    consider the ability to classify the positive class, a `positive` parameter should
+    be specified. In this case, since the SMS classifier is intended to detect `spam`,
+    we will set `positive = "spam"` as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Beyond accuracy – other measures of performance](img/B03905_10_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: At the top of the output is a confusion matrix much like the one produced by
+    the `table()` function, but transposed. The output also includes a set of performance
+    measures. Some of these, like accuracy, are familiar, while many others are new.
+    Let's take a look at few of the most important metrics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The kappa statistic
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The **kappa statistic** (labeled `Kappa` in the previous output) adjusts accuracy
+    by accounting for the possibility of a correct prediction by chance alone. This
+    is especially important for datasets with a severe class imbalance, because a
+    classifier can obtain high accuracy simply by always guessing the most frequent
+    class. The kappa statistic will only reward the classifier if it is correct more
+    often than this simplistic strategy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Kappa values range from 0 to a maximum of 1, which indicates perfect agreement
+    between the model''s predictions and the true values. Values less than one indicate
+    imperfect agreement. Depending on how a model is to be used, the interpretation
+    of the kappa statistic might vary. One common interpretation is shown as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Poor agreement = less than 0.20
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Fair agreement = 0.20 to 0.40
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Moderate agreement = 0.40 to 0.60
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Good agreement = 0.60 to 0.80
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Very good agreement = 0.80 to 1.00
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It's important to note that these categories are subjective. While a "good agreement"
+    may be more than adequate to predict someone's favorite ice cream flavor, "very
+    good agreement" may not suffice if your goal is to identify birth defects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For more information on the previous scale, refer to: Landis JR, Koch GG. The
+    measurement of observer agreement for categorical data. *Biometrics*. 1997; 33:159-174.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following is the formula to calculate the kappa statistic. In this formula,
+    *Pr(a)* refers to the proportion of the actual agreement and *Pr(e)* refers to
+    the expected agreement between the classifier and the true values, under the assumption
+    that they were chosen at random:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The kappa statistic](img/B03905_10_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'There is more than one way to define the kappa statistic. The most common method
+    described here uses **Cohen''s kappa coefficient**, as described in the paper:
+    Cohen J. A coefficient of agreement for nominal scales. *Education and Psychological
+    Measurement*. 1960; 20:37-46.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These proportions are easy to obtain from a confusion matrix once you know
+    where to look. Let''s consider the confusion matrix for the SMS classification
+    model created with the `CrossTable()` function, which is repeated here for convenience:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The kappa statistic](img/B03905_10_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Remember that the bottom value in each cell indicates the proportion of all
+    instances falling into that cell. Therefore, to calculate the observed agreement
+    *Pr(a)*, we simply add the proportion of all instances where the predicted type
+    and actual SMS type agree. Thus, we can calculate *Pr(a)* as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: For this classifier, the observed and actual values agree 97.4 percent of the
+    time—you will note that this is the same as the accuracy. The kappa statistic
+    adjusts the accuracy relative to the expected agreement *Pr(e)*, which is the
+    probability that the chance alone would lead the predicted and actual values to
+    match, under the assumption that both are selected randomly according to the observed
+    proportions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To find these observed proportions, we can use the probability rules we learned
+    in [Chapter 4](ch04.html "Chapter 4. Probabilistic Learning – Classification Using
+    Naive Bayes"), *Probabilistic Learning – Classification Using Naive Bayes*. Assuming
+    two events are independent (meaning that one does not affect the other), probability
+    rules note that the probability of both occurring is equal to the product of the
+    probabilities of each one occurring. For instance, we know that the probability
+    of both choosing ham is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Pr(actual type is ham) * Pr(predicted type is ham)*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The probability of both choosing spam is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Pr(actual type is spam) * Pr(predicted type is spam)*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The probability that the predicted or actual type is spam or ham can be obtained
+    from the row or column totals. For instance, *Pr(actual type is ham) = 0.868*
+    and *Pr(predicted type is ham) = 0.888*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Pr(e)* is calculated as the sum of the probabilities that by chance the predicted
+    and actual values agree that the message is either spam or ham. Recall that for
+    mutually exclusive events (events that cannot happen simultaneously), the probability
+    of either occurring is equal to the sum of their probabilities. Therefore, to
+    obtain the final *Pr(e)*, we simply add both products, as shown in the following
+    commands:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since *Pr(e)* is 0.786, by chance alone, we would expect the observed and actual
+    values to agree about 78.6 percent of the time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This means that we now have all the information needed to complete the kappa
+    formula. Plugging the *Pr(a)* and *Pr(e)* values into the kappa formula, we find:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: The kappa is about 0.88, which agrees with the previous `confusionMatrix()`
+    output from `caret` (the small difference is due to rounding). Using the suggested
+    interpretation, we note that there is very good agreement between the classifier's
+    predictions and the actual values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are a couple of R functions to calculate kappa automatically. The `Kappa()`
+    function (be sure to note the capital ''K'') in the Visualizing Categorical Data
+    (`vcd)` package uses a confusion matrix of predicted and actual values. After
+    installing the package by typing `install.packages("vcd")`, the following commands
+    can be used to obtain kappa:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: We're interested in the unweighted kappa. The value 0.88 matches what we expected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The weighted kappa is used when there are varying degrees of agreement. For
+    example, using a scale of cold, cool, warm, and hot, a value of warm agrees more
+    with hot than it does with the value of cold. In the case of a two-outcome event,
+    such as spam and ham, the weighted and unweighted kappa statistics will be identical.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `kappa2()` function in the Inter-Rater Reliability (`irr`) package can
+    be used to calculate kappa from the vectors of predicted and actual values stored
+    in a data frame. After installing the package using the `install.packages("irr")`
+    command, the following commands can be used to obtain kappa:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `Kappa()` and `kappa2()` functions report the same kappa statistic, so use
+    whichever option you are more comfortable with.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Be careful not to use the built-in `kappa()` function. It is completely unrelated
+    to the kappa statistic reported previously!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sensitivity and specificity
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Finding a useful classifier often involves a balance between predictions that
+    are overly conservative and overly aggressive. For example, an e-mail filter could
+    guarantee to eliminate every spam message by aggressively eliminating nearly every
+    ham message at the same time. On the other hand, guaranteeing that no ham message
+    is inadvertently filtered might require us to allow an unacceptable amount of
+    spam to pass through the filter. A pair of performance measures captures this
+    tradeoff: sensitivity and specificity.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **sensitivity** of a model (also called the **true positive rate**) measures
+    the proportion of positive examples that were correctly classified. Therefore,
+    as shown in the following formula, it is calculated as the number of true positives
+    divided by the total number of positives, both correctly classified (the true
+    positives) as well as incorrectly classified (the false negatives):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Sensitivity and specificity](img/B03905_10_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The **specificity** of a model (also called the **true negative rate**) measures
+    the proportion of negative examples that were correctly classified. As with sensitivity,
+    this is computed as the number of true negatives, divided by the total number
+    of negatives—the true negatives plus the false positives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Sensitivity and specificity](img/B03905_10_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Given the confusion matrix for the SMS classifier, we can easily calculate
+    these measures by hand. Assuming that spam is the positive class, we can confirm
+    that the numbers in the `confusionMatrix()` output are correct. For example, the
+    calculation for sensitivity is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Similarly, for specificity we can calculate:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `caret` package provides functions to calculate sensitivity and specificity
+    directly from the vectors of predicted and actual values. Be careful that you
+    specify the `positive` or `negative` parameter appropriately, as shown in the
+    following lines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Sensitivity and specificity range from 0 to 1, with values close to 1 being
+    more desirable. Of course, it is important to find an appropriate balance between
+    the two—a task that is often quite context-specific.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, in this case, the sensitivity of 0.831 implies that 83.1 percent
+    of the spam messages were correctly classified. Similarly, the specificity of
+    0.997 implies that 99.7 percent of the nonspam messages were correctly classified
+    or, alternatively, 0.3 percent of the valid messages were rejected as spam. The
+    idea of rejecting 0.3 percent of valid SMS messages may be unacceptable, or it
+    may be a reasonable trade-off given the reduction in spam.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sensitivity and specificity provide tools for thinking about such trade-offs.
+    Typically, changes are made to the model and different models are tested until
+    you find one that meets a desired sensitivity and specificity threshold. Visualizations,
+    such as those discussed later in this chapter, can also assist with understanding
+    the trade-off between sensitivity and specificity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Precision and recall
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Closely related to sensitivity and specificity are two other performance measures
+    related to compromises made in classification: precision and recall. Used primarily
+    in the context of information retrieval, these statistics are intended to provide
+    an indication of how interesting and relevant a model''s results are, or whether
+    the predictions are diluted by meaningless noise.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **precision** (also known as the **positive predictive value**) is defined
+    as the proportion of positive examples that are truly positive; in other words,
+    when a model predicts the positive class, how often is it correct? A precise model
+    will only predict the positive class in cases that are very likely to be positive.
+    It will be very trustworthy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consider what would happen if the model was very imprecise. Over time, the results
+    would be less likely to be trusted. In the context of information retrieval, this
+    would be similar to a search engine such as Google returning unrelated results.
+    Eventually, users would switch to a competitor like Bing. In the case of the SMS
+    spam filter, high precision means that the model is able to carefully target only
+    the spam while ignoring the ham.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Precision and recall](img/B03905_10_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: On the other hand, **recall** is a measure of how complete the results are.
+    As shown in the following formula, this is defined as the number of true positives
+    over the total number of positives. You may have already recognized this as the
+    same as sensitivity. However, in this case, the interpretation differs slightly.
+    A model with a high recall captures a large portion of the positive examples,
+    meaning that it has wide breadth. For example, a search engine with a high recall
+    returns a large number of documents pertinent to the search query. Similarly,
+    the SMS spam filter has a high recall if the majority of spam messages are correctly
+    identified.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Precision and recall](img/B03905_10_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can calculate precision and recall from the confusion matrix. Again, assuming
+    that `spam` is the positive class, the precision is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The recall is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `caret` package can be used to compute either of these measures from the
+    vectors of predicted and actual classes. Precision uses the `posPredValue()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'While recall uses the `sensitivity()` function that we used earlier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Similar to the inherent trade-off between sensitivity and specificity, for most
+    of the real-world problems, it is difficult to build a model with both high precision
+    and high recall. It is easy to be precise if you target only the low-hanging fruit—the
+    easy to classify examples. Similarly, it is easy for a model to have high recall
+    by casting a very wide net, meaning that the model is overly aggressive in identifying
+    the positive cases. In contrast, having both high precision and recall at the
+    same time is very challenging. It is therefore important to test a variety of
+    models in order to find the combination of precision and recall that will meet
+    the needs of your project.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The F-measure
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'A measure of model performance that combines precision and recall into a single
+    number is known as the **F-measure** (also sometimes called the **F[1] score**
+    or **F-score**). The F-measure combines precision and recall using the **harmonic
+    mean**, a type of average that is used for rates of change. The harmonic mean
+    is used rather than the common arithmetic mean since both precision and recall
+    are expressed as proportions between zero and one, which can be interpreted as
+    rates. The following is the formula for the F-measure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The F-measure](img/B03905_10_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To calculate the F-measure, use the precision and recall values computed previously:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This comes out exactly the same as using the counts from the confusion matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since the F-measure describes the model performance in a single number, it provides
+    a convenient way to compare several models side by side. However, this assumes
+    that equal weight should be assigned to precision and recall, an assumption that
+    is not always valid. It is possible to calculate F-scores using different weights
+    for precision and recall, but choosing the weights could be tricky at the best
+    and arbitrary at worst. A better practice is to use measures such as the F-score
+    in combination with methods that consider a model's strengths and weaknesses more
+    globally, such as those described in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing performance trade-offs
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Visualizations are helpful to understand the performance of machine learning
+    algorithms in greater detail. Where statistics such as sensitivity and specificity
+    or precision and recall attempt to boil model performance down to a single number,
+    visualizations depict how a learner performs across a wide range of conditions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Because learning algorithms have different biases, it is possible that two models
+    with similar accuracy could have drastic differences in how they achieve their
+    accuracy. Some models may struggle with certain predictions that others make with
+    ease, while breezing through the cases that others cannot get right. Visualizations
+    provide a method to understand these trade-offs, by comparing learners side by
+    side in a single chart.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `ROCR` package provides an easy-to-use suite of functions for visualizing
+    for visualizing the performance of classification models. It includes functions
+    for computing large set of the most common performance measures and visualizations.
+    The `ROCR` website at [http://rocr.bioinf.mpi-sb.mpg.de/](http://rocr.bioinf.mpi-sb.mpg.de/)
+    includes a list of the full set of features as well as several examples on visualization
+    capabilities. Before continuing, install the package using the `install.packages("ROCR")`
+    command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For more information on the development of ROCR, see : Sing T, Sander O, Beerenwinkel
+    N, Lengauer T. ROCR: visualizing classifier performance in R. *Bioinformatics*.
+    2005; 21:3940-3941.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To create visualizations with `ROCR`, two vectors of data are needed. The first
+    must contain the predicted class values, and the second must contain the estimated
+    probability of the positive class. These are used to create a prediction object
+    that can be examined with the plotting functions of `ROCR`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The prediction object for the SMS classifier requires the classifier''s estimated
+    spam probabilities and the actual class labels. These are combined using the `prediction()`
+    function in the following lines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, the `performance()` function will allow us to compute measures of performance
+    from the `prediction` object we just created, which can then be visualized using
+    the R `plot()` function. Given these three steps, a large variety of useful visualizations
+    can be created.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ROC curves
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The **Receiver Operating Characteristic (ROC) curve** is commonly used to examine
+    the trade-off between the detection of true positives, while avoiding the false
+    positives. As you might suspect from the name, ROC curves were developed by engineers
+    in the field of communications. Around the time of World War II, radar and radio
+    operators used ROC curves to measure a receiver's ability to discriminate between
+    true signals and false alarms. The same technique is useful today to visualize
+    the efficacy of machine learning models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The characteristics of a typical ROC diagram are depicted in the following
+    plot. Curves are defined on a plot with the proportion of true positives on the
+    vertical axis and the proportion of false positives on the horizontal axis. Because
+    these values are equivalent to sensitivity and (1 – specificity), respectively,
+    the diagram is also known as a sensitivity/specificity plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ROC curves](img/B03905_10_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The points comprising ROC curves indicate the true positive rate at varying
+    false positive thresholds. To create the curves, a classifier's predictions are
+    sorted by the model's estimated probability of the positive class, with the largest
+    values first. Beginning at the origin, each prediction's impact on the true positive
+    rate and false positive rate will result in a curve tracing vertically (for a
+    correct prediction) or horizontally (for an incorrect prediction).
+  prefs: []
+  type: TYPE_NORMAL
+- en: To illustrate this concept, three hypothetical classifiers are contrasted in
+    the previous plot. First, the diagonal line from the bottom-left to the top-right
+    corner of the diagram represents a **classifier with no predictive value**. This
+    type of classifier detects true positives and false positives at exactly the same
+    rate, implying that the classifier cannot discriminate between the two. This is
+    the baseline by which other classifiers may be judged. ROC curves falling close
+    to this line indicate models that are not very useful. The **perfect classifier**
+    has a curve that passes through the point at a 100 percent true positive rate
+    and 0 percent false positive rate. It is able to correctly identify all of the
+    positives before it incorrectly classifies any negative result. Most real-world
+    classifiers are similar to the test classifier and they fall somewhere in the
+    zone between perfect and useless.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The closer the curve is to the perfect classifier, the better it is at identifying
+    positive values. This can be measured using a statistic known as the **area under
+    the ROC curve** (abbreviated **AUC**). The AUC treats the ROC diagram as a two-dimensional
+    square and measures the total area under the ROC curve. AUC ranges from 0.5 (for
+    a classifier with no predictive value) to 1.0 (for a perfect classifier). A convention
+    to interpret AUC scores uses a system similar to academic letter grades:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**A**: Outstanding = 0.9 to 1.0'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**B**: Excellent/good = 0.8 to 0.9'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**C**: Acceptable/fair = 0.7 to 0.8'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**D**: Poor = 0.6 to 0.7'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**E**: No discrimination = 0.5 to 0.6'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As with most scales similar to this, the levels may work better for some tasks
+    than others; the categorization is somewhat subjective.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: It's also worth noting that two ROC curves may be shaped very differently, yet
+    have an identical AUC. For this reason, an AUC alone can be misleading. The best
+    practice is to use AUC in combination with qualitative examination of the ROC
+    curve.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Creating ROC curves with the `ROCR` package involves building a `performance`
+    object from the `prediction` object we computed earlier. Since ROC curves plot
+    true positive rates versus false positive rates, we simply call the `performance()`
+    function while specifying the `tpr` and `fpr` measures, as shown in the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using the `perf` object, we can visualize the ROC curve with R''s `plot()`
+    function. As shown in the following code lines, many of the standard parameters
+    to adjust the visualization can be used, such as `main` (to add a title), `col`
+    (to change the line color), and `lwd` (to adjust the line width):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Although the `plot()` command is sufficient to create a valid ROC curve, it
+    is helpful to add a reference line to indicate the performance of a classifier
+    with no predictive value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To plot such a line, we''ll use the `abline()` function. This function can
+    be used to specify a line in the slope-intercept form, where `a` is the intercept
+    and `b` is the slope. Since we need an identity line that passes through the origin,
+    we''ll set the intercept to `a=0` and the slope to `b=1`, as shown in the following
+    plot. The `lwd` parameter adjusts the line thickness, while the `lty` parameter
+    adjusts the type of line. For example, `lty = 2` indicates a dashed line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The end result is an ROC plot with a dashed reference line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ROC curves](img/B03905_10_16.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Qualitatively, we can see that this ROC curve appears to occupy the space at
+    the top-left corner of the diagram, which suggests that it is closer to a perfect
+    classifier than the dashed line representing a useless classifier. To confirm
+    this quantitatively, we can use the ROCR package to calculate the AUC. To do so,
+    we first need to create another `performance` object, this time specifying `measure
+    = "auc"` as shown in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since `perf.auc` is an R object (specifically known as an S4 object), we need
+    to use a special type of notation to access the values stored within. S4 objects
+    hold information in positions known as slots. The `str()` function can be used
+    to see all of an object''s slots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Notice that slots are prefixed with the `@` symbol. To access the AUC value,
+    which is stored as a list in the `y.values` slot, we can use the `@` notation
+    along with the `unlist()` function, which simplifies lists to a vector of numeric
+    values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: The AUC for the SMS classifier is 0.98, which is extremely high. But how do
+    we know whether the model is just as likely to perform well for another dataset?
+    In order to answer such questions, we need to have a better understanding of how
+    far we can extrapolate a model's predictions beyond the test data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Estimating future performance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Some R machine learning packages present confusion matrices and performance
+    measures during the model building process. The purpose of these statistics is
+    to provide insight about the model's **resubstitution error**, which occurs when
+    the training data is incorrectly predicted in spite of the model being built directly
+    from this data. This information can be used as a rough diagnostic to identify
+    obviously poor performers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The resubstitution error is not a very useful marker of future performance.
+    For example, a model that used rote memorization to perfectly classify every training
+    instance with zero resubstitution error would be unable to generalize its predictions
+    to data it has never seen before. For this reason, the error rate on the training
+    data can be extremely optimistic about a model's future performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead of relying on resubstitution error, a better practice is to evaluate
+    a model's performance on data it has not yet seen. We used this approach in previous
+    chapters when we split the available data into a set for training and a set for
+    testing. In some cases, however, it is not always ideal to create training and
+    test datasets. For instance, in a situation where you have only a small pool of
+    data, you might not want to reduce the sample any further.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, there are other ways to estimate a model's performance on unseen
+    data. The `caret` package we used to calculate performance measures also offers
+    a number of functions to estimate future performance. If you are following the
+    R code examples and haven't already installed the `caret` package, please do so.
+    You will also need to load the package to the R session, using the `library(caret)`
+    command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The holdout method
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The procedure of partitioning data into training and test datasets that we used
+    in previous chapters is known as the **holdout method**. As shown in the following
+    diagram, the **training dataset** is used to generate the model, which is then
+    applied to the **test dataset** to generate predictions for evaluation. Typically,
+    about one-third of the data is held out for testing, and two-thirds is used for
+    training, but this proportion can vary depending on the amount of available data.
+    To ensure that the training and test data do not have systematic differences,
+    their examples are randomly divided into the two groups.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The holdout method](img/B03905_10_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: For the holdout method to result in a truly accurate estimate of the future
+    performance, at no time should the performance on the test dataset be allowed
+    to influence the model. It is easy to unknowingly violate this rule by choosing
+    the best model based upon the results of repeated testing. For example, suppose
+    we built several models on the training data, and selected the one with the highest
+    accuracy on the test data. Because we have cherry-picked the best result, the
+    test performance is not an unbiased measure of the performance on unseen data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To avoid this problem, it is better to divide the original data so that in addition
+    to the training datasets and the test datasets, a **validation dataset** is available.
+    The validation dataset would be used for iterating and refining the model or models
+    chosen, leaving the test dataset to be used only once as a final step to report
+    an estimated error rate for future predictions. A typical split between training,
+    test, and validation would be 50 percent, 25 percent, and 25 percent, respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![The holdout method](img/B03905_10_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A keen reader will note that holdout test data was used in the previous chapters
+    to both evaluate models and improve model performance. This was done for illustrative
+    purposes, but it would indeed violate the rule as stated previously. Consequently,
+    the model performance statistics shown were not valid estimates of future performance
+    on unseen data and the process could have been more accurately termed validation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A simple method to create holdout samples uses random number generators to assign
+    records to partitions. This technique was first used in [Chapter 5](ch05.html
+    "Chapter 5. Divide and Conquer – Classification Using Decision Trees and Rules"),
+    *Divide and Conquer – Classification Using Decision Trees and Rules* to create
+    training and test datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you'd like to follow along with the following examples, download the `credit.csv`
+    dataset from the Packt Publishing website, and load to a data frame using the
+    `credit <- read.csv("credit.csv")` command.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Suppose we have a data frame named credit with 1000 rows of data. We can divide
+    it into three partitions as follows. First, we create a vector of randomly ordered
+    row IDs from 1 to 1000 using the `runif()` function, which by default generates
+    a specified number of random values between 0 and 1\. The `runif()` function gets
+    its name from the random uniform distribution, which was discussed in [Chapter
+    2](ch02.html "Chapter 2. Managing and Understanding Data"), *Managing and Understanding
+    Data*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `order()` used here returns a vector indicating the rank order of the 1,000
+    random numbers. For example, `order(c(0.5, 0.25, 0.75, 0.1))` returns the sequence
+    `4 2 1 3` because the smallest number (0.1) appears fourth, the second smallest
+    (0.25) appears second, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use the resulting random IDs to divide the `credit` data frame into
+    500, 250, and 250 records comprising the training, validation, and test datasets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: One problem with holdout sampling is that each partition may have a larger or
+    smaller proportion of some classes. In certain cases, particularly those in which
+    a class is a very small proportion of the dataset, this can lead a class to be
+    omitted from the training dataset. This is a significant problem, because the
+    model will not be able to learn this class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to reduce the chance of this occurring, a technique called **stratified
+    random sampling** can be used. Although in the long run a random sample should
+    contain roughly the same proportion of each class value as the full dataset, stratified
+    random sampling guarantees that the random partitions have nearly the same proportion
+    of each class as the full dataset, even when some classes are small.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `caret` package provides a `createDataPartition()` function that will create
+    partitions based on stratified holdout sampling. The code to create a stratified
+    sample of training and test data for the `credit` dataset is shown in the following
+    commands. To use the function, a vector of the class values must be specified
+    (here, `default` refers to whether a loan went into default) in addition to a
+    parameter `p`, which specifies the proportion of instances to be included in the
+    partition. The `list = FALSE` parameter prevents the result from being stored
+    in the list format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `in_train` vector indicates row numbers included in the training sample.
+    We can use these row numbers to select examples for the `credit_train` data frame.
+    Similarly, by using a negative symbol, we can use the rows not found in the `in_train`
+    vector for the `credit_test` dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although it distributes the classes evenly, stratified sampling does not guarantee
+    other types of representativeness. Some samples may have too many or few difficult
+    cases, easy-to-predict cases, or outliers. This is especially true for smaller
+    datasets, which may not have a large enough portion of such cases to be divided
+    among training and test sets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to potentially biased samples, another problem with the holdout
+    method is that substantial portions of data must be reserved to test and validate
+    the model. Since these data cannot be used to train the model until its performance
+    has been measured, the performance estimates are likely to be overly conservative.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Since models trained on larger datasets generally perform better, a common practice
+    is to retrain the model on the full set of data (that is, training plus test and
+    validation) after a final model has been selected and evaluated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A technique called **repeated holdout** is sometimes used to mitigate the problems
+    of randomly composed training datasets. The repeated holdout method is a special
+    case of the holdout method that uses the average result from several random holdout
+    samples to evaluate a model's performance. As multiple holdout samples are used,
+    it is less likely that the model is trained or tested on nonrepresentative data.
+    We'll expand on this idea in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cross-validation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The repeated holdout is the basis of a technique known as **k-fold cross-validation**
+    (or **k-fold CV**), which has become the industry standard for estimating model
+    performance. Rather than taking repeated random samples that could potentially
+    use the same record more than once, k-fold CV randomly divides the data into *k*
+    to completely separate random partitions called **folds**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although *k* can be set to any number, by far, the most common convention is
+    to use **10-fold cross-validation** (10-fold CV). Why 10 folds? The reason is
+    that the empirical evidence suggests that there is little added benefit in using
+    a greater number. For each of the 10 folds (each comprising 10 percent of the
+    total data), a machine learning model is built on the remaining 90 percent of
+    data. The fold's matching 10 percent sample is then used for model evaluation.
+    After the process of training and evaluating the model has occurred for 10 times
+    (with 10 different training/testing combinations), the average performance across
+    all the folds is reported.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: An extreme case of k-fold CV is the **leave-one-out method**, which performs
+    k-fold CV using a fold for each of the data's examples. This ensures that the
+    greatest amount of data is used to train the model. Although this may seem useful,
+    it is so computationally expensive that it is rarely used in practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Datasets for cross-validation can be created using the `createFolds()` function
+    in the `caret` package. Similar to the stratified random holdout sampling, this
+    function will attempt to maintain the same class balance in each of the folds
+    as in the original dataset. The following is the command to create 10 folds:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result of the `createFolds()` function is a list of vectors storing the
+    row numbers for each of the requested `k = 10` folds. We can peek at the contents,
+    using `str()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we see that the first fold is named `Fold01` and stores `100` integers,
+    indicating the 100 rows in the credit data frame for the first fold. To create
+    training and test datasets to build and evaluate a model, an additional step is
+    needed. The following commands show how to create data for the first fold. We''ll
+    assign the selected 10 percent to the test dataset, and use the negative symbol
+    to assign the remaining 90 percent to the training dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: To perform the full 10-fold CV, this step would need to be repeated a total
+    of 10 times; building a model and then calculating the model's performance each
+    time. At the end, the performance measures would be averaged to obtain the overall
+    performance. Thankfully, we can automate this task by applying several of the
+    techniques we've learned earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To demonstrate the process, we''ll estimate the kappa statistic for a C5.0
+    decision tree model of the credit data using 10-fold CV. First, we need to load
+    some R packages: `caret` (to create the folds), `C50` (for the decision tree),
+    and `irr` (to calculate kappa). The latter two packages were chosen for illustrative
+    purposes; if you desire, you can use a different model or a different performance
+    measure along with the same series of steps.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we''ll create a list of 10 folds as we have done previously. The `set.seed()`
+    function is used here to ensure that the results are consistent if the same code
+    is run again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we will apply a series of identical steps to the list of folds using
+    the `lapply()` function. As shown in the following code, because there is no existing
+    function that does exactly what we need, we must define our own function to pass
+    to `lapply()`. Our custom function divides the credit data frame into training
+    and test data, builds a decision tree using the `C5.0()` function on the training
+    data, generates a set of predictions from the test data, and compares the predicted
+    and actual values using the `kappa2()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting kappa statistics are compiled into a list stored in the `cv_results`
+    object, which we can examine using `str()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There''s just one more step remaining in the 10-fold CV process: we must calculate
+    the average of these 10 values. Although you will be tempted to type `mean(cv_results)`,
+    because `cv_results` is not a numeric vector, the result would be an error. Instead,
+    use the `unlist()` function, which eliminates the list structure, and reduces
+    `cv_results` to a numeric vector. From here, we can calculate the mean kappa as
+    expected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: This kappa statistic is fairly low, corresponding to "fair" on the interpretation
+    scale, which suggests that the credit scoring model performs only marginally better
+    than random chance. In the next chapter, we'll examine automated methods based
+    on 10-fold CV that can assist us in improving the performance of this model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Perhaps the current gold standard method to reliably estimate model performance
+    is **repeated k-fold CV**. As you might guess from the name, this involves repeatedly
+    applying k-fold CV and averaging the results. A common strategy is to perform
+    10-fold CV ten times. Although it is computationally intensive, it provides a
+    very robust estimate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bootstrap sampling
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A slightly less frequently used alternative to k-fold CV is known as **bootstrap
+    sampling**, the **bootstrap** or **bootstrapping** for short. Generally speaking,
+    these refer to the statistical methods of using random samples of data to estimate
+    the properties of a larger set. When this principle is applied to machine learning
+    model performance, it implies the creation of several randomly selected training
+    and test datasets, which are then used to estimate performance statistics. The
+    results from the various random datasets are then averaged to obtain a final estimate
+    of future performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So, what makes this procedure different from k-fold CV? Whereas cross-validation
+    divides the data into separate partitions in which each example can appear only
+    once, the bootstrap allows examples to be selected multiple times through a process
+    of **sampling with replacement**. This means that from the original dataset of
+    *n* examples, the bootstrap procedure will create one or more new training datasets
+    that will also contain *n* examples, some of which are repeated. The corresponding
+    test datasets are then constructed from the set of examples that were not selected
+    for the respective training datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using sampling with replacement as described previously, the probability that
+    any given instance is included in the training dataset is 63.2 percent. Consequently,
+    the probability of any instance being in the test dataset is 36.8 percent. In
+    other words, the training data represents only 63.2 percent of available examples,
+    some of which are repeated. In contrast to 10-fold CV, which uses 90 percent of
+    the examples for training, the bootstrap sample is less representative of the
+    full dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Because a model trained on only 63.2 percent of the training data is likely
+    to perform worse than a model trained on a larger training set, the bootstrap''s
+    performance estimates may be substantially lower than what would be obtained when
+    the model is later trained on the full dataset. A special case of bootstrapping
+    known as the **0.632 bootstrap** accounts for this by calculating the final performance
+    measure as a function of performance on both the training data (which is overly
+    optimistic) and the test data (which is overly pessimistic). The final error rate
+    is then estimated as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Bootstrap sampling](img/B03905_10_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: One advantage of bootstrap over cross-validation is that it tends to work better
+    with very small datasets. Additionally, bootstrap sampling has applications beyond
+    performance measurement. In particular, in the next chapter we'll learn how the
+    principles of bootstrap sampling can be used to improve model performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter presented a number of the most common measures and techniques for
+    evaluating the performance of machine learning classification models. Although
+    accuracy provides a simple method to examine how often a model is correct, this
+    can be misleading in the case of rare events because the real-life cost of such
+    events may be inversely proportional to how frequently they appear.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A number of measures based on confusion matrices better capture the balance
+    among the costs of various types of errors. Closely examining the tradeoffs between
+    sensitivity and specificity, or precision and recall can be a useful tool for
+    thinking about the implications of errors in the real world. Visualizations such
+    as the ROC curve are also helpful to this end.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is also worth mentioning that sometimes the best measure of a model's performance
+    is to consider how well it meets, or doesn't meet, other objectives. For instance,
+    you may need to explain a model's logic in simple language, which would eliminate
+    some models from consideration. Additionally, even if it performs very well, a
+    model that is too slow or difficult to scale to a production environment is completely
+    useless.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An obvious extension of measuring performance is to identify automated ways
+    to find the best models for a particular task. In the next chapter, we will build
+    upon our work so far to investigate ways to make smarter models by systematically
+    iterating, refining, and combining learning algorithms.
+  prefs: []
+  type: TYPE_NORMAL

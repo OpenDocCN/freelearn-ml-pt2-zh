@@ -1,0 +1,1088 @@
+- en: '8'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Online Learning for Time-Series
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we are going to dive into online learning and streaming data
+    for time-series. Online learning means that we continually update our model as
+    new data is coming in. The advantage of online learning algorithms is that they
+    can handle the high speed and possibly large size of streaming data and are able
+    to adapt to new distributions of the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will discuss drift, which is important because the performance of a machine
+    learning model can be strongly affected by changes to the dataset to the point
+    that a model will become obsolete (stale).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are going to discuss what online learning is, how data can change (drift),
+    and how adaptive learning algorithms combine drift detection methods to adjust
+    to this change in order to avoid the degradation of performance or costly retraining.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''re going to cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Online learning for time-series
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Online algorithms
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Drift
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Drift detection methods
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Adaptive learning methods
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Python practice
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll start with a discussion of online learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Online learning for time-series
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are two main scenarios of learning – online learning and offline learning.
+    **Online learning** means that you are fitting your model incrementally as the
+    data flows in (streaming data). On the other hand, **offline learning**, the more
+    commonly known approach, implies that you have a static dataset that you know
+    from the start, and the parameters of your machine learning algorithm are adjusted
+    to the whole dataset at once (often loading the whole dataset into memory or in
+    batches).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are three major use cases for online learning:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Big data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Time constraints (for example, real time)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Dynamic environments
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Typically, in online learning settings, you have more data, and it is appropriate
+    for big data. Online learning can be applied to large datasets, where it would
+    be computationally infeasible to train over the entire dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another use case for online learning is where the inference and fitting are
+    performed under time constraints (for example, a real-time application), and many
+    online algorithms are very resource-efficient in comparison to offline algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A common application of online learning is on time-series data, and a particular
+    challenge is that the underlying generating process of the time-series observations
+    can change over time. This is called concept drift. While in the offline setting
+    the parameters are fixed, in online learning, the parameters are continuously
+    adapted based on new data. Therefore, online learning algorithms can deal with
+    changes in the data, and some can deal with concept drift.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The table below summarizes some more differences between online and offline
+    learning:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|  | Offline | Online |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Necessity to monitor | Yes, models can become stale (the model will lose
+    performance) | Adapt to changing data |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Retraining costs | Expensive (from scratch) | Cheap (incremental) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Memory requirements | Possibly high memory demands | Low |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Applications | Image classifiers, speech recognition, etc, where data is
+    assumed to be static | Finance, e-commerce, economics, and health-care, where
+    data is dynamically changing |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Tools | tslearn, sktime, prophet | Scikit-Multiflow, River |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Figure 8.1: Online vs offline learning methods in time-series'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are lots of other tools that are not specific to online learning but support
+    online learning, such as the most popular deep learning libraries – PyTorch and
+    TensorFlow, where models inherently support online learning and data loaders support
+    streaming scenarios – through iterators, where data can be loaded in as needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A streaming formulation of a supervised machine learning problem can be posed
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A data point ![](img/B17577_08_001.png) is received at time *t*
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The online algorithm predicts the label
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The true label is revealed before the next data point comes in
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In a batch setting, a set of *n* points ![](img/B17577_08_002.png) arrive all
+    at once at time *t*, and all *n* points will be predicted by the online model
+    before the true labels are revealed and the next batch of points arrives.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can demonstrate the difference in Python code snippets to show the characteristic
+    patterns of machine learning in online and offline settings. You should be familiar
+    with offline learning, which looks like this for features `X`, target vector `y`,
+    and model parameters `params`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: This should be familiar from previous chapters such as *Chapter 7*, *Machine
+    Learning Models for Time-Series*. For simplicity, we are omitting data loading,
+    preprocessing, cross-validation, and parameter tuning, among other issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Online learning follows this pattern:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, we are feeding point by point to the model. Again, this is simplified
+    – I've omitted setting the parameters, loading the dataset, and more.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These snippets should make the main difference clear: learning on the whole
+    dataset at once (offline) against learning on single points one by one (online).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'I should mention evaluation methods for online methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Holdout
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Prequential
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In **Holdout**, we can apply the current model to the independent test set.
+    This is popular in batch as well as online (stream) learning and gives an unbiased
+    performance estimation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In **Prequential Evaluation**, we test as we are going through the sequence.
+    Each new data point is first tested and then trained on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An interesting aspect of online learning is model selection, that is, how to
+    select the best model among a set of candidate models. We looked at model selection
+    for time-series models in *Chapter 4*, *Machine Learning Models for Time-Series*.
+    There are different options for model selection in the online setting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a **Multi-Armed Bandit** (also **K-Armed Bandit**) problem, limited resources
+    must be allocated between competing choices in a way that maximizes expected gain.
+    Each choice ("arm") comes with its reward, which can be learned over time. Over
+    time, we can adapt our preference for each of these arms and choose optimally
+    in terms of expected reward. Similarly, by learning expected rewards for competing
+    classification or regression models, methods for multi-armed bandits can be applied
+    for model selection. In the practice section, we'll discuss multi-armed bandits
+    for model selection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following sections, we'll look at incremental methods and drift in more
+    detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Online algorithms
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Where data becomes available gradually over time or its size exceeds system
+    memory limits, then incremental machine learning algorithms, whether supervised
+    learning or unsupervised, can update parameters on parts of the data rather than
+    starting the learning from scratch. **Incremental learning** is where parameters
+    are continuously adapted to adjust a model to new input data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some machine learning methods inherently support incremental learning. Neural
+    networks (as in deep learning), nearest neighbor, and evolutionary methods (for
+    example, genetic algorithms) are incremental and can therefore be applied in online
+    learning settings, where they are continuously updated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Incremental algorithms may have random access to previous samples or prototypes
+    (selected samples). These algorithms, such as based on the nearest neighbor algorithm,
+    are called incremental algorithms with partial memory. Their variants can be suitable
+    for cyclic drift scenarios.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many well-known machine learning algorithms have incremental variants such as
+    the adaptive random forest, the adaptive XGBoost classifier, or the incremental
+    support vector machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both reinforcement learning and active learning can be seen as types of online
+    learning because they work in an online or active manner. We are going to discuss
+    reinforcement learning in *Chapter 11*, *Reinforcement Learning for Time-Series*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In online learning, updates are calculated continuously. At the heart of this
+    is running statistics, so it could be illustrative to show how mean and variance
+    can be calculated incrementally (in an online setting).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s look at the formulas for online arithmetic mean and online variance.
+    As for the **online mean**, updating the mean ![](img/B17577_08_003.png) at time
+    point *t* can be done as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_08_004.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: where ![](img/B17577_08_005.png) is the number of previous updates – sometimes
+    this is written as ![](img/B17577_08_006.png).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **online variance** ![](img/B17577_08_007.png) can be calculated based
+    on the online mean and the running sum of squares ![](img/B17577_08_008.png):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_08_009.png)![](img/B17577_08_010.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: A downside to offline algorithms is that they are sometimes more difficult to
+    implement and that there's a learning curve to getting up to speed with libraries,
+    algorithms, and methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: scikit-learn, the standard library for machine learning in Python, only has
+    a limited number of incremental algorithms. It is focused on batch-learning models.
+    In contrast, there are specialized libraries for online learning with adaptive
+    and incremental algorithms that cover many use cases, such as imbalanced datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Research engineers, students, and machine learning researchers from the University
+    of Waikato (New Zealand), Télécom ParisTech, and the École Polytechnique in Paris
+    have been working on the **River library**. River is the result of merging two
+    libraries: Creme (intended as a pun on incremental) and Scikit-Multiflow. River
+    comes with many meta and ensemble methods. As a cherry on top, many of these meta
+    or ensemble methods can use scikit-learn models as base models.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: At the time of writing, the River library has 1,700 stars and implements many
+    unsupervised and supervised algorithms. At the time of writing, the documentation
+    of River is still a work in progress, but lots of functionality is available,
+    as we'll see in the practical section at the end of this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chart shows the popularity of River and Scikit-Multiflow over time (by
+    the number of stars on GitHub):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![online_learning-star_history.png](img/B17577_08_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.2: Star histories of the River and Scikit-Multiflow libraries'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that, while Scikit-Multiflow has risen steadily, this rise has been
+    mostly flat. River overtook Scikit-Multiflow in 2019 and has continued to receive
+    many star ratings from GitHub users. These star ratings are similar to a "like"
+    on a social media platform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This table shows a few online algorithms, some of which are suitable for drift
+    scenarios:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Algorithm | Description |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Very Fast Decision Tree** (**VFDT**) | Decision tree made up of splits
+    based on a few examples. Also called Hoeffding Tree. Struggles with drift. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Extremely Fast Decision Tree** (**EFDT**) | Incrementally builds a tree
+    by creating a split when confident and replaces the split if a better split is
+    available. Assumes a stationary distribution. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Learn++.NSE | Ensemble of classifiers for incremental learning from non-stationary
+    environments. |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Figure 8.3: Online machine learning algorithms – some of them suitable for
+    drift'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The online algorithm par excellence is the **Hoeffding Tree** (Geoff Hulten,
+    Laurie Spencer, and Pedro Domingos, 2001), also called **Very Fast Decision Tree**
+    (**VFDT**). It is one of the most widely used online decision tree induction algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While some online learning algorithms are reasonably efficient, the attained
+    performance can be highly sensitive to the ordering of data points, and potentially,
+    they might never escape from a local minimum they ended up in, driven by early
+    examples. Appealingly, VFDTs provide high classification accuracy with theoretical
+    guarantees that they will converge toward the performance of decision trees over
+    time. In fact, the probability that a VFDT and a conventionally trained tree will
+    differ in their tree splits decreases exponentially with the number of examples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The **Hoeffding bound**, proposed by Wassily Hoeffding in 1963, states that
+    with probability ![](img/B17577_08_011.png), the calculated mean ![](img/B17577_08_012.png)
+    of a random variable *Z*, calculated over *n* samples, deviates less than ![](img/B17577_08_013.png)
+    from the true mean ![](img/B17577_08_014.png):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_08_015.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this equation, *R* is the range of the random variable *Z*. This bound is
+    independent of the probability distribution that is generating the observations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As data comes in, new branches are continuously added and obsolete branches
+    are cut out from the Hoeffding Tree. Problematically, however, under concept drift,
+    some nodes may no longer satisfy the Hoefdding boundary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we'll look at drift, why you should care, and what to do
+    about drift.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drift
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'A major determinant of data quality is drift. **Drift** (also: **dataset shift**)
+    means that the patterns in data change over time. Drift is important because the
+    performance of a machine learning model can be adversely affected by changes to
+    the dataset.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Drift transitions can occur abruptly, incrementally, gradually, or be recurring.
+    This is illustrated here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![../Conceptdrift4%20-%20page%201.png](img/B17577_08_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.4: Four types of concept drift transitions'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the transition is abrupt, it happens from one time step to another without
+    apparent preparation or warning. In contrast, it can also be incremental in the
+    sense that there's first a little shift, then a bigger shift, then a bigger shift
+    again.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When a transition happens gradually, it can look like a back and forth between
+    different forces until a new baseline is established. Yet another type of transition
+    is recurring or cyclical when there's a regular or recurring shift between different
+    baselines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are different kinds of drift:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Covariate drift
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Prior-probability drift
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Concept drift
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Covariate drift** describes a change in the independent variables (features).
+    An example could be a regulatory intervention, where new laws would shake up the
+    market landscape, and consumer behavior would follow different behaviors from
+    before. An example would be if we want to predict chronic disease within 10 years
+    given smoking behaviors, and smoking suddenly becomes much less prevalent, because
+    of new laws. This means that our prediction could be less reliable.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Probability drift** is a change in the target variable. An example could
+    be that in fraud detection, the fraud incidence ratio changes; in retail, the
+    average value of merchandise increases. One reason for drift could be seasonality
+    – for example, selling more coats in winter.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In **concept drift**, a change occurs in the relationship between the independent
+    and the target variables. The concept the term refers to is the relationship between
+    independent and dependent variables. For example, if we wanted to predict the
+    number of cigarettes smoked, we could assume that our model would become useless
+    after the introduction of new laws. Please note that often, the term concept drift
+    is applied in a broader sense as anything non-stationary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Covariate drift**: a change in the features *P(x)*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Label drift (**or **prior probability drift)**: a change in the target variable
+    *P(y)*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Concept drift**: (in supervised machine learning) changes in the conditional
+    distribution of the target – in other words, the relationship between independent
+    and dependent variables changes *P(y|X)*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Commonly, when building machine learning models, we assume that points within
+    different parts of the dataset belong to the same distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While occasional anomalies, such as abnormal events, would usually be treated
+    as noise and ignored, when there is a change in the distribution, models often
+    have to be rebuilt from scratch based on new samples in order to capture the latest
+    characteristics. This is the reason why we are testing time-series models with
+    walk-forward validation as discussed in *Chapter 7*, *Machine Learning Models
+    for Time-Series*. However, this training from scratch can be time-consuming and
+    heavy on computing resources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drift causes problems for machine learning models since models can become stale
+    – they become unreliable over time since the relationships they capture are no
+    longer valid. This results in the performance degradation of these models. Therefore,
+    approaches to forecasting, classification, regression, or anomaly detection should
+    be able to detect and react to concept drift in a timely manner, so that the model
+    can be updated as soon as possible. Machine learning models are often retrained
+    periodically to avoid performance degradation happening. Alternatively, retraining
+    can be triggered when needed based on either the performance monitoring of models or
+    based on change detection methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As for applications on time-series, in many domains, such as finance, e-commerce,
+    economics, and healthcare, the statistical properties of the time-series can change,
+    rendering forecasting models useless. Puzzlingly, although the concept of the
+    drift problem is well investigated in the literature, little effort has been invested
+    in tackling it with time-series methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Gustavo Oliveira and others proposed in 2017 ("*Time-Series Forecasting in
+    the Presence of Concept Drift: A PSO-based Approach*") training several time-series
+    forecasting models. At each point in time, the parameters for each of these models
+    were changed weighted by the latest performance (particle swarm optimization).
+    When the best models (best particles) diverged beyond a certain confidence interval,
+    retraining of models was triggered.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The charts below illustrate a combination of error-triggered retraining and
+    online learning, one approach to time-series forecasting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![https://github.com/GustavoHFMO/IDPSO-ELM-S/raw/master/images/idpso_elm_s_execution.png](img/B17577_08_03.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.5: Online learning and retraining for time-series forecasting (IDPSO-ELM-S)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see the error rates increasing periodically as concept drift is occurring,
+    and, where, based on the concept of drift detection, retraining is triggered.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many online models have been specifically adapted to be robust to or handle
+    concept drift. In this section, we'll discuss some of the most popular or best-performing
+    ones. We'll also discuss methods for drift detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drift detection methods
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There are lots of different methods to explicitly detect drift and distributional
+    changes in data streams. Page-Hinkley (Page, 1954) and Geometric Moving Average
+    (Roberts, 2000) are two of the pioneers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drift detectors monitor the model performance usually through a performance
+    metric, however, they can also be based on input features, although this is more
+    of an exception. The basic idea is that when there is a change in the class distribution
+    of the samples, the model does not correspond anymore to the current distribution,
+    and the performance degrades (the error rate increases). Therefore, quality control
+    of the model performance can serve as drift detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Drift detection methods can be categorized into at least three groups (after
+    João Gama and others, 2014):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Statistical process control
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Sequential analysis
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Windows-based comparison
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Statistical process control methods take into account summary statistics such
+    as the mean and standard deviation of model predictions. For example, the **Drift
+    Detection Method** (**DDM**; João Gama and others, 2004) alerts if the error rate
+    surpasses the previously recorded minimum error rate by three standard deviations.
+    According to statistical learning theory, in a continuously trained model, errors
+    should diminish with the number of samples, so this threshold should only be exceeded
+    in the case of drift.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sequential methods are based on thresholds of model predictions. For example,
+    in the **Linear Four Rates** (Wang, 2015) method, the rates in the contingency
+    table are updated incrementally. Significance is calculated according to a threshold
+    that is estimated once at the start by Monte Carlo sampling. This method can handle
+    class imbalance better than DDM.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Contingency table**: a table that compares the frequency distribution of
+    variables. Specifically in machine learning classification, the table displays
+    the predicted number of labels over the test set against the actual labels. In
+    the case of binary classification, the cells show true positives, false positives,
+    false negatives, and true negatives.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Windows-based approaches monitor the distribution of errors. For example, **ADWIN**
+    (**ADaptive WINdowing**) was published by Albert Bifet and Ricard Gavaldà in 2007\.
+    Prediction errors within a time window *W* are partitioned into smaller windows,
+    and the differences in mean error rates within these windows are compared to the
+    Hoeffding bound. The original version proposes a variation of this strategy that
+    has a time complexity of *O(log W)*, where *W* is the length of the window.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some methods for drift detection are listed here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Algorithm | Description | Type |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Adaptive Windowing** (**ADWIN**) | Adaptive sliding window algorithm based
+    on thresholds. | Window-based |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Drift Detection Method** (**DDM**) | Based on the premise that the model''s
+    error rate should decrease over time. | Statistical |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Early Drift Detection Method** (**EDDM**) | Statistics over the average
+    distance between two errors. Similar to DDM, but better for gradual drift. | Statistical
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Hoffding''s Drift Detection** (**HDDM**) | Non-parametric method based
+    on Hoeffding''s bounds – either moving average-test or moving weighted average-test.
+    | Window-based |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Kolmogorov-Smirnov Windowing** (**KSWIN**) | Kolmogorov-Smirnov test in
+    windows of a time-series. | Window-based |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Page-Hinkley | Statistical test for mean changes in Gaussian signals. | Sequential
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Figure 8.6: Drift detection algorithms'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kolmogorov-Smirnov is a nonparametric test of the equality of continuous, one-dimensional
+    probability distributions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These methods can be used in the context of both regression and classification
+    (and, by extension, forecasting). They can be used to trigger the retraining of
+    models. For example, Hassan Mehmood and others (2021) retrained time-series forecasting
+    models (among other models, they used Facebook's Prophet) if drift was detected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drift detectors all have their assumptions regarding input data. It is important
+    to know these assumptions, and I've tried to outline these in the table, so you
+    use the right detector with your dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The drift detection methods listed above all incur a labeling cost. Since they
+    all monitor the prediction results of a base classifier or an ensemble, they require
+    that the class labels is available right after prediction. This constraint is
+    unrealistic in some practical problems. There are other methods, not listed here,
+    that can be based on anomaly detection (or novelty detection), feature distribution
+    monitoring, or model-dependent monitoring. We saw a few of these methods in *Chapter
+    6*, *Unsupervised Methods for Time-Series*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we'll look at some methods that were designed to be resistant
+    to drift.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adaptive learning methods
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Adaptive learning** refers to incremental methods with drift adjustment.
+    This concept refers to updating predictive models online to react to concept drifts.
+    The goal is that by taking drift into account, models can ensure consistency with
+    the current data distribution.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ensemble methods can be coupled with drift detectors to trigger the retraining
+    of base models. They can monitor the performance of base models (often with ADWIN)
+    – underperforming models get replaced with retrained models if the new models
+    are more accurate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a case in point, the **Adaptive XGBoost** algorithm (**AXGB**; Jacob Montiel
+    and others, 2020) is an adaptation of XGBoost for evolving data streams, where
+    new subtrees are created from mini-batches of data as new data becomes available.
+    The maximum ensemble size is fixed, and once this size is reached, the ensemble
+    is updated on new data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the Scikit-Multiflow and River libraries, there are several methods that
+    couple machine learning methods with drift-detection methods, which regulate adaptation.
+    Many of these were published by the maintainers of the two libraries. Here''s
+    a list with a few of these methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Algorithm | Description |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **K-Nearest Neighbors** (**KNN**) classifier with ADWIN change detector |
+    KNN with ADWIN change detector to decide which samples to keep or forget. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Adaptive Random Forest | Includes drift detectors per tree. It starts training
+    in the background after a warning has been detected, and replaces the old tree
+    if drift occurs. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Additive Expert ensemble classifier | Implements pruning strategies – the
+    oldest or weakest base model will be removed. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **Hoeffding Adaptive Tree** (**HAT**) | Pairs ADWIN to detect drift and a
+    Hoeffding Tree model to learn. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Very Fast Decision Rules | Similar to VFDT, but rule ensembles instead of
+    a tree. In Scikit-Multiflow drift detection with ADWIN, DDM, and EDDM is supported.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Oza Bagging ADWIN | Instead of sampling with replacement, each sample is
+    given a weight. In River, this can be combined with the ADWIN change detector.
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Online CSB2 | Online boosting algorithm that compromises between AdaBoost
+    and AdaC2, and optionally uses a change detector. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Online Boosting | AdaBoost with ADWIN drift detection. |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Figure 8.7: Adaptive learning algorithms'
+  prefs: []
+  type: TYPE_NORMAL
+- en: These methods are robust to drift by regulating the adaptation or learning with
+    the concept of drift detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's try out a few of these methods!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python practice
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The installation in this chapter is very simple, since, in this chapter, we''ll
+    only use River. We can quickly install it from the terminal (or similarly from
+    Anaconda Navigator):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: We'll execute the commands from the Python (or IPython) terminal, but equally,
+    we could execute them from a Jupyter notebook (or a different environment).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drift detection
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let's start off by trying out drift detection with an artificial time-series.
+    This follows the example in the tests of the River library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll first create an artificial time-series that we can test:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: This time-series is composed of two series that have different characteristics.
+    Let's see how quickly the drift detection algorithms pick up on this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Running the drift detector over this means iterating over this dataset and
+    feeding the values into the drift detector. We''ll create a function for this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we can try the ADWIN drift detection method on this time-series. Let''s
+    create another method to plot the drift points overlaid over the time-series:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the plot for the ADWIN drift points:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ADWIN_drift_detection.png](img/B17577_08_04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.9: ADWIN drift points on our artificial dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: I'd encourage you to play around with this and to also try out the other drift
+    detection methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we'll do a regression task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Regression
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We are going to estimate the occurrence of medium-class solar flares.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this, we'll use the solar flares dataset from the UCI machine learning repository.
+    The River library ships with a zipped column-separated dataset of the dataset,
+    and we'll load this, specify the column types, and choose the outputs we are interested
+    in.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s plot the ADWIN results now:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Please note how we are choosing the number of targets and the converters, which
+    contain the types for all feature columns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s have a look at what this looks like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We see the first point of the dataset (the first row of the dataset):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![/var/folders/80/g9sqgdws2rn0yc3rd5y3nd340000gp/T/TemporaryItems/NSIRD_screencaptureui_XK8zOB/Screenshot
+    2021-07-05 at 23.37.50.png](img/B17577_08_05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.10: First point of the solar flare dataset for medium-sized flares'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We see the ten feature columns as a dictionary and the output as a float.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s build our model pipeline in River:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A pipeline like this is very pleasant to read: numeric features get min-max
+    scaled, while string features get one-hot encoded. The preprocessed features get
+    fed into a Hoeffding Tree model for regression.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now learn our model prequentially, by predicting values and then training
+    them as discussed before:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We are using the **Mean Absolute Error** (**MAE**) as our metric.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We get an MAE of 0.096979.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This prequential evaluation `evaluate.progressive_val_score()` is equivalent
+    to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: I've added two extra lines to collect the error over time as the algorithm learns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s plot this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This plot shows how this error evolves as a function of the number of points
+    the algorithm encounters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![solar_flares_regression_mae.png](img/B17577_08_06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.11: MAE by the number of points'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that, after 20-30 points, after the metric stabilizes, the Hoeffding
+    Tree starts learning and the error keeps decreasing until about 800 points, at
+    which point the error increases again. This could be a row ordering effect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A dataset that has concept drift is the use case for an adaptive model. Let''s
+    compare adaptive and non-adaptive models on a dataset with concept drift:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: We will compare the Hoeffding Tree Regressor, the Adaptive Hoeffding Tree Regressor,
+    and the Adaptive Random Forest Regressor. We take the default settings for each
+    model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can use a synthetic dataset for this test. We can train each of the aforementioned
+    models on the data stream and look at the **Mean Squared Error** (**MSE**) metric:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `evaluate.progressive_val_score` method iterates over each point of the
+    dataset and updates the metric. We get the following result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Your results might vary a bit because of the nature of these algorithms. We
+    could set a random number generator seed to avoid this, however, I found it worth
+    emphasizing this point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We see the model error (MSE) in scientific notation, which helps in understanding
+    the numbers, since they are quite large. You see the errors expressed in two parts,
+    first a factor and then the order of magnitude as exponents to ten. The orders
+    of magnitudes are the same for the three models, however, the Adaptive Random
+    Forest Regressor obtained about a fifth of the error of what the other two got.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also visualize the error over time as the models learn and adapt:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![performance_adaptive_models.png](img/B17577_08_07.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.12: Model performance for a concept drift data stream (MSE)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's no non-adaptive version of the random forest algorithm in River, so
+    we can't compare this. We can't draw a clear conclusion about whether adaptive
+    algorithms actually work better.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are lots of other models, meta models, and preprocessors to try out if
+    you want to have a play around.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Model selection
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We've mentioned model selection with multi-armed bandits earlier in this chapter,
+    and here we'll go through a practical example. This is based on documentation
+    in River.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's use `UCBRegressor` to select the best learning rate for a linear regression
+    model. The same pattern can be used more generally to select between any set of
+    (online) regression models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we define the models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We build and evaluate our models on the TrumpApproval dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''ll apply the UCB bandit, which calculates reward for regression models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The bandit provides methods to train its models in an online fashion:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can inspect the number of times (as a percentage) each arm has been pulled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The percentages for the four models are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also look at the average reward of each model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The reward is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also plot the reward over time as it gets updated based on model performance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![bandit_reward.png](img/B17577_08_08.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.13: Reward over time'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can see that the rewards slowly become known as we step through the data
+    and the models get updated. The model rewards clearly separate at around 100 time
+    steps, and at around 1,000 time steps, seem to have converged.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also plot the percentage of the time each of the different models have
+    been chosen at each step (this is based on the reward):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![bandit_percentage.png](img/B17577_08_09.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 8.14: Ratios of models chosen over time'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This distribution roughly follows the reward distribution over time. This should
+    be expected since the model choice depends on reward (and a random number that
+    regulates exploration).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can also select the best model (the one with the highest average reward).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The learning rate chosen by the bandit is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: The learning rate is 0.01.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''ve discussed online learning. We''ve talked about some
+    of the advantages of online learning methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: They are efficient and can handle high-speed throughput
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: They can work on very large datasets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: And they can adjust to changes in data distributions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Concept drift is a change in the relationship between data and the target to
+    learn. We've talked about the importance of drift, which is that the performance
+    of a machine learning model can be strongly affected by changes to the dataset
+    to the point that a model will become obsolete (stale).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drift detectors don't monitor the data itself, but they are used to monitor
+    model performance. Drift detectors can make stream learning methods robust against
+    concept drift, and in River, many adaptive models use a drift detector for partial
+    resets or for changing learning parameters. Adaptive models are algorithms that
+    combine drift detection methods to avoid the degradation of performance or costly
+    retraining. We've given an overview of a few adaptive learning algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the Python practice, we've played around with a few of the algorithms in
+    the River library, including drift detection, regression, and model selection
+    with a multi-armed bandit approach.
+  prefs: []
+  type: TYPE_NORMAL

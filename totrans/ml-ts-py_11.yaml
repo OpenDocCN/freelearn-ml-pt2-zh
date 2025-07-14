@@ -1,0 +1,2709 @@
+- en: '12'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Multivariate Forecasting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As you'll have picked up by now if you've been paying attention to this book,
+    the field of time-series has made lots of advances within the last decade. Many
+    extensions and new techniques have popped up for applying machine learning to
+    time-series. In each chapter, we've covered lots of different issues around forecasting,
+    anomaly and drift detection, regression and classification, and approaches including
+    traditional approaches, machine learning with gradient boosting and others, reinforcement
+    learning, online learning, deep learning, and probabilistic models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we'll put some of this into practice in more depth. We've covered
+    mostly univariate time-series so far, but in this chapter, we'll go through an
+    application of forecasting to energy demand. With ongoing energy or supply crises
+    in different parts of the world, this is a very timely subject. We'll work with
+    a multivariate time-series, and we'll do a multi-step forecast using different
+    approaches.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''re going to cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Forecasting a Multivariate Time-Series
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What's next for time-series?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The second section is going to cover an outlook into the future of time-series
+    applications and research. But let's start with a discussion of multivariate series.
+    Then we'll apply a few models to energy demand forecasting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Forecasting a Multivariate Time-Series
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Time-series forecasting is an active research topic in academia. Forecasting
+    long-term trends is not only a fun challenge, but has important implications for
+    strategic planning and operations research in real-world applications such as
+    IT operations management, manufacturing, and cyber security.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A multivariate time-series has more than one dependent variable. This means
+    that each dependent variable not only depends on its own past values, but also
+    potentially on the past values of other variables. This introduces complexity
+    such as colinearity, where the dependent variables are not independent, but rather
+    correlated. Colinearity violates the assumptions of many linear models, and it
+    is therefore even more appealing to resort to models that can capture feature
+    interactions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This figure shows an example of a multivariate time-series, COVID deaths in
+    different countries (from the English Wikipedia article about the COVID-19 pandemic):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_12_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.1: COVID-19 deaths per 100,000 population as an example of a multivariate
+    time-series.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: COVID fatalities are correlated between different countries, although they might
+    be shifted, or they might fall into different groups.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've mentioned the Makridakis Competitions, in *Chapter 5*, *Introduction to
+    Machine Learning for Time-Series*. Spyros Makridakis, the chief organizer, is
+    a professor at the University of Nicosia, and specializes in time-series forecasting.
+    These competitions serve as a benchmark of the best algorithms and researchers
+    and practitioners compete against each other for cash prices. The hope for this
+    competition is that it can inspire and act as catalyst for machine learning, and
+    open up directions for future work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The M4 competition used 100,000 multivariate time-series (from the ForeDeCk
+    database) covering different application domains and temporal scales, and results
+    were published in 2020\. 49 contestants or teams submitted point forecasts testing
+    the accuracy of major ML and statistical methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The M4 organizers, Spyros Makridakis, Evangelos Spiliotis, and Vassilios Assimakopoulos,
+    observed ("*The M4 Competition: 100,000 time-series and 61 forecasting methods"*,
+    2020) that combinations (hybrids or ensembles) of mostly well-established statistical
+    methods tended to be more accurate than either pure statistical or pure ML methods,
+    which performed rather poorly, mostly placed in the second half of the field.
+    Although there''s increasing adoption of machine learning methods in solving forecasting
+    challenges, statistical methods remain powerful, especially while dealing with
+    low-granularity data. It should be noted, however, that the datasets didn''t include
+    exogenous variables or time-stamps. Deep learning and other machine learning methods
+    could perhaps make better use of higher dimensionality, especially in the presence
+    of collinearity, so this additional information would perhaps have boosted the
+    performance of these models.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, Slawek Smyl from Uber Technologies came in first place, taking home
+    €9000 with a hybrid between a recurrent neural network and a statistical time-series
+    model (Holt-Winters exponential smoothing). These two components were fit concurrently
+    using gradient descent. A seasoned time-series practitioner, Smyl had previously
+    won the *Computational Intelligence in Forecasting International Time-Series Competition
+    2016* using recurrent neural networks. It can be argued that this result shows
+    that pragmatism with machine learning (and deep learning as an extension) can
+    pay off.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Economists have long been working with mixtures in forecasting such as Gaussian
+    mixture models or mixtures of GARCH models. The `Skaters` library comes with various
+    functionality for ensembles and also does ensembles of ARMA and similar models.
+    You can find an overview of different ensemble models on the microprediction time-series
+    leaderboard: [https://microprediction.github.io/timeseries-elo-ratings/html_leaderboards/overall.html](https://microprediction.github.io/timeseries-elo-ratings/html_leaderboards/overall.html)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: More on the machine learning side, a common method for ensembles, particularly
+    in bagging, is training several models and weighting their predictions by their
+    performance. Bagging uses sampling with replacement to create training samples
+    to fit the base models. The out-of-bag (OOB) error is the mean prediction error
+    of a model on training samples that weren't part of the training set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ensembles can also be composed of base models of different types, called heterogeneous
+    ensembles. Scikit-learn provides stacking for regression and classification, where
+    a final model can find coefficients, weighted to the base model predictions, to
+    combine base model predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are still many pain points in industry workflows for time-series analytics.
+    Chief among them is that there aren't many software libraries that support multivariate
+    forecasting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As of September 2021, although it's on the roadmap, multivariate forecasting
+    is not part of the Kats library (even though there's support for multivariate
+    classification). There are `VAR` and `VARMAX` models in the `statsmodels` library;
+    however, there's no support for deseasonalizing multivariate time-series.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Salesforce's Merlion library claims to support multivariate forecasts, but it
+    doesn't seem to be part of the current functionality. The `Darts` library provides
+    several models that would work for multivariate forecasts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Neural networks and ensembles such as Random Forest or boosted decision trees
+    support being trained on multivariate time-series. In *Chapter 7*, *Machine Learning
+    Models for Time-Series*, we worked with XGBoost to create an ensemble model for
+    time-series forecasting. In the GitHub repository accompanying this book, I've
+    attached a notebook that shows how scikit-learn pipelines and multioutput regressors
+    can be applied to multivariate forecasts. In this chapter, however, we'll focus
+    on deep learning models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Alejandro Pasos Ruiz and colleagues at the University of East Anglia (Norwich,
+    Norfolk, United Kingdom) highlight how multivariate applications have been neglected
+    in their paper "*The great multivariate time-series classification bake off: a
+    review and experimental evaluation of recent algorithmic advances*" (2020). There
+    was a large focus on modeling univariate datasets, as is evident not only in the
+    availability of software solutions, but also in datasets, previous competitions,
+    and research.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'They ran a benchmark of time-series classification on 30 multivariate time-series
+    from the UEA dataset. They found that three classifiers are significantly more
+    accurate than the dynamic time warping algorithm: HIVE-COTE, CIF, and ROCKET (please
+    refer to *Chapter 4*, *Introduction to Machine Learning for Time-Series*, for
+    details around these methods); however, the deep learning approach ResNet wasn''t
+    very far from these front-runners.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the paper "*Deep learning for time-series classification: a review*" by
+    *Hassan Ismail Fawaz* and others (2019), one of the findings from a benchmark
+    test was that some deep neural networks can be competitive with other methods.
+    They later followed this up by showing that neural network ensembles are on-par
+    with HIVE-COTE on the same data ("*Deep Neural Network Ensembles for Time-Series
+    Classification*," 2019).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Pedro Lara-Benítez* and others (2021) did another comparison in their paper
+    "*An Experimental Review on Deep Learning Architectures for Time-Series Forecasting*."
+    They ran an Echo State Network (ESN), a Convolutional Neural Network (CNN), a
+    Temporal Convolutional Network (TCN), a fully connected feedforward network (MLP),
+    and several recurrent architectures such as Elman Recurrent Networks, Gated Recurrent
+    Unit (GRU) networks, and Long Short-Term Memory (LSTM) networks.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Statistically, based on average ranks, CNN, MLP, LSTM, TCN, GRU, and ESN were
+    indistinguishable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the whole, deep learning models are very promising, and because of their
+    flexibility they can fill the existing gap for multivariate forecasting. I hope
+    to demonstrate in this chapter how useful they can be.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll be applying the following models in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: N-BEATS
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Amazon's DeepAR
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Recurrent neural network (LSTM)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Transformer
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Temporal convolutional network (TCN)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Gaussian process
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We went through the details for most of these methods in *Chapter 10*, *Deep
+    Learning for Time-Series*, but I'll briefly cover the main features for each in
+    turn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Neural Basis Expansion Analysis for interpretable Time-Series forecasting**
+    (**N-BEATS**), presented at the ICLR conference 2020, achieved a 3% improvement
+    over the winner of the M4 competition. The authors demonstrated that a pure deep
+    learning approach, without any time-series-specific components, outperforms statistical
+    approaches to challenging datasets such as the M3 and M4 competition datasets
+    and the TOURISM dataset. A further advantage of this approach is that it is interpretable
+    (although we won''t be focusing on this aspect in the current chapter).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**DeepAR** is a probabilistic auto-regressive recurrent network model coming
+    out of Amazon Research Germany. They compared the accuracy of the quantile predictions
+    for three different datasets and only compared the forecasting accuracy against
+    a factorization technique (MatFact) and on two datasets (traffic and electricity).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Long Short-Term Models** (**LSTM**) networks are used for sequence modeling.
+    A great selling point of recurrent neural networks such as LSTMs is that they
+    can learn long-term sequences of data points.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Transformers** are attention-based neural networks, originally presented
+    in the 2017 paper "*Attention Is All You Need*." Their key features are linear
+    complexity with the number of features and long-term memory, giving us access
+    to any point in the sequence directly. An advantage of transformers over recurrent
+    neural networks is that they are executed in parallel rather than in sequence
+    and therefore run faster in both training and prediction.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Transformers were designed to solve sequences problems in **Natural Language
+    Processing** (**NLP**) tasks; however, they can equally be applied to time-series
+    problems, including forecasting, although such applications don't make use of
+    features more specific to sentences, such as positional encoding.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A **Temporal Convolutional Network** (**TCN**) consists of dilated, causal,
+    1D convolutional layers with the same input and output lengths. We are using an
+    implementation that includes residual blocks as proposed by Shaojie Bai and others (2018).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The last of these methods, **Gaussian processes** can't be convincingly categorized
+    as deep learning models; however, they are equivalent to a single-layer fully-connected
+    neural network with an independent and identically distributed prior over its
+    parameters. They can be seen as an infinite-dimensional generalization of multivariate
+    normal distributions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An interesting, additional aspect – although, again, we won't pursue this here
+    – is that many of these methods allow using additional explanatory (exogenous)
+    variables.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll be using a 10-dimensional time-series of energy demand in different states.
+    The dataset comes from the 2017 Global Energy Forecasting Competition (GEFCom2017).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each variable records the energy usage in a particular region. This emphasizes
+    the problems with long-term memory – to highlight this, we'll be doing a multi-step
+    forecast.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can find the `tensorflow/keras` implementations of the models together
+    with utility functions for the data on GitHub in a repository I created for demonstration
+    purposes featuring time-series models for multivariate and multi-step forecasting,
+    regression, and classification: [https://github.com/benman1/time-series](https://github.com/benman1/time-series).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's jump right into it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python practice
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We'll load the dataset of the energy demand, and we'll apply several forecasting
+    methods. We are using a big dataset and some of these models are quite complex,
+    so training can take a long time. I would advise you to use Google Colab and switch
+    on GPU support, or to reduce the number of iterations or the size of the dataset.
+    I'll mention performance tweaks later when they become relevant.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start by installing the library from the GitHub repository mentioned
+    above:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: This shouldn't take long. Since the requirements include `tensorflow` and `numpy`,
+    I'd recommend installing them into a virtual environment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then, we''ll load the dataset using a utility method in the library and wrap
+    it in a `TrainingDataSet` class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you wanted to speed up the training, you could reduce the number of training
+    samples. For instance, instead of the previous line, you could say: `tds = TrainingDataSet(train_df.head(500))`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll do this for the `GaussianProcess` later, which can't handle the full dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For most of these models, we''ll use TensorFlow graph models, which depend
+    on non-eager execution. We''ll have to disable eager execution explicitly. Also,
+    for one of the models, we need to set up output of intermediates to avoid a TensorFlow
+    problem: `Connecting to invalid output X of source node Y which has Z outputs`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'I''ve set up metrics and plotting methods that we''ll use for all the produced
+    forecasts. We can just load them up from the time-series library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''ll also set the number of epochs in training to `100` – the same for every
+    model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you find that training is taking very long, you can set this to a lower value
+    so training finishes earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go through the different forecasting methods in turn, `DeepAR` first:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''ll see the summary of the model and then the training error over time (omitted
+    here):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![/var/folders/80/g9sqgdws2rn0yc3rd5y3nd340000gp/T/TemporaryItems/NSIRD_screencaptureui_4ElEIb/Screenshot
+    2021-10-04 at 22.37.08.png](img/B17577_12_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.2: DeepAR model parameters.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This model is relatively simple, as we can see: only `360` parameters. Obviously,
+    we could tweak these parameters and add more.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll then produce predictions on the test dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''ll see the errors – first the overall error and then for each of the `10`
+    dimensions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''ll see the plot over the first `10` time-steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_12_03.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.3: DeepAR forecasts for 10 time-steps.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s move on to the next method: N-BEATS:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: N-BEATS trains two networks. The forward network has `1,217,024` parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see the forecasts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_12_04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.4: N-BEATS forecasts.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'LSTM is next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This model takes a lot more parameters than DeepAR:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![/var/folders/80/g9sqgdws2rn0yc3rd5y3nd340000gp/T/TemporaryItems/NSIRD_screencaptureui_0VYxgy/Screenshot
+    2021-10-04 at 22.45.24.png](img/B17577_12_05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.5: LSTM model parameters.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`45,000` parameters – this means this takes much longer to train than `DeepAR`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here we see the forecasts again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_12_06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.6: LSTM forecasts.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s do the transformer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here''s the forecast plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![forecast_transformer.png](img/B17577_12_07.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.7: Transformer forecasts.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This model takes very long to train and the performance was the worst of the
+    bunch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our last deep learning model is the TCN:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The forecasts are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_12_08.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.8: TCN forecasts.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Gaussian process, unfortunately, can't deal with our dataset – therefore,
+    we'll only load up a small part. The Gaussian process also depends on eager execution,
+    so we'll have to restart the kernel, redo the imports, and then execute this.
+    If you have doubts about how to do this, please have a look at the `gaussian_process`
+    notebook in the GitHub repository of this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here we go:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The forecast looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![forecast_gp.png](img/B17577_12_09.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 12.9: Gaussian process forecasts.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: All algorithms (except for the Gaussian process) were trained on `99336` data
+    points. As mentioned, we've set the training epochs to `100`, but there's an early
+    stopping rule that would stop training if the training loss didn't change within
+    `5` iterations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The models are validated on the test set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s check the statistics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|  | Parameters | MSE (test) | Epochs |'
+  prefs: []
+  type: TYPE_TB
+- en: '| DeepAR | 360 | 0.4338 | 100 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| N-BEATS | 1,217,024 | 0.1016 | 100 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| LSTM | 45,410 | 0.1569 | 100 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Transformer | 51,702 | 0.9314 | 55 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| TCN | 145,060 | 0.0638 | 100 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Gaussian process | 8 | 0.4221 | 100 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ES | 1 | 11.28 | - |'
+  prefs: []
+  type: TYPE_TB
+- en: Given the huge disparity in the error between the deep learning methods, there
+    might be something off with the implementation of the transformer – I'll try to
+    fix this at some point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I've included a baseline method, **Exponential Smoothing** (**ES**), in the
+    mix. You can find the code for this in the time-series repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This brings the chapter and the book to its conclusion. You can have a look
+    at the repo if you want to understand better what's happening under the hood.
+    You can also tweak the model parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What's next for time-series?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We've looked at many aspects of time-series in this book. If you've made it
+    this far, you should have learned how to analyze time-series, and how to apply
+    traditional time-series forecasts. This is often the main focus of other books
+    on the market; however, we went far beyond.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We looked at preprocessing and transformations for time-series as relevant to
+    machine learning. We looked at many examples of applying machine learning both
+    in an unsupervised and supervised context for forecasting and other predictions,
+    anomaly detection, and drift and change point detection. We delved into techniques
+    such as online learning, reinforcement learning, probabilistic models, and deep
+    learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In each chapter, we've been looking at the most important libraries, sometimes
+    even the cutting edge, and, finally, prevalent industrial applications. We've
+    looked at state-of-the-art models such as HIVE-COTE, preprocessing methods such
+    as ROCKET, and models that adapt to drift (adaptive online models), and we reviewed
+    a number of methods for anomaly detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've even looked at scenarios such as switching between time-series models
+    with multi-armed bandits or causal analysis with counterfactuals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Due to their prevalence, time-series modeling and forecasting are crucial in
+    multiple domains and have great economic importance. While traditional and well-established
+    approaches have been dominating, machine learning for time-series is a relatively
+    new research field, having only really just come out of its infancy, and deep
+    learning is a very active forefront of this revolution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The search for good models will carry on, extending to bigger new challenges.
+    One of these, as I hoped to show in the preceding section of this chapter, is
+    making multivariate methods a more practical proposition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next Makridakis Competition, M5, focuses on hierarchical time-series provided
+    by Walmart (42,000 time-series). Final results will be published in 2022\. Machine
+    learning models can shine at hierarchical regression on time-series, outperforming
+    some well-established models in the literature as shown by *Mahdi Abolghasemi*
+    and others ("*Machine learning applications in time-series hierarchical forecasting*,"
+    2019) in a benchmark with 61 groups of time-series with different volatilities.
+    Mixed-effects models (with application to groups and hierarchies) for time-series
+    forecasting is also an active area of research.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The M6 competition features real-time financial forecasting of S&P500 US stocks
+    and international ETFs. Future competitions might focus on non-linearities such
+    as Black Swan events, time-series with fat tails, and distributions that are important
+    for risk management and decision making.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Image21868.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[packt.com](http://packt.com)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Subscribe to our online digital library for full access to over 7,000 books
+    and videos, as well as industry leading tools to help you plan your personal development
+    and advance your career. For more information, please visit our website.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why subscribe?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Spend less time learning and more time coding with practical eBooks and Videos
+    from over 4,000 industry professionals
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learn better with Skill Plans built especially for you
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Get a free eBook or video every month
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Fully searchable for easy access to vital information
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Copy and paste, print, and bookmark content
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Did you know that Packt offers eBook versions of every book published, with
+    PDF and ePub files available? You can upgrade to the eBook version at [www.Packt.com](http://www.Packt.com)
+    and as a print book customer, you are entitled to a discount on the eBook copy.
+    Get in touch with us at [customercare@packtpub.com](http://customercare@packtpub.com)
+    for more details.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At [www.Packt.com](http://www.Packt.com), you can also read a collection of
+    free technical articles, sign up for a range of free newsletters, and receive
+    exclusive discounts and offers on Packt books and eBooks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other Books You May Enjoy
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If you enjoyed this book, you may be interested in these other books by Packt:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[![](img/9781801815093.png)](https://www.packtpub.com/product/learn-python-programming-third-edition/9781801815093)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Learn Python Programming – Third Edition**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fabrizio Romano
+  prefs: []
+  type: TYPE_NORMAL
+- en: Heinrich Kruger
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'ISBN: 978-1-80181-509-3'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Get Python up and running on Windows, Mac, and Linux
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Write elegant, reusable, and efficient code in any situation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Avoid common pitfalls like duplication, complicated design, and over-engineering
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understand when to use the functional or object-oriented approach to programming
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Build a simple API with FastAPI and program GUI applications with Tkinter
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Get an initial overview of more complex topics such as data persistence and
+    cryptography
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Fetch, clean, and manipulate data, making efficient use of Python's built-in
+    data structures
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[![](img/9781801077262.png)](https://www.packtpub.com/product/python-object-oriented-programming-fourth-edition/9781801077262)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Python Object-Oriented Programming – Fourth Edition**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Steven F. Lott
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dusty Phillips
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'ISBN: 978-1-80107-726-2'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implement objects in Python by creating classes and defining methods
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Extend class functionality using inheritance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Use exceptions to handle unusual situations cleanly
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understand when to use object-oriented features, and more importantly, when
+    not to use them
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Discover several widely used design patterns and how they are implemented in
+    Python
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Uncover the simplicity of unit and integration testing and understand why they
+    are so important
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learn to statically type check your dynamic code
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understand concurrency with asyncio and how it speeds up programs
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[![](img/9781801071109.png)](https://www.packtpub.com/product/expert-python-programming-fourth-edition/9781801071109)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Expert Python Programming – Fourth Edition**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Michał Jaworski
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tarek Ziadé
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'ISBN: 978-1-80107-110-9'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Explore modern ways of setting up repeatable and consistent Python development
+    environments
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Effectively package Python code for community and production use
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Learn modern syntax elements of Python programming, such as f-strings, enums,
+    and lambda functions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Demystify metaprogramming in Python with metaclasses
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Write concurrent code in Python
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Extend and integrate Python with code written in C and C++
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Packt is searching for authors like you
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If you're interested in becoming an author for Packt, please visit [authors.packtpub.com](http://authors.packtpub.com)
+    and apply today. We have worked with thousands of developers and tech professionals,
+    just like you, to help them share their insight with the global tech community.
+    You can make a general application, apply for a specific hot topic that we are
+    recruiting an author for, or submit your own idea.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Share Your Thoughts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now you've finished *Machine Learning for Time-Series with Python*, we'd love
+    to hear your thoughts! If you purchased the book from Amazon, please [click here
+    to go straight to the Amazon review page](https://packt.link/r/1801819629) for
+    this book and share your feedback or leave a review on the site that you purchased
+    it from.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Your review is important to us and the tech community and will help us make
+    sure we're delivering excellent quality content.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Index
+  prefs: []
+  type: TYPE_NORMAL
+- en: A
+  prefs: []
+  type: TYPE_NORMAL
+- en: activation function [264](Chapter_10.xhtml#_idIndexMarker777)
+  prefs: []
+  type: TYPE_NORMAL
+- en: activation functions [266](Chapter_10.xhtml#_idIndexMarker790)
+  prefs: []
+  type: TYPE_NORMAL
+- en: AdaBoost [101](Chapter_4.xhtml#_idIndexMarker282)
+  prefs: []
+  type: TYPE_NORMAL
+- en: adaptive learning [222](Chapter_8.xhtml#_idIndexMarker672)
+  prefs: []
+  type: TYPE_NORMAL
+- en: methods [222](Chapter_8.xhtml#_idIndexMarker673)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adaptive XGBoost [222](Chapter_8.xhtml#_idIndexMarker674)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ADWIN (ADaptive WINdowing) [220](Chapter_8.xhtml#_idIndexMarker669)
+  prefs: []
+  type: TYPE_NORMAL
+- en: agent [98](Chapter_4.xhtml#_idIndexMarker266)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Akaike information criterion (AIC) [140](Chapter_5.xhtml#_idIndexMarker437)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Akaike Information Criterion (AIC) [156](Chapter_5.xhtml#_idIndexMarker496)
+  prefs: []
+  type: TYPE_NORMAL
+- en: AlexNet [265](Chapter_10.xhtml#_idIndexMarker786)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Amazon [169](Chapter_6.xhtml#_idIndexMarker520)
+  prefs: []
+  type: TYPE_NORMAL
+- en: anaconda documentation
+  prefs: []
+  type: TYPE_NORMAL
+- en: reference link [22](Chapter_1.xhtml#_idIndexMarker044)
+  prefs: []
+  type: TYPE_NORMAL
+- en: annuities [7](Chapter_1.xhtml#_idIndexMarker015)
+  prefs: []
+  type: TYPE_NORMAL
+- en: anomaly detection [95](Chapter_4.xhtml#_idIndexMarker248), [164](Chapter_6.xhtml#_idIndexMarker507),
+    [165](Chapter_6.xhtml#_idIndexMarker508), [166](Chapter_6.xhtml#_idIndexMarker511),
+    [167](Chapter_6.xhtml#_idIndexMarker512), [168](Chapter_6.xhtml#_idIndexMarker513),
+    [178](Chapter_6.xhtml#_idIndexMarker546), [179](Chapter_6.xhtml#_idIndexMarker548),
+    [180](Chapter_6.xhtml#_idIndexMarker552)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Amazon [169](Chapter_6.xhtml#_idIndexMarker519)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Facebook [170](Chapter_6.xhtml#_idIndexMarker524)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Google Analytics [169](Chapter_6.xhtml#_idIndexMarker518)
+  prefs: []
+  type: TYPE_NORMAL
+- en: implementations [170](Chapter_6.xhtml#_idIndexMarker531), [171](Chapter_6.xhtml#_idIndexMarker532),
+    [172](Chapter_6.xhtml#_idIndexMarker533)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Microsoft [168](Chapter_6.xhtml#_idIndexMarker515), [169](Chapter_6.xhtml#_idIndexMarker516)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Twitter [170](Chapter_6.xhtml#_idIndexMarker526)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Anticipy [146](Chapter_5.xhtml#_idIndexMarker465)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applied Statistics [17](Chapter_1.xhtml#_idIndexMarker035)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ARCH (Auto-Regressive Conditionally Heteroscedastic) [143](Chapter_5.xhtml#_idIndexMarker453)
+  prefs: []
+  type: TYPE_NORMAL
+- en: area under the curve [115](Chapter_4.xhtml#_idIndexMarker339)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Artificial General Intelligence (AGI) [298](Chapter_11.xhtml#_idIndexMarker850)
+  prefs: []
+  type: TYPE_NORMAL
+- en: astronomy [11](Chapter_1.xhtml#_idIndexMarker020), [12](Chapter_1.xhtml#_idIndexMarker021)
+  prefs: []
+  type: TYPE_NORMAL
+- en: autocorrelation [58](Chapter_2.xhtml#_idIndexMarker143), [59](Chapter_2.xhtml#_idIndexMarker144)
+  prefs: []
+  type: TYPE_NORMAL
+- en: autoencoders (AEs) [272](Chapter_10.xhtml#_idIndexMarker808), [273](Chapter_10.xhtml#_idIndexMarker812)
+  prefs: []
+  type: TYPE_NORMAL
+- en: automated feature extraction [88](Chapter_3.xhtml#_idIndexMarker233), [89](Chapter_3.xhtml#_idIndexMarker234)
+  prefs: []
+  type: TYPE_NORMAL
+- en: autoregressive (AR) [135](Chapter_5.xhtml#_idIndexMarker411), [136](Chapter_5.xhtml#_idIndexMarker416)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Autoregressive Conditional Heteroscedasticity (ARCH) [146](Chapter_5.xhtml#_idIndexMarker466)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Autoregressive Integrated Moving Average (ARIMA) [129](Chapter_4.xhtml#_idIndexMarker399)
+  prefs: []
+  type: TYPE_NORMAL
+- en: autoregressive integrated moving average model (ARIMA) [138](Chapter_5.xhtml#_idIndexMarker423)
+  prefs: []
+  type: TYPE_NORMAL
+- en: autoregressive model [135](Chapter_5.xhtml#_idIndexMarker412)
+  prefs: []
+  type: TYPE_NORMAL
+- en: autoregressive moving average (ARMA) [137](Chapter_5.xhtml#_idIndexMarker421)
+  prefs: []
+  type: TYPE_NORMAL
+- en: B
+  prefs: []
+  type: TYPE_NORMAL
+- en: backcasting [95](Chapter_4.xhtml#_idIndexMarker245)
+  prefs: []
+  type: TYPE_NORMAL
+- en: backpropagation [99](Chapter_4.xhtml#_idIndexMarker271), [103](Chapter_4.xhtml#_idIndexMarker289),
+    [264](Chapter_10.xhtml#_idIndexMarker780)
+  prefs: []
+  type: TYPE_NORMAL
+- en: bagging [100](Chapter_4.xhtml#_idIndexMarker279), [101](Chapter_4.xhtml#_idIndexMarker283)
+  prefs: []
+  type: TYPE_NORMAL
+- en: versus boosting [102](Chapter_4.xhtml#_idIndexMarker286)
+  prefs: []
+  type: TYPE_NORMAL
+- en: bag-of-patterns (BoP) [122](Chapter_4.xhtml#_idIndexMarker371)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bag-of-Patterns (BOP) [123](Chapter_4.xhtml#_idIndexMarker378)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bag of SFA Symbols (BOSS) [122](Chapter_4.xhtml#_idIndexMarker370)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bandit algorithms [302](Chapter_11.xhtml#_idIndexMarker861), [303](Chapter_11.xhtml#_idIndexMarker863)
+  prefs: []
+  type: TYPE_NORMAL
+- en: base learner [100](Chapter_4.xhtml#_idIndexMarker280)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bayesian Information Criterion (BIC) [140](Chapter_5.xhtml#_idIndexMarker438)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bayesian Structural Time-Series (BSTS) models [236](Chapter_9.xhtml#_idIndexMarker697),
+    [242](Chapter_9.xhtml#_idIndexMarker726), [243](Chapter_9.xhtml#_idIndexMarker727),
+    [244](Chapter_9.xhtml#_idIndexMarker728)
+  prefs: []
+  type: TYPE_NORMAL
+- en: implementing, in Python [256](Chapter_9.xhtml#_idIndexMarker758), [257](Chapter_9.xhtml#_idIndexMarker761),
+    [259](Chapter_9.xhtml#_idIndexMarker764)
+  prefs: []
+  type: TYPE_NORMAL
+- en: biology [10](Chapter_1.xhtml#_idIndexMarker018)
+  prefs: []
+  type: TYPE_NORMAL
+- en: boosting [100](Chapter_4.xhtml#_idIndexMarker278)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bootstrapping [101](Chapter_4.xhtml#_idIndexMarker284)
+  prefs: []
+  type: TYPE_NORMAL
+- en: BOSS in Vector Space (BOSS VS) [122](Chapter_4.xhtml#_idIndexMarker372)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Box-Cox transformation [72](Chapter_3.xhtml#_idIndexMarker178), [81](Chapter_3.xhtml#_idIndexMarker217),
+    [82](Chapter_3.xhtml#_idIndexMarker219)
+  prefs: []
+  type: TYPE_NORMAL
+- en: business days
+  prefs: []
+  type: TYPE_NORMAL
+- en: extracting, in month [88](Chapter_3.xhtml#_idIndexMarker232)
+  prefs: []
+  type: TYPE_NORMAL
+- en: C
+  prefs: []
+  type: TYPE_NORMAL
+- en: C4.5 algorithm [100](Chapter_4.xhtml#_idIndexMarker275)
+  prefs: []
+  type: TYPE_NORMAL
+- en: cable theory [263](Chapter_10.xhtml#_idIndexMarker772)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Canonical Interval Forest (CIF) [121](Chapter_4.xhtml#_idIndexMarker366)
+  prefs: []
+  type: TYPE_NORMAL
+- en: CART algorithm (Classification And Regression Tree) [100](Chapter_4.xhtml#_idIndexMarker274)
+  prefs: []
+  type: TYPE_NORMAL
+- en: causal filter [74](Chapter_3.xhtml#_idIndexMarker190)
+  prefs: []
+  type: TYPE_NORMAL
+- en: cells [265](Chapter_10.xhtml#_idIndexMarker781)
+  prefs: []
+  type: TYPE_NORMAL
+- en: central limit theorem [12](Chapter_1.xhtml#_idIndexMarker023)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Centre de Mathématiques Appliquées (CMAP) [129](Chapter_4.xhtml#_idIndexMarker394)
+  prefs: []
+  type: TYPE_NORMAL
+- en: change point detection (CPD) [172](Chapter_6.xhtml#_idIndexMarker534), [173](Chapter_6.xhtml#_idIndexMarker535),
+    [174](Chapter_6.xhtml#_idIndexMarker537), [175](Chapter_6.xhtml#_idIndexMarker539),
+    [176](Chapter_6.xhtml#_idIndexMarker540), [180](Chapter_6.xhtml#_idIndexMarker554),
+    [181](Chapter_6.xhtml#_idIndexMarker555), [182](Chapter_6.xhtml#_idIndexMarker558)
+  prefs: []
+  type: TYPE_NORMAL
+- en: classical models [132](Chapter_5.xhtml#_idIndexMarker400), [133](Chapter_5.xhtml#_idIndexMarker401)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ARCH (Auto-Regressive Conditionally Heteroscedastic) [143](Chapter_5.xhtml#_idIndexMarker452)
+  prefs: []
+  type: TYPE_NORMAL
+- en: autoregressive (AR) [134](Chapter_5.xhtml#_idIndexMarker405), [135](Chapter_5.xhtml#_idIndexMarker410),
+    [136](Chapter_5.xhtml#_idIndexMarker415)
+  prefs: []
+  type: TYPE_NORMAL
+- en: GARCH (generalized ARCH) [144](Chapter_5.xhtml#_idIndexMarker457)
+  prefs: []
+  type: TYPE_NORMAL
+- en: model selection [139](Chapter_5.xhtml#_idIndexMarker430)
+  prefs: []
+  type: TYPE_NORMAL
+- en: moving averages (MA) [134](Chapter_5.xhtml#_idIndexMarker404)
+  prefs: []
+  type: TYPE_NORMAL
+- en: order [139](Chapter_5.xhtml#_idIndexMarker429), [140](Chapter_5.xhtml#_idIndexMarker436)
+  prefs: []
+  type: TYPE_NORMAL
+- en: vector autoregression models [144](Chapter_5.xhtml#_idIndexMarker458), [145](Chapter_5.xhtml#_idIndexMarker461)
+  prefs: []
+  type: TYPE_NORMAL
+- en: classification [95](Chapter_4.xhtml#_idIndexMarker243), [97](Chapter_4.xhtml#_idIndexMarker259),
+    [113](Chapter_4.xhtml#_idIndexMarker325)
+  prefs: []
+  type: TYPE_NORMAL
+- en: clustering [95](Chapter_4.xhtml#_idIndexMarker246), [176](Chapter_6.xhtml#_idIndexMarker541),
+    [177](Chapter_6.xhtml#_idIndexMarker542)
+  prefs: []
+  type: TYPE_NORMAL
+- en: coefficient of determination [107](Chapter_4.xhtml#_idIndexMarker306), [108](Chapter_4.xhtml#_idIndexMarker307)
+  prefs: []
+  type: TYPE_NORMAL
+- en: collinearity [50](Chapter_2.xhtml#_idIndexMarker115)
+  prefs: []
+  type: TYPE_NORMAL
+- en: complex cells [265](Chapter_10.xhtml#_idIndexMarker783)
+  prefs: []
+  type: TYPE_NORMAL
+- en: concept drift [217](Chapter_8.xhtml#_idIndexMarker660)
+  prefs: []
+  type: TYPE_NORMAL
+- en: conda [22](Chapter_1.xhtml#_idIndexMarker043)
+  prefs: []
+  type: TYPE_NORMAL
+- en: confidence interval [45](Chapter_2.xhtml#_idIndexMarker101)
+  prefs: []
+  type: TYPE_NORMAL
+- en: confusion matrix [114](Chapter_4.xhtml#_idIndexMarker326)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Contextual bandits [303](Chapter_11.xhtml#_idIndexMarker866)
+  prefs: []
+  type: TYPE_NORMAL
+- en: contingency table [220](Chapter_8.xhtml#_idIndexMarker668)
+  prefs: []
+  type: TYPE_NORMAL
+- en: continuous-time Markov chain (CTMC) [239](Chapter_9.xhtml#_idIndexMarker716)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ConvNets [276](Chapter_10.xhtml#_idIndexMarker823)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Convolutional Neural Network (CNN) [322](Chapter_12.xhtml#_idIndexMarker900)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Convolutional Neural Networks (CNNs) [77](Chapter_3.xhtml#_idIndexMarker206)
+  prefs: []
+  type: TYPE_NORMAL
+- en: correlation heatmap [53](Chapter_2.xhtml#_idIndexMarker124)
+  prefs: []
+  type: TYPE_NORMAL
+- en: correlation matrix [52](Chapter_2.xhtml#_idIndexMarker123)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Correlation Ratio [115](Chapter_4.xhtml#_idIndexMarker340), [116](Chapter_4.xhtml#_idIndexMarker341)
+  prefs: []
+  type: TYPE_NORMAL
+- en: covariate drift [217](Chapter_8.xhtml#_idIndexMarker656)
+  prefs: []
+  type: TYPE_NORMAL
+- en: critical difference (CD) diagrams [119](Chapter_4.xhtml#_idIndexMarker361)
+  prefs: []
+  type: TYPE_NORMAL
+- en: cross-validation [105](Chapter_4.xhtml#_idIndexMarker295)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cross-Validation Accuracy Weighted Probabilistic Ensemble (CAWPE) [124](Chapter_4.xhtml#_idIndexMarker383)
+  prefs: []
+  type: TYPE_NORMAL
+- en: curve fitting [94](Chapter_4.xhtml#_idIndexMarker241)
+  prefs: []
+  type: TYPE_NORMAL
+- en: cyclic variations [56](Chapter_2.xhtml#_idIndexMarker131)
+  prefs: []
+  type: TYPE_NORMAL
+- en: D
+  prefs: []
+  type: TYPE_NORMAL
+- en: DataFrame [30](Chapter_1.xhtml#_idIndexMarker059)
+  prefs: []
+  type: TYPE_NORMAL
+- en: data preprocessing
+  prefs: []
+  type: TYPE_NORMAL
+- en: about [68](Chapter_3.xhtml#_idIndexMarker159), [69](Chapter_3.xhtml#_idIndexMarker164)
+  prefs: []
+  type: TYPE_NORMAL
+- en: data preprocessing, techniques
+  prefs: []
+  type: TYPE_NORMAL
+- en: feature engineering [68](Chapter_3.xhtml#_idIndexMarker162)
+  prefs: []
+  type: TYPE_NORMAL
+- en: feature transforms [68](Chapter_3.xhtml#_idIndexMarker160)
+  prefs: []
+  type: TYPE_NORMAL
+- en: dataset shift [216](Chapter_8.xhtml#_idIndexMarker652)
+  prefs: []
+  type: TYPE_NORMAL
+- en: date- and time-related features [75](Chapter_3.xhtml#_idIndexMarker193)
+  prefs: []
+  type: TYPE_NORMAL
+- en: date annotation [85](Chapter_3.xhtml#_idIndexMarker226), [86](Chapter_3.xhtml#_idIndexMarker227)
+  prefs: []
+  type: TYPE_NORMAL
+- en: datetime [39](Chapter_2.xhtml#_idIndexMarker082), [40](Chapter_2.xhtml#_idIndexMarker085),
+    [41](Chapter_2.xhtml#_idIndexMarker087)
+  prefs: []
+  type: TYPE_NORMAL
+- en: decision tree [100](Chapter_4.xhtml#_idIndexMarker276)
+  prefs: []
+  type: TYPE_NORMAL
+- en: decoders [273](Chapter_10.xhtml#_idIndexMarker811)
+  prefs: []
+  type: TYPE_NORMAL
+- en: DeepAR [236](Chapter_9.xhtml#_idIndexMarker693), [274](Chapter_10.xhtml#_idIndexMarker818)
+  prefs: []
+  type: TYPE_NORMAL
+- en: DeepAR model [325](Chapter_12.xhtml#_idIndexMarker908), [326](Chapter_12.xhtml#_idIndexMarker909)
+  prefs: []
+  type: TYPE_NORMAL
+- en: deep learning [261](Chapter_10.xhtml#_idIndexMarker765), [262](Chapter_10.xhtml#_idIndexMarker767)
+  prefs: []
+  type: TYPE_NORMAL
+- en: deep learning approaches
+  prefs: []
+  type: TYPE_NORMAL
+- en: typology [268](Chapter_10.xhtml#_idIndexMarker792)
+  prefs: []
+  type: TYPE_NORMAL
+- en: deep learning, for time series [269](Chapter_10.xhtml#_idIndexMarker793), [270](Chapter_10.xhtml#_idIndexMarker800),
+    [271](Chapter_10.xhtml#_idIndexMarker806)
+  prefs: []
+  type: TYPE_NORMAL
+- en: deep Q-Learning [303](Chapter_11.xhtml#_idIndexMarker869), [304](Chapter_11.xhtml#_idIndexMarker870),
+    [305](Chapter_11.xhtml#_idIndexMarker873)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deep Q-Network (DQN) [311](Chapter_11.xhtml#_idIndexMarker883)
+  prefs: []
+  type: TYPE_NORMAL
+- en: deep reinforcement learning (DRL) [301](Chapter_11.xhtml#_idIndexMarker858)
+  prefs: []
+  type: TYPE_NORMAL
+- en: DeepState [236](Chapter_9.xhtml#_idIndexMarker694)
+  prefs: []
+  type: TYPE_NORMAL
+- en: demography [6](Chapter_1.xhtml#_idIndexMarker012), [7](Chapter_1.xhtml#_idIndexMarker014),
+    [8](Chapter_1.xhtml#_idIndexMarker016), [9](Chapter_1.xhtml#_idIndexMarker017)
+  prefs: []
+  type: TYPE_NORMAL
+- en: dendrites [263](Chapter_10.xhtml#_idIndexMarker773)
+  prefs: []
+  type: TYPE_NORMAL
+- en: descriptive analysis [36](Chapter_2.xhtml#_idIndexMarker071)
+  prefs: []
+  type: TYPE_NORMAL
+- en: differencing [138](Chapter_5.xhtml#_idIndexMarker425)
+  prefs: []
+  type: TYPE_NORMAL
+- en: dilated causal convolutional neural network [292](Chapter_10.xhtml#_idIndexMarker845),
+    [293](Chapter_10.xhtml#_idIndexMarker846), [294](Chapter_10.xhtml#_idIndexMarker847),
+    [295](Chapter_10.xhtml#_idIndexMarker848)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dirichlet sampling [303](Chapter_11.xhtml#_idIndexMarker865)
+  prefs: []
+  type: TYPE_NORMAL
+- en: discrete-time Markov chain (DTMC) [239](Chapter_9.xhtml#_idIndexMarker715)
+  prefs: []
+  type: TYPE_NORMAL
+- en: distance-based approaches [118](Chapter_4.xhtml#_idIndexMarker353)
+  prefs: []
+  type: TYPE_NORMAL
+- en: dl-4-tsc [271](Chapter_10.xhtml#_idIndexMarker805)
+  prefs: []
+  type: TYPE_NORMAL
+- en: drift [216](Chapter_8.xhtml#_idIndexMarker651), [217](Chapter_8.xhtml#_idIndexMarker654),
+    [218](Chapter_8.xhtml#_idIndexMarker663), [219](Chapter_8.xhtml#_idIndexMarker664)
+  prefs: []
+  type: TYPE_NORMAL
+- en: concept drift [217](Chapter_8.xhtml#_idIndexMarker661)
+  prefs: []
+  type: TYPE_NORMAL
+- en: covariate drift [217](Chapter_8.xhtml#_idIndexMarker655)
+  prefs: []
+  type: TYPE_NORMAL
+- en: probability drift [217](Chapter_8.xhtml#_idIndexMarker659)
+  prefs: []
+  type: TYPE_NORMAL
+- en: drift detection [224](Chapter_8.xhtml#_idIndexMarker677), [225](Chapter_8.xhtml#_idIndexMarker678)
+  prefs: []
+  type: TYPE_NORMAL
+- en: methods [219](Chapter_8.xhtml#_idIndexMarker665), [220](Chapter_8.xhtml#_idIndexMarker670),
+    [222](Chapter_8.xhtml#_idIndexMarker671)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Drift Detection Method (DDM) [220](Chapter_8.xhtml#_idIndexMarker666)
+  prefs: []
+  type: TYPE_NORMAL
+- en: drift transitions [216](Chapter_8.xhtml#_idIndexMarker653)
+  prefs: []
+  type: TYPE_NORMAL
+- en: dropout [282](Chapter_10.xhtml#_idIndexMarker832)
+  prefs: []
+  type: TYPE_NORMAL
+- en: dynamic time warping
+  prefs: []
+  type: TYPE_NORMAL
+- en: using, in K-nearest neighbors [189](Chapter_7.xhtml#_idIndexMarker567)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dynamic time warping (DTW) [116](Chapter_4.xhtml#_idIndexMarker345)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dynamic Time Warping (DTW) [118](Chapter_4.xhtml#_idIndexMarker354), [270](Chapter_10.xhtml#_idIndexMarker798)
+  prefs: []
+  type: TYPE_NORMAL
+- en: dynamic time wraping
+  prefs: []
+  type: TYPE_NORMAL
+- en: K-nearest neighbors, in Python [193](Chapter_7.xhtml#_idIndexMarker585), [194](Chapter_7.xhtml#_idIndexMarker588),
+    [195](Chapter_7.xhtml#_idIndexMarker590)
+  prefs: []
+  type: TYPE_NORMAL
+- en: E
+  prefs: []
+  type: TYPE_NORMAL
+- en: early stopping [282](Chapter_10.xhtml#_idIndexMarker833)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Echo State Network (ESN) [322](Chapter_12.xhtml#_idIndexMarker899)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ECL (Electricity Consuming Load) [279](Chapter_10.xhtml#_idIndexMarker830)
+  prefs: []
+  type: TYPE_NORMAL
+- en: economics [13](Chapter_1.xhtml#_idIndexMarker025), [14](Chapter_1.xhtml#_idIndexMarker026)
+  prefs: []
+  type: TYPE_NORMAL
+- en: elastic ensemble (EE) [124](Chapter_4.xhtml#_idIndexMarker382)
+  prefs: []
+  type: TYPE_NORMAL
+- en: electrocardiogram (ECG) [118](Chapter_4.xhtml#_idIndexMarker349)
+  prefs: []
+  type: TYPE_NORMAL
+- en: electroencephalogram (EEG) [118](Chapter_4.xhtml#_idIndexMarker350)
+  prefs: []
+  type: TYPE_NORMAL
+- en: electroencephalography (EEG) [16](Chapter_1.xhtml#_idIndexMarker032), [17](Chapter_1.xhtml#_idIndexMarker034),
+    [60](Chapter_2.xhtml#_idIndexMarker149)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Electronic Numerical Integrator and Computer (ENIAC) [15](Chapter_1.xhtml#_idIndexMarker029),
+    [16](Chapter_1.xhtml#_idIndexMarker030)
+  prefs: []
+  type: TYPE_NORMAL
+- en: encoders [273](Chapter_10.xhtml#_idIndexMarker810)
+  prefs: []
+  type: TYPE_NORMAL
+- en: epsilon-greedy [301](Chapter_11.xhtml#_idIndexMarker857)
+  prefs: []
+  type: TYPE_NORMAL
+- en: error metrics
+  prefs: []
+  type: TYPE_NORMAL
+- en: for time series [106](Chapter_4.xhtml#_idIndexMarker299)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ETT (Electricity Transformer Temperature) [279](Chapter_10.xhtml#_idIndexMarker829)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Euclidean distance [116](Chapter_4.xhtml#_idIndexMarker343)
+  prefs: []
+  type: TYPE_NORMAL
+- en: experience replay technique [304](Chapter_11.xhtml#_idIndexMarker872)
+  prefs: []
+  type: TYPE_NORMAL
+- en: exploration versus exploitation dilemma [301](Chapter_11.xhtml#_idIndexMarker856)
+  prefs: []
+  type: TYPE_NORMAL
+- en: exploratory analysis [36](Chapter_2.xhtml#_idIndexMarker072)
+  prefs: []
+  type: TYPE_NORMAL
+- en: exploratory data analysis (EDA) [36](Chapter_2.xhtml#_idIndexMarker069)
+  prefs: []
+  type: TYPE_NORMAL
+- en: exponential smoothing [140](Chapter_5.xhtml#_idIndexMarker439), [141](Chapter_5.xhtml#_idIndexMarker441),
+    [142](Chapter_5.xhtml#_idIndexMarker445)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exponential Smoothing (ES) [269](Chapter_10.xhtml#_idIndexMarker795), [275](Chapter_10.xhtml#_idIndexMarker821),
+    [335](Chapter_12.xhtml#_idIndexMarker919)
+  prefs: []
+  type: TYPE_NORMAL
+- en: exponential smoothing model [157](Chapter_5.xhtml#_idIndexMarker499), [158](Chapter_5.xhtml#_idIndexMarker500)
+  prefs: []
+  type: TYPE_NORMAL
+- en: used, for creating forecast [157](Chapter_5.xhtml#_idIndexMarker498)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extreme Studentized Deviate (ESD) [170](Chapter_6.xhtml#_idIndexMarker528)
+  prefs: []
+  type: TYPE_NORMAL
+- en: F
+  prefs: []
+  type: TYPE_NORMAL
+- en: Facebook [170](Chapter_6.xhtml#_idIndexMarker523)
+  prefs: []
+  type: TYPE_NORMAL
+- en: false alarm ratio [115](Chapter_4.xhtml#_idIndexMarker338)
+  prefs: []
+  type: TYPE_NORMAL
+- en: false negatives (FN) [115](Chapter_4.xhtml#_idIndexMarker333)
+  prefs: []
+  type: TYPE_NORMAL
+- en: false positive rate (FPR) [115](Chapter_4.xhtml#_idIndexMarker337)
+  prefs: []
+  type: TYPE_NORMAL
+- en: false positives (FP) [115](Chapter_4.xhtml#_idIndexMarker332)
+  prefs: []
+  type: TYPE_NORMAL
+- en: feature engineering [68](Chapter_3.xhtml#_idIndexMarker163)
+  prefs: []
+  type: TYPE_NORMAL
+- en: about [74](Chapter_3.xhtml#_idIndexMarker188), [75](Chapter_3.xhtml#_idIndexMarker192)
+  prefs: []
+  type: TYPE_NORMAL
+- en: date- and time-related features [75](Chapter_3.xhtml#_idIndexMarker194)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ROCKET features [76](Chapter_3.xhtml#_idIndexMarker196), [77](Chapter_3.xhtml#_idIndexMarker201)
+  prefs: []
+  type: TYPE_NORMAL
+- en: shapelets [77](Chapter_3.xhtml#_idIndexMarker207)
+  prefs: []
+  type: TYPE_NORMAL
+- en: feature leakage [49](Chapter_2.xhtml#_idIndexMarker112)
+  prefs: []
+  type: TYPE_NORMAL
+- en: feature transforms [68](Chapter_3.xhtml#_idIndexMarker161)
+  prefs: []
+  type: TYPE_NORMAL
+- en: about [69](Chapter_3.xhtml#_idIndexMarker165)
+  prefs: []
+  type: TYPE_NORMAL
+- en: imputation [73](Chapter_3.xhtml#_idIndexMarker184)
+  prefs: []
+  type: TYPE_NORMAL
+- en: log transformation [71](Chapter_3.xhtml#_idIndexMarker172)
+  prefs: []
+  type: TYPE_NORMAL
+- en: power transformation [71](Chapter_3.xhtml#_idIndexMarker174)
+  prefs: []
+  type: TYPE_NORMAL
+- en: scaling [70](Chapter_3.xhtml#_idIndexMarker167)
+  prefs: []
+  type: TYPE_NORMAL
+- en: feedforward propagation [264](Chapter_10.xhtml#_idIndexMarker778)
+  prefs: []
+  type: TYPE_NORMAL
+- en: filters [76](Chapter_3.xhtml#_idIndexMarker199)
+  prefs: []
+  type: TYPE_NORMAL
+- en: forecast
+  prefs: []
+  type: TYPE_NORMAL
+- en: creating, with exponential smoothing model [156](Chapter_5.xhtml#_idIndexMarker497)
+  prefs: []
+  type: TYPE_NORMAL
+- en: forecast error [107](Chapter_4.xhtml#_idIndexMarker304)
+  prefs: []
+  type: TYPE_NORMAL
+- en: forecasting [95](Chapter_4.xhtml#_idIndexMarker244)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Forecasting [6](Chapter_1.xhtml#_idIndexMarker011)
+  prefs: []
+  type: TYPE_NORMAL
+- en: fully connected feed-forward neural network [98](Chapter_4.xhtml#_idIndexMarker270)
+  prefs: []
+  type: TYPE_NORMAL
+- en: fully connected network [281](Chapter_10.xhtml#_idIndexMarker831), [282](Chapter_10.xhtml#_idIndexMarker835),
+    [283](Chapter_10.xhtml#_idIndexMarker836), [284](Chapter_10.xhtml#_idIndexMarker837),
+    [285](Chapter_10.xhtml#_idIndexMarker838), [286](Chapter_10.xhtml#_idIndexMarker839),
+    [288](Chapter_10.xhtml#_idIndexMarker841)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fully Connected Networks (FCNs) [273](Chapter_10.xhtml#_idIndexMarker815)
+  prefs: []
+  type: TYPE_NORMAL
+- en: fully convolutional neural network (FCN) [273](Chapter_10.xhtml#_idIndexMarker816)
+  prefs: []
+  type: TYPE_NORMAL
+- en: fuzzy modeling [240](Chapter_9.xhtml#_idIndexMarker720), [241](Chapter_9.xhtml#_idIndexMarker723),
+    [242](Chapter_9.xhtml#_idIndexMarker725)
+  prefs: []
+  type: TYPE_NORMAL
+- en: fuzzy set theory [240](Chapter_9.xhtml#_idIndexMarker721)
+  prefs: []
+  type: TYPE_NORMAL
+- en: fuzzy time-series
+  prefs: []
+  type: TYPE_NORMAL
+- en: implementing, in Python [252](Chapter_9.xhtml#_idIndexMarker748), [253](Chapter_9.xhtml#_idIndexMarker749),
+    [254](Chapter_9.xhtml#_idIndexMarker752), [255](Chapter_9.xhtml#_idIndexMarker753),
+    [256](Chapter_9.xhtml#_idIndexMarker756)
+  prefs: []
+  type: TYPE_NORMAL
+- en: G
+  prefs: []
+  type: TYPE_NORMAL
+- en: GARCH (generalized ARCH) [144](Chapter_5.xhtml#_idIndexMarker456)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gated Recurrent Unit (GRU) [323](Chapter_12.xhtml#_idIndexMarker902)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gaussian Process [333](Chapter_12.xhtml#_idIndexMarker917), [334](Chapter_12.xhtml#_idIndexMarker918)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gaussian Process (GP) [271](Chapter_10.xhtml#_idIndexMarker804)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generalized Additive Model (GAM) [129](Chapter_4.xhtml#_idIndexMarker395), [170](Chapter_6.xhtml#_idIndexMarker525),
+    [238](Chapter_9.xhtml#_idIndexMarker702)
+  prefs: []
+  type: TYPE_NORMAL
+- en: generalized linear model (GLM) [19](Chapter_1.xhtml#_idIndexMarker038)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generalized Linear Model (GLM) [129](Chapter_4.xhtml#_idIndexMarker398)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generalized random shapelet forest (gRFS) [119](Chapter_4.xhtml#_idIndexMarker358)
+  prefs: []
+  type: TYPE_NORMAL
+- en: generative adversarial networks (GANs) [261](Chapter_10.xhtml#_idIndexMarker766)
+  prefs: []
+  type: TYPE_NORMAL
+- en: global max-pooling [77](Chapter_3.xhtml#_idIndexMarker202)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Global Temperature Time Series
+  prefs: []
+  type: TYPE_NORMAL
+- en: reference link [57](Chapter_2.xhtml#_idIndexMarker136)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gluon-TS [271](Chapter_10.xhtml#_idIndexMarker802)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Google Analytics [169](Chapter_6.xhtml#_idIndexMarker517)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gradient Boosted Regression Tree (GBRT) [191](Chapter_7.xhtml#_idIndexMarker573)
+  prefs: []
+  type: TYPE_NORMAL
+- en: gradient boosted trees
+  prefs: []
+  type: TYPE_NORMAL
+- en: implementations [102](Chapter_4.xhtml#_idIndexMarker288)
+  prefs: []
+  type: TYPE_NORMAL
+- en: gradient boosting [102](Chapter_4.xhtml#_idIndexMarker287), [191](Chapter_7.xhtml#_idIndexMarker571),
+    [192](Chapter_7.xhtml#_idIndexMarker576), [199](Chapter_7.xhtml#_idIndexMarker605),
+    [200](Chapter_7.xhtml#_idIndexMarker606), [201](Chapter_7.xhtml#_idIndexMarker609),
+    [202](Chapter_7.xhtml#_idIndexMarker611), [203](Chapter_7.xhtml#_idIndexMarker615),
+    [204](Chapter_7.xhtml#_idIndexMarker617)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gradient Boosting Machine (GBM) [191](Chapter_7.xhtml#_idIndexMarker572)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Granger causality [117](Chapter_4.xhtml#_idIndexMarker346)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Graphics Processing Units (GPUs) [265](Chapter_10.xhtml#_idIndexMarker787)
+  prefs: []
+  type: TYPE_NORMAL
+- en: H
+  prefs: []
+  type: TYPE_NORMAL
+- en: heterogeneous ensembles [321](Chapter_12.xhtml#_idIndexMarker897)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hidden Markov model (HMM) [239](Chapter_9.xhtml#_idIndexMarker718)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hierarchical Vote Collective of Transformation-Based Ensembles (HIVE-COTE) [123](Chapter_4.xhtml#_idIndexMarker379)
+  prefs: []
+  type: TYPE_NORMAL
+- en: HIVE-COTE (Hierarchical Vote Collective of Transformation-Based Ensembles) [270](Chapter_10.xhtml#_idIndexMarker799)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hoeffding Tree [215](Chapter_8.xhtml#_idIndexMarker647)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Holdout [212](Chapter_8.xhtml#_idIndexMarker635)
+  prefs: []
+  type: TYPE_NORMAL
+- en: holiday features [83](Chapter_3.xhtml#_idIndexMarker223), [84](Chapter_3.xhtml#_idIndexMarker224),
+    [85](Chapter_3.xhtml#_idIndexMarker225)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Holtz-Winters method [142](Chapter_5.xhtml#_idIndexMarker444)
+  prefs: []
+  type: TYPE_NORMAL
+- en: I
+  prefs: []
+  type: TYPE_NORMAL
+- en: identify function [266](Chapter_10.xhtml#_idIndexMarker791)
+  prefs: []
+  type: TYPE_NORMAL
+- en: imputation [82](Chapter_3.xhtml#_idIndexMarker220), [83](Chapter_3.xhtml#_idIndexMarker222)
+  prefs: []
+  type: TYPE_NORMAL
+- en: imputation techniques [73](Chapter_3.xhtml#_idIndexMarker185)
+  prefs: []
+  type: TYPE_NORMAL
+- en: InceptionTime [273](Chapter_10.xhtml#_idIndexMarker813), [274](Chapter_10.xhtml#_idIndexMarker817)
+  prefs: []
+  type: TYPE_NORMAL
+- en: inference [96](Chapter_4.xhtml#_idIndexMarker255)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Informer [278](Chapter_10.xhtml#_idIndexMarker827), [279](Chapter_10.xhtml#_idIndexMarker828)
+  prefs: []
+  type: TYPE_NORMAL
+- en: integrated development environment (IDE) [27](Chapter_1.xhtml#_idIndexMarker054)
+  prefs: []
+  type: TYPE_NORMAL
+- en: integration [138](Chapter_5.xhtml#_idIndexMarker424)
+  prefs: []
+  type: TYPE_NORMAL
+- en: interquartile range [45](Chapter_2.xhtml#_idIndexMarker104)
+  prefs: []
+  type: TYPE_NORMAL
+- en: J
+  prefs: []
+  type: TYPE_NORMAL
+- en: JupyterLab [26](Chapter_1.xhtml#_idIndexMarker052), [27](Chapter_1.xhtml#_idIndexMarker053)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Jupyter Notebook [26](Chapter_1.xhtml#_idIndexMarker050)
+  prefs: []
+  type: TYPE_NORMAL
+- en: K
+  prefs: []
+  type: TYPE_NORMAL
+- en: K-Armed Bandit [212](Chapter_8.xhtml#_idIndexMarker638)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kats installation [205](Chapter_7.xhtml#_idIndexMarker619), [206](Chapter_7.xhtml#_idIndexMarker621),
+    [207](Chapter_7.xhtml#_idIndexMarker623)
+  prefs: []
+  type: TYPE_NORMAL
+- en: kernels [76](Chapter_3.xhtml#_idIndexMarker198)
+  prefs: []
+  type: TYPE_NORMAL
+- en: K-nearest neighbors
+  prefs: []
+  type: TYPE_NORMAL
+- en: with dynamic time warping [189](Chapter_7.xhtml#_idIndexMarker566)
+  prefs: []
+  type: TYPE_NORMAL
+- en: with dynamic time wraping, in Python [193](Chapter_7.xhtml#_idIndexMarker584),
+    [194](Chapter_7.xhtml#_idIndexMarker587), [195](Chapter_7.xhtml#_idIndexMarker591)
+  prefs: []
+  type: TYPE_NORMAL
+- en: L
+  prefs: []
+  type: TYPE_NORMAL
+- en: label drift [217](Chapter_8.xhtml#_idIndexMarker662)
+  prefs: []
+  type: TYPE_NORMAL
+- en: least-squares algorithm [144](Chapter_5.xhtml#_idIndexMarker455)
+  prefs: []
+  type: TYPE_NORMAL
+- en: least squares method [12](Chapter_1.xhtml#_idIndexMarker022)
+  prefs: []
+  type: TYPE_NORMAL
+- en: lex parsimoniae [139](Chapter_5.xhtml#_idIndexMarker432)
+  prefs: []
+  type: TYPE_NORMAL
+- en: libraries
+  prefs: []
+  type: TYPE_NORMAL
+- en: installing [22](Chapter_1.xhtml#_idIndexMarker042), [23](Chapter_1.xhtml#_idIndexMarker045),
+    [25](Chapter_1.xhtml#_idIndexMarker048)
+  prefs: []
+  type: TYPE_NORMAL
+- en: life table [7](Chapter_1.xhtml#_idIndexMarker013)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Light Gradient Boosting Machine (LightGBM) [191](Chapter_7.xhtml#_idIndexMarker574)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Linear Four Rates [220](Chapter_8.xhtml#_idIndexMarker667)
+  prefs: []
+  type: TYPE_NORMAL
+- en: linear regression (LR) [238](Chapter_9.xhtml#_idIndexMarker705)
+  prefs: []
+  type: TYPE_NORMAL
+- en: line chart [51](Chapter_2.xhtml#_idIndexMarker119)
+  prefs: []
+  type: TYPE_NORMAL
+- en: log transformation [71](Chapter_3.xhtml#_idIndexMarker171), [82](Chapter_3.xhtml#_idIndexMarker218)
+  prefs: []
+  type: TYPE_NORMAL
+- en: log transformations [78](Chapter_3.xhtml#_idIndexMarker210), [79](Chapter_3.xhtml#_idIndexMarker212),
+    [81](Chapter_3.xhtml#_idIndexMarker214)
+  prefs: []
+  type: TYPE_NORMAL
+- en: long short-term memory (LSTM) [103](Chapter_4.xhtml#_idIndexMarker290), [265](Chapter_10.xhtml#_idIndexMarker785)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Long Short-Term Memory (LSTM) [323](Chapter_12.xhtml#_idIndexMarker903), [329](Chapter_12.xhtml#_idIndexMarker911)
+  prefs: []
+  type: TYPE_NORMAL
+- en: long short-term models (LSTMs) [269](Chapter_10.xhtml#_idIndexMarker796)
+  prefs: []
+  type: TYPE_NORMAL
+- en: loss function [106](Chapter_4.xhtml#_idIndexMarker297)
+  prefs: []
+  type: TYPE_NORMAL
+- en: M
+  prefs: []
+  type: TYPE_NORMAL
+- en: machine learning [93](Chapter_4.xhtml#_idIndexMarker238), [98](Chapter_4.xhtml#_idIndexMarker267)
+  prefs: []
+  type: TYPE_NORMAL
+- en: history [98](Chapter_4.xhtml#_idIndexMarker268), [99](Chapter_4.xhtml#_idIndexMarker272)
+  prefs: []
+  type: TYPE_NORMAL
+- en: with time series [94](Chapter_4.xhtml#_idIndexMarker239)
+  prefs: []
+  type: TYPE_NORMAL
+- en: workflow [103](Chapter_4.xhtml#_idIndexMarker292), [104](Chapter_4.xhtml#_idIndexMarker293),
+    [105](Chapter_4.xhtml#_idIndexMarker294)
+  prefs: []
+  type: TYPE_NORMAL
+- en: machine learning algorithms
+  prefs: []
+  type: TYPE_NORMAL
+- en: for time series [117](Chapter_4.xhtml#_idIndexMarker347)
+  prefs: []
+  type: TYPE_NORMAL
+- en: query time, versus accuracy [124](Chapter_4.xhtml#_idIndexMarker385), [125](Chapter_4.xhtml#_idIndexMarker386)
+  prefs: []
+  type: TYPE_NORMAL
+- en: machine learning methods
+  prefs: []
+  type: TYPE_NORMAL
+- en: for time series [186](Chapter_7.xhtml#_idIndexMarker559), [187](Chapter_7.xhtml#_idIndexMarker561)
+  prefs: []
+  type: TYPE_NORMAL
+- en: magnetoencephalography (MEG) [118](Chapter_4.xhtml#_idIndexMarker351)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Markov assumption [239](Chapter_9.xhtml#_idIndexMarker714)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Markovian [239](Chapter_9.xhtml#_idIndexMarker712)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Markov models [239](Chapter_9.xhtml#_idIndexMarker710)
+  prefs: []
+  type: TYPE_NORMAL
+- en: hidden Markov model (HMM) [239](Chapter_9.xhtml#_idIndexMarker717)
+  prefs: []
+  type: TYPE_NORMAL
+- en: implementing, in Python [251](Chapter_9.xhtml#_idIndexMarker743), [252](Chapter_9.xhtml#_idIndexMarker745)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Markov Process [239](Chapter_9.xhtml#_idIndexMarker713)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Markov property [239](Chapter_9.xhtml#_idIndexMarker711)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Markov switching model
+  prefs: []
+  type: TYPE_NORMAL
+- en: implementing, in Python [248](Chapter_9.xhtml#_idIndexMarker737), [249](Chapter_9.xhtml#_idIndexMarker739),
+    [250](Chapter_9.xhtml#_idIndexMarker741)
+  prefs: []
+  type: TYPE_NORMAL
+- en: maximum-likelihood estimation (MLE) [139](Chapter_5.xhtml#_idIndexMarker434)
+  prefs: []
+  type: TYPE_NORMAL
+- en: max pooling [77](Chapter_3.xhtml#_idIndexMarker203)
+  prefs: []
+  type: TYPE_NORMAL
+- en: mean [44](Chapter_2.xhtml#_idIndexMarker097)
+  prefs: []
+  type: TYPE_NORMAL
+- en: mean absolute error (MAE) [109](Chapter_4.xhtml#_idIndexMarker310), [110](Chapter_4.xhtml#_idIndexMarker314),
+    [228](Chapter_8.xhtml#_idIndexMarker682)
+  prefs: []
+  type: TYPE_NORMAL
+- en: mean absolute percentage error (MAPE) [238](Chapter_9.xhtml#_idIndexMarker709)
+  prefs: []
+  type: TYPE_NORMAL
+- en: mean percentage error (MAPE) [111](Chapter_4.xhtml#_idIndexMarker318)
+  prefs: []
+  type: TYPE_NORMAL
+- en: mean relative absolute error (MRAE) [108](Chapter_4.xhtml#_idIndexMarker309),
+    [113](Chapter_4.xhtml#_idIndexMarker322)
+  prefs: []
+  type: TYPE_NORMAL
+- en: mean squared error (MSE) [109](Chapter_4.xhtml#_idIndexMarker311), [110](Chapter_4.xhtml#_idIndexMarker313)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mean Squared Error (MSE) [229](Chapter_8.xhtml#_idIndexMarker685)
+  prefs: []
+  type: TYPE_NORMAL
+- en: median [45](Chapter_2.xhtml#_idIndexMarker102)
+  prefs: []
+  type: TYPE_NORMAL
+- en: median absolute deviation (MAD) [165](Chapter_6.xhtml#_idIndexMarker510)
+  prefs: []
+  type: TYPE_NORMAL
+- en: median absolute error (MdAE) [111](Chapter_4.xhtml#_idIndexMarker317)
+  prefs: []
+  type: TYPE_NORMAL
+- en: medicine [16](Chapter_1.xhtml#_idIndexMarker031), [17](Chapter_1.xhtml#_idIndexMarker033)
+  prefs: []
+  type: TYPE_NORMAL
+- en: meteorology [14](Chapter_1.xhtml#_idIndexMarker027)
+  prefs: []
+  type: TYPE_NORMAL
+- en: metric [106](Chapter_4.xhtml#_idIndexMarker298)
+  prefs: []
+  type: TYPE_NORMAL
+- en: micro prediction time-series leaderboard
+  prefs: []
+  type: TYPE_NORMAL
+- en: reference link [321](Chapter_12.xhtml#_idIndexMarker895)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Microsoft [168](Chapter_6.xhtml#_idIndexMarker514)
+  prefs: []
+  type: TYPE_NORMAL
+- en: MINIROCKET [119](Chapter_4.xhtml#_idIndexMarker360), [120](Chapter_4.xhtml#_idIndexMarker362)
+  prefs: []
+  type: TYPE_NORMAL
+- en: min-max scaling [70](Chapter_3.xhtml#_idIndexMarker169)
+  prefs: []
+  type: TYPE_NORMAL
+- en: model-based imputation [73](Chapter_3.xhtml#_idIndexMarker187)
+  prefs: []
+  type: TYPE_NORMAL
+- en: modeling
+  prefs: []
+  type: TYPE_NORMAL
+- en: in Python [148](Chapter_5.xhtml#_idIndexMarker474), [149](Chapter_5.xhtml#_idIndexMarker479),
+    [150](Chapter_5.xhtml#_idIndexMarker480), [151](Chapter_5.xhtml#_idIndexMarker485),
+    [152](Chapter_5.xhtml#_idIndexMarker487), [153](Chapter_5.xhtml#_idIndexMarker489),
+    [154](Chapter_5.xhtml#_idIndexMarker491), [155](Chapter_5.xhtml#_idIndexMarker492)
+  prefs: []
+  type: TYPE_NORMAL
+- en: model selection [139](Chapter_5.xhtml#_idIndexMarker431), [230](Chapter_8.xhtml#_idIndexMarker687),
+    [231](Chapter_8.xhtml#_idIndexMarker688), [232](Chapter_8.xhtml#_idIndexMarker689)
+  prefs: []
+  type: TYPE_NORMAL
+- en: model stacking [74](Chapter_3.xhtml#_idIndexMarker189)
+  prefs: []
+  type: TYPE_NORMAL
+- en: monotonicity [71](Chapter_3.xhtml#_idIndexMarker175)
+  prefs: []
+  type: TYPE_NORMAL
+- en: moving average [134](Chapter_5.xhtml#_idIndexMarker406)
+  prefs: []
+  type: TYPE_NORMAL
+- en: moving average (MA) [129](Chapter_4.xhtml#_idIndexMarker396), [238](Chapter_9.xhtml#_idIndexMarker704)
+  prefs: []
+  type: TYPE_NORMAL
+- en: MrSEQL [123](Chapter_4.xhtml#_idIndexMarker374)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multi-Armed Bandit [212](Chapter_8.xhtml#_idIndexMarker637)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multi-Armed Bandit (MAB) [302](Chapter_11.xhtml#_idIndexMarker862)
+  prefs: []
+  type: TYPE_NORMAL
+- en: multi-layer perceptron (MLP) [238](Chapter_9.xhtml#_idIndexMarker706)
+  prefs: []
+  type: TYPE_NORMAL
+- en: multiplicative seasonality [142](Chapter_5.xhtml#_idIndexMarker450)
+  prefs: []
+  type: TYPE_NORMAL
+- en: multivariate analysis [38](Chapter_2.xhtml#_idIndexMarker079)
+  prefs: []
+  type: TYPE_NORMAL
+- en: multivariate time series [4](Chapter_1.xhtml#_idIndexMarker003)
+  prefs: []
+  type: TYPE_NORMAL
+- en: multivariate time-series
+  prefs: []
+  type: TYPE_NORMAL
+- en: forecasting [320](Chapter_12.xhtml#_idIndexMarker892), [321](Chapter_12.xhtml#_idIndexMarker894),
+    [322](Chapter_12.xhtml#_idIndexMarker898), [323](Chapter_12.xhtml#_idIndexMarker904),
+    [324](Chapter_12.xhtml#_idIndexMarker906)
+  prefs: []
+  type: TYPE_NORMAL
+- en: multivariate time series classification
+  prefs: []
+  type: TYPE_NORMAL
+- en: critical difference diagram [127](Chapter_4.xhtml#_idIndexMarker391)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multivariate Time Series (MTS) [273](Chapter_10.xhtml#_idIndexMarker814)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multivariate Unsupervised Symbols and Derivatives [123](Chapter_4.xhtml#_idIndexMarker377)
+  prefs: []
+  type: TYPE_NORMAL
+- en: N
+  prefs: []
+  type: TYPE_NORMAL
+- en: natural language processing (NLP) [269](Chapter_10.xhtml#_idIndexMarker794)
+  prefs: []
+  type: TYPE_NORMAL
+- en: N-BEATS [275](Chapter_10.xhtml#_idIndexMarker819)
+  prefs: []
+  type: TYPE_NORMAL
+- en: nearest neighbor algorithm [99](Chapter_4.xhtml#_idIndexMarker273)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Neural Basis Expansion Analysis for interpretable Time-Series forecasting (N-BEATS)
+    [323](Chapter_12.xhtml#_idIndexMarker905), [327](Chapter_12.xhtml#_idIndexMarker910)
+  prefs: []
+  type: TYPE_NORMAL
+- en: neurites [262](Chapter_10.xhtml#_idIndexMarker769)
+  prefs: []
+  type: TYPE_NORMAL
+- en: neurons [262](Chapter_10.xhtml#_idIndexMarker768), [263](Chapter_10.xhtml#_idIndexMarker770),
+    [264](Chapter_10.xhtml#_idIndexMarker774)
+  prefs: []
+  type: TYPE_NORMAL
+- en: non-linear methods [70](Chapter_3.xhtml#_idIndexMarker166)
+  prefs: []
+  type: TYPE_NORMAL
+- en: normalized mean squared error (NMSE) [112](Chapter_4.xhtml#_idIndexMarker320)
+  prefs: []
+  type: TYPE_NORMAL
+- en: normalized regression metrics [112](Chapter_4.xhtml#_idIndexMarker321)
+  prefs: []
+  type: TYPE_NORMAL
+- en: NumPy [28](Chapter_1.xhtml#_idIndexMarker055), [29](Chapter_1.xhtml#_idIndexMarker057)
+  prefs: []
+  type: TYPE_NORMAL
+- en: O
+  prefs: []
+  type: TYPE_NORMAL
+- en: objective function [98](Chapter_4.xhtml#_idIndexMarker264)
+  prefs: []
+  type: TYPE_NORMAL
+- en: offline learning [210](Chapter_8.xhtml#_idIndexMarker628)
+  prefs: []
+  type: TYPE_NORMAL
+- en: versus online learning [210](Chapter_8.xhtml#_idIndexMarker632), [211](Chapter_8.xhtml#_idIndexMarker634)
+  prefs: []
+  type: TYPE_NORMAL
+- en: online algorithms [213](Chapter_8.xhtml#_idIndexMarker639), [214](Chapter_8.xhtml#_idIndexMarker644),
+    [215](Chapter_8.xhtml#_idIndexMarker650)
+  prefs: []
+  type: TYPE_NORMAL
+- en: online learning [210](Chapter_8.xhtml#_idIndexMarker629)
+  prefs: []
+  type: TYPE_NORMAL
+- en: use cases [210](Chapter_8.xhtml#_idIndexMarker630)
+  prefs: []
+  type: TYPE_NORMAL
+- en: versus offline learning [210](Chapter_8.xhtml#_idIndexMarker631), [211](Chapter_8.xhtml#_idIndexMarker633)
+  prefs: []
+  type: TYPE_NORMAL
+- en: online mean [213](Chapter_8.xhtml#_idIndexMarker641)
+  prefs: []
+  type: TYPE_NORMAL
+- en: online variance [213](Chapter_8.xhtml#_idIndexMarker642)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our World in Data (OWID) [46](Chapter_2.xhtml#_idIndexMarker107)
+  prefs: []
+  type: TYPE_NORMAL
+- en: outlier detection [95](Chapter_4.xhtml#_idIndexMarker249)
+  prefs: []
+  type: TYPE_NORMAL
+- en: out-of-bag (OOB) error [321](Chapter_12.xhtml#_idIndexMarker896)
+  prefs: []
+  type: TYPE_NORMAL
+- en: out-of-sample testing [105](Chapter_4.xhtml#_idIndexMarker296)
+  prefs: []
+  type: TYPE_NORMAL
+- en: P
+  prefs: []
+  type: TYPE_NORMAL
+- en: pandas [30](Chapter_1.xhtml#_idIndexMarker058), [31](Chapter_1.xhtml#_idIndexMarker062),
+    [41](Chapter_2.xhtml#_idIndexMarker089), [42](Chapter_2.xhtml#_idIndexMarker092),
+    [43](Chapter_2.xhtml#_idIndexMarker094)
+  prefs: []
+  type: TYPE_NORMAL
+- en: paydays
+  prefs: []
+  type: TYPE_NORMAL
+- en: obtaining [86](Chapter_3.xhtml#_idIndexMarker228)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pearson correlation coefficient [50](Chapter_2.xhtml#_idIndexMarker116)
+  prefs: []
+  type: TYPE_NORMAL
+- en: percentile [45](Chapter_2.xhtml#_idIndexMarker105)
+  prefs: []
+  type: TYPE_NORMAL
+- en: perceptron [98](Chapter_4.xhtml#_idIndexMarker269), [264](Chapter_10.xhtml#_idIndexMarker779)
+  prefs: []
+  type: TYPE_NORMAL
+- en: perceptron model [264](Chapter_10.xhtml#_idIndexMarker775)
+  prefs: []
+  type: TYPE_NORMAL
+- en: periodogram [64](Chapter_2.xhtml#_idIndexMarker158)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Piecewise Aggregate Approximation (PAA) [121](Chapter_4.xhtml#_idIndexMarker368)
+  prefs: []
+  type: TYPE_NORMAL
+- en: pip [25](Chapter_1.xhtml#_idIndexMarker047)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pmdarima [146](Chapter_5.xhtml#_idIndexMarker464)
+  prefs: []
+  type: TYPE_NORMAL
+- en: policy-based learning [300](Chapter_11.xhtml#_idIndexMarker854)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Positive Proportion Value (PPV) [77](Chapter_3.xhtml#_idIndexMarker204)
+  prefs: []
+  type: TYPE_NORMAL
+- en: power function [71](Chapter_3.xhtml#_idIndexMarker176)
+  prefs: []
+  type: TYPE_NORMAL
+- en: power transformations [78](Chapter_3.xhtml#_idIndexMarker211), [79](Chapter_3.xhtml#_idIndexMarker213),
+    [81](Chapter_3.xhtml#_idIndexMarker215)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Box-Cox transformation [72](Chapter_3.xhtml#_idIndexMarker179)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Yeo-Johnson transformation [72](Chapter_3.xhtml#_idIndexMarker181)
+  prefs: []
+  type: TYPE_NORMAL
+- en: power transforms [71](Chapter_3.xhtml#_idIndexMarker173)
+  prefs: []
+  type: TYPE_NORMAL
+- en: precision [114](Chapter_4.xhtml#_idIndexMarker331)
+  prefs: []
+  type: TYPE_NORMAL
+- en: prediction [96](Chapter_4.xhtml#_idIndexMarker256)
+  prefs: []
+  type: TYPE_NORMAL
+- en: prediction error [107](Chapter_4.xhtml#_idIndexMarker302)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Prequential Evaluation [212](Chapter_8.xhtml#_idIndexMarker636)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Principal Component Analysis (PCA) [272](Chapter_10.xhtml#_idIndexMarker809)
+  prefs: []
+  type: TYPE_NORMAL
+- en: probabilistic libraries [237](Chapter_9.xhtml#_idIndexMarker698)
+  prefs: []
+  type: TYPE_NORMAL
+- en: probabilistic models [236](Chapter_9.xhtml#_idIndexMarker691)
+  prefs: []
+  type: TYPE_NORMAL
+- en: for time-series [236](Chapter_9.xhtml#_idIndexMarker692)
+  prefs: []
+  type: TYPE_NORMAL
+- en: probability [235](Chapter_9.xhtml#_idIndexMarker690)
+  prefs: []
+  type: TYPE_NORMAL
+- en: probability drift [217](Chapter_8.xhtml#_idIndexMarker658)
+  prefs: []
+  type: TYPE_NORMAL
+- en: probability ranking principle (PRP) [303](Chapter_11.xhtml#_idIndexMarker868)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Prophet model [236](Chapter_9.xhtml#_idIndexMarker695), [237](Chapter_9.xhtml#_idIndexMarker700)
+  prefs: []
+  type: TYPE_NORMAL
+- en: forecasting model [237](Chapter_9.xhtml#_idIndexMarker701), [238](Chapter_9.xhtml#_idIndexMarker703)
+  prefs: []
+  type: TYPE_NORMAL
+- en: implementing, in Python [245](Chapter_9.xhtml#_idIndexMarker731), [246](Chapter_9.xhtml#_idIndexMarker733),
+    [247](Chapter_9.xhtml#_idIndexMarker735)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Proximity Forest (PF) [121](Chapter_4.xhtml#_idIndexMarker364)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pruned Exact Linear Time (Pelt) [174](Chapter_6.xhtml#_idIndexMarker536)
+  prefs: []
+  type: TYPE_NORMAL
+- en: pytest documentation
+  prefs: []
+  type: TYPE_NORMAL
+- en: reference link [33](Chapter_1.xhtml#_idIndexMarker067)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python
+  prefs: []
+  type: TYPE_NORMAL
+- en: best practice [31](Chapter_1.xhtml#_idIndexMarker063), [32](Chapter_1.xhtml#_idIndexMarker064)
+  prefs: []
+  type: TYPE_NORMAL
+- en: for time series [18](Chapter_1.xhtml#_idIndexMarker036), [19](Chapter_1.xhtml#_idIndexMarker037),
+    [21](Chapter_1.xhtml#_idIndexMarker040), [22](Chapter_1.xhtml#_idIndexMarker041)
+  prefs: []
+  type: TYPE_NORMAL
+- en: modeling [148](Chapter_5.xhtml#_idIndexMarker475), [149](Chapter_5.xhtml#_idIndexMarker478),
+    [150](Chapter_5.xhtml#_idIndexMarker481), [151](Chapter_5.xhtml#_idIndexMarker484),
+    [152](Chapter_5.xhtml#_idIndexMarker486), [153](Chapter_5.xhtml#_idIndexMarker488),
+    [154](Chapter_5.xhtml#_idIndexMarker490), [155](Chapter_5.xhtml#_idIndexMarker493)
+  prefs: []
+  type: TYPE_NORMAL
+- en: practice [177](Chapter_6.xhtml#_idIndexMarker543)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python exercise [245](Chapter_9.xhtml#_idIndexMarker729)
+  prefs: []
+  type: TYPE_NORMAL
+- en: about [192](Chapter_7.xhtml#_idIndexMarker577)
+  prefs: []
+  type: TYPE_NORMAL
+- en: BSTS model, implementing [256](Chapter_9.xhtml#_idIndexMarker757), [257](Chapter_9.xhtml#_idIndexMarker760),
+    [258](Chapter_9.xhtml#_idIndexMarker762), [259](Chapter_9.xhtml#_idIndexMarker763)
+  prefs: []
+  type: TYPE_NORMAL
+- en: fuzzy time-series model, implementing [252](Chapter_9.xhtml#_idIndexMarker747),
+    [253](Chapter_9.xhtml#_idIndexMarker750), [254](Chapter_9.xhtml#_idIndexMarker751),
+    [255](Chapter_9.xhtml#_idIndexMarker754), [256](Chapter_9.xhtml#_idIndexMarker755)
+  prefs: []
+  type: TYPE_NORMAL
+- en: gradient boosting [199](Chapter_7.xhtml#_idIndexMarker604), [200](Chapter_7.xhtml#_idIndexMarker607),
+    [201](Chapter_7.xhtml#_idIndexMarker608), [202](Chapter_7.xhtml#_idIndexMarker610),
+    [203](Chapter_7.xhtml#_idIndexMarker614), [204](Chapter_7.xhtml#_idIndexMarker616)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kats installation [205](Chapter_7.xhtml#_idIndexMarker618), [206](Chapter_7.xhtml#_idIndexMarker620),
+    [207](Chapter_7.xhtml#_idIndexMarker624)
+  prefs: []
+  type: TYPE_NORMAL
+- en: K-nearest neighbors, with dynamic time wraping [193](Chapter_7.xhtml#_idIndexMarker583),
+    [194](Chapter_7.xhtml#_idIndexMarker586), [195](Chapter_7.xhtml#_idIndexMarker589)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Markov switching model, implementing [248](Chapter_9.xhtml#_idIndexMarker736),
+    [249](Chapter_9.xhtml#_idIndexMarker738), [250](Chapter_9.xhtml#_idIndexMarker740),
+    [251](Chapter_9.xhtml#_idIndexMarker742), [252](Chapter_9.xhtml#_idIndexMarker744)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Prophet model, implementing [245](Chapter_9.xhtml#_idIndexMarker730), [246](Chapter_9.xhtml#_idIndexMarker732),
+    [247](Chapter_9.xhtml#_idIndexMarker734)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Silverkite [195](Chapter_7.xhtml#_idIndexMarker592), [197](Chapter_7.xhtml#_idIndexMarker594),
+    [198](Chapter_7.xhtml#_idIndexMarker598), [199](Chapter_7.xhtml#_idIndexMarker600)
+  prefs: []
+  type: TYPE_NORMAL
+- en: virtual environment [192](Chapter_7.xhtml#_idIndexMarker579), [193](Chapter_7.xhtml#_idIndexMarker581)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python libraries [145](Chapter_5.xhtml#_idIndexMarker462)
+  prefs: []
+  type: TYPE_NORMAL
+- en: datetime [39](Chapter_2.xhtml#_idIndexMarker083), [40](Chapter_2.xhtml#_idIndexMarker084),
+    [41](Chapter_2.xhtml#_idIndexMarker086)
+  prefs: []
+  type: TYPE_NORMAL
+- en: pandas [41](Chapter_2.xhtml#_idIndexMarker090), [42](Chapter_2.xhtml#_idIndexMarker091),
+    [43](Chapter_2.xhtml#_idIndexMarker093), [44](Chapter_2.xhtml#_idIndexMarker095)
+  prefs: []
+  type: TYPE_NORMAL
+- en: requirements [39](Chapter_2.xhtml#_idIndexMarker081)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Statsmodels [146](Chapter_5.xhtml#_idIndexMarker467), [147](Chapter_5.xhtml#_idIndexMarker471)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python practice
+  prefs: []
+  type: TYPE_NORMAL
+- en: about [305](Chapter_11.xhtml#_idIndexMarker874)
+  prefs: []
+  type: TYPE_NORMAL
+- en: anomaly detection [178](Chapter_6.xhtml#_idIndexMarker545), [179](Chapter_6.xhtml#_idIndexMarker547),
+    [180](Chapter_6.xhtml#_idIndexMarker551)
+  prefs: []
+  type: TYPE_NORMAL
+- en: change point detection (CPD) [180](Chapter_6.xhtml#_idIndexMarker553), [181](Chapter_6.xhtml#_idIndexMarker556),
+    [182](Chapter_6.xhtml#_idIndexMarker557)
+  prefs: []
+  type: TYPE_NORMAL
+- en: recommendations [305](Chapter_11.xhtml#_idIndexMarker875), [306](Chapter_11.xhtml#_idIndexMarker876),
+    [307](Chapter_11.xhtml#_idIndexMarker877), [308](Chapter_11.xhtml#_idIndexMarker878),
+    [309](Chapter_11.xhtml#_idIndexMarker879), [310](Chapter_11.xhtml#_idIndexMarker880)
+  prefs: []
+  type: TYPE_NORMAL
+- en: requirements [177](Chapter_6.xhtml#_idIndexMarker544)
+  prefs: []
+  type: TYPE_NORMAL
+- en: trading, with DQN [310](Chapter_11.xhtml#_idIndexMarker882), [311](Chapter_11.xhtml#_idIndexMarker884),
+    [312](Chapter_11.xhtml#_idIndexMarker885), [313](Chapter_11.xhtml#_idIndexMarker886),
+    [314](Chapter_11.xhtml#_idIndexMarker887), [315](Chapter_11.xhtml#_idIndexMarker889),
+    [316](Chapter_11.xhtml#_idIndexMarker890), [317](Chapter_11.xhtml#_idIndexMarker891)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python Practice [223](Chapter_8.xhtml#_idIndexMarker676)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pytorch-forecasting [271](Chapter_10.xhtml#_idIndexMarker807)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Q
+  prefs: []
+  type: TYPE_NORMAL
+- en: Quantile Transformation [73](Chapter_3.xhtml#_idIndexMarker183)
+  prefs: []
+  type: TYPE_NORMAL
+- en: quartile [45](Chapter_2.xhtml#_idIndexMarker103)
+  prefs: []
+  type: TYPE_NORMAL
+- en: R
+  prefs: []
+  type: TYPE_NORMAL
+- en: random forest [102](Chapter_4.xhtml#_idIndexMarker285)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Random Interval Features (RIF) [124](Chapter_4.xhtml#_idIndexMarker381)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Random Interval Spectral Ensemble (RISE) [124](Chapter_4.xhtml#_idIndexMarker380)
+  prefs: []
+  type: TYPE_NORMAL
+- en: recall [114](Chapter_4.xhtml#_idIndexMarker327)
+  prefs: []
+  type: TYPE_NORMAL
+- en: receiver operator curve (ROC) [115](Chapter_4.xhtml#_idIndexMarker335)
+  prefs: []
+  type: TYPE_NORMAL
+- en: recurrent neural network [289](Chapter_10.xhtml#_idIndexMarker842), [290](Chapter_10.xhtml#_idIndexMarker843),
+    [291](Chapter_10.xhtml#_idIndexMarker844)
+  prefs: []
+  type: TYPE_NORMAL
+- en: recurrent neural networks (RNNs) [275](Chapter_10.xhtml#_idIndexMarker820)
+  prefs: []
+  type: TYPE_NORMAL
+- en: regression [95](Chapter_4.xhtml#_idIndexMarker242), [97](Chapter_4.xhtml#_idIndexMarker258),
+    [107](Chapter_4.xhtml#_idIndexMarker301), [225](Chapter_8.xhtml#_idIndexMarker679),
+    [226](Chapter_8.xhtml#_idIndexMarker680), [228](Chapter_8.xhtml#_idIndexMarker683),
+    [229](Chapter_8.xhtml#_idIndexMarker684)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Regularized Greedy Forest (RGF) [191](Chapter_7.xhtml#_idIndexMarker575)
+  prefs: []
+  type: TYPE_NORMAL
+- en: reinforcement learning [95](Chapter_4.xhtml#_idIndexMarker250), [98](Chapter_4.xhtml#_idIndexMarker265)
+  prefs: []
+  type: TYPE_NORMAL
+- en: reinforcement learning [96](Chapter_4.xhtml#_idIndexMarker253)
+  prefs: []
+  type: TYPE_NORMAL
+- en: reinforcement learning (RL)
+  prefs: []
+  type: TYPE_NORMAL
+- en: about [298](Chapter_11.xhtml#_idIndexMarker849), [299](Chapter_11.xhtml#_idIndexMarker851),
+    [301](Chapter_11.xhtml#_idIndexMarker855)
+  prefs: []
+  type: TYPE_NORMAL
+- en: for time-series [301](Chapter_11.xhtml#_idIndexMarker859)
+  prefs: []
+  type: TYPE_NORMAL
+- en: r-error (RE) [108](Chapter_4.xhtml#_idIndexMarker308)
+  prefs: []
+  type: TYPE_NORMAL
+- en: residual [107](Chapter_4.xhtml#_idIndexMarker303)
+  prefs: []
+  type: TYPE_NORMAL
+- en: residual sum of squares [107](Chapter_4.xhtml#_idIndexMarker305)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ResNets [266](Chapter_10.xhtml#_idIndexMarker788)
+  prefs: []
+  type: TYPE_NORMAL
+- en: River library [214](Chapter_8.xhtml#_idIndexMarker645)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ROCKET [119](Chapter_4.xhtml#_idIndexMarker359)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ROCKET features [76](Chapter_3.xhtml#_idIndexMarker197), [90](Chapter_3.xhtml#_idIndexMarker235),
+    [91](Chapter_3.xhtml#_idIndexMarker236)
+  prefs: []
+  type: TYPE_NORMAL
+- en: root mean squared error (RMSE) [109](Chapter_4.xhtml#_idIndexMarker312), [110](Chapter_4.xhtml#_idIndexMarker315),
+    [238](Chapter_9.xhtml#_idIndexMarker708)
+  prefs: []
+  type: TYPE_NORMAL
+- en: root mean square deviation (RMSD) [110](Chapter_4.xhtml#_idIndexMarker316)
+  prefs: []
+  type: TYPE_NORMAL
+- en: root mean squared logarithmic error (RMSLE) [113](Chapter_4.xhtml#_idIndexMarker323)
+  prefs: []
+  type: TYPE_NORMAL
+- en: run chart [51](Chapter_2.xhtml#_idIndexMarker120)
+  prefs: []
+  type: TYPE_NORMAL
+- en: S
+  prefs: []
+  type: TYPE_NORMAL
+- en: scale-invariant features (SIFT) [118](Chapter_4.xhtml#_idIndexMarker355)
+  prefs: []
+  type: TYPE_NORMAL
+- en: scaling methods [70](Chapter_3.xhtml#_idIndexMarker168)
+  prefs: []
+  type: TYPE_NORMAL
+- en: scatter plot [54](Chapter_2.xhtml#_idIndexMarker125)
+  prefs: []
+  type: TYPE_NORMAL
+- en: scikit-learn [214](Chapter_8.xhtml#_idIndexMarker643)
+  prefs: []
+  type: TYPE_NORMAL
+- en: scikit-learn project
+  prefs: []
+  type: TYPE_NORMAL
+- en: reference link [33](Chapter_1.xhtml#_idIndexMarker066)
+  prefs: []
+  type: TYPE_NORMAL
+- en: SciPy [28](Chapter_1.xhtml#_idIndexMarker056)
+  prefs: []
+  type: TYPE_NORMAL
+- en: season
+  prefs: []
+  type: TYPE_NORMAL
+- en: obtaining, for specific date [87](Chapter_3.xhtml#_idIndexMarker229)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Seasonal ARIMA (SARIMA) [238](Chapter_9.xhtml#_idIndexMarker707)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Seasonal Autoregression (SAR) [138](Chapter_5.xhtml#_idIndexMarker427)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Seasonal Auto Regressive Integrative Moving Average models (SARIMA) [138](Chapter_5.xhtml#_idIndexMarker426)
+  prefs: []
+  type: TYPE_NORMAL
+- en: seasonality [56](Chapter_2.xhtml#_idIndexMarker129)
+  prefs: []
+  type: TYPE_NORMAL
+- en: identifying [56](Chapter_2.xhtml#_idIndexMarker135), [57](Chapter_2.xhtml#_idIndexMarker138),
+    [58](Chapter_2.xhtml#_idIndexMarker142), [59](Chapter_2.xhtml#_idIndexMarker146),
+    [60](Chapter_2.xhtml#_idIndexMarker148), [61](Chapter_2.xhtml#_idIndexMarker153),
+    [63](Chapter_2.xhtml#_idIndexMarker155), [64](Chapter_2.xhtml#_idIndexMarker157)
+  prefs: []
+  type: TYPE_NORMAL
+- en: seasonal moving average (SMA) [139](Chapter_5.xhtml#_idIndexMarker428)
+  prefs: []
+  type: TYPE_NORMAL
+- en: segmentation [95](Chapter_4.xhtml#_idIndexMarker247)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Self-Organizing Maps (SOM) [242](Chapter_9.xhtml#_idIndexMarker724)
+  prefs: []
+  type: TYPE_NORMAL
+- en: sensitivity [114](Chapter_4.xhtml#_idIndexMarker330)
+  prefs: []
+  type: TYPE_NORMAL
+- en: SEQL [123](Chapter_4.xhtml#_idIndexMarker373)
+  prefs: []
+  type: TYPE_NORMAL
+- en: shapelets [78](Chapter_3.xhtml#_idIndexMarker208), [91](Chapter_3.xhtml#_idIndexMarker237)
+  prefs: []
+  type: TYPE_NORMAL
+- en: advantages [78](Chapter_3.xhtml#_idIndexMarker209)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Shapelets [119](Chapter_4.xhtml#_idIndexMarker356)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Shapelet Transform Classifier (STC) [119](Chapter_4.xhtml#_idIndexMarker357)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Silverkite [195](Chapter_7.xhtml#_idIndexMarker593), [197](Chapter_7.xhtml#_idIndexMarker595),
+    [198](Chapter_7.xhtml#_idIndexMarker599), [199](Chapter_7.xhtml#_idIndexMarker601)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Silverkite algorithm [190](Chapter_7.xhtml#_idIndexMarker569), [191](Chapter_7.xhtml#_idIndexMarker570),
+    [236](Chapter_9.xhtml#_idIndexMarker696)
+  prefs: []
+  type: TYPE_NORMAL
+- en: simple cells [265](Chapter_10.xhtml#_idIndexMarker782)
+  prefs: []
+  type: TYPE_NORMAL
+- en: simple exponential smoothing (SES) [140](Chapter_5.xhtml#_idIndexMarker440),
+    [141](Chapter_5.xhtml#_idIndexMarker443), [142](Chapter_5.xhtml#_idIndexMarker446),
+    [143](Chapter_5.xhtml#_idIndexMarker451)
+  prefs: []
+  type: TYPE_NORMAL
+- en: simple moving average [134](Chapter_5.xhtml#_idIndexMarker407)
+  prefs: []
+  type: TYPE_NORMAL
+- en: skip connections [266](Chapter_10.xhtml#_idIndexMarker789)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sktime-DL [271](Chapter_10.xhtml#_idIndexMarker801)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Spearman rank correlation [56](Chapter_2.xhtml#_idIndexMarker127)
+  prefs: []
+  type: TYPE_NORMAL
+- en: standard deviation [44](Chapter_2.xhtml#_idIndexMarker098)
+  prefs: []
+  type: TYPE_NORMAL
+- en: standard error (SE) [45](Chapter_2.xhtml#_idIndexMarker099)
+  prefs: []
+  type: TYPE_NORMAL
+- en: stationarity [6](Chapter_1.xhtml#_idIndexMarker008), [56](Chapter_2.xhtml#_idIndexMarker133),
+    [136](Chapter_5.xhtml#_idIndexMarker418), [137](Chapter_5.xhtml#_idIndexMarker419)
+  prefs: []
+  type: TYPE_NORMAL
+- en: stationary process [136](Chapter_5.xhtml#_idIndexMarker417)
+  prefs: []
+  type: TYPE_NORMAL
+- en: stationary processes [56](Chapter_2.xhtml#_idIndexMarker134)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Statsmodels [146](Chapter_5.xhtml#_idIndexMarker463), [147](Chapter_5.xhtml#_idIndexMarker472)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Statsmodels library
+  prefs: []
+  type: TYPE_NORMAL
+- en: using, for modeling [147](Chapter_5.xhtml#_idIndexMarker473)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Structured Query Language (SQL) [30](Chapter_1.xhtml#_idIndexMarker060)
+  prefs: []
+  type: TYPE_NORMAL
+- en: style guide for PEP 8
+  prefs: []
+  type: TYPE_NORMAL
+- en: reference link [32](Chapter_1.xhtml#_idIndexMarker065)
+  prefs: []
+  type: TYPE_NORMAL
+- en: sunlight hours
+  prefs: []
+  type: TYPE_NORMAL
+- en: obtaining, for specific day [87](Chapter_3.xhtml#_idIndexMarker231)
+  prefs: []
+  type: TYPE_NORMAL
+- en: supervised algorithms, for regression and classification
+  prefs: []
+  type: TYPE_NORMAL
+- en: implementations [128](Chapter_4.xhtml#_idIndexMarker392), [129](Chapter_4.xhtml#_idIndexMarker393)
+  prefs: []
+  type: TYPE_NORMAL
+- en: supervised learning [96](Chapter_4.xhtml#_idIndexMarker251), [97](Chapter_4.xhtml#_idIndexMarker257)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Support Vector Machines (SVMs) [103](Chapter_4.xhtml#_idIndexMarker291), [271](Chapter_10.xhtml#_idIndexMarker803)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Suspended Particulate Matter (SPM) [55](Chapter_2.xhtml#_idIndexMarker126)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Symbolic Aggregate ApproXimation (SAX) [121](Chapter_4.xhtml#_idIndexMarker367)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Symbolic Fourier Approximation (SFA) [122](Chapter_4.xhtml#_idIndexMarker369)
+  prefs: []
+  type: TYPE_NORMAL
+- en: symmetric mean absolute percentage error (SMAPE) [111](Chapter_4.xhtml#_idIndexMarker319)
+  prefs: []
+  type: TYPE_NORMAL
+- en: synapses [263](Chapter_10.xhtml#_idIndexMarker771)
+  prefs: []
+  type: TYPE_NORMAL
+- en: T
+  prefs: []
+  type: TYPE_NORMAL
+- en: Temporal Convolutional Network (TCN) [276](Chapter_10.xhtml#_idIndexMarker824),
+    [322](Chapter_12.xhtml#_idIndexMarker901), [331](Chapter_12.xhtml#_idIndexMarker915),
+    [333](Chapter_12.xhtml#_idIndexMarker916)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Temporal Dictionary Ensemble (TDE) [124](Chapter_4.xhtml#_idIndexMarker384)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Temporal Difference (TD) learning [299](Chapter_11.xhtml#_idIndexMarker852)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Temporal Fusion Transformer (TFT) [278](Chapter_10.xhtml#_idIndexMarker826)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Theil's U [113](Chapter_4.xhtml#_idIndexMarker324)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Theta method [141](Chapter_5.xhtml#_idIndexMarker442)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thompson sampling [303](Chapter_11.xhtml#_idIndexMarker864)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time series [3](Chapter_1.xhtml#_idIndexMarker002)
+  prefs: []
+  type: TYPE_NORMAL
+- en: characteristics [4](Chapter_1.xhtml#_idIndexMarker005), [5](Chapter_1.xhtml#_idIndexMarker007)
+  prefs: []
+  type: TYPE_NORMAL
+- en: comparing [116](Chapter_4.xhtml#_idIndexMarker342)
+  prefs: []
+  type: TYPE_NORMAL
+- en: machine learning methods, using [186](Chapter_7.xhtml#_idIndexMarker560), [187](Chapter_7.xhtml#_idIndexMarker562)
+  prefs: []
+  type: TYPE_NORMAL
+- en: working with, in Python [38](Chapter_2.xhtml#_idIndexMarker080)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time-series [335](Chapter_12.xhtml#_idIndexMarker920), [336](Chapter_12.xhtml#_idIndexMarker921)
+  prefs: []
+  type: TYPE_NORMAL
+- en: reference link [324](Chapter_12.xhtml#_idIndexMarker907)
+  prefs: []
+  type: TYPE_NORMAL
+- en: reinforcement learning (RL) [301](Chapter_11.xhtml#_idIndexMarker860)
+  prefs: []
+  type: TYPE_NORMAL
+- en: unsupervised methods [162](Chapter_6.xhtml#_idIndexMarker502), [163](Chapter_6.xhtml#_idIndexMarker504),
+    [164](Chapter_6.xhtml#_idIndexMarker505)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Time Series [6](Chapter_1.xhtml#_idIndexMarker010)
+  prefs: []
+  type: TYPE_NORMAL
+- en: offline learning [210](Chapter_8.xhtml#_idIndexMarker627)
+  prefs: []
+  type: TYPE_NORMAL
+- en: online learning [210](Chapter_8.xhtml#_idIndexMarker626)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time series analysis [6](Chapter_1.xhtml#_idIndexMarker009)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time series analysis (TSA) [36](Chapter_2.xhtml#_idIndexMarker068), [37](Chapter_2.xhtml#_idIndexMarker074),
+    [38](Chapter_2.xhtml#_idIndexMarker076)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time series classification algorithms
+  prefs: []
+  type: TYPE_NORMAL
+- en: critical difference diagram [126](Chapter_4.xhtml#_idIndexMarker389), [127](Chapter_4.xhtml#_idIndexMarker390)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Time Series Combination of Heterogeneous and Integrated Embedding Forest (TS-CHIEF)
+    [121](Chapter_4.xhtml#_idIndexMarker365)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time series data
+  prefs: []
+  type: TYPE_NORMAL
+- en: examples [2](Chapter_1.xhtml#_idIndexMarker001)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time-series data [2](Chapter_1.xhtml#_idIndexMarker000)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time series datasets [94](Chapter_4.xhtml#_idIndexMarker240)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time series forecasting [97](Chapter_4.xhtml#_idIndexMarker262)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Time Series Forest (TSF) [120](Chapter_4.xhtml#_idIndexMarker363)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time series machine learning algorithms
+  prefs: []
+  type: TYPE_NORMAL
+- en: detailed taxonomy [125](Chapter_4.xhtml#_idIndexMarker387), [126](Chapter_4.xhtml#_idIndexMarker388)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time series machine learning flywheel [38](Chapter_2.xhtml#_idIndexMarker075)
+  prefs: []
+  type: TYPE_NORMAL
+- en: time series regression [107](Chapter_4.xhtml#_idIndexMarker300)
+  prefs: []
+  type: TYPE_NORMAL
+- en: transformer [330](Chapter_12.xhtml#_idIndexMarker913), [331](Chapter_12.xhtml#_idIndexMarker914)
+  prefs: []
+  type: TYPE_NORMAL
+- en: transformer architectures [277](Chapter_10.xhtml#_idIndexMarker825)
+  prefs: []
+  type: TYPE_NORMAL
+- en: trend [56](Chapter_2.xhtml#_idIndexMarker130)
+  prefs: []
+  type: TYPE_NORMAL
+- en: identifying [56](Chapter_2.xhtml#_idIndexMarker132), [57](Chapter_2.xhtml#_idIndexMarker137),
+    [58](Chapter_2.xhtml#_idIndexMarker140), [59](Chapter_2.xhtml#_idIndexMarker145),
+    [60](Chapter_2.xhtml#_idIndexMarker147), [61](Chapter_2.xhtml#_idIndexMarker152),
+    [62](Chapter_2.xhtml#_idIndexMarker154), [63](Chapter_2.xhtml#_idIndexMarker156)
+  prefs: []
+  type: TYPE_NORMAL
+- en: triple exponential smoothing [142](Chapter_5.xhtml#_idIndexMarker448)
+  prefs: []
+  type: TYPE_NORMAL
+- en: true positive rate [114](Chapter_4.xhtml#_idIndexMarker329)
+  prefs: []
+  type: TYPE_NORMAL
+- en: true positive rate (TPR) [115](Chapter_4.xhtml#_idIndexMarker336)
+  prefs: []
+  type: TYPE_NORMAL
+- en: true positives (TP) [115](Chapter_4.xhtml#_idIndexMarker334)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Twitter [170](Chapter_6.xhtml#_idIndexMarker527)
+  prefs: []
+  type: TYPE_NORMAL
+- en: U
+  prefs: []
+  type: TYPE_NORMAL
+- en: UAE (University of East Anglia) [118](Chapter_4.xhtml#_idIndexMarker352)
+  prefs: []
+  type: TYPE_NORMAL
+- en: UCR (University of California, Riverside) [118](Chapter_4.xhtml#_idIndexMarker348)
+  prefs: []
+  type: TYPE_NORMAL
+- en: unit imputation [73](Chapter_3.xhtml#_idIndexMarker186), [82](Chapter_3.xhtml#_idIndexMarker221)
+  prefs: []
+  type: TYPE_NORMAL
+- en: univariate analysis [38](Chapter_2.xhtml#_idIndexMarker078)
+  prefs: []
+  type: TYPE_NORMAL
+- en: univariate series [4](Chapter_1.xhtml#_idIndexMarker004)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Universidade Federal de Minas Gerais (UFMG) [252](Chapter_9.xhtml#_idIndexMarker746)
+  prefs: []
+  type: TYPE_NORMAL
+- en: unsupervised learning [96](Chapter_4.xhtml#_idIndexMarker252), [97](Chapter_4.xhtml#_idIndexMarker263)
+  prefs: []
+  type: TYPE_NORMAL
+- en: unsupervised methods
+  prefs: []
+  type: TYPE_NORMAL
+- en: for time-series [162](Chapter_6.xhtml#_idIndexMarker501), [163](Chapter_6.xhtml#_idIndexMarker503),
+    [164](Chapter_6.xhtml#_idIndexMarker506)
+  prefs: []
+  type: TYPE_NORMAL
+- en: V
+  prefs: []
+  type: TYPE_NORMAL
+- en: validation [187](Chapter_7.xhtml#_idIndexMarker563), [188](Chapter_7.xhtml#_idIndexMarker565)
+  prefs: []
+  type: TYPE_NORMAL
+- en: value-based learning [300](Chapter_11.xhtml#_idIndexMarker853)
+  prefs: []
+  type: TYPE_NORMAL
+- en: variables [44](Chapter_2.xhtml#_idIndexMarker096), [45](Chapter_2.xhtml#_idIndexMarker100),
+    [46](Chapter_2.xhtml#_idIndexMarker108), [47](Chapter_2.xhtml#_idIndexMarker109),
+    [48](Chapter_2.xhtml#_idIndexMarker110), [49](Chapter_2.xhtml#_idIndexMarker111)
+  prefs: []
+  type: TYPE_NORMAL
+- en: relationships [49](Chapter_2.xhtml#_idIndexMarker114), [50](Chapter_2.xhtml#_idIndexMarker118),
+    [52](Chapter_2.xhtml#_idIndexMarker121)
+  prefs: []
+  type: TYPE_NORMAL
+- en: vector autoregression models [144](Chapter_5.xhtml#_idIndexMarker459), [145](Chapter_5.xhtml#_idIndexMarker460)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Vector Autoregressions (VAR) [129](Chapter_4.xhtml#_idIndexMarker397)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Vector Autoregression (VAR) [133](Chapter_5.xhtml#_idIndexMarker402)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Very Fast Decision Tree (VFDT) [215](Chapter_8.xhtml#_idIndexMarker648)
+  prefs: []
+  type: TYPE_NORMAL
+- en: virtual environment [193](Chapter_7.xhtml#_idIndexMarker580)
+  prefs: []
+  type: TYPE_NORMAL
+- en: W
+  prefs: []
+  type: TYPE_NORMAL
+- en: walk-forward validation [188](Chapter_7.xhtml#_idIndexMarker564)
+  prefs: []
+  type: TYPE_NORMAL
+- en: weak learner [100](Chapter_4.xhtml#_idIndexMarker281)
+  prefs: []
+  type: TYPE_NORMAL
+- en: WEASEL+MUSE [123](Chapter_4.xhtml#_idIndexMarker375)
+  prefs: []
+  type: TYPE_NORMAL
+- en: window-based features [75](Chapter_3.xhtml#_idIndexMarker191)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wold�s decomposition [137](Chapter_5.xhtml#_idIndexMarker420)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Word Extraction for Time Series Classification [123](Chapter_4.xhtml#_idIndexMarker376)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Y
+  prefs: []
+  type: TYPE_NORMAL
+- en: Yeo-Johnson transformation [72](Chapter_3.xhtml#_idIndexMarker182)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Z
+  prefs: []
+  type: TYPE_NORMAL
+- en: Z-score normalization [70](Chapter_3.xhtml#_idIndexMarker170)
+  prefs: []
+  type: TYPE_NORMAL
+- en: Index
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL

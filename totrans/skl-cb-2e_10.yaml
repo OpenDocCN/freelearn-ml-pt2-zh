@@ -1,0 +1,687 @@
+- en: Text and Multiclass Classification with scikit-learn
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'This chapter will cover the following recipes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using LDA for classification
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Working with QDA – a nonlinear LDA
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using SGD for classification
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Classifying documents with Naive Bayes
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Label propagation with semi-supervised learning
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using LDA for classification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Linear discriminant analysis** (**LDA**) attempts to fit a linear combination
+    of features to predict an outcome variable. LDA is often used as a pre-processing
+    step. We''ll walk through both methods in this recipe.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this recipe, we will do the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Grab stock data from Google.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Rearrange it in a shape we're comfortable with.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create an LDA object to fit and predict the class labels.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Give an example of how to use LDA for dimensionality reduction.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Before starting on step 1 and grabbing stock data from Google, install a version
+    of pandas that supports the latest stock reader. Do so at an Anaconda command
+    line by typing this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that your pandas version will be updated. If this is a problem, create
+    a new environment for this pandas version. Now open a notebook and check whether
+    the `pandas-datareader` imports correctly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: If it is imported correctly, no errors will show up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this example, we will perform an analysis similar to Altman''s Z-score.
+    In his paper, Altman looked at a company''s likelihood of defaulting within two
+    years based on several financial metrics. The following is taken from the Wikipedia
+    page of Altman''s Z-score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Z-score formula** | **Description** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *T1 = Working capital / Total assets* | This measures liquid assets in relation
+    to the size of the company. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *T2 = Retained earnings / Total assets* | This measures profitability that
+    reflects the company''s age and earning power. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *T3 = Earnings before interest and taxes / Total assets* | This measures
+    operating efficiency apart from tax and leveraging factors. It recognizes operating
+    earnings as being important to long-term viability. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *T4 = Market value of equity / Book value of total liabilities* | This adds
+    market dimension that can show up a security price fluctuation as a possible red
+    flag. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| *T5 = Sales / Total assets* | This is the standard measure for total asset
+    turnover (varies greatly from industry to industry). |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Refer to the article, *Financial Ratios, Discriminant Analysis and the Prediction
+    of Corporate Bankruptcy*, by Altman, Edward I. (September 1968), Journal of Finance:
+    189–209.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this analysis, we'll look at some financial data from Google via pandas.
+    We'll try to predict whether a stock will be higher in exactly six months from
+    today based on the current attribute of the stock. It's obviously nowhere near
+    as refined as Altman's Z-score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Begin with a few imports and by storing the tickers you will use, the first
+    date, and the last date of the data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let''s pull the stock data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This data structure is a panel from pandas. It''s similar to an **online analytical
+    processing** (**OLAP**) cube or a 3D dataframe. Let''s take a look at the data
+    to get more familiar with the closes since that''s what we care about when comparing:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/01c78109-cbbb-4a0e-8d89-ae29c7316169.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Okay, so now we need to compare each stock price with its price in six months.
+    If it's higher, we'll code it with one, and if not, we'll code it with zero.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To do this, we''ll just shift the dataframe back by 180 days and compare:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The next thing we need to do is flatten out the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a3ff74d1-9b3f-4e80-b603-1aeaf1ffe48e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Okay, so now we need to create matrices in NumPy. To do this, we''ll use the
+    `patsy` library. This is a great library that can be used to create a design matrix
+    in a fashion similar to R:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6b83a26d-5dc5-4854-82e2-c18ba3daa2a5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The `patsy` is a very strong package; for example, suppose we want to apply
+    pre-processing. In `patsy`, it's possible, like R, to modify the formula in a
+    way that corresponds to modifications in the design matrix. It won't be done here,
+    but if we want to scale the value to mean 0 and standard deviation 1, the function
+    will be *scale(open) + scale(high)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, now that we have our dataset, let''s fit the LDA object:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can see that it''s not too bad when predicting against the dataset. Certainly,
+    we will want to improve this with other parameters and test the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: These metrics describe how the model fits the data in various ways.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `precision` and `recall` parameters are fairly similar. In some ways, as
+    shown in the following list, they can be thought of as conditional proportions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`precision`: Given that the model predicts a positive value, what proportion
+    of it is correct? This is why an alternate name for precision is **positive predictive
+    value** (**PPV**).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`recall`: Given that the state of one class is true, what proportion did we
+    select? I say select because `recall` is a common metric in search problems. For
+    example, there can be a set of underlying web pages that, in fact, relate to a
+    search term—the proportion that is returned. In [Chapter 5](d2473ebe-f050-4e72-bbf9-fabe5d62d441.xhtml),
+    *Linear Models - Logistic Regression*, you saw recall by another name, sensitivity.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `f1-score` parameter attempts to summarize the relationship between `recall`
+    and `precision`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: LDA is actually fairly similar to clustering, which we did previously. We fit
+    a basic model from the data. Then, once we have the model, we try to predict and
+    compare the likelihoods of the data given in each class. We choose the option
+    that is more likely.
+  prefs: []
+  type: TYPE_NORMAL
+- en: LDA is actually a simplification of **quadratic discernment analysis** (**QDA**),
+    which we'll talk about in the next recipe. Here we assume that the covariance
+    of each class is the same, but in QDA, this assumption is relaxed. Think about
+    the connections between KNN and **Gaussian mixture models** (**GMM**) and the
+    relationship there and here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Working with QDA – a nonlinear LDA
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: QDA is the generalization of a common technique such as quadratic regression.
+    It is simply a generalization of a model to allow for more complex models to fit,
+    though, like all things, when allowing complexity to creep in, we make our lives
+    more difficult.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will expand on the last recipe and look at QDA via the QDA object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We said we made an assumption about the covariance of the model. Here we will
+    relax that assumption.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'QDA is aptly a member of the `qda` module. Use the following commands to use
+    QDA:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see, it's about equal on the whole. If we look back at the *Using
+    LDA for classification* recipe, we can see large changes as opposed to the QDA
+    object for class zero and minor differences for class one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we talked about in the last recipe, we essentially compare likelihoods here.
+    But how do we compare likelihoods? Let's just use the price at hand to attempt
+    to classify `is_higher`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We''ll assume that the closing price is log-normally distributed. In order
+    to compute the likelihood for each class, we need to create the subsets of the
+    closes as well as a training and test set for each class. We''ll use the built-in
+    cross-validation methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we have likelihoods for both classes, we can compare and assign classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using SGD for classification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The **stochastic gradient descent** (**SGD**) is a fundamental technique used
+    to fit a model for regression. There are natural connections between SGD for classification
+    or regression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In regression, we minimized a cost function that penalized for bad choices on
+    a continuous scale, but for classification, we'll minimize a cost function that
+    penalizes for two (or more) cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'First, let''s create some very basic data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Split the data into training and testing sets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Instantiate and train the classifier:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Measure the performance on the test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We can set the `class_weight` parameter to account for the varying amount of
+    imbalance in a dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The hinge loss function is defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5c055abe-eff5-4e39-bfb7-c5be9b0ccf45.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here, `t` is the true classification denoted as *+1* for one case and *-1*
+    for the other. The vector of coefficients is denoted by *y* as fit from the model,
+    and *x* is the value of interest. There is also an intercept for good measure.
+    To put it another way:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9bf8c9bd-dc17-4835-a57f-40dc47b94d64.png)![](img/3a8e922a-1339-4f03-a10e-eb7bf4ec001d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Classifying documents with Naive Bayes
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Naive Bayes is a really interesting model. It's somewhat similar to KNN in the
+    sense that it makes some assumptions that might oversimplify reality, but still
+    it performs well in many cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this recipe, we'll use Naive Bayes to do document classification with `sklearn`.
+    An example I have personal experience of is using a word that makes up an account
+    descriptor in accounting, such as accounts payable, and determining if it belongs
+    to the income statement, cash flow statement, or balance sheet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The basic idea is to use the word frequency from a labeled test corpus to learn
+    the classifications of the documents. Then, we can turn it on a training set and
+    attempt to predict the label.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll use the `newgroups` dataset within `sklearn` to play with the Naive
+    Bayes model. It''s a non-trivial amount of data, so we''ll fetch it instead of
+    loading it. We''ll also limit the categories to `rec.autos` and `rec.motorcycles`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we have new groups, we'll need to represent each document as a bag-of-words.
+    This representation is what gives Naive Bayes its name. The model is naive because
+    documents are classified without regard for any intradocument word covariance.
+    This might be considered a flaw, but Naive Bayes has been shown to work reasonably
+    well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We need to pre-process the data into a bag-of-words matrix. This is a sparse
+    matrix that has entries when the word is present in the document. This matrix
+    can become quite large, as illustrated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This matrix is a sparse matrix, which is the length of the number of documents
+    by each word. The document and word value of the matrix are the frequency of the
+    particular term:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''ll actually need the matrix as a dense array for the Naive Bayes object.
+    So, let''s convert it back:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Clearly, most of the entries are zero, but we might want to reconstruct the
+    document counts as a sanity check:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, are these the examples in the first document? Let''s check that using
+    the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Okay, so it took a bit longer than normal to get the data ready, but we're dealing
+    with text data that isn't as quickly represented as a matrix as the data we're
+    used to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, now that we''re ready, we''ll fire up the classifier and fit our model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Rename the sets `bow` and `newgroups.target` to `X` and `y` respectively. Before
+    we fit the model, let''s split the dataset into a training and a test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we fit a model on a test set and predicted the training set in an
+    attempt to determine which categories go with which articles, let''s get a sense
+    of the approximate accuracy:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The fundamental idea of Naive Bayes is that we can estimate the probability
+    of a data point being a class, given the feature vector.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This can be rearranged via the Bayes formula to give the **maximum a posteriori** (**MAP**)
+    estimate for the feature vector. This MAP estimate chooses the class for which
+    the feature vector's probability is maximized.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's more...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We can also extend Naive Bayes to do multiclass work. Instead of assuming a
+    Gaussian likelihood, we'll use a multinomial likelihood.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, let''s get a third category of data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''ll need to vectorize this just like the class case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Rename `mn_bow` and `mn_newgroups.target` to `X` and `y` respectively. Let''s
+    create a train and a test set and train a multinomial Bayes model with the training
+    data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Measure the model accuracy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: It's not completely surprising that we did well. We did fairly well in the dual
+    class case, and since one will guess that the `talk.politics.guns` category is
+    fairly orthogonal to the other two, we should probably do pretty well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Label propagation with semi-supervised learning
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Label propagation is a semi-supervised technique that makes use of labeled and
+    unlabeled data to learn about unlabeled data. Quite often, data that will benefit
+    from a classification algorithm is difficult to label. For example, labeling data
+    might be very expensive, so only a subset is cost-effective to manually label.
+    That said, there does seem to be slow but growing support for companies to hire
+    taxonomists.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting ready
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Another problem area is censored data. You can imagine a case where the frontier
+    of time will affect your ability to gather labeled data. Say, for instance, you
+    took measurements of patients and gave them an experimental drug. In some cases,
+    you are able to measure the outcome of the drug if it happens fast enough, but
+    you might want to predict the outcome of the drugs that have a slower reaction
+    time. The drug might cause a fatal reaction for some patients and life-saving
+    measures might need to be taken.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In order to represent semi-supervised or censored data, we''ll need to do a
+    little data pre-processing. First, we''ll walk through a simple example, and then
+    we''ll move on to some more difficult cases:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Due to the fact that we''ll be messing with the data, let''s make copies and
+    add an unlabeled member to the target name''s copy. It''ll make it easier to identify
+    the data later:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, let''s update `y` with `-1`. This is the marker for the unlabeled case.
+    This is also why we added unlabeled at the end of the names:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Our data now has a bunch of negative ones (`-1`) interspersed with the actual
+    data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We clearly have a lot of unlabeled data, and the goal now is to use the `LabelPropagation` method
+    to predict the labels:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Measure the accuracy score:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: Not too bad, though we did use all the data, so it's kind of cheating. Also,
+    the iris dataset is a fairly separated dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the whole dataset is reminiscent of more traditional statistics. Making
+    the choice of not measuring on a test set decreases our focus on prediction and
+    encourages more understanding and interpretation of the whole dataset. As mentioned
+    before, understanding versus black-box prediction distinguishes traditional statistics
+    with machine learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While we''re at it, let''s look at `LabelSpreading`, the sister class of `LabelPropagation`.
+    We''ll make the technical distinction between `LabelPropagation` and `LabelSpreading`
+    in the *How it works..*. section of this recipe, but they are extremely similar:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `LabelSpreading` is more robust and noisy as observed from the way it works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Measure the accuracy score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: Don't consider the fact that the label-spreading algorithm missed one more as
+    an indication and that it performs worse in general. The whole point is that we
+    might give it some ability to predict well on the training set and to work on
+    a wider range of situations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How it works...
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Label propagation works by creating a graph of the data points, with weights
+    placed on the edge as per the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/66959096-80b2-4bec-94d0-8b7253f9e092.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The algorithm then works by labeled data points propagating their labels to
+    the unlabeled data. This propagation is, in part, determined by edge weight.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The edge weights can be placed in a matrix of transition probabilities. We can
+    iteratively determine a good estimate of the actual labels.
+  prefs: []
+  type: TYPE_NORMAL

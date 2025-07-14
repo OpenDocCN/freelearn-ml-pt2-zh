@@ -1,0 +1,1371 @@
+- en: '9'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Recognizing Faces with Support Vector Machine
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we discovered underlying topics using clustering and
+    topic modeling techniques. This chapter continues our journey of supervised learning
+    and classification, with a particular emphasis on **Support Vector Machine** (**SVM**)
+    classifiers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SVM is one of the most popular algorithms when it comes to high-dimensional
+    spaces. The goal of the algorithm is to find a decision boundary in order to separate
+    data from different classes. We will discuss in detail how that works. Also, we
+    will implement the algorithm with scikit-learn and apply it to solve various real-life
+    problems, including our main project of face recognition. A dimensionality reduction
+    technique called **principal component analysis**, which boosts the performance
+    of the image classifier, will also be covered in this chapter, as will support
+    vector regression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter explores the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding the separating boundary with SVM
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Classifying face images with SVM
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Estimating with support vector regression
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finding the separating boundary with SVM
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: SVM is another great classifier, which is effective in cases with high-dimensional
+    spaces or where the number of dimensions is greater than the number of samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In machine learning classification, SVM finds an optimal hyperplane that best
+    segregates observations from different classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A **hyperplane** is a plane of *n - 1* dimensions that separates the *n*-dimensional
+    feature space of the observations into two spaces. For example, the hyperplane
+    in a two-dimensional feature space is a line, and in a three-dimensional feature
+    space, the hyperplane is a surface. The optimal hyperplane is picked so that the
+    distance from its nearest points in each space to itself is maximized, and these
+    nearest points are the so-called **support vectors**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following toy example demonstrates what support vectors and a separating
+    hyperplane (along with the distance margin, which I will explain later) look like
+    in a binary classification case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing screenshot, diagram, line, plot  Description automatically
+    generated](img/B21047_09_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.1: Example of support vectors and a hyperplane in binary classification'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ultimate goal of SVM is to find an optimal hyperplane, but the burning question
+    is “How can we find this optimal hyperplane?” You will get the answer as we explore
+    the following scenarios. It’s not as hard as you may think. The first thing we
+    will look at is how to find a hyperplane.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scenario 1 – identifying a separating hyperplane
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'First, you need to understand what qualifies as a separating hyperplane. In
+    the following example, hyperplane *C* is the only correct one, as it successfully
+    segregates observations by their labels, while hyperplanes *A* and *B* fail:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing diagram, line, screenshot  Description automatically
+    generated](img/B21047_09_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.2: Example of qualified and unqualified hyperplanes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is an easy observation. Let’s express a separating hyperplane in a formal
+    or mathematical way next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In a two-dimensional space, a line can be defined by a slope vector *w* (represented
+    as a two-dimensional vector), and an intercept *b*. Similarly, in a space of *n*
+    dimensions, a hyperplane can be defined by an *n*-dimensional vector *w* and an
+    intercept *b*. Any data point *x* on the hyperplane satisfies *wx + b = 0*. A
+    hyperplane is a separating hyperplane if the following conditions are satisfied:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For any data point *x* from one class, it satisfies *wx* + *b* > *0*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For any data point *x* from another class, it satisfies *wx* + *b* < *0*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: However, there can be countless possible solutions for *w* and *b*. You can
+    move or rotate hyperplane *C* to a certain extent, and it will still remain a
+    separating hyperplane. Next, you will learn how to identify the best hyperplane
+    among various possible separating hyperplanes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scenario 2 – determining the optimal hyperplane
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Look at the following example: hyperplane *C* is preferred, as it enables the
+    maximum sum of the distance between the nearest data point on the positive side
+    and itself, and the distance between the nearest data point on the negative side
+    and itself:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing screenshot, line, diagram  Description automatically
+    generated](img/B21047_09_03.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.3: An example of optimal and suboptimal hyperplanes'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The nearest point(s) on the positive side can constitute a hyperplane parallel
+    to the decision hyperplane, which we call a **positive hyperplane**; conversely,
+    the nearest point(s) on the negative side can constitute the **negative hyperplane**.
+    The perpendicular distance between the positive and negative hyperplanes is called
+    the **margin**, the value of which equates to the sum of the two aforementioned
+    distances. A **decision** hyperplane is deemed **optimal** if the margin is maximized.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The optimal (also called **maximum-margin**) hyperplane and the distance margins
+    for a trained SVM model are illustrated in the following diagram. Again, samples
+    on the margin (two from one class and one from another class, as shown) are the
+    so-called **support vectors**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A diagram of a positive hyperplane  Description automatically generated with
+    low confidence](img/B21047_09_04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.4: An example of an optimal hyperplane and distance margins'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can interpret it mathematically by first describing the positive and negative
+    hyperplanes, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_001.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_09_002.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, ![](img/B21047_09_003.png) is a data point on the positive hyperplane,
+    and ![](img/B21047_09_004.png) is a data point on the negative hyperplane.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The distance between a point ![](img/B21047_09_005.png) and the decision hyperplane
+    can be calculated as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_006.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Similarly, the distance between a point ![](img/B21047_09_007.png) and the
+    decision hyperplane is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_008.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'So the margin becomes ![](img/B21047_09_009.png). As a result, we need to minimize
+    ![](img/B21047_09_010.png) in order to maximize the margin. Importantly, to comply
+    with the fact that the support vectors on the positive and negative hyperplanes
+    are the nearest data points to the decision hyperplane, we add a condition that
+    no data point falls between the positive and negative hyperplanes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_011.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B21047_09_012.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here, ![](img/B21047_09_013.png) is an observation. This can be combined further
+    into the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_014.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'To summarize, *w* and *b*, which determine the SVM decision hyperplane, are
+    trained and solved by the following optimization problem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Minimizing ![](img/B21047_09_015.png)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Subject to ![](img/B21047_09_016.png), for a training set of ![](img/B21047_09_017.png),
+    ![](img/B21047_09_018.png),… ![](img/B21047_09_019.png)…, and ![](img/B21047_09_020.png)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To solve this optimization problem, we need to resort to quadratic programming
+    techniques, which are beyond the scope of our learning journey. Therefore, we
+    will not cover the computation methods in detail and, instead, will implement
+    the classifier using the `SVC` and `LinearSVC` modules from scikit-learn, which
+    are respectively based on `libsvm` ([https://www.csie.ntu.edu.tw/~cjlin/libsvm/](https://www.csie.ntu.edu.tw/~cjlin/libsvm/))
+    and `liblinear` ([https://www.csie.ntu.edu.tw/~cjlin/liblinear/](https://www.csie.ntu.edu.tw/~cjlin/liblinear/)),
+    two popular open-source SVM machine learning libraries. However, it is always
+    valuable to understand the concepts of computing SVM.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Pegasos: Primal estimated sub-gradient solver for SVM* (*Mathematical Programming*,
+    March 2011, volume 127, issue 1, pp. 3–30) by Shai Shalev-Shwartz et al. and *A
+    dual coordinate descent method for large-scale linear SVM* (*Proceedings of the
+    25th international conference on machine learning*, pp 408–415) by Cho-Jui Hsieh
+    et al. are great learning materials. They cover two modern approaches, sub-gradient
+    descent and coordinate descent.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The learned model parameters *w* and *b* are then used to classify a new sample
+    *x*’, based on the following conditions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_021.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Moreover, ![](img/B21047_09_022.png) can be portrayed as the distance from
+    the data point *x*’ to the decision hyperplane, and it can also be interpreted
+    as the confidence of prediction: the higher the value, the further away the data
+    point is from the decision boundary, hence the higher prediction certainty.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Although you might be eager to implement the SVM algorithm, let’s take a step
+    back and look at a common scenario where data points are not linearly separable
+    in a strict way. Try to find a separating hyperplane in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing screenshot, line, diagram, design  Description automatically
+    generated](img/B21047_09_05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.5: An example of data points that are not strictly linearly separable'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How can we deal with cases where it is impossible to strictly linearly segregate
+    a set of observations containing outliers? Let’s see in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scenario 3 – handling outliers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To handle scenarios where we cannot linearly segregate a set of observations
+    containing outliers, we can actually allow the misclassification of outliers and
+    try to minimize the error introduced. The misclassification error ![](img/B21047_09_023.png)
+    (also called **hinge loss**) for a sample ![](img/B21047_09_024.png) can be expressed
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_025.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Together with the ultimate term ![](img/B21047_09_026.png) that we want to
+    reduce, the final objective value we want to minimize becomes the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_027.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As regards a training set of *m* samples ![](img/B21047_09_028.png), ![](img/B21047_09_029.png),…
+    ![](img/B21047_09_030.png)…, and ![](img/B21047_09_031.png), where the hyperparameter
+    *C* controls the trade-off between the two terms, the following apply:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If a large value of *C* is chosen, the penalty for misclassification becomes
+    relatively high. This means the rule of thumb of data segregation becomes stricter
+    and the model might be prone to overfitting, since few mistakes are allowed during
+    training. An SVM model with a large *C* has a low bias, but it might suffer from
+    high variance.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Conversely, if the value of *C* is sufficiently small, the influence of misclassification
+    becomes fairly low. This model allows more misclassified data points than a model
+    with a large *C*. Thus, data separation becomes less strict. Such a model has
+    low variance, but it might be compromised by high bias.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'A comparison between a large and small *C* is shown in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A screenshot of a screen  Description automatically generated with low confidence](img/B21047_09_06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.6: How the value of C affects the strictness of segregation and the
+    margin'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The parameter *C* determines the balance between bias and variance. It can be
+    fine-tuned with cross-validation, which we will practice shortly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing SVM
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We have largely covered the fundamentals of the SVM classifier. Now, let’s apply
+    it right away to an easy binary classification dataset. We will use the classic
+    breast cancer Wisconsin dataset ([https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html))
+    from scikit-learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s take a look at the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We first load the dataset and do some basic analysis, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can see, the dataset has 569 samples with 30 features; its label is binary,
+    and 63% of samples are positive (benign). Again, always check whether classes
+    are imbalanced before trying to solve any classification problem. In this case,
+    they are relatively balanced.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we split the data into training and testing sets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: For reproducibility, don’t forget to specify a random seed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can now apply the SVM classifier to the data. We first initialize an `SVC`
+    model with the `kernel` parameter set to `linear` (linear kernel refers to the
+    use of a linear decision boundary to separate classes in the input space. I will
+    explain what kernel means in *Scenario 5*) and the penalty hyperparameter `C`
+    set to the default value, `1.0`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We then fit our model on the training set, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we predict on the testing set with the trained model and obtain the prediction
+    accuracy directly:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Our first SVM model works just great, achieving an accuracy of `95.8%`. How
+    about dealing with more than two topics? How does SVM handle multiclass classification?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scenario 4 – dealing with more than two classes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: SVM and many other classifiers can be applied to cases with more than two classes.
+    There are two typical approaches we can take, **one-vs-rest** (also called **one-vs-all**)
+    and **one-vs-one**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One-vs-rest
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the one-vs-rest setting, for a *K*-class problem, we construct *K* different
+    binary SVM classifiers. For the *k*^(th) classifier, it treats the *k*^(th) class
+    as the positive case and the remaining *K-1* classes as the negative case as a
+    whole; the hyperplane denoted as (*w*[k]*, b*[k]) is trained to separate these
+    two cases. To predict the class of a new sample, *x*’, it compares the resulting
+    predictions ![](img/B21047_09_032.png) from *K* individual classifiers from *1*
+    to *k*. As we discussed in the previous section, the larger value of ![](img/B21047_09_033.png)
+    means higher confidence that *x*’ belongs to the positive case. Therefore, it
+    assigns *x*’ to the class *i* where ![](img/B21047_09_034.png) has the largest
+    value among all prediction results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_035.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The following diagram shows how the one-vs-rest strategy works in a three-class
+    case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing diagram, screenshot, line, plot  Description automatically
+    generated](img/B21047_09_07.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.7: An example of three-class classification using the one-vs-rest
+    strategy'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For instance, if we have the following (*r*, *b*, and *g* denote the red cross,
+    blue dot, and green square classes, respectively):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*w*[r]*x’*+*b*[r] = 0.78'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*w*[b]*x’*+*b*[b] = 0.35'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*w*[g]*x’*+*b*[g] = -0.64'
+  prefs: []
+  type: TYPE_NORMAL
+- en: we can say *x*’ belongs to the red cross class, since *0.78 > 0.35 > -0.64*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we have the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*w*[r]*x’*+*b*[r] = -0.78'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*w*[b]*x’*+*b*[b] = -0.35'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*w*[g]*x’*+*b*[g] = -0.64'
+  prefs: []
+  type: TYPE_NORMAL
+- en: then we can determine that *x*’ belongs to the blue dot class regardless of
+    the sign, since -*0.35 > -0.64 > -0.78*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One-vs-one
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In the one-vs-one strategy, we conduct a pairwise comparison by building a set
+    of SVM classifiers that can distinguish data points from each pair of classes.
+    This will result in ![](img/B21047_09_036.png) different classifiers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For a classifier associated with classes *i* and *j*, the hyperplane denoted
+    as (*w*[ij],*b*[ij]) is trained only on the basis of observations from *i* (can
+    be viewed as a positive case) and *j* (can be viewed as a negative case); it then
+    assigns the class, either *i* or *j*, to a new sample, *x*’, based on the sign
+    of *w*[ij]*x’*+*b*[ij]. Finally, the class with the highest number of assignments
+    is considered the predicted result of *x*’. The winner is the class that gets
+    the most votes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following diagram shows how the one-vs-one strategy works in a three-class
+    case:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing diagram, screenshot, line, text  Description automatically
+    generated](img/B21047_09_08.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.8: An example of three-class classification using the one-vs-one strategy'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In general, an SVM classifier with a one-vs-rest setting and a classifier with
+    a one-vs-one setting perform comparably in terms of accuracy. The choice between
+    these two strategies is largely computational.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although one-vs-one requires more classifiers, ![](img/B21047_09_037.png), than
+    one-vs-rest (*K*), each pairwise classifier only needs to learn on a small subset
+    of data, as opposed to the entire set in the one-vs-rest setting. As a result,
+    training an SVM model in the one-vs-one setting is generally more memory-efficient
+    and less computationally expensive; hence, it is preferable for practical use,
+    as argued in Chih-Wei Hsu and Chih-Jen Lin’s *A comparison of methods for multiclass
+    support vector machines* (*IEEE Transactions on Neural Networks*, March 2002,
+    Volume 13, pp. 415–425).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multiclass cases in scikit-learn
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In scikit-learn, classifiers handle multiclass cases internally, and we do
+    not need to explicitly write any additional code to enable this. You can see how
+    simple it is in the wine classification example ([https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_wine.html#sklearn.datasets.load_wine](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_wine.html#sklearn.datasets.load_wine))
+    with three classes, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We first load the dataset and do some basic analysis, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can see, the dataset has 178 samples with 13 features; its label has
+    three possible values taking up 33%, 40%, and 27%, respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we split the data into training and testing sets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We can now apply the SVM classifier to the data. We first initialize an `SVC`
+    model and fit it against the training set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: In an `SVC` model, multiclass support is implicitly handled according to the
+    one-vs-one scheme.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we predict on the testing set with the trained model and obtain the prediction
+    accuracy directly:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Our SVM model also works well in this multiclass case, achieving an accuracy
+    of `97.8%`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We also check how it performs for individual classes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: It looks excellent! Is the example too easy? Maybe. What do we do in tricky
+    cases? Of course, we could tweak the values of the kernel and C hyperparameters.
+    As discussed, factor C controls the strictness of separation, and it can be tuned
+    to achieve the best trade-off between bias and variance. How about the kernel?
+    What does it mean and what are the alternatives to a linear kernel?
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will answer those two questions we just raised. You
+    will see how the kernel trick makes SVM so powerful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scenario 5 – solving linearly non-separable problems with kernels
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The hyperplanes we have found so far are linear, for instance, a line in a
+    two-dimensional feature space, or a surface in a three-dimensional one. However,
+    in the following example, we are not able to find a linear hyperplane that can
+    separate two classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing line, screenshot, diagram  Description automatically
+    generated](img/B21047_09_09.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.9: The linearly non-separable case'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Intuitively, we observe that data points from one class are closer to the origin
+    than those from another class. The distance to the origin provides distinguishable
+    information. So we add a new feature, *z*=(*x*[1]²+*x*[2]²)², and transform the
+    original two-dimensional space into a three-dimensional one. In the new space,
+    as displayed in the following diagram, we can find a surface hyperplane separating
+    the data (see the bottom left graph in *Figure 9.10*), or a line in the two-dimensional
+    view (see the bottom right graph in *Figure 9.10*). With the additional feature,
+    the dataset becomes linearly separable in the higher dimensional space, (*x*[1]*,x*[2]*,z*):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A picture containing diagram, line, screenshot, plot  Description automatically
+    generated](img/B21047_09_10.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.10: Making a non-separable case separable'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Based upon similar logic, **SVMs with kernels** were invented to solve non-linear
+    classification problems by converting the original feature space, ![](img/B21047_09_038.png),
+    to a higher dimensional feature space with a transformation function, ![](img/B21047_09_039.png),
+    such that the transformed dataset ![](img/B21047_09_040.png) is linearly separable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A linear hyperplane ![](img/B21047_09_041.png) is then learned, using observations
+    ![](img/B21047_09_042.png). For an unknown sample *x*’, it is first transformed
+    into ![](img/B21047_09_043.png); the predicted class is determined by ![](img/B21047_09_044.png).
+  prefs: []
+  type: TYPE_NORMAL
+- en: An SVM with kernels enables non-linear separation, but it does not explicitly
+    map each original data point to the high-dimensional space and then perform expensive
+    computation in the new space. Instead, it approaches this in a tricky way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'During the course of solving the SVM optimization problems, feature vectors
+    *x*^((1)), *x*^((2)),…,*x*^((m)) are involved only in the form of a pairwise dot
+    product *x*^((i)) *x*^((j)), although we will not expand this mathematically in
+    this book. With kernels, the new feature vectors are ![](img/B21047_09_045.png),
+    and their pairwise dot products can be expressed as ![](img/B21047_09_046.png).
+    It would be computationally efficient to first implicitly conduct a pairwise operation
+    on two low-dimensional vectors and later map the result to the high-dimensional
+    space. In fact, a function *K* that satisfies this does exist:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_047.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The function *K* is the so-called **kernel function**. It is the mathematical
+    formula that does the transformation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are different types of kernels, each suited for different kinds of data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the kernel function, the transformation ![](img/B21047_09_048.png) becomes
+    implicit, and the non-linear decision boundary can be efficiently learned by simply
+    replacing the term ![](img/B21047_09_049.png) with ![](img/B21047_09_050.png).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The data is transformed into a higher-dimensional space. You don’t actually
+    need to compute this space explicitly; the kernel function just works with the
+    original data and performs the calculations necessary for the SVM.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The most popular kernel function is probably the **Radial Basis Function**
+    (**RBF**) kernel (also called the **Gaussian** kernel), which is defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_051.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here, ![](img/B21047_09_052.png) In the Gaussian function, the standard deviation
+    ![](img/B21047_09_053.png) controls the amount of variation or dispersion allowed:
+    the higher the ![](img/B21047_09_053.png) (or the lower the ![](img/B21047_09_055.png)),
+    the larger the width of the bell, and the wider the range in which data points
+    are allowed to spread out over. Therefore, ![](img/B21047_09_055.png) as the **kernel
+    coefficient** determines how strictly or generally the kernel function fits the
+    observations. A large ![](img/B21047_09_055.png) implies a small variance allowed
+    and a relatively exact fit on the training samples, which might lead to overfitting.
+    Conversely, a small ![](img/B21047_09_055.png) implies a high variance allowed
+    and a loose fit on the training samples, which might cause underfitting.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To illustrate this trade-off, let’s apply the RBF kernel with different values
+    to a toy dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Eight data points are from one class, and eight are from another. We take three
+    values, `1`, `2`, and `4`, for kernel coefficient options as an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Under each kernel coefficient, we fit an individual SVM classifier and visualize
+    the trained decision boundary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Refer to the following screenshot for the end results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_11.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.11: The SVM classification decision boundary under different values
+    of gamma'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can observe that a larger ![](img/B21047_09_055.png) results in narrow regions,
+    which means a stricter fit on the dataset; a smaller ![](img/B21047_09_055.png)
+    results in broad regions, which means a loose fit on the dataset. Of course, ![](img/B21047_09_055.png)
+    can be fine-tuned through cross-validation to obtain the best performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some other common kernel functions include the **polynomial** kernel:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_062.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'and the **sigmoid** kernel:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_063.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the absence of prior knowledge of the distribution, the RBF kernel is usually
+    preferable in practical usage, as there is an additional parameter to tweak in
+    the polynomial kernel (polynomial degree *d*), and the empirical sigmoid kernel
+    can perform approximately on par with the RBF, but only under certain parameters.
+    Hence, we arrive at a debate between the linear (also considered no kernel) and
+    the RBF kernel when given a dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choosing between linear and RBF kernels
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Of course, linear separability is the rule of thumb when choosing the right
+    kernel to start with due to its simplicity and efficiency. However, most of the
+    time, this is very difficult to identify, unless you have sufficient prior knowledge
+    of the dataset, or its features are of low dimensions (1 to 3).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some general prior knowledge that is commonly known is that text data is often
+    linearly separable, while data generated from the XOR function ([https://en.wikipedia.org/wiki/XOR_gate](https://en.wikipedia.org/wiki/XOR_gate))
+    is not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let’s look at the following three scenarios where the linear kernel is
+    favored over RBF.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Scenario 1**: Both the number of features and the number of instances are
+    large (more than 104 or 105). Since the dimension of the feature space is high
+    enough, additional features as a result of RBF transformation will not provide
+    a performance improvement, but this will increase the computational expense. Some
+    examples from the UCI machine learning repository (a collection of databases,
+    and data generators widely used for empirical analysis of ML algorithms) are of
+    this type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**URL Reputation Dataset**: [https://archive.ics.uci.edu/ml/datasets/URL+Reputation](https://archive.ics.uci.edu/ml/datasets/URL+Reputation)
+    (the number of instances: 2,396,130; the number of features: 3,231,961). This
+    is designed for malicious URL detection based on their lexical and host information.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**YouTube Multiview Video Games Dataset**: [https://archive.ics.uci.edu/ml/datasets/YouTube+Multiview+Video+Games+Dataset](https://archive.ics.uci.edu/ml/datasets/YouTube+Multiview+Video+Games+Dataset)
+    (the number of instances: 120,000; the number of features: 1,000,000). This is
+    designed for topic classification.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Scenario 2**: The number of features is noticeably large compared to the
+    number of training samples. Apart from the reasons stated in *scenario 1*, the
+    RBF kernel is significantly more prone to overfitting. Such a scenario occurs,
+    for example, in the following examples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Dorothea Dataset**: [https://archive.ics.uci.edu/ml/datasets/Dorothea](https://archive.ics.uci.edu/ml/datasets/Dorothea)
+    (the number of instances: 1,950; the number of features: 100,000). This is designed
+    for drug discovery that classifies chemical compounds as active or inactive, according
+    to their structural molecular features.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Arcene Dataset**: [https://archive.ics.uci.edu/ml/datasets/Arcene](https://archive.ics.uci.edu/ml/datasets/Arcene)
+    (the number of instances: 900; the number of features: 10,000). This represents
+    a mass spectrometry dataset for cancer detection.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Scenario 3**: The number of instances is significantly large compared to
+    the number of features. For a dataset of low dimensions, the RBF kernel will,
+    in general, boost the performance by mapping it to a higher-dimensional space.
+    However, due to the training complexity, it usually becomes inefficient on a training
+    set with more than 106 or 107 samples. Example datasets include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Heterogeneity Activity Recognition Dataset*: [https://archive.ics.uci.edu/ml/datasets/Heterogeneity+Activity+Recognition](https://archive.ics.uci.edu/ml/datasets/Heterogeneity+Activity+Recognition)
+    (the number of instances: `43,930,257`; the number of features: `16`). This is
+    designed for human activity recognition.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*HIGGS Dataset*: [https://archive.ics.uci.edu/ml/datasets/HIGGS](https://archive.ics.uci.edu/ml/datasets/HIGGS)
+    (the number of instances: 11,000,000; the number of features: 28). This is designed
+    to distinguish between a signal process producing Higgs bosons or a background
+    process.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Aside from these three scenarios, you can consider experimenting with RBF kernels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The rules for choosing between linear and RBF kernels can be summarized as
+    follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| **Scenario** | **Linear** | **RBF** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Prior knowledge | If linearly separable | If nonlinearly separable |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Visualizable data of 1 to 3 dimension(s) | If linearly separable | If nonlinearly
+    separable |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Both the number of features and number of instances are large. | First choice
+    |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Features >> Instances | First choice |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Instances >> Features | First choice |  |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Others |  | First choice |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Table 9.1: Rules for choosing between linear and RBF kernels'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once again, **first choice** means we can **begin with** this option; it does
+    not mean that this is the only option moving forward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, let’s take a look at classifying face images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classifying face images with SVM
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Finally, it is time to build an SVM-based face image classifier using everything
+    you just learned. We will do so in parts, exploring the image dataset first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring the face image dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We will use the **Labeled Faces in the Wild** (**LFW**) people dataset ([https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_lfw_people.html](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_lfw_people.html))
+    from scikit-learn. It consists of more than 13,000 curated face images of more
+    than 5,000 famous people. Each class has various numbers of image samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we load the face image data as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We only load classes with at least `80` samples so that we will have enough
+    training data. Note that if you run into the problem of `ImportError: The Python
+    Imaging Library (PIL) is required to load data from jpeg files`, please install
+    the `pillow` package in the terminal, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you encounter an `urlopen` error, you can download the four data files manually
+    from the following URLs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`pairsDevTrain.txt`: [https://ndownloader.figshare.com/files/5976012](https://ndownloader.figshare.com/files/5976012)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pairsDevTest.txt`: [https://ndownloader.figshare.com/files/5976009](https://ndownloader.figshare.com/files/5976009)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`pairs.txt`: [https://ndownloader.figshare.com/files/5976006](https://ndownloader.figshare.com/files/5976006)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`lfw-funneled.tgz`: [https://ndownloader.figshare.com/files/5976015](https://ndownloader.figshare.com/files/5976015)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'You can then place them in a designated folder, for example, the current path,
+    `./`. Accordingly, the code to load image data becomes the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we take a look at the data we just loaded:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This five-class dataset contains `1,140` samples and a sample is of `2,914`
+    dimensions. As a good practice, we analyze the label distribution as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: The dataset is rather imbalanced. Let’s keep this in mind when we build the
+    model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s plot a few face images:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'You will see the following 12 images with their labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B21047_09_12.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.12: Samples from the LFW people dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have covered exploratory data analysis, we will move on to the model
+    development phase in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building an SVM-based image classifier
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'First, we split the data into the training and testing set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: In this project, the number of dimensions is greater than the number of samples.
+    This is a classification case that SVM is effective at solving. In our solution,
+    we will tune the hyperparameters, including the penalty `C`, the kernel (linear
+    or RBF), and ![](img/B21047_09_055.png) (for the RBF kernel) through cross-validation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We then initialize a common SVM model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: The dataset is imbalanced, so we set `class_weight='balanced`' to emphasize
+    the underrepresented classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We utilize the GridSearchCV module from scikit-learn to search for the best
+    combination of hyperparameters over several candidates. We will explore the following
+    hyperparameter candidates:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you are unsure about the suitable value of gamma to start with for RBF kernel,
+    opting for 1 divided by the feature dimension is consistently a reliable choice.
+    So in this example, `1/2914 = 0.0003`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `GridSearchCV` model we just initialized will conduct five-fold cross-validation
+    (`cv=5`) and will run in parallel on all available cores (`n_jobs=-1`). We then
+    perform hyperparameter tuning by simply applying the `fit` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We obtain the optimal set of hyperparameters using the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we obtain the best five-fold averaged performance under the optimal set
+    of parameters by using the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then retrieve the SVM model with the optimal set of hyperparameters and
+    apply it to the testing set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then calculate the accuracy and classification report:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: It should be noted that we tune the model based on the original training set,
+    which is divided into folds for cross-training and validation internally, and
+    that we apply the optimal model to the original testing set. We examine the classification
+    performance in this manner to measure how well generalized the model is, in order
+    to make correct predictions on a completely new dataset. An accuracy of `89.8%`
+    is achieved with the best SVM model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is another SVM classifier, `LinearSVC` ([https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html](https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html)),
+    from scikit-learn. How is it different from `SVC`? `LinearSVC` is similar to `SVC`
+    with linear kernels, but it is implemented based on the `liblinear` library, which
+    is better optimized than `libsvm` with the linear kernel, and its penalty function
+    is more flexible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In general, training with the `LinearSVC` model is faster than `SVC`. This is
+    because the `liblinear` library with high scalability is designed for large datasets,
+    while the `libsvm` library, with more than quadratic computation complexity, is
+    not able to scale well with more than 10⁵ training instances. But again, the `LinearSVC`
+    model is limited to only linear kernels.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Boosting image classification performance with PCA
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can also improve the image classifier by compressing the input features with
+    **Principal Component Analysis** (**PCA**) (*A Tutorial on Principal Component
+    Analysis* by Jonathon Shlens). This reduces the dimension of the original feature
+    space and preserves the most important internal relationships among features.
+    In simple terms, PCA projects the original data into a smaller space with the
+    most important directions (coordinates). We hope that in cases where we have more
+    features than training samples, considering fewer features as a result of dimensionality
+    reduction using PCA can prevent overfitting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here’s how PCA works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Data Standardization**: Before applying PCA, it is essential to standardize
+    the data by subtracting the mean and dividing it by the standard deviation for
+    each feature. This step ensures that all features are on the same scale and prevents
+    any single feature from dominating the analysis.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Covariance Matrix Calculation**: PCA calculates the covariance matrix of
+    the standardized data. The covariance matrix shows how each pair of features varies
+    together. The diagonal elements of the covariance matrix represent the variance
+    of individual features, while the off-diagonal elements represent the covariance
+    between pairs of features.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Eigendecomposition**: The next step is to perform eigendecomposition on the
+    covariance matrix. Eigendecomposition breaks down the covariance matrix into its
+    eigenvectors and eigenvalues. The eigenvectors represent the principal components,
+    and the corresponding eigenvalues indicate the amount of variance explained by
+    each principal component.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Selecting Principal Components**: The principal components are sorted based
+    on their corresponding eigenvalues in descending order. The first principal component
+    (PC1) explains the highest variance, followed by PC2, PC3, and so on. Typically,
+    you select a subset of principal components that explain a significant portion
+    (e.g., 95% or more) of the total variance.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Projection**: Finally, the data is projected onto the selected principal
+    components to create a lower-dimensional representation of the original data.
+    This lower-dimensional representation captures most of the variance in the data
+    while reducing the number of features.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You can read more about PCA at [https://www.kaggle.com/nirajvermafcb/principal-component-analysis-explained](https://www.kaggle.com/nirajvermafcb/principal-component-analysis-explained)
+    if you are interested. We will implement PCA with the `PCA` module ([https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html](https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html))
+    from scikit-learn. We will first apply PCA to reduce the dimensionality and train
+    the classifier on the resulting data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In machine learning, we usually concatenate multiple consecutive steps and treat
+    them as one “model.” We call this process **pipelining**. We utilize the `pipeline`
+    API ([https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html](https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html))
+    from scikit-learn to facilitate this.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let’s initialize a PCA model, an SVC model, and a model pipelining these
+    two:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The PCA component projects the original data into a 100-dimension space, followed
+    by the SVC classifier with the RBF kernel. We then perform a grid search for the
+    best model among a few options:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: '**Best practice**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Choosing the initial values of hyperparameters like C and gamma in grid search
+    for SVMs is crucial for efficiently finding optimal values. Here are some best
+    practices:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Start with a coarse grid**: Begin with a coarse grid that covers a wide range
+    of values for C and gamma. This allows you to quickly explore the hyperparameter
+    space and identify promising regions.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Consider specific knowledge**: Incorporate any prior knowledge or domain
+    expertise about the problem into the selection of initial values. For example,
+    if you know that the dataset is noisy or has outliers, you may want to prioritize
+    larger values of C to allow for more flexibility in the decision boundary.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Use cross-validation**: This helps to assess how well the initial values
+    generalize to unseen data and guides the refinement of the grid search.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Iteratively refine the grid**: Based on the results of initial cross-validation,
+    iteratively refine the grid around regions that show promising performance. Narrow
+    down the range of values for C and gamma to focus the search on areas where the
+    optimal values are likely to lie.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Finally, we print out the best set of hyperparameters and the classification
+    performance with the best model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: The model composed of a PCA and an SVM classifier achieves an accuracy of `92.3%`.
+    PCA boosts the performance of the SVM-based image classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Following the successful application of SVM in image classification, we will
+    look at its application in regression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Estimating with support vector regression
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As the name implies, SVR is part of the support vector family and a sibling
+    of the **Support Vector Machine** (**SVM**) for classification (or we can just
+    call it **SVC**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To recap, SVC seeks an optimal hyperplane that best segregates observations
+    from different classes. In SVR, our goal is to find a decision hyperplane (defined
+    by a slope vector *w* and intercept *b*) so that two hyperplanes ![](img/B21047_09_065.png)
+    (negative hyperplane) and ![](img/B21047_09_066.png) (positive hyperplane) can
+    cover the ![](img/B21047_09_067.png) bands of the optimal hyperplane. Simultaneously,
+    the optimal hyperplane is as flat as possible, which means *w* is as small as
+    possible, as shown in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![A diagram of a positive hyperplane  Description automatically generated with
+    low confidence](img/B21047_09_13.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 9.13: Finding the decision hyperplane in SVR'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This translates into deriving the optimal *w* and *b* by solving the following
+    optimization problem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Minimizing ![](img/B21047_09_068.png)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Subject to ![](img/B21047_09_069.png) , given a training set of ![](img/B21047_09_070.png),
+    ![](img/B21047_09_071.png), … ![](img/B21047_09_072.png)…, ![](img/B21047_09_073.png)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The theory behind SVR is very similar to SVM. In the next section, let’s see
+    the implementation of SVR.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing SVR
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Again, to solve the preceding optimization problem, we need to resort to quadratic
+    programming techniques, which are beyond the scope of our learning journey. Therefore,
+    we won’t cover the computation methods in detail and will implement the regression
+    algorithm using the `SVR` package ([https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html](https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html))
+    from scikit-learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Important techniques used in SVM, such as penalty as a trade-off between bias
+    and variance, and the kernel (RBF, for example) handling linear non-separation,
+    are transferable to SVR. The `SVR` package from scikit-learn also supports these
+    techniques.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s solve the previous diabetes prediction problem with `SVR` this time,
+    as we did in *Chapter 5*, *Predicting Stock Prices with Regression Algorithms*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Initially, we load the dataset and check the data size, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we designate the last 30 samples as the testing set, while the remaining
+    samples serve as the training set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We can now apply the SVR regressor to the data. We first initialize an `SVC`
+    model and fit it against the training set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here, we start with a linear kernel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We predict on the testing set with the trained model and obtain the prediction
+    performance:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: With this simple model, we are able to achieve an *R*² of `0.59`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s further improve it with a grid search to find the best model from the
+    following options:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'After searching over 18 sets of hyperparameters, we find the best model with
+    the following combination of hyperparameters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we use the best model to make predictions and evaluate its performance:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We are able to boost the *R*² score to `0.68` after fine-tuning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unlike SVM for classification, where the goal is to separate data into distinct
+    classes, SVR focuses on finding a function that best fits the data, by minimizing
+    the prediction error while allowing some tolerance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we continued our journey of supervised learning with SVM. You
+    learned about the mechanics of an SVM, kernel techniques, implementations of SVM,
+    and other important concepts of machine learning classification, including multiclass
+    classification strategies and grid search, as well as useful tips to use an SVM
+    (for example, choosing between kernels and tuning parameters). Then, we finally
+    put into practice what you learned in the form of real-world use cases, including
+    face recognition. You also learned about SVM’s extension to regression, SVR.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will review what you have learned so far in this book
+    and examine the best practices of real-world machine learning. The chapter aims
+    to make your learning foolproof and get you ready for the entire machine learning
+    workflow and productionization. This will be a wrap-up of the general machine
+    learning techniques before we move on to more complex topics in the final three
+    chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exercises
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Can you implement SVM using the `LinearSVC` module? What are the hyperparameters
+    that you need to tweak, and what is the best performance of face recognition you
+    can achieve?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Can you classify more classes in the image recognition project? As an example,
+    you can set `min_faces_per_person=50`. What is the best performance you can achieve
+    using grid search and cross-validation?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Explore stock price prediction using SVR. You can reuse the dataset and feature
+    generation functions from *Chapter 5*, *Predicting Stock Prices with Regression
+    Algorithms*.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Join our book’s Discord space
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Join our community’s Discord space for discussions with the authors and other
+    readers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://packt.link/yuxi](https://packt.link/yuxi)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/QR_Code187846872178698968.png)'
+  prefs: []
+  type: TYPE_IMG

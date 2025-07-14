@@ -1,0 +1,867 @@
+- en: Implementing Parametric Models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the previous chapter, we got started with the basics of supervised machine
+    learning. In this chapter, we will dive into the guts of several popular supervised
+    learning algorithms within the parametric modeling family. We''ll start this chapter
+    by formally introducing parametric models. Then, we''ll introduce two very popular
+    parametric models: linear and logistic regression. We''ll spend some time looking
+    at their inner workings and then we''ll jump into Python and actually code those
+    workings from scratch.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parametric models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing linear regression from scratch
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Logistic regression models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing logistic regression from scratch
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The pros and cons of parametric models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For this chapter, you will need to install the following software, if you haven''t
+    already done so:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Jupyter Notebook
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Anaconda
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Python
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The code files for this chapter can be found at [https:/​/​github.​com/​PacktPublishing/
+  prefs: []
+  type: TYPE_NORMAL
+- en: Supervised-Machine-Learning-with-Python](https:/%E2%80%8B/%E2%80%8Bgithub.%E2%80%8Bcom/%E2%80%8BPacktPublishing/%20Supervised-Machine-Learning-with-Python).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parametric models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'When it comes to supervised learning, there are two families of learning algorithms:
+    **parametric** and **non-parametric**. This area also happens to be a hotbed for
+    gatekeeping and opinion-based conjecture regarding which is better. Basically,
+    parametric models are finite-dimensional, which means that they can learn only
+    a defined number of model parameters. Their learning stage is typically categorized
+    by learning some vector theta, which is also called a **coefficient**. Finally,
+    the learning function is often a known form, which we will clarify later in this
+    section.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finite-dimensional models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'If we go back to our definition of supervised learning, recall that we need
+    to learn some function, *f*. A parametric model will summarize the mapping between
+    *X*, our matrix, and *y*, our target, within a constrained number of summary points.
+    The number of points is typically related to the number of features in the input
+    data. So, if there are three variables, *f* will try to summarize the relationship
+    between *X* and *y* given that there are three values in theta. These are called
+    **model parameters** *f: y=f(X)*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's back up and explain some of the characteristics of parametric models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The characteristics of parametric learning algorithms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We will now cover different features of parametric learning algorithms:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Model parameters are generally constrained to the same dimensionalities of the
+    input space
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You can point to a variable and its corresponding parameter value and typically
+    learn something about variable importance or its relationship to *y*, our target
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finally, they are conventionally fast and do not require much data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Parametric model example
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Imagine that we are asked to estimate the price of a house given its square
+    footage and number of bathrooms. How many parameters are we going to need to learn?
+    How many parameters will we have to learn for our example?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Well, given the square footage and number of bathrooms we will have to learn
+    two parameters. So, our function can be expressed as the estimated price given
+    two variables—square footage and the number of bathrooms—*P1* and *P2*. *P1* will
+    be the relationship between square footage and price. *P2* will be the relationship
+    between the number of bathrooms and price.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code shows the problem set up in Python. `x1` is our first variable—the
+    amount of square footage. You can see that this ranges from anything as small
+    as `1200` to as high as `4000` and our price range is anywhere from `200000` to
+    `500000`. In `x2`, we have the number of bathrooms. This ranges from as few as
+    `1` to as many as `4`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, you can see from our plots that there seems to be a positive trend going
+    on here. And that makes sense. But we''re going to find out as we dig into this
+    example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3082ec42-423e-4e6f-a435-fd878d94150c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now, we want to learn a function that estimates the price, and that function
+    is simply going to be the inner product of our estimated parameters in each vector row of
+    our data. So, we are performing linear regression here. Linear regression can
+    conveniently be solved by using the least squares equation. Since we technically
+    have an infinite number of possible solutions to this problem, least squares will
+    find the solution that minimizes the sum of the squared error.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we complete our least squares on `X`, and learn our parameters in the
+    first cell. Then, in the next cell, we multiply `X` by the theta parameters that
+    we just learned to get the predictions. So, if you really dig into it, there''s
+    only one home that we grossly underestimate in value: the second to last one,
+    which is `1200` square foot and has one bathroom. So, it''s probably an apartment
+    and it may be located in a really hot part of town, which is why it was priced
+    so highly to begin with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output of the preceding code snippet is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now to pick apart our parameters. With each square foot that we add to our house,
+    the estimated price jumps by 142 dollars and 58 cents, which intuitively makes
+    sense. However, for each bathroom we add, our house decreases in value by 24,000
+    dollars: *Price = 142.58 *sqft + -23629.43*bathrooms*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There's another conundrum here. By this logic, if we had a house with 3,000
+    square feet and 0 bathrooms, it would be priced in the ballpark of what a 4,000-square-feet
+    home that has four bathrooms is. So, there's obviously some limitations with our
+    model here. When we try to summarize the mapping with few features and data, there
+    are going to be some non sequiturs that emerge. But there are some other factors
+    that we didn't consider that can help us out when we're fitting our linear regression.
+    First of all, we did not fit an intercept and we did not center our features.
+    So, if you go back to middle school or even early high school algebra, you will
+    remember that, when you're fitting your good line on a Cartesian plot, the intercept
+    is where the line intersects the *y* axis, and we did not fit one of those.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following code, we have centered our data before solving the least squares
+    and estimated an intercept, which is simply the average of `y`, the actual prices
+    minus the inner product of the `X` var, which is the means of the columns of `X`
+    and the estimated parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output of the preceding code snippet is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: So, that summarizes the introduction to the math and the concept behind linear
+    regression, as well as that of parametric learning. In linear regression, we are
+    simply fitting the best line across a number of points, trying to minimize the
+    sum of squared errors there. In the next section, we will learn about PyCharm,
+    and walk through how to actually code a linear regression class from scratch.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing linear regression from scratch
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Linear regression solves the least squares equation to discover the parameters
+    vector theta. In this section, we will walk through the source code for a linear
+    regression class in the `packtml` Python library and then cover a brief graphical
+    example in the `examples` directory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we look at the code, we will be introduced to the interface that backs
+    all of the estimators in the book. It is called `BaseSimpleEstimator`, which is
+    an abstract class. It''s going to enforce only one method, which is `predict`.
+    Different subclass layers are going to enforce other methods for different model
+    families. But this layer backs all the models that we will build, as everything
+    that we are putting together is supervised, so it''s all going to need to be able
+    to predict. You will notice that the signature is prescribed in the `dock` string.
+    Every model will accept `X` and `y` in the signature, as well as any other model
+    hyperparameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The BaseSimpleEstimator interface
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The first flush is similar to that of a scikit-learn base estimator interface.
+    But there are several differences. First of all, we''re not going to permit as
+    many options when we build a model. Furthermore, the model is trained at the moment
+    it''s instantiated. This also differs from scikit-learn in the fact that we don''t
+    have a `fit` method. Scikit-learn has a `fit` method to permit grid searches and
+    hyperparameter tuning. So, this is just one more reason that we''re differing
+    from their signature. With that, let''s go ahead and look into linear regression:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you have PyCharm, go ahead and open it up. We are going to be inside the
+    `packtml` `Hands-on-Supervised-Machine-Learning-with-Python` library, as shown
+    in the following code. You can see this is in PyCharm. This is just the root level
+    of the project level and the package we''re going to be working with is `packtml`.
+    We are just going to walk through how all of the `simple_regression.py` file code
+    works. If you are not using PyCharm, Sublime is an alternative, or you can use
+    any other text editor of your preference:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`base.py`, which is is located inside our package level, will provide the interface
+    for `BaseSimpleEstimator`, which we will use across the entire package. The only
+    method that is going to be enforced on the abstract level for everything is the
+    `predict` function. This function will take one argument, which is `X`. We already
+    mentioned that supervised learning means that we will learn a function, *f,* given
+    `X` and `y`, such that we can approximate ![](img/05adbda5-3f19-428e-b0da-e3beccb26ed9.png) given
+    ![](img/634ff51a-a39a-4a3c-a23a-a3cdc1e4313c.png), or the `X` test in this case.
+    Since every subclass is going to implement a different `predict` method, we will
+    use the abstract method, which is `base`, as shown in the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, inside the `regression` submodule, we will open the `simple_regression.py` file.
+    This file will implement a class called `SimpleLinearRegression`. We call it simple
+    just so you don''t confuse it with the scikit-learn linear regression:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`SimpleLinearRegression` is going to take two arguments. `X`, which is our
+    matrix covariance, and `y`, the training targets, explained as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, in our signature, the very first thing that we will do inside the `init`
+    function is run this through scikit-learn's `check_X_y`. We will make sure that
+    the dimensionality matches between `X` and `y`, as it won't work for us to pass
+    a vector of training targets that is smaller than that of the number of samples
+    in `X` and vice versa. We are also enforcing that everything that is in `y` is
+    numeric.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'The next thing we need to do is compute the mean of the columns in `X`, so
+    that we can center everything, and the mean of the values in `y`, so that we can
+    center them. In this entire function, it is from the least squares optimization
+    function that we pulled out of the NumPy library. So, we''re just going to feed
+    in `X` and `y`, which are now centered in `lstsq`. We will get back three things,
+    the first of which is theta, which is the learned parameter. So, `X.theta` is
+    going to be the best approximate value of `y`. We''re then going to get the rank,
+    which is the rank of `matrix` and `singular_values`, in case you want to dig into
+    the decomposition of the actual solution. As discussed in the last section, regarding
+    the mean house cost, if we''re computing the value of a house minus the inner
+    product of `X_means`, the column means is a vector times theta, another vector.
+    So, we''re going to get a scalar value here for the intercept and we''re going
+    to assign some `self` attributes:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The moment that you instantiate a class, you have fit a linear regression.
+    However, we have to override the `predict` functions from the `BaseSimpleEstimator` superclass.
+    To predict this, all you have to do is compute the inner product of `X`, the new
+    matrix on `theta`, and the parameters that we''ve already learned, and then add
+    the intercept. Now, what differs here from what you saw on the constructor is
+    that we don''t have to re-center `X`. If an `X` test comes in, the only time we
+    center the data is when we''re learning the parameters and not when we''re applying
+    them. Then, we will multiply `X` times the parameters, the inner product there,
+    and then add the intercept. Now we have a vector of predicted ![](img/77b9e227-5b76-4859-9918-cf731a200011.png) values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'So, now, we can go ahead and look at one of our examples. Open up the `examples`
+    directory at the project level, and then open up `regression`. We will look at
+    the `example_linear_regression.py` file, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/fe4735c6-9f3c-4fbc-9e3f-f88a0b11ded3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s walk through exactly what happens here, just to show you how we can
+    apply this to real data. We will load up the linear regression that we just created
+    and import scikit-learn''s linear regression so that we can compare the results.
+    The first thing we''re going to do is create the `X` matrix of random values with
+    `500` samples and `2` dimensions. We will then create the `y` matrix, which will
+    be a linear combination of the first `X` variable and `0`, which will be `2` times
+    the first column plus `1.5` times the second column. The reason we are doing this
+    is to show that our linear regression class is going to learn these exact parameters, `2`
+    and `1.5`, as shown in the following code snippets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we''ve already discussed, we want to split our data. You never want to just
+    evaluate and fit against your in-sample data; otherwise, you''re prone to overfitting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we will fit our linear regression and compute our predictions. So, we
+    can also show with our assertion that the theta that we learned is incredibly
+    close to the actual theta that we expected; that is, `2` and `1.5`. Therefore,
+    our predictions should resemble the `y` train input:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we will fit a scikit-learn regression to show that we get a similar result,
+    if not the exact same result. We''re showing that the theta in the class that
+    we just created matches the coefficients that scikit-learn produces. Scikit-learn
+    is an incredibly well-tested and well-known library. So, the fact that they match
+    shows that we are on the right track. Finally, we can show that our predictions
+    are very close to the scikit-learn solution:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will now fit a linear regression on a class, so that we can look at a plot.
+    To do this, let''s go ahead and run the following example:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Go to the Terminal inside the `Hands-on-Supervised-Machine-Learning-with-Python-master`
+    top level: the project level. Remember to source the content environment. So,
+    if you''ve not already done that, you will need to `source activate` for Unix
+    users, or just activate by typing the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Run this example by typing the name of the file, which is `examples/regression/example_linear_regression.py`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/adf40228-6a5b-486e-b22c-ed1b546c7a9c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'When we run the preceding code, we should get our plot, as shown in the following
+    screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/23f870bd-3a57-4f1a-99ac-4803aa1e57f8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can see that our sum of residuals is essentially zero, meaning that we were
+    spot on in our predictions. It is easy in this case, because we created a scenario
+    where we learned our exact theta values. You can see here the line that we're
+    fitting across one variable. This is a bit more approximated given that we only
+    learned it on one variable. It seems to both qualitatively and quantitatively
+    match what we expected via scikit-learn's predictions and coefficients.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will learn about logistic regression models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Logistic regression models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we will look at logistic regression, which is the first hill-climbing
+    algorithm that we'll cover, and we will have a brief recap of linear regression.
+    We will also look at how logistic regression differs both mathematically and conceptually.
+    Finally, we will learn the core algorithm and explain how it makes predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The concept
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Logistic regression is conceptually the inverse of linear regression. What if,
+    rather than a real value, we want a discrete value or a class? We have already
+    seen one example of this type of question early on when we wanted to predict whether
+    or not an email was spam. So, with logistic regression, rather than predicting
+    a real value, we can predict the probability of class membership, also known as
+    classification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The math
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Mathematically, logistic regression is very similar to linear regression. The
+    inner product of our parameters and *X* represent the log odds of the membership
+    of a class, which is simply the natural log of the probabilities over *1* minus
+    the probabilities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/1c378b72-3456-40b9-a380-9b0bcecbc30c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: What we really want are the probabilities of the class membership. We can back
+    out of the log odds and determine the probabilities using the sigmoid or logistic
+    function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The logistic (sigmoid) transformation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In the following code, we will create an `X` vector of values between `-10`
+    and `10` and then apply the logistic transformation to get `y`, which we can then
+    plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see, we get an S-shaped curve with the original `X` values on the
+    *x* axis and the `y` values on the *y* axis. Notice that everything is mapped
+    between zero and one on the *y* axis. These can now be interpreted as probabilities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/aaaab465-81eb-4407-ad05-b3699b28a07d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The algorithm
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now, we have already covered the logistic regression algorithm briefly in the
+    earlier section. But here''s a recap of how we learn our parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start out by initializing theta as a zero vector:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/d7b1d136-7920-4d85-8c0c-b2a8fbb157cb.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As this is a hill-climbing algorithm, it is iterative. So, for each iteration,
+    we compute the log odds as theta transpose *X* and then transform them via the
+    logistic transformation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/11564b99-d4fb-4fd5-9fcf-81418826430c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, we compute the gradient, which is a vector of partial derivatives of
+    the slope of our function, which we covered in the last section. We simply compute
+    this as *X* transpose times the residuals, *y - ![](img/e35e83e5-16a8-41b6-b237-2a443870a922.png).*
+    Keep in mind that *![](img/26c98c1f-1dc1-478e-8a0b-2b25162bb75b.png) *is the probability
+    now following the logistic transformation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/9d1b6e26-2d31-468d-8c23-c0a2e1ad025a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Finally, we can update our coefficients as theta plus the gradient. You can
+    also see a ![](img/1185d50d-f929-492f-8fb9-57e0a9b27bd5.png) parameter here, which
+    is simply a learning rate parameter. This controls how radically we allow the
+    coefficients to grow for each step:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/b40eca30-20d9-43e9-869d-cf52a42fc3f2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Creating predictions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We finally converge our gradient, which is no longer updating our coefficients,
+    and we are left with a bunch of class probabilities. So, how do we produce the
+    predictions? All we have to do is get above a given threshold and we can get classes.
+    So, in this section, we will be using a binary problem. But, for multi-class,
+    we could just use the argmax functions for each class. Now, we will produce discrete
+    predictions, as shown in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output of the preceding code is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the next section, we will walk through the implementation of logistic regression
+    from scratch in the `packtml` package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing logistic regression from scratch
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we will walk through the implementation of logistic regression
+    in Python within the `packtml` package. We will start off with a brief recap of
+    what logistic regression seeks to accomplish and then go over the source code
+    and look at an example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Recall that logistic regression seeks to classify a sample into a discrete category,
+    also known as **classification**. The logistic transformation allows us to transform
+    the log odds that we get from the inner product of our parameters and `X`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that we have three Python files open. One is `extmath.py`, from within
+    the `utils` directory inside of `packtml`; another is `simple_logistic.py`, from
+    within the `regression` library in `packtml`; and the final one is an `example_logistic_regression.py` file,
+    inside the `examples` directory and `regression`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will dive right into the code base using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will start with the `extmath.py` file. There are two functions that we will
+    be using here. The first is `log_likelihood`, which is the objective function
+    that we would like to maximize inside of the logistic regression:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The specifics of the `log_likelihood` function are not necessarily critical
+    for understanding how logistic regression works. But, essentially, what you can
+    see here is that we will be summing up `y` times the log odds, minus the log of
+    `1` plus the exponential of the log odds. Weighted here is essentially the log
+    odds, that is, `X.dot(w)`, `w` being the theta that we are learning. This is the
+    objective function. So, we''re summing over those logs:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The second is the `logistic_sigmoid` function, which we will now learn in greater
+    depth. This is how we can back out of the log odds to get the class probabilities,
+    which is simply `1` over `1` plus the exponential of the negative log odds, where
+    `x` is the log odds in this case:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will use both of these functions inside the logistic regression class. So,
+    inside of `simple_logistic.py`, you will see a class that resembles the linear
+    regression class that we used in the last section:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, this function, or class, extends `BaseSimpleEstimator`. We will override
+    the `predict` function at some point and the constructor will fit the model and
+    learn the parameters. So, we have four hyperparameters here that come in for this
+    class. The first of which is `X`, which is our training data; then `y`, as our
+    training labels; and `n_steps` recalls that logistic regression as an iterative
+    model. So, `n_steps` is the number of iterations that we will perform to which
+    the `learning_rate` is our lambda. If you go back to the algorithm itself, this
+    controls how quickly we update our theta given the gradients, and, lastly, `loglik_interval`.
+    This is just a helper parameter. Computing the log likelihood can be pretty expensive.
+    We can see this explanation in the following code snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'At the end, we get `theta`, the parameters, `intercept`, and then `log_likelihood`,
+    which is just a list of the computed log likelihoods at each of the intervals.
+    We will first check that our `X` and `y` are as we want them to be, which is `0,
+    1`. We won''t do anything close to what scikit-learn is capable of. We will also
+    not allow different string classes either:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, we want to make sure that it's actually binary. The reason for this is
+    that we're performing logistic regression, which is discrete between `0` and `1`.
+    There is a generalization of the regression, called **softmax regression**, which
+    will allow us to use a number of different classes. it's a multi-class classification.
+    We will get to this when we get into neural nets. For now, we're constraining
+    this to be a binary problem.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Next, we want to center and standardize our `X` matrix. That means we''re going
+    to subtract the column `means` from `X` and divide it by its standard deviation.
+    So, we have mean `0`, and standard deviation `1`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we can do something a little bit clever here when we are learning our
+    linear regression parameters, or the logistic regression parameters that we could
+    not do in linear regression. We can add the intercept to the matrix while we learn
+    it, rather than having to compute it after the fact. We will create a vector of
+    ones as a new feature on our `X` matrix, as shown:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we defined in our algorithm, we start out by defining that theta is equal
+    to zero. There are as many parameters as there are columns in `X`. For each iteration,
+    we will compute the log odds here. Then, we transform this with a logistic sigmoid.
+    We will compute our residuals as `y - preds`. So, at this point, `preds` is probabilities.
+    `y` can be considered to be class probabilities for a binary classification problem
+    where `1` is 100% probable that something belongs to class `1`, and `0` is 0%
+    probable that something belongs to class `1`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: So, we can subtract the probabilities from `y` to get our residuals. In order
+    to get our gradient, we will perform `X` times the residuals, which is the inner
+    product there. Keep in mind that a gradient is a vector of partial derivatives
+    for the slope of our function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will update `theta` and the parameters by adding the gradient times our
+    learning rate. The learning rate is the lambda function that controls how quickly
+    we learn. As you may remember, if we learn too quickly, we can overstep a global
+    optimum and end up getting a non-optimal solution. If we go too slowly, then we''re
+    going to fit for a long time. Logistic regression is an interesting case; as this
+    is actually a convex optimization problem, we will have enough iterations to reach
+    the global optimum. So, `learning_rate` here is a little bit tongue-in-cheek,
+    but this is how, in general, hill-climbing functions work by using `learning_rate`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: The very last step here is that, if we are at the proper intervals, we will
+    compute `log_likelihood`. Now, again, you could compute this function at every
+    iteration, but it would take you a very long time. We can opt to make this happen
+    after every 5 or 10 minutes, which will allow us to see that we're optimizing
+    this function. But, at the same time, it means that we don't have to compute it
+    at every iteration.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Finally, we will save all of these as instance parameters for a class. Notice
+    that we are stripping out the intercept and keeping `1` onward as far as the parameters
+    go. These are the non-intercept parameters that we''ll just compute in our inner
+    product for the predictions:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'So, we take the logistic transformation of `X` times `theta.T` and then add
+    in `intercept` after we have centered and standardized our input, `X`, which would
+    then give us the probabilities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'But, to get the actual prediction, we just round up the probabilities. So,
+    in the `predict` function, we will take `predict_proba` and round it up or down
+    to either zero or one and get the type as `int`, which will give us our classes
+    zero and one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: Example of logistic regression
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now, as an example, we will look at our `example_logistic_regression.py` script.
+    We will compare the output of our `simple_logistic_regression.py` file with that
+    of scikit-learn and prove that we get similar, if not exactly equal, parameters
+    learned in our output. We use the scikit-learn `make_classification` function
+    to create `100` samples and two features and do `train_test_split`. First, we
+    will fit our own `SimpleLogisticRegression` with the model that we just walked
+    through and take `50` steps, as this is a `50` iteration, as shown in the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we will compute scikit-learn''s `LogisticRegression` with almost no regularization
+    and fit it as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: We will run this code. Make sure that you've got your Anaconda environment already
+    activated by typing `source activate packt-sml`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you're on Windows, this would just be `activate packt-sml`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We see that our test accuracy is 96%, which is pretty close to `Sklearn` at
+    100%. Scikit-learn runs more iterations, which is why it gets better accuracy.
+    If we ran more iterations, we could theoretically get perfect accuracy. In the
+    following output, you can see a perfectly linearly separable boundary here. But,
+    since we haven''t run as many iterations, we''re not hitting it. So, what you
+    can see in this diagram is that we have this linear boundary, which is the decision
+    function we''ve learned, separating these two classes. On the left, you have one
+    class, and on the right, you have another, as shown:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b26fd4cd-0ca3-4d1f-bdb5-732d5062ffbc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The output of the preceding code is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e3eddc15-ee9b-4acb-ab29-e3407fb81f18.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Hypothetically, if we ran this code for a hundred or even more iterations, we
+    could achieve a perfectly linearly separable plane, which could guarantee a linearly
+    separable class, because logistic regression will always reach a global optimum.
+    We also know that our formulation is exactly the same as scikit-learn's. So, it's
+    just a matter of how many iterations we ran there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we're going to look at some of the pros and cons of parametric
+    models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The pros and cons of parametric models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Parametric models have some really convenient attributes. Namely, they are fast
+    to fit, don't require too much data, and can be very easily explained. In the
+    case of linear and logistic regression, it's easy to look at coefficients and
+    directly explain the impact of fluctuating one variable in either direction. In
+    regulated industries, such as finance or insurance, parametric models tend to
+    reign supreme, since they can be easily explained to regulators. Business partners
+    tend to really rely on the insights that the coefficients produce. However, as
+    is evident in what we've already seen so far, they tend to oversimplify. So, as
+    an example, the logistic regression decision boundary that we looked at in the
+    last section assumes a perfect linear boundary between two classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is rare that the real world can be constrained into linear relationships.
+    That said, the models are very simple. They don't always capture the true nuances
+    of relationships between variables, which is a bit of a double-edged sword. Also,
+    they're heavily impacted by outliers and data scale. So, you have to take great
+    care with data preparation. This is one of the reasons that we had to make sure
+    we centered and scaled our data before fitting. Finally, if you add data to your
+    models, it's unlikely that they're going to get much better. This introduces a
+    new concept, which we're going to call bias.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Error due to bias is a concept we will talk about in subsequent chapters. It''s
+    the result of a model that is oversimplified. In the following diagram, our model
+    oversimplifies a `logit` function by treating it as linear:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c3f57086-32f9-43e4-9c09-66a912959d67.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This is also known as **underfitting**, which is common within the parametric
+    model family. There are several ways to combat high bias, most of which we will
+    introduce in the next chapter. But, in the spirit of exploring the drawbacks of
+    parametric models, it's worth pointing some of them out here. As mentioned before,
+    we cannot add more data to learn a better function in high-bias situations. If
+    we take the previous example, if you were to add more samples along the logit
+    line, our learned or blue line would not approach the true function any more than
+    it already has, because it's linear. It's not complex enough to model the true
+    underlying function, which is an unfortunate consequence of the simplicity of
+    many parametric models. More model complexity and complex nonlinear features usually
+    help to correct high bias.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we were introduced to parametric models. We then walked through
+    the low-level math of linear logistic regression, before moving on to implementations
+    in Python. Now that we've covered some of the pros and cons of parametric models,
+    in the next chapter, we will take a look at some non-parametric models.
+  prefs: []
+  type: TYPE_NORMAL

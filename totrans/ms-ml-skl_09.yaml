@@ -1,0 +1,477 @@
+- en: Chapter 9. From the Perceptron to Support Vector Machines
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter we discussed the perceptron. As a binary classifier,
+    the perceptron cannot be used to effectively classify linearly inseparable feature
+    representations. We encountered a similar problem to this in our discussion of
+    multiple linear regression in [Chapter 2](ch02.html "Chapter 2. Linear Regression"),
+    *Linear Regression*; we examined a dataset in which the response variable was
+    not linearly related to the explanatory variables. To improve the accuracy of
+    the model, we introduced a special case of multiple linear regression called polynomial
+    regression. We created synthetic combinations of features, and were able to model
+    a linear relationship between the response variable and the features in the higher-dimensional
+    feature space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While this method of increasing the dimensions of the feature space may seem
+    like a promising technique to use when approximating nonlinear functions with
+    linear models, it suffers from two related problems. The first is a computational
+    problem; computing the mapped features and working with larger vectors requires
+    more computing power. The second problem pertains to generalization; increasing
+    the dimensions of the feature representation introduces the curse of dimensionality.
+    Learning from high-dimensional feature representations requires exponentially
+    more training data to avoid overfitting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will discuss a powerful model for classification and regression
+    called the **support vector** **machine** (**SVM**). First, we will revisit mapping
+    features to higher-dimensional spaces. Then, we will discuss how support vector
+    machines mitigate the computation and generalization problems encountered when
+    learning from the data mapped to higher-dimensional spaces. Entire books are devoted
+    to describing support vector machines, and describing the optimization algorithms
+    used to train SVMs requires more advanced math than we have used in previous chapters.
+    Instead of working through toy examples in detail as we have done in previous
+    chapters, we will try to develop an intuition for how support vector machines
+    work in order to apply them effectively with scikit-learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kernels and the kernel trick
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Recall that the perceptron separates the instances of the positive class from
+    the instances of the negative class using a hyperplane as a decision boundary.
+    The decision boundary is given by the following equation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Predictions are made using the following function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Note that previously we expressed the inner product ![Kernels and the kernel
+    trick](img/8365OS_09_40.jpg) as ![Kernels and the kernel trick](img/8365OS_09_41.jpg).
+    To be consistent with the notational conventions used for support vector machines,
+    we will adopt the former notation in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While the proof is beyond the scope of this chapter, we can write the model
+    differently. The following expression of the model is called the **dual** form.
+    The expression we used previously is the **primal** form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The most important difference between the primal and dual forms is that the
+    primal form computes the inner product of the *model parameters* and the test
+    instance's feature vector, while the dual form computes the inner product of the
+    *training instances* and the test instance's feature vector. Shortly, we will
+    exploit this property of the dual form to work with linearly inseparable classes.
+    First, we must formalize our definition of mapping features to higher-dimensional
+    spaces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the section on polynomial regression in [Chapter 2](ch02.html "Chapter 2. Linear
+    Regression"), *Linear Regression*, we mapped features to a higher-dimensional
+    space in which they were linearly related to the response variable. The mapping
+    increased the number of features by creating quadratic terms from combinations
+    of the original features. These synthetic features allowed us to express a nonlinear
+    function with a linear model. In general, a mapping is given by the following
+    expression:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The plot on the left in the following figure shows the original feature space
+    of a linearly inseparable data set. The plot on the right shows that the data
+    is linearly separable after mapping to a higher-dimensional space:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s return to the dual form of our decision boundary, and the observation
+    that the feature vectors appear only inside of a dot product. We could map the
+    data to a higher-dimensional space by applying the mapping to the feature vectors
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_09.jpg)![Kernels and the kernel
+    trick](img/8365OS_09_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: As noted, this mapping allows us to express more complex models, but it introduces
+    computation and generalization problems. Mapping the feature vectors and computing
+    their dot products can require a prohibitively large amount of processing power.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Observe in the second equation that while we have mapped the feature vectors
+    to a higher-dimensional space, the feature vectors still only appear as a dot
+    product. The dot product is scalar; we do not require the mapped feature vectors
+    once this scalar has been computed. If we can use a different method to produce
+    the same scalar as the dot product of the mapped vectors, we can avoid the costly
+    work of explicitly computing the dot product and mapping the feature vectors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fortunately, there is such a method called the **kernel trick**. A **kernel**
+    is a function that, given the original feature vectors, returns the same value
+    as the dot product of its corresponding mapped feature vectors. Kernels do not
+    explicitly map the feature vectors to a higher-dimensional space, or calculate
+    the dot product of the mapped vectors. Kernels produce the same value through
+    a different series of operations that can often be computed more efficiently.
+    Kernels are defined more formally in the following equation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s demonstrate how kernels work. Suppose that we have two feature vectors,
+    *x* and *z*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_12.jpg)![Kernels and the kernel
+    trick](img/8365OS_09_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In our model, we wish to map the feature vectors to a higher-dimensional space
+    using the following transformation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_14.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The dot product of the mapped, normalized feature vectors is equivalent to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_15.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The kernel given by the following equation produces the same value as the dot
+    product of the mapped feature vectors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_16.jpg)![Kernels and the kernel
+    trick](img/8365OS_09_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s plug in values for the feature vectors to make this example more concrete:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_17.jpg)![Kernels and the kernel
+    trick](img/8365OS_09_18.jpg)![Kernels and the kernel trick](img/8365OS_09_19.jpg)![Kernels
+    and the kernel trick](img/8365OS_09_20.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The kernel ![Kernels and the kernel trick](img/8365OS_09_43.jpg) produced the
+    same value as the dot product ![Kernels and the kernel trick](img/8365OS_09_44.jpg)
+    of the mapped feature vectors, but never explicitly mapped the feature vectors
+    to the higher-dimensional space and required fewer arithmetic operations. This
+    example used only two dimensional feature vectors. Data sets with even a modest
+    number of features can result in mapped feature spaces with massive dimensions.
+    scikit-learn provides several commonly used kernels, including the polynomial,
+    sigmoid, Gaussian, and linear kernels. Polynomial kernels are given by the following
+    equation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_21.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Quadratic kernels, or polynomial kernels where *k* is equal to 2, are commonly
+    used in natural language processing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The sigmoid kernel is given by the following equation. ![Kernels and the kernel
+    trick](img/8365OS_09_45.jpg) and ![Kernels and the kernel trick](img/8365OS_09_46.jpg)
+    are hyperparameters that can be tuned through cross-validation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The Gaussian kernel is a good first choice for problems requiring nonlinear
+    models. The Gaussian kernel is a **radial basis function**. A decision boundary
+    that is a hyperplane in the mapped feature space is similar to a decision boundary
+    that is a hypersphere in the original space. The feature space produced by the
+    Gaussian kernel can have an infinite number of dimensions, a feat that would be
+    impossible otherwise. The Gaussian kernel is given by the following equation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Kernels and the kernel trick](img/8365OS_09_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![Kernels and the kernel trick](img/8365OS_09_45.jpg) is a hyperparameter.
+    It is always important to scale the features when using support vector machines,
+    but feature scaling is especially important when using the Gaussian kernel.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Choosing a kernel can be challenging. Ideally, a kernel will measure the similarity
+    between instances in a way that is useful to the task. While kernels are commonly
+    used with support vector machines, they can also be used with any model that can
+    be expressed in terms of the dot product of two feature vectors, including logistic
+    regression, perceptrons, and principal component analysis. In the next section,
+    we will address the second problem caused by mapping to high-dimensional feature
+    spaces: generalization.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Maximum margin classification and support vectors
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The following figure depicts instances from two linearly separable classes and
+    three possible decision boundaries. All of the decision boundaries separate the
+    training instances of the positive class from the training instances of the negative
+    class, and a perceptron could learn any of them. Which of these decision boundaries
+    is most likely to perform best on test data?
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Maximum margin classification and support vectors](img/8365OS_09_24.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'From this visualization, it is intuitive that the dotted decision boundary
+    is the best. The solid decision boundary is near many of the positive instances.
+    The test set could contain a positive instance that has a slightly smaller value
+    for the first explanatory variable, ![Maximum margin classification and support
+    vectors](img/8365OS_09_47.jpg); this instance would be classified incorrectly.
+    The dashed decision boundary is farther away from most of the training instances;
+    however, it is near one of the positive instances and one of the negative instances.
+    The following figure provides a different perspective on evaluating decision boundaries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Maximum margin classification and support vectors](img/8365OS_09_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Assume that the line plotted is the decision boundary for a logistic regression
+    classifier. The instance labeled **A** is far from the decision boundary; it would
+    be predicted to belong to the positive class with a high probability. The instance
+    labeled **B** would still be predicted to belong to the positive class, but the
+    probability would be lower as the instance is closer to the decision boundary.
+    Finally, the instance labeled **C** would be predicted to belong to the positive
+    class with a low probability; even a small change to the training data could change
+    the class that is predicted. The most confident predictions are for the instances
+    that are farthest from the decision boundary. We can estimate the confidence of
+    the prediction using its **functional margin**. The functional margin of the training
+    set is given by the following equations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Maximum margin classification and support vectors](img/8365OS_09_26.jpg)![Maximum
+    margin classification and support vectors](img/8365OS_09_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the preceding formulae ![Maximum margin classification and support vectors](img/8365OS_09_48.jpg)
+    is the true class of the instance. The functional margin is large for instance
+    **A** and small for instance **C**. If **C** were misclassified, the functional
+    margin would be negative. The instances for which the functional margin is equal
+    to one are called **support vectors**. These instances alone are sufficient to
+    define the decision boundary; the other instances are not required to predict
+    the class of a test instance. Related to the functional margin is the **geometric
+    margin**, or the maximum width of the band that separates the support vectors.
+    The geometric margin is equal to the normalized functional margin. It is necessary
+    to normalize the functional margins as they can be scaled by using ![Maximum margin
+    classification and support vectors](img/8365OS_09_49.jpg), which is problematic
+    for training. When ![Maximum margin classification and support vectors](img/8365OS_09_49.jpg)
+    is a unit vector, the geometric margin is equal to the functional vector. We can
+    now formalize our definition of the best decision boundary as having the greatest
+    geometric margin. The model parameters that maximize the geometric margin can
+    be solved through the following constrained optimization problem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Maximum margin classification and support vectors](img/8365OS_09_27.jpg)![Maximum
+    margin classification and support vectors](img/8365OS_09_28.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'A useful property of support vector machines is that this optimization problem
+    is convex; it has a single local minimum that is also the global minimum. While
+    the proof is beyond the scope of this chapter, the previous optimization problem
+    can be written using the dual form of the model to accommodate kernels as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Maximum margin classification and support vectors](img/8365OS_09_29.jpg)![Maximum
+    margin classification and support vectors](img/8365OS_09_34.jpg)![Maximum margin
+    classification and support vectors](img/8365OS_09_30.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Finding the parameters that maximize the geometric margin subject to the constraints
+    that all of the positive instances have functional margins of at least 1 and all
+    of the negative instances have functional margins of at most -1 is a quadratic
+    programming problem. This problem is commonly solved using an algorithm called
+    **Sequential Minimal Optimization** (**SMO**). The SMO algorithm breaks the optimization
+    problem down into a series of the smallest possible subproblems, which are then
+    solved analytically.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classifying characters in scikit-learn
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s apply support vector machines to a classification problem. In recent
+    years, support vector machines have been used successfully in the task of character
+    recognition. Given an image, the classifier must predict the character that is
+    depicted. Character recognition is a component of many optical character-recognition
+    systems. Even small images require high-dimensional representations when raw pixel
+    intensities are used as features. If the classes are linearly inseparable and
+    must be mapped to a higher-dimensional feature space, the dimensions of the feature
+    space can become even larger. Fortunately, SVMs are suited to working with such
+    data efficiently. First, we will use scikit-learn to train a support vector machine
+    to recognize handwritten digits. Then, we will work on a more challenging problem:
+    recognizing alphanumeric characters in photographs.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classifying handwritten digits
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The Mixed National Institute of Standards and Technology database is a collection
+    of 70,000 images of handwritten digits. The digits were sampled from documents
+    written by employees of the US Census Bureau and American high school students.
+    The images are grayscale and 28 x 28 pixels in dimension. Let''s inspect some
+    of the images using the following script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'First, we load the data. scikit-learn provides the `fetch_mldata` convenience
+    function to download the data set if it is not found on disk, and read it into
+    an object. Then, we create a subplot for five instances for the digits zero, one,
+    and two. The script produces the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Classifying handwritten digits](img/8365OS_09_32.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The MNIST data set is partitioned into a training set of 60,000 images and test
+    set of 10,000 images. The dataset is commonly used to evaluate a variety of machine
+    learning models; it is popular because little preprocessing is required. Let's
+    use scikit-learn to build a classifier that can predict the digit depicted in
+    an image.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we import the necessary classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The script will fork additional processes during grid search, which requires
+    execution from a `__main_`_ block.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we load the data using the `fetch_mldata` convenience function. We scale
+    the features and center each feature around the origin. We then split the preprocessed
+    data into training and test sets using the following line of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, we instantiate an `SVC`, or support vector classifier, object. This object
+    exposes an API like that of scikit-learn's other estimators; the classifier is
+    trained using the `fit` method, and predictions are made using the `predict` method.
+    If you consult the documentation for `SVC`, you will find that the estimator requires
+    more hyperparameters than most of the other estimators we discussed. It is common
+    for more powerful estimators to require more hyperparameters. The most interesting
+    hyperparameters for `SVC` are set by the `kernel`, `gamma`, and `C` keyword arguments.
+    The `kernel` keyword argument specifies the kernel to be used. scikit-learn provides
+    implementations of the linear, polynomial, sigmoid, and radial basis function
+    kernels. The `degree` keyword argument should also be set when the polynomial
+    kernel is used. `C` controls regularization; it is similar to the lambda hyperparameter
+    we used for logistic regression. The keyword argument `gamma` is the kernel coefficient
+    for the sigmoid, polynomial, and RBF kernels. Setting these hyperparameters can
+    be challenging, so we tune them by grid searching with the following code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following is the output of the preceding script:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The best model has an average F1 score of 0.97; this score can be increased
+    further by training on more than the first ten thousand instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classifying characters in natural images
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now let's try a more challenging problem. We will classify alphanumeric characters
+    in natural images. The Chars74K dataset, collected by T. E. de Campos, B. R. Babu,
+    and M. Varma for *Character Recognition in Natural Images*, contains more than
+    74,000 images of the digits zero through to nine and the characters for both cases
+    of the English alphabet. The following are three examples of images of the lowercase
+    letter `z`. Chars74K can be downloaded from [http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/](http://www.ee.surrey.ac.uk/CVSSP/demos/chars74k/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Classifying characters in natural images](img/8365OS_09_33.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Several types of images comprise the collection. We will use 7,705 images of
+    characters that were extracted from photographs of street scenes taken in Bangalore,
+    India. In contrast to MNIST, the images in this portion of Chars74K depict the
+    characters in a variety of fonts, colors, and perturbations. After expanding the
+    archive, we will use the files in the `English/Img/GoodImg/Bmp/` directory. First
+    we will import the necessary classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next we will define a function that resizes images using the Python Image Library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then we load will the images for each of the 62 classes and convert them to
+    grayscale. Unlike MNIST, the images of Chars74K do not have consistent dimensions,
+    so we will resize them to 30 pixels on a side using the resize_and_crop function
+    we defined. Finally, we will convert the processed images to a NumPy array:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding script produces the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: It is apparent that this is a more challenging task than classifying digits
+    in MNIST. The appearances of the characters vary more widely, the characters are
+    perturbed more since the images were sampled from photographs rather than scanned
+    documents. Furthermore, there are far fewer training instances for each class
+    in Chars74K than there are in MNIST. The performance of the classifier could be
+    improved by adding training data, preprocessing the images differently, or using
+    more sophisticated feature representations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we discussed the support vector machine—a powerful model that
+    can mitigate some of the limitations of perceptrons. The perceptron can be used
+    effectively for linearly separable classification problems, but it cannot express
+    more complex decision boundaries without expanding the feature space to higher
+    dimensions. Unfortunately, this expansion is prone to computation and generalization
+    problems. Support vector machines redress the first problem using kernels, which
+    avoid explicitly computing the feature mapping. They redress the second problem
+    by maximizing the margin between the decision boundary and the nearest instances.
+    In the next chapter, we will discuss models called artificial neural networks,
+    which, like support vector machines, extend the perceptron to overcome its limitations.
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,425 @@
+- en: Bagging
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Bagging, or bootstrap aggregating, is the first generative ensemble learning
+    technique that this book will present. It can be a useful tool to reduce variance
+    as it creates a number of base learners by sub-sampling the original train set.
+    In this chapter, we will discuss the statistical method on which bagging is based,
+    bootstrapping. Next, we will present bagging, along with its strengths and weaknesses.
+    Finally, we will implement the method in Python, as well as use the scikit-learn
+    implementation, to solve regression and classification problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main topics covered in this chapter are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The bootstrapping method from computational statistics
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How bagging works
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Strengths and weaknesses of bagging
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing a custom bagging ensemble
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using the scikit-learn implementation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will require basic knowledge of machine learning techniques and algorithms.
+    Furthermore, a knowledge of python conventions and syntax is required. Finally,
+    familiarity with the NumPy library will greatly help the reader to understand
+    some custom algorithm implementations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code files of this chapter can be found on GitHub:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter05](https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter05)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Check out the following video to see the Code in Action: [http://bit.ly/2JKcokD](http://bit.ly/2JKcokD).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bootstrapping
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Bootstrapping is a resampling method. In statistics, resampling entails the
+    use of many samples, generated from an original sample. In machine learning terms,
+    the sample is our training data. The main idea is to use the original sample as
+    the population (the whole domain of our problem) and the generated sub-samples
+    as samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In essence, we are simulating how a statistic would behave if we collected
+    many samples from the original population, as shown in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/eea515ec-c607-48f5-9db1-8eb8b6159a9f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: A representation of how resampling works
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating bootstrap samples
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In order to create bootstrap samples, we resample with replacement (each instance
+    may be selected multiple times) from our original sample. This means that a single
+    instance can be selected multiple times. Suppose we have data for 100 individuals.
+    The data contains the weight and height of each individual. If we generate random
+    numbers from 1 to 100 and add the corresponding data to a new dataset, we have
+    essentially created a bootstrap sample.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In Python, we can use `numpy.random.choice`to create a sub-sample of a given
+    size. We can try to create bootstrap samples and estimates about the mean and
+    standard deviation of the diabetes dataset. First, we load the dataset and libraries
+    and print the statistics of our sample, as in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then create the bootstrap samples and statistics and store them in `bootstrap_stats`.
+    We could store the whole bootstrap samples, but it is not memory-efficient to
+    do so. Furthermore, we only care about the statistics, so it makes sense only
+    to store them. Here, we create 10,000 bootstrap samples and statistics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can now plot the histograms of the mean and standard deviation, as well
+    as calculate the standard error (that is, the standard deviation of the statistic''s
+    distributions) for each:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We get the output shown in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/8114287f-2280-4cd4-8aa7-fcd3b478a8dd.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Bootstrap distributions for mean and standard deviation
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that due to the inherent randomness of the process (for which instances
+    will be selected for each bootstrap sample), the results may vary each time the
+    procedure is executed. A higher number of bootstrap samples will help to stabilize
+    the results. Nonetheless, it is a useful technique to calculate the standard error,
+    confidence intervals, and other statistics without making any assumptions about
+    the underlying distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bagging
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Bagging makes use of bootstrap samples in order to train an array of base learners.
+    It then combines their predictions using voting. The motivation behind this method
+    is to produce diverse base learners by diversifying the train sets. In this section,
+    we discuss the motivation, strengths, and weaknesses of this method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating base learners
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Bagging applies bootstrap sampling to the train set, creating a number of *N*
+    bootstrap samples. It then creates the same number *N* of base learners, using
+    the same machine learning algorithm. Each base learner is trained on the corresponding
+    train set and all base learners are combined by voting (hard voting for classification,
+    and averaging for regression). The procedure is depicted as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7a27a871-ef8e-4465-9e56-2e53afe717f4.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Creating base learners through bagging
+  prefs: []
+  type: TYPE_NORMAL
+- en: By using bootstrap samples with the same size as the original train set, each
+    instance has a probability of 0.632 of appearing in any given bootstrap sample.
+    Thus, in many cases, this type of bootstrap estimate is referred to as the 0.632
+    bootstrap estimate. In our case, this means that we can use the remaining 36.8%
+    of the original train set in order to estimate the individual base learner's performance.
+    This is called the **out**-**of**-**bag score**, and the 36.8% of instances are
+    called **out**-**of**-**bag instances**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Strengths and weaknesses
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Bagging is usually utilized with decision trees as its base learners, but it
+    can be used with any machine learning algorithm. Bagging reduces variance greatly
+    and it has been proved that it is most effective when unstable base learners are
+    used. Unstable learners generate models with great inter-model variance, even
+    when the respective train sets vary only slightly. Furthermore, bagging converges
+    as the number of base learners grows. Similar to estimating a bootstrap statistic,
+    by increasing the number of base learners, we also increase the number of bootstrap
+    samples. Finally, bagging allows for easy parallelization, as each model is trained
+    independently.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The main disadvantage of bagging is the loss of interpretability and transparency
+    of our models. For example, using a single decision tree allows for great interpretability,
+    as the decision of each node is readily available. Using a bagging ensemble of
+    100 trees makes the individual decisions less important, while the collective
+    predictions define the ensemble's final output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python implementation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To better understand the process of creating the ensemble, as well as its merits,
+    we will implement it in Python using decision trees. In this example, we will
+    try to classify the MNIST dataset of handwritten digits. Although we have used
+    the cancer dataset for classification examples up until now, it contains only
+    two classes, while the number of examples is relatively small for effective bootstrapping.
+    The digits dataset contains a considerable number of examples and is also more
+    complex, as there is a total of 10 classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For this example, we will use 1500 instances as the train set, and the remaining
+    297 as the test set. We will generate 10 bootstrap samples, and consequently 10
+    decision-tree models. We will then combine the base predictions using hard voting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We load the libraries and data as shown in the following example:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then create our bootstrap samples and train the corresponding models. Note,
+    that we do not use `np.random.choice`. Instead, we generate an array of indices
+    with `np.random.randint(0, train_size, size=train_size)`, as this will enable
+    us to choose both the features and the corresponding targets for each bootstrap
+    sample. We store each base learner in the `base_learners` list, for ease of access
+    later on:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we predict the targets of the test set with each base learner and store
+    their predictions as well as their evaluated accuracy, as shown in the following
+    code block:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we have each base learner''s predictions in `base_predictions`, we
+    can combine them with hard voting, as we did in [Chapter 3](ad9aa66b-7b30-4779-8914-0ff58140b3e8.xhtml), *Voting*,
+    for individual base learners. Furthermore, we evaluate the ensemble''s accuracy:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we print the accuracy of each base learner, as well as the ensemble''s
+    accuracy, sorted in ascending order:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The final output is shown in the following example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: It is evident that the ensemble's accuracy is almost 10% higher than the best-performing
+    base model. This is a considerable improvement, especially if we take into account
+    that this ensemble consists of identical base learners (considering the machine
+    learning method used).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parallelizing the implementation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We can easily parallelize our bagging implementation using `from concurrent.futures
+    import ProcessPoolExecutor`. This executor allows the user to spawn a number of
+    tasks to be executed and executes them in parallel processes. It only needs to
+    be passed a target function and its parameters. In our example, we only need to
+    create functions out of code sections (sections 2 and 3):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, in the original sections 2 and 3, we modify the code as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `executor` returns an object (in our case `future`), which contains the
+    results of our function. The rest of the code remains unchanged with the exception
+    that it is enclosed in `if __name__ == '__main__' `guard, as each new process
+    will import the whole script. This guard prevents them from re-executing the rest
+    of the code. As our example is small, with six processes available, we need to
+    have at least 1,000 base learners to see any considerable speedup in the execution
+    times. For a fully working version, please refer to `'bagging_custom_parallel.py'`
+    from the provided codebase.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using scikit-learn
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Scikit-learn has a great implementation of bagging for both regression and classification
+    problems. In this section, we will go through the process of using the provided
+    implementations to create ensembles for the digits and diabetes datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bagging for classification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Scikit-learn's implementation of bagging lies in the `sklearn.ensemble` package.
+    `BaggingClassifier` is the corresponding class for classification problems. It
+    has a number of interesting parameters, allowing for greater flexibility. It can
+    use any scikit-learn estimator by specifying it with `base_estimator`. Furthermore,
+    `n_estimators` dictates the ensemble's size (and, consequently, the number of
+    bootstrap samples that will be generated), while `n_jobs` dictates how many jobs
+    (processes) will be used to train and predict with each base learner. Finally,
+    if set to `True`, `oob_score` calculates the out-of-bag score for the base learners.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using the actual classifier is straightforward and similar to all other scikit-learn
+    estimators. First, we load the required data and libraries, as shown in the following
+    example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then create, train, and evaluate the estimator:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: The final achieved accuracy is 88%, the same as our own implementation. Furthermore,
+    we can access the out-of-bag score through `ensemble.oob_score_`, which in our
+    case is equal to 89.6%. Generally, the out-of-bag score slightly overestimates
+    the out-of-sample predictive capability of the ensemble, which is what we observe
+    in this example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In our examples, we chose an `ensemble_size` of `10`. Suppose we would like
+    to test how different ensemble sizes affect the ensemble''s performance. Given
+    that the bagging classifier accepts the size as a constructor''s parameter, we
+    can use validation curves from [Chapter 2](d7921006-351e-4c21-ab54-f1dc834557dc.xhtml), *Getting
+    Started with Ensemble Learning*, to conduct the test. We test 1 to 39 base learners,
+    with a step of 2\. We observe an initial decrease in bias and variance. For ensembles
+    with more than 20 base learners, there seems to be zero benefit in increasing
+    the ensemble’s size. The results are depicted in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/1366c425-06ba-4e76-9523-a11d125fe96f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Validation curves for 1 to 39 base learners
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bagging for regression
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'For regression purposes, we will use the `BaggingRegressor` class from the
+    same `sklearn.ensemble` package. We will also instantiate a single `DecisionTreeRegressor `to
+    compare the results. We start by loading the libraries and data, as usual:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We instantiate the single decision tree and the ensemble. Note that we allow
+    for a relatively deep decision tree, by specifying `max_depth=6`. This allows
+    the creation of diverse and unstable models, which greatly benefits bagging. If
+    we restrict the maximum depth to 2 or 3 levels, we will see that bagging does
+    not perform better than a single model. Training and evaluating the ensemble and
+    the model follows the standard procedure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The ensemble can greatly outperform the single model, by producing both higher
+    R-squared and lower **mean squared error** (**MSE**). As mentioned earlier, this
+    is due to the fact that the base learners are allowed to create deep and unstable
+    models. The actual results of the two models are provided in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we presented the main concept of creating bootstrap samples
+    and estimating bootstrap statistics. Building on this foundation, we introduced
+    bootstrap aggregating, or bagging, which uses a number of bootstrap samples to
+    train many base learners that utilize the same machine learning algorithm. Later,
+    we provided a custom implementation of bagging for classification, as well as
+    the means to parallelize it. Finally, we showcased the use of scikit-learn's own
+    implementation of bagging for regression and classification problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The chapter can be summarized as follows. **Bootstrap samples** are created
+    by resampling with replacement from the original dataset. The main idea is to
+    treat the original sample as the population, and each subsample as an original
+    sample. If the original dataset and the bootstrap dataset have the same size,
+    each instance has a probability of  **63.2%** of being included in the bootstrap
+    dataset (sample). Bootstrap methods are useful for calculating statistics such
+    as confidence intervals and standard error, **without making assumptions** about
+    the underlying distribution. **Bagging** generates a number of bootstrap samples
+    to train each individual base learner. Bagging benefits **unstable learners**,
+    where small variations in the train set induce great variations in the generated
+    model. Bagging is a suitable ensemble learning method to reduce **variance**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bagging allows for easy **parallelization**, as each bootstrap sample and base
+    learner can be generated, trained, and tested individually. As with all ensemble
+    learning methods, using bagging reduces the **interpretability** and motivation
+    behind individual predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will introduce the second generative method, Boosting.
+  prefs: []
+  type: TYPE_NORMAL

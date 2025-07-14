@@ -1,0 +1,736 @@
+- en: Recommender System – Getting to Know Their Taste
+  prefs: []
+  type: TYPE_NORMAL
+- en: A layperson might not know about the sophisticated machine learning algorithms
+    controlling the high-frequency transactions taking place in the stock exchange.
+    They may also not know about the algorithms detecting online crimes and controlling
+    missions to outer space. Yet, they interact with recommendation engines every
+    day. They are daily witnesses of the recommendation engines picking books for
+    them to read on Amazon, selecting which movies they should watch next on Netflix,
+    and influencing the news articles they read every day. The prevalence of recommendation
+    engines in many businesses requires different flavors of recommendation algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will learn about the different approaches used by recommender
+    systems. We will mainly use a sister library to scikit-learn called Surprise.
+    Surprise is a toolkit that implements different collaborative filtering algorithms.
+    So, we will start by learning the differences between the *c**ollaborative filtering*
+    algorithms and the *content-based filtering* algorithms used in a recommendation
+    engine. We will also learn how to package our trained models to be used by other
+    software without the need for retraining. The following topics will be discussed
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The different recommendation paradigms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Downloading Surprise and the dataset
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using KNN-inspired algorithms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using baseline algorithms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using singular value decomposition
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deploying machine learning models in production
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The different recommendation paradigms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In a recommendation task, you have a set of users interacting with a set of
+    items and your job is to figure out which items are suitable for which users.
+    You may know a thing or two about each user: where they live, how much they earn,
+    whether they are logged in via their phone or their tablet, and more. Similarly,
+    for an item—say, a movie—you know its genre, its production year, and how many
+    Academy Awards it has won. Clearly, this looks like a classification problem.
+    You can combine the user features with the item features and build a classifier
+    for each user-item pair, and then try to predict whether the user will like the
+    item or not. This approach is known as **content-based filtering**. As its name
+    suggests, it is as good as the content or the features extracted from each user
+    and each item. In practice, you may only know basic information about each user.
+    A user''s location or gender may reveal enough about their tastes. This approach
+    is also hard to generalize. Say we decided to expand our recommendation engine
+    to recommend TV series as well. The number of Academy Awards may not be relevant,
+    then, and we may need to replace this feature with the number of Golden Globe
+    nominations instead. What if we expand it to music later? It makes sense to think
+    of a different approach that is content-agnostic instead.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Collaborative filtering**, on the other hand, doesn''t care much about the
+    user or the item features. Rather, it assumes that users who are already interested
+    in some items will probably have the same interests in the future. To make a recommendation
+    for you, it basically recruits other users who are similar to you and uses the
+    decisions they make to suggest items to you in the future. One obvious problem
+    here is the cold-start problem. When a new user joins, it is hard to know which
+    users are similar to them right away. Also, for a new item, it will take a while
+    for some users to discover it, and only then will the system be able to recommend
+    it to other users.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since each approach has its shortcomings, a hybrid approach of the two can be
+    used. In its simplest form, we can just recommend to the new users the most popular
+    items on the platform. Once these new users consume enough items for us to know
+    their taste, we can start incorporating a more collaborative filtering approach
+    to tailor their recommendations for them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we are going to focus on the *collaborative filtering* paradigm.
+    It is the more common approach, and we already learned in previous chapters how
+    to build the classifiers needed for the *content-based filtering* approach. We
+    will be using a library called Surprise to demonstrate the differentcollaborative
+    filtering algorithms. In the next section, we are going to install Surprise and
+    download the data needed for the rest of the chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Downloading surprise and the dataset
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Nicolas Hug created Surprise [[http://surpriselib.com](http://surpriselib.com)],
+    which implements a number of the*collaborative filtering algorithms we will use
+    here. I am using version 1.1.0 of the library. To download the same version of
+    the library via `pip`, you can run the following command in your terminal:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*[PRE0]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before using the library, we also need to download the dataset used in this
+    chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Downloading the KDD Cup 2012 dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We are going to use the same dataset that we used in [Chapter 10](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=32&action=edit)*,
+    Imbalanced Learning – Not Even 1% Win the Lottery*. The data is published on the
+    **OpenML** platform. It contains a list of records. In each record, a user has
+    seen an online advertisement, and there is an additional column stating whether
+    the user clicked on the advertisement. In the aforementioned chapter, we built
+    a classifier to predict whether the user clicked on the advertisement. We used
+    the provided features for the advertisements and the visiting users in our classifier.
+    In this chapter, we are going to frame the problem as a collaborative filtering
+    problem. So, we will only use the IDs of the users and the advertisements. All
+    the other features will be ignored, and this time, the target label will be the
+    user rating. Here, we will download the data and put it into a data frame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We converted all the columns into integers. The rating column takes binary
+    values, where `1` indicates a click or a positive rating. We can see that only`16.8%`of
+    the records lead to a positive rating. We can check this by printing the mean
+    of the `user_rating`column, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can also display the first four rows of the dataset. Here, you can see the
+    IDs of the users and the advertisements, as well as the given ratings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6206c67f-cdb9-4636-ba2a-63dc3c8bc68e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The Surprise library expects the data columns to be in this exact order. So,
+    no more data manipulations are required for now. In the next section, we are going
+    to see how to load this data frame into the library and split it into training
+    and test sets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Processing and splitting the dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In its simplest form, two users are similar, from acollaborative filtering
+    point of view, if they give the same ratings to the same items. It is hard to
+    see this in the current data format. It would be better to put the data into a
+    user-item rating matrix. Each row in this matrix represents a user, each column
+    represents an item, and the values in each cell represent the rating given by
+    each user to the corresponding item. We can use the`pivot`method in `pandas` to
+    create this matrix. Here, I have created the matrix for the first 10 records of
+    our dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is the resulting `10` users by `10` items matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/8d73ec36-11fd-47a7-9d7b-2d3c5acd48a5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Doing this ourselves using data frames is not the most efficient approach.
+    The Surprise library stores the data in a more efficient way. So, we will use
+    the library''s `Dataset` module instead. Before loading the data, we need to specify
+    the scale of the ratings given. Here, we will use the`Reader`module to specify
+    that our ratings take binary values. Then, we will load the data frame using the
+    `load_from_df` method of the dataset. This method takes our data frame as well
+    as an instance of the aforementioned reader:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The collaborative filtering algorithm is not considered a supervised learning
+    algorithm due to the absence of concepts such as features and targets. Nevertheless,
+    users give ratings to the item and we try to predict those ratings. This means
+    that we can still evaluate our algorithm by comparing the actual ratings to the
+    predicted ones. That''s why it is common to split the data into training and test
+    sets and use metrics to evaluate our predictions. Surprise has a similar function
+    to scikit-learn''s `train_test_split` function. We will use it here to split the
+    data into 75% training versus 25% test sets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: In addition to the train-test split, we can also perform **K-Fold cross-validation**.
+    We will use the**Mean Absolute Error** (**MAE**) and the **Root Mean Squared Error**
+    (**RMSE**) to compare the predicted ratings to the actual ones. The following
+    code uses 4-fold cross-validation and prints the average MAE and RMSE for the
+    four folds. To make it easier to apply to different algorithms, I created a `predict_evaluate`function,
+    which takes an instance of the algorithm we want to use. It also takes the entire
+    dataset, and the name of the algorithm is used to print it alongside the results
+    at the end. It then uses the`cross_validate`**module od `surprise` to calculate
+    the expected errors and print their averages:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**[PRE6]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will be using this function in the following sections. Before learning about
+    the different algorithms, we need to create a reference algorithm—a line in the
+    sand with which to compare the remaining algorithms. In the next section, we are
+    going to create a recommendation system that gives random results. This will be
+    our reference algorithm further down the road.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a random recommender
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We know that 16.8% of the records lead to positive ratings. Thus, a recommender
+    that randomly gives positive ratings to 16.8% of the cases seems like a good reference
+    to compare the other algorithms. By the way, I am deliberately avoiding the term
+    *baseline* here and using terms such as *reference* instead, since one of the
+    algorithms used here is called *baseline*. Anyway, we can create our reference
+    algorithm by creating a `RandomRating`classthat inherits from the Surprise library's`AlgoBase`class.
+    All the algorithms in the library are driven from the `AlgoBase` base class and
+    they are expected to implement an estimate method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This method is called with each user-item pair and it is expected to return
+    the predicted rating for this particular user-item pair. Since we are returning
+    random ratings here, we will use NumPy''s `random` module. Here, we set `n=1`
+    in the binomial method, which turns it into a Bernoulli distribution. The value
+    given to `p` during the class initialization specifies the probability of returning
+    ones. By default, 50% of the user-item pairs will get a rating of `1` and 50%
+    of them will get a rating of `0`. We will override this default and set it to
+    16.8% when using the class later on. Here is the code for the newly created method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We need to change the default value of `p` to `16.8%`. We can then pass the
+    `RandomRating` instance to `predict_evaluate` to get the estimated errors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: The previous code gives us an average MAE of `0.28` and an average RMSE of `0.53`.
+    Remember, we are using K-fold cross-validation. So, we calculate the average of
+    the average errors returned for each fold. Keep these error numbers in mind as
+    we expect more advanced algorithms to give lower errors. In the next section,
+    we will meet the most basic family of the collaborative filtering algorithms,
+    inspired by the**K-Nearest Neighbors** (**KNN**) algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using KNN-inspired algorithms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have encountered enough variants of the KNN**algorithm for it be our first
+    choice for solving the recommendation problem. In the user-item rating matrix
+    from the previous section, each row represents a user and each column represents
+    an item. Thus, similar rows represent users who have similar tastes and identical
+    columns represent items liked by the same users. Therefore, if we want to estimate
+    the rating (*r[u,i]*),given by the user (*u*) to the item (*i*), we can get the
+    KNNs to the user (*u*), find their ratings for the item (*i*), and calculate the
+    average of their rating as an estimate for (*r[u,i]*). Nevertheless, since some
+    of these neighbors are more similar to the user (*u*) than others, we may need
+    to use a weighted average instead. Ratings given by more similar users should
+    be given more weight than the others. Here is a formula where a similarity score
+    is used to weigh the ratings given by the user's neighbors:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**![](img/f8c3f918-d8f1-4121-9414-2c2e147ba36e.png)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We refer to the neighbors of *u* with the term *v*. Therefore, *r[v,i]*is the
+    rating given by each of them to the item (*i*). Conversely, we can base our estimation
+    on *item similarities* rather than *user similarities.* Then, the expected rating
+    (*r[u,i]*) would be the weighted average of the ratings given by the user (*u*)
+    to their most similar items (*i*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You may be wondering whether we can nowset the number of neighbors and whether
+    there are multiple similarity metrics to choose from. The answer to both questions
+    is yes. We will dig deeper into the algorithm''s hyperparameters in a bit, but
+    for now, let''s use it with its default values. Once `KNNBasic` is initialized,
+    we can pass it to the `predict_evaluate` function, the same way we passed the
+    `RandomRating` estimator to it in the previous section. Make sure you have enough
+    memory on your computer before running the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We get an average MAE of `0.28` and an average RMSE of `0.38` this time. The
+    improvement in the squared error is expected, given that the `RandomRating` estimator
+    was blindly making random predictions, while`KNNBasic`bases its decision on users'
+    similarities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ratings in the dataset used here are binary values. In some other scenarios,
+    users may be allowed to give 5-star ratings, or even give scores from 0 to 100\.
+    In those scenarios, one user may be more generous with their numbers than another.
+    We both may have the same taste, but for me, a 5-star rating signals the movie
+    is great, while you never give a 5-star rating yourself, and your favorite movies
+    get 4-star rating tops. The `KNNWithMeans`algorithm deals with this problem. It
+    is an almost identical algorithm to`KNNBasic`, except for the fact that it initially
+    normalizes the ratings given by each user to make them comparable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As stated earlier, we can choose the number for `K`, as well as the similarity
+    score used. Additionally, we can decide whether we want to base our estimation
+    on user similarities or on item similarities. Here, we set the number of neighbors
+    to `20`, use cosine similarity, and base our estimation on item similarities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting errors are worse than before. We get an average MAE of `0.29`
+    and an average RMSE of `0.39`. Clearly, we need to try different hyperparameters
+    until we get the best results. Luckily, Surprise provides a `GridSearchCV` helper
+    for tuning the algorithm''s hyperparameters. We basically provide a list of the
+    hyperparameter values and specify the measures we need to use to evaluate the
+    algorithms. In the following code snippet, we set the measures to `rmse` and `mae`.
+    We use 4-fold cross-validation and use all the available processors in our machines
+    when running the grid search. You probably know by now that KNN algorithms are
+    slow with their prediction time. So, to speed up this process, I only ran the
+    search on a subset of our dataset, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: We get an average MAE of `0.28` and an average RMSE of `0.38`. These are the
+    same results as with the default hyperparameters. However,`GridSearchCV`chose
+    a `K` value of `20` versus the default of `40`. It also chose the **Pearson correlation
+    coefficien**t as its similarity measure.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The KNN algorithm is slow and did not give the best performance for our dataset.
+    Therefore, in the next section, we are going to try a non-instance-based learner
+    instead.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using baseline algorithms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The simplicity of the nearest neighbors algorithm is a double-edged sword.
+    On the one hand, it is easier to grasp, but on the other hand, it lacks an objective
+    function that we can optimize during training. This also means that the majority
+    of its computation is performed during prediction time. To overcome these problems,
+    Yehuda Koren formulated the recommendation problem in terms of an optimization
+    task. Still, for each user-item pair, we need to estimate a rating (*r[u,i]*).
+    The expected rating this time is the summation of the following triplet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a8e42ccd-0aab-45e7-9757-acf0bea746cb.png): The overall average rating
+    given by all users to all items'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*b[u]*: A term for how the user (*u*) deviates from the overall average rating'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*b[i]*: A term for how the item (*i*) deviates from the average rating'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Here is the formula for the expected ratings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3804eba7-13fb-4efc-9233-ebc145f874b5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: For each user-item pair in our training set, we know its actual rating (*r[u,i]*),
+    and all we need to do now is to figure out the optimal values of *b[u]* and *b[i]*.
+    We are after values that minimize the difference between the actual rating (*r[u,i]*)
+    and the *expected rating* (*r[u,i]*) from the aforementioned formula. In other
+    words, we need a solver to learn the values of the terms when given the training
+    data. In practice, the baseline algorithm tries to minimize the average squared
+    difference between the actual and the expected ratings. It also adds a regularization
+    term that penalizes (*b[u]*) and (*b[i]*) to avoid overfitting. Please refer to
+    [Chapter 3](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=26&action=edit)*,
+    Making Decisions with Linear Equations*, for a better understanding of the concept
+    of regularization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The learned coefficients (*b[u]* and *b[i]*)are vectors describing each user
+    and each item. At prediction time, if a new user is encountered, *b[u]* is set
+    to `0`. Similarly, if a new item that wasn't seen in the training set is encountered,
+    *b[i]* is set to `0`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Two solvers are available for solving this optimization problem: **Stochastic
+    Gradient Descent** (**SGD**) and **Alternating Least Squares** (**ALS**). ALS
+    is used by default. Each of the two solvers has its own settings, such as the
+    maximum number of epochs and the learning rate. Moreover, you can also tune the
+    regularization parameters.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is how the model is used with its default hyperparameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This time, we get an average MAE of `0.27` and an average RMSE of `0.37`. Once
+    more, `GridSearchCV` can be used to tune the model''s hyperparameters. I will
+    leave the parameter tuning for you to try. Now, it is time to move on to our third
+    algorithm: **Singular Value Decomposition** (**SVD**).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using singular value decomposition
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The user-item rating matrix is usually a huge matrix. The one we got from our
+    dataset here comprises 30,114 rows and 19,228 columns, and most of the values
+    in this matrix (99.999%) are zeros. This is expected. Say you own a streaming
+    service with thousands of movies in your library. It is very unlikely that a user
+    will watch more than a few dozen of them. This sparsity creates another problem.
+    If one user watched the movie *The Hangover: Part 1* and another user watched
+    *The Hangover: Part 2,* from the matrix''s point of view, they watched two different
+    movies. We already know that collaborative filtering algorithms don''t use users
+    or item features. Thus, it is not aware of the fact that the two parts of *The
+    Hangover* movie belong to the same franchise, let alone knowing that they both
+    are comedies. To deal with this shortcoming, we need to transform our user-item
+    rating matrix. We want the new matrix, or matrices, to be smaller and to capture
+    the similarities between the users and the items better.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **SVD** is a matrix factorization algorithm that is used for dimensionality
+    reduction. It is very similar to **Principal Component Analysis**(**PCA**), which
+    we looked at in [Chapter 5](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=28&action=edit)*,
+    Image Processing with Nearest Neighbors*. The resulting singular values, as opposed
+    to the principal components in PCA, capture latent information about the users
+    and the item in the user-item rating matrix. Don't worry if the previous sentence
+    is not clear yet. In the next section, we will understand the algorithm better
+    via an example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extracting latent information via SVD
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Nothing spells taste like music. Let''s take the following dataset. Here, we
+    have six users, each voting for the musicians they like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can put these ratings into a data frame and convert it into a user-item
+    rating matrix, using the data frame''s `pivot` method, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is the resulting matrix. I used `pandas` styling to give the different
+    ratings different colors for clarity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/69a9ab17-90b1-41d6-b515-269105890a30.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Clearly, users 1, 2, and 5 like metal music, while users 3, 4, and 6 like trance
+    music. We can see this despite the fact that user 5 only shares one band with
+    users 1 and 2\. We could perhaps also see this because we are aware of these musicians
+    and because we have a holistic view of the matrix instead of focusing on individual
+    pairs. We can use scikit-learn''s `TruncatedSVD` function to reduce the dimensionality
+    of the matrix and represent each user and musician via *N* components (single
+    vectors). The following snippet calculates `TruncatedSVD` with two *single vectors*.
+    Then, the `transform` function returns a new matrix, where each row represents
+    one of the six users, and each of its two columns corresponds to one of the two
+    single vectors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once more, I put the resulting matrix into a data frame and used its styling
+    to color the cells according to their values. Here is the code for that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the resulting data frame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c51d9ed9-ea3a-4f77-8d37-b8ac40ac745c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: You can treat each of the two components as a music genre. It is clear that
+    the smaller matrix was able to capture the user's taste in terms of genres. Users
+    1, 2, and 5 are brought closer to each other now, as are users 3, 4, and 6, who
+    are closer to each other than they were in the original matrix. We will use the
+    cosine similarity score to show this more clearly in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The concept used here is also used with textual data. Words such as `search`,
+    `find`, and `forage` carry similar meanings. Thus, the `TruncatedSVD` transformer
+    can be used to compress a***Vector Space Model** (**VSM**) into a lower space
+    before using it in a supervised or an unsupervised learning algorithm. When used
+    in that context, it is known as**Latent Semantic Analysis** (**LSA**).*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*This compression not only captures the latent information that is not clear
+    in the bigger matrix, but also helps with distance calculations. We already know
+    that algorithms such as KNN work best with lower dimensions. Don''t take my word
+    for it. In the next section, we will compare the cosine distances when calculated
+    based on the original user-item rating matrix versus the two-dimensional one.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Comparing the similarity measures for the two matrices
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can calculate the cosine similarities between all users. We will start with
+    the original user-item rating matrix. After calculating pairwise cosine similarities
+    for users 1, 2, 3, and 5, we put the results into a data frame and apply some
+    styling for clarity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here are the resulting pairwise similarities between the four users:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/1524d18a-9d9d-4df8-9de5-2bc635683bbc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Indeed, user 5 is more similar to users 1 and 2, compared to user 3\. However,
+    they are not as similar as we expected them to be. Let''s now calculate the same
+    similarities by using `TruncatedSVD` this time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The new calculations capture the latent similarities between the musicians
+    this time and incorporate this when comparing the users. Here is the new similarity
+    matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/931b2f30-502d-49d9-bbff-9142f321f25f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Clearly, user 5 is more similar to users 1 and 2 than before. Ignore the negative
+    signs before some of the zeros here. This is because of Python's implementation
+    of the **IEEE** (**Institute of Electrical and Electronics Engineers**) standard
+    for floating-point arithmetic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Naturally, we can also represent the musicians in terms of their genres (single
+    vectors). This other matrix can be retrieved via `svd.components_`. Then, we can
+    calculate the similarities between the different musicians. This transformation
+    is also advised as a preliminary step before clusters sparse data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that this version of `SVD` is clear, in practice, when dealing with large
+    datasets, more scalable factorization algorithms are usually used. **Probabilistic
+    Matrix Factorization** (**P****MF***)*scales linearly with the number of observations
+    and performs well on sparse and imbalanced datasets. We are going to use Surprise's
+    implementation of PMF in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Click prediction using SVD
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can now use Surprise''s `SVD` algorithm to predict the clicks in our dataset.
+    Let''s start with the algorithm''s default parameters, and then explain it later
+    on:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This time, we get an average MAE of `0.27` and an average RMSE of `0.37`. These
+    are similar results to the baseline algorithm used earlier. In fact, Surprise''s
+    implementation of `SVD` is a combination of the baseline algorithm and `SVD`.
+    It expresses the user-item ratings using the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f29915ef-89b9-4866-be27-9a1b9d6880ae.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The first three terms of the equation (![](img/a8e42ccd-0aab-45e7-9757-acf0bea746cb.png),
+    *b[u]*, and *b[i]*) are the same as in the baseline algorithm. The fourth term
+    represents the product of two similar matrices to the ones we got from `TruncatedSVD`.
+    The *q[i]*matrixexpresses each item as a number of single vectors. Similarly,
+    the*p[u]*matrixexpresses each user as a number of single vectors. The item matrix
+    is transposed, hence the letter *T* on top of it. The algorithm then uses**SGD**
+    to minimize the squared difference between the expected ratings and the actual
+    ones. Similar to the baseline model, it also regularizes the coefficients of the
+    expected rating (*b[u], b[i], q[i],* and *p[u]*) to avoid overfitting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can ignore the baseline part of the equation—that is, remove the first three
+    coefficients of it (![](img/a8e42ccd-0aab-45e7-9757-acf0bea746cb.png), *b[u]*,
+    and *b[i]*) by setting `biased=False`. The number of single vectors to use is
+    set using the `n_factors`hyperparameter. We can also control the number of epochs
+    for `SGD` via `n_epochs`. Furthermore, there are additional hyperparameters for
+    setting the algorithm's learning rate, regularization, and the initial values
+    of its coefficients. You can find the best mix for these parameters using the
+    parameter-tuning helpers provided by`surprise`—that is, `GridSearchCV`or `RandomizedSearchCV`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our discussion of the recommender systems, along with their various algorithms,
+    marks an end to the machine learning topics discussed in this book. Like all the
+    other algorithms discussed here, they are only useful when putting in production
+    for others to use them. In the next section, we are going to see how we can deploy
+    a trained algorithm and make it accessible to others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying machine learning models in production
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'There are two main modes of using machine learning models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Batch predictions**: In this mode, you load a bunch of data records after
+    a certain period—for example, every night or every month. You then make predictions
+    for this data. Usually, latency is not an issue here, and you can afford to put
+    your training and prediction code into single batch jobs. One exception to this
+    is if you need to run your job too frequently that you do not have enough time
+    to retrain the model every time the job runs. Then, it makes sense to train the
+    model once, store it somewhere, and load it each time new batch predictions are
+    to be made.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Online** **predictions**: In this model, your model is usually deployed behind
+    an**Application Programming Interface** (**API**). Your API is usually called
+    with a single data record each time, and it is supposed to make predictions for
+    this single record and return it. Having low latency is paramount here and it
+    is typically advised to train the model once, store it somewhere, and use the
+    pre-trained model whenever a new API call is made.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'As you can see, in both cases, we may need to separate the code used during
+    the model''s training from the one used at prediction time. Whether it is a supervised
+    learning algorithm or an unsupervised learning one, besides the lines of code
+    it is written in, a fitted model also depends on the coefficients and parameters
+    learned from the data. Thus, we need a way to store the code and the learned parameters
+    as one unit. This single unit can be saved after training and then used later
+    on at prediction time. To be able to store functions or objects in files or share
+    them over the internet, we need to convert them into a standard format or protocol.
+    This process is known as serialization. `pickle`is one of the most commonly used
+    serialization protocols in Python. The Python standard library provides tools
+    for pickling objects; however,`joblib`is a more efficient option when dealing
+    with NumPy arrays. To be able to use the library, you need to install it via`pip`by
+    running the following in your terminal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once installed, you can use `joblib` to save anything onto a file on disk.
+    For example, after fitting a baseline algorithm, we can store the fitted object
+    using the `joblib` function''s `dump` method. The method expects, along with the
+    model''s object, the name of the file to save the object in. We usually use a
+    `.pkl` extension to refer to `pickle` files:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once saved to a disk, any other Python code can load the same model again and
+    use it right away without the need for refitting. Here, we load the pickled algorithm
+    and use it to make predictions for the test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: A `surprise` estimator was used here since this is the library we used throughout
+    this chapter. Nevertheless, any Python object can be pickled and loaded in the
+    same way. Any of the estimators used in the previous chapters can be used the
+    same way. Furthermore, you can also write your own classes, instantiate them,
+    and pickle the resulting objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To deploy your model as an API, you may need to use a web framework, such as
+    **Flask** or **CherryPy**. Developing web applications is beyond the scope of
+    this book, but once you know how to build them, loading pickled models should
+    be straightforward. It's advised to load the pickled object when the web application
+    is starting. This way, you do not introduce any additional latency if you reload
+    the objects each time you receive a new request.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This chapter marks the end of this book. I hope all the concepts discussed here
+    are clear by now. I also hope the mixture of the theoretical background of each
+    algorithm and its practical use paved the way for you to adapt the solutions offered
+    here for the different problems you meet in practice in real life. Obviously,
+    no book can be conclusive, and new algorithms and tools will be available to you
+    in the future. Nevertheless, Pedro Domingos groups the machine learning algorithms
+    into five tribes. Except for the evolutionary algorithms, we have met algorithms
+    that belong to four out of Domingos' five tribes. Thus, I hope the various algorithms
+    discussed here, each with their own approach, will serve as a good foundation
+    when dealing with any new machine learning solutions in the future.
+  prefs: []
+  type: TYPE_NORMAL
+- en: All books are a work in progress. Their value is not only in their content but
+    goes beyond that to include the value that comes from the future discussions they
+    spark. Be assured that you will make the author of any book happy each time you
+    share something you built based on the knowledge you gained from that book. You
+    will make them equally happy each time you quote them, share new and better ways
+    to explain things in their books, or even correct mistakes they made. I, too,
+    am looking forward to such invaluable contributions from you.******
+  prefs: []
+  type: TYPE_NORMAL

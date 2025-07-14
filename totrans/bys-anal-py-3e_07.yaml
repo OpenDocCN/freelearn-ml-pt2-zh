@@ -1,0 +1,1194 @@
+- en: Chapter 8
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Gaussian Processes
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lonely? You have yourself. Your infinite selves. - Rick Sanchez (at least the
+    one from dimension C-137)
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: In the last chapter, we learned about the Dirichlet process, an infinite-dimensional
+    generalization of the Dirichlet distribution that can be used to set a prior on
+    an unknown continuous distribution. In this chapter, we will learn about the Gaussian
+    process, an infinite-dimensional generalization of the Gaussian distribution that
+    can be used to set a prior on unknown functions. Both the Dirichlet process and
+    the Gaussian process are used in Bayesian statistics to build flexible models
+    where the number of parameters is allowed to increase with the size of the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Functions as probabilistic objects
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Kernels
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Gaussian processes with Gaussian likelihoods
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Gaussian processes with non-Gaussian likelihoods
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hilbert space Gaussian process
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 8.1 Linear models and non-linear data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In *Chapter [4](CH04.xhtml#x1-760004)* and *Chapter [6](CH06.xhtml#x1-1200006)*
+    we learned how to build models of the general form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![θ = 𝜓 (ϕ(X )𝛽 ) ](img/file216.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, *θ* is a parameter for some probability distribution, for example, the
+    mean of a Gaussian, the *p* parameter of the binomial, the rate of a Poisson,
+    and so on. We call ![](img/phi.png) the inverse link function and ![](img/phi.png)
+    is some other function we use to potentially transform the data, like a square
+    root, a polynomial function, or something else.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fitting, or learning, a Bayesian model can be seen as finding the posterior
+    distribution of the weights *β*, and thus this is known as the weight view of
+    approximating functions. As we already saw with polynomial and splines regression,
+    by letting ![](img/phi.png) be a non-linear function, we can map the inputs onto
+    a *feature space*. We also saw that by using a polynomial of the proper degree,
+    we can perfectly fit any function. But unless we apply some form of regularization,
+    for example, using prior distributions, this will lead to models that memorize
+    the data, or in other words models with very poor generalizing properties. We
+    also mention that splines can be as flexible as polynomials but with better statistical
+    properties. We will now discuss Gaussian processes, which provide a principled
+    solution to modeling arbitrary functions by effectively letting the data decide
+    on the complexity of the function, while avoiding, or at least minimizing, the
+    chance of overfitting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The following sections discuss Gaussian processes from a very practical point
+    of view; we have avoided covering almost all the mathematics surrounding them.
+    For a more formal explanation, you may read *Gaussian Processes for Machine Learning*
+    by [Rasmussen and Williams](Bibliography.xhtml#Xrasmussen_2005) [[2005](Bibliography.xhtml#Xrasmussen_2005)].
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.2 Modeling functions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We will begin our discussion of Gaussian processes by first describing a way
+    to represent functions as probabilistic objects. We may think of a function *f*
+    as a mapping from a set of inputs *X* to a set of outputs *Y* . Thus, we can write:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Y = f(X ) ](img/file217.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: One very crude way to represent functions is by listing for each *x*[*i*] value
+    its corresponding *y*[*i*] value as in *Table [8.1](#x1-158002r1)*. You may remember
+    this way of representing functions from elementary school.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| *x* | *y* |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0.00 | 0.46 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0.33 | 2.60 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0.67 | 5.90 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1.00 | 7.91 |'
+  prefs: []
+  type: TYPE_TB
+- en: '**Table 8.1**: A tabular representation of a function (sort of)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a general case, the values of *X* and *Y* will live on the real line; thus,
+    we can see a function as a (potentially) infinite and ordered list of paired values
+    (*x*[*i*]*,y*[*i*]). The order is important because, if we shuffle the values,
+    we will get different functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Following this description, we can represent, numerically, any specific function
+    we want. But what if we want to represent functions probabilistically? Well, we
+    then need to encode a probabilitics mapping. Let me explain this; we can let each
+    value be a random variable with some associated distribution. As working with
+    Gaussians is usually convenient, let’s say that they are distributed as a Gaussian
+    with a given mean and variance. In this way, we no longer have the description
+    of a single specific function, but the description of a family of distributions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To make this discussion concrete, let’s use some Python code to build and plot
+    two examples of such functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.1**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![PIC](img/file218.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.1**: Two dummy functions sampled from Gaussian distributions'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [8.1](#x1-158016r1)* shows that encoding functions using samples from
+    Gaussian distributions is not that crazy or foolish, so we may be on the right
+    track. Nevertheless, the approach used to generate *Figure [8.1](#x1-158016r1)*
+    is limited and not sufficiently flexible.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: While we expect real functions to have some structure or pattern, the way we
+    express `the first one` function does not let us encode any relation between data
+    points. In fact, each point is completely independent of the others, as we just
+    get them as 10 independent samples from a common one-dimensional Gaussian distribution.
+    For `the second one` function, we introduce some dependency. The mean of the point
+    *y*[*i*+1] is the value *y*[*i*], thus we have some structure here. Nevertheless,
+    we will see next that there is a more general approach to capturing dependencies,
+    and not only between consecutive points.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before continuing, let me stop for a moment and consider why we’re using Gaussians
+    and not any other probability distribution. First, by restricting ourselves to
+    working with Gaussians, we do not lose any flexibility in specifying functions
+    of different shapes, as each point has potentially its own mean and variance.
+    Second, working with Gaussians is nice from a mathematical point of view.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.3 Multivariate Gaussians and functions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In *Figure [8.1](#x1-158016r1)*, we represented a function as a collection of
+    samples from 1-dimensional Gaussian distributions. One alternative is to use an
+    n-dimensional multivariate Gaussian distribution to get a sample vector of length
+    *n*. Actually, you may want to try to reproduce *Figure [8.1](#x1-158016r1)* but
+    replacing `np.random.normal(0, 1, len(x))` with `np.random.multivariate_normal`,
+    with a mean of `np.zeros_like(x)` and a standard deviation of `np.eye(len(x)`.
+    The advantage of working with a Multivariate Normal is that we can use the covariance
+    matrix to encode information about the function. For instance, by setting the
+    covariance matrix to `np.eye(len(x))`, we are saying that each of the 10 points,
+    where we are evaluating the function, has a variance of 1\. We are also saying
+    that the variance between them, that is, their covariances, is 0\. In other words,
+    they are independent. If we replace those zeros with other numbers, we could get
+    covariances telling a different story.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I hope you are starting to get convinced that it is possible to use a multivariate
+    Gaussian in order to represent functions. If that’s the case, then we just need
+    to find a suitable covariance matrix. And that’s the topic of the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.3.1 Covariance functions and kernels
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In practice, covariance matrices are specified using functions known as kernels.
+    Unfortunately, the term kernel is a very polysemic one, even in the statistical
+    literature. An easy way to define a kernel is any function that returns a valid
+    covariance matrix. But this is a tautological and not very intuitive definition.
+    A more conceptual and useful definition is that a kernel defines a measure of
+    similarity between data points in the input space, and this similarity determines
+    how much influence one data point should have on predicting the value of another
+    data point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are many useful kernels, a popular one being the exponentiated quadratic
+    kernel:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ( ′ 2) 𝜅(X,X ′) = exp − ∥X--−-X-∥- 2ℓ2 ](img/file219.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here, ∥**X** − **X**′∥² is the squared Euclidean distance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![∥X − X′∥2 = (X1 − X1′)2 + (X2 − X′2)2 + ⋅⋅⋅+ (Xn − X′n)2 ](img/file220.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: For this kernel, we can see that we have a symmetric function that takes two
+    inputs and returns a value of 0 if the inputs are the same, or positive otherwise.
+    And thus we can interpret the output of the exponentiated quadratic kernel as
+    a measure of similarity between the two inputs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It may not be obvious at first sight, but the exponentiated quadratic kernel
+    has a similar formula to the Gaussian distribution. For this reason, this kernel
+    is also called the Gaussian kernel. The term *ℓ* is known as the length scale
+    (or bandwidth or variance) and controls the width of the kernel. In other words,
+    it controls at what scale the *X* values are considered similar.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To better understand the role of kernels, I recommend you play with them. For
+    instance, let’s define a Python function to compute the exponentiated quadratic
+    kernel:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.2**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Figure [8.2](#x1-160009r2)* shows how a 4 × 4 covariance matrix looks for
+    different inputs. The input I chose is rather simple and consists of the values
+    [−1*,*0*,*1*,*2].'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file221.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.2**: Input values (left), covariance matrix (right)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the left panel of *Figure [8.2](#x1-160009r2)*, we have the input values.
+    These are the values on the x-axis, and we have labeled the points from 0 to 3\.
+    Thus, point 0 takes the value -1, point 1 takes 0, and so on. On the right panel,
+    we have a heatmap representing the covariance matrix that we computed using the
+    exponentiated quadratic kernel. The lighter the color, the larger the value of
+    the covariance. As you can see, the heatmap is symmetric, with the diagonal taking
+    the largest values. This makes sense when we realize that the value of each element
+    in the covariance matrix is inversely proportional to the distance between the
+    points, and the diagonal is the result of comparing each data point with itself.
+    The smallest value is the one for the points 0 and 3, as they are the most distant
+    points.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once you understand this example, you should try it with other inputs. See exercise
+    1 at the end of this chapter and the accompanying notebook ( [https://github.com/aloctavodia/BAP3](https://github.com/aloctavodia/BAP3))
+    for further practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have a better grasp of how to use a kernel to generate a covariance
+    matrix, let’s move one step further and use the covariance matrix to sample functions.
+    As you can see in *Figure [8.3](#x1-160010r3)*, a Gaussian kernel implies a wide
+    variety of functions with the parameter *ℓ* controlling the smoothness of the
+    functions. The larger the value of *ℓ*, the smoother the function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file222.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.3**: Realizations of a Gaussian kernel for four values of *ℓ* (two
+    realization per value of *ℓ*)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Show me Your Friends and I’ll Show you your Future
+  prefs: []
+  type: TYPE_NORMAL
+- en: The kernel translates the distance of the data points along the x axis to values
+    of covariances for values of the expected function (on the y axis). Thus, the
+    closest two points are on the x axis; the most similar we expect their values
+    to be on the y axis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.4 Gaussian processes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now we are ready to understand what Gaussian processes (GPs) are and how they
+    are used in practice. A somewhat formal definition of GPs, taken from Wikipedia,
+    is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ”The collection of random variables indexed by time or space, such that every
+    finite collection of those random variables has a MultivariateNormal distribution,
+    i.e. every finite linear combination of them is normally distributed.”
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is probably not a very useful definition, at least not at this stage of
+    your learning path. The trick to understanding Gaussian processes is to realize
+    that the concept of GP is a mental (and mathematical) scaffold, since, in practice,
+    we do not need to directly work with this infinite mathematical object. Instead,
+    we only evaluate the GPs at the points where we have data. By doing this, we collapse
+    the infinite-dimensional GP into a finite multivariate Gaussian distribution with
+    as many dimensions as data points. Mathematically, this collapse is achieved by
+    marginalization over the infinitely unobserved dimensions. The theory assures
+    us that it is OK to omit (actually marginalize over) all points, except the ones
+    we are observing. It also guarantees that we will always get a multivariate Gaussian
+    distribution. Thus, we can rigorously interpret *Figure [8.3](#x1-160010r3)* as
+    actual samples from a Gaussian process!
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far we have focused on the covariance matrix of the MultivariateNormal and
+    we have not discussed the mean. Setting the mean of a multivariate Gaussian at
+    0 is common practice when working with GPs, since they are flexible enough to
+    model the mean arbitrarily well. But notice that there is no restriction in doing
+    so. Actually, for some problems, you may want to model the mean parametrically
+    and leave the GP to model the residuals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: GPs are Prior Over Functions
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gaussian processes are prior distributions over functions in such a way that
+    at each point that you evaluate a function, it places a Gaussian distribution
+    with a given mean and variance. In practice, GPs are usually built using kernels,
+    which turn distance on an x axis into similarities on the y axis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.5 Gaussian process regression
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let’s assume we can model a variable *Y* as a function *f* of *X* plus some
+    Gaussian noise:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Y ∼ 𝒩 (μ = f(X ),σ = 𝜖) ](img/file223.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If *f* is a linear function of *X*, then this assumption is essentially the
+    same one we used in *Chapter [4](CH04.xhtml#x1-760004)* when we discussed simple
+    linear regression. In this chapter, instead, we are going to use a more general
+    expression for *f* by setting a prior over it. In that way, we will be able to
+    get more complex functions than linear. If we decided to use Gaussian processes
+    as this prior, then we can write:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ′ f(X ) = 𝒢𝒫 (μX,𝜅(X, X )) ](img/file224.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, ![](img/GP.PNG) represents a Gaussian process with the mean function *μ*[*X*]
+    and covariance function *K*(*X,X*′). Even though in practice, we always work with
+    finite objects, we used the word **function** to indicate that mathematically,
+    the mean and covariance are infinite objects.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I mentioned before that working with Gaussians is nice. For instance, if the
+    prior distribution is a GP and the likelihood is a Gaussian distribution, then
+    the posterior is also a GP and we can compute it analytically. Additionally, its
+    nice to have a Gaussian likelihood because we can marginalize out the GP, which
+    hugely reduces the size of the parameter space we need to sample from. The GP
+    module in PyMC takes advantage of this and then it has different implementations
+    for Gaussian and non-Gaussian likelihoods. In the next sections, we will explore
+    both.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.6 Gaussian process regression with PyMC
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The gray line in *Figure [8.4](#x1-163002r4)* is a sin function. We are going
+    to assume we don’t know this function and instead, all we have is a set of data
+    points (dots). Then we use a Gaussian process to approximate the function that
+    generated those data points.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file225.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.4**: Synthetic data (dots) generated from a known function (line)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: GPs are implemented in PyMC as a series of Python classes that deviate a little
+    bit from what we have seen in previous models; nevertheless, the code is still
+    very *PyMConic*. I have added a few comments in the following code to guide you
+    through the key steps of defining a GP with PyMC.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.3**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that instead of a Gaussian likelihood, we have used the `gp.marginal_likelihood`
+    method. This method takes advantage of the fact that the posterior has a closed
+    form, as explained in the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: OK, now that we have computed the posterior, let’s see how to get predictions
+    of the mean fitted function. We can do this by computing the conditional distribution
+    evaluated over new input locations using `gp.conditional`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.4**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As a result, we get a new PyMC random variable, `f_pred`, which we can use
+    to get samples from the posterior predictive distribution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.5**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now we can plot the fitted functions over the original data, to visually inspect
+    how well they fit the data and the associated uncertainty in our predictions.
+    As we did with linear models in *Chapter [4](CH04.xhtml#x1-760004)*, we are going
+    to show different ways to plot the same results. *Figure [8.5](#x1-163035r5)*
+    shows lines from the fitted function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file226.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.5**: Lines represent samples from the posterior mean of `model_reg`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alternatively, we can use the auxiliary function `pm.gp.util.plot_gp_dist` to
+    get some nice plots as in *Figure [8.6](#x1-163036r6)*. In this plot, each band
+    represents a different percentile, ranging from percentile 99 (lighter gray) to
+    percentile 51 (darker gray).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file227.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.6**: Samples from the posterior of `model_reg` plotted using `plot_gp_dist`
+    function'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Yet another alternative is to compute the mean vector and standard deviation
+    of the conditional distribution evaluated at a given point in the parameter space.
+    In *Figure [8.7](#x1-163037r7)*, we use the mean (over the samples in the trace)
+    for *ℓ* and ![](img/e.png). We can compute the mean and variance using the `gp.predict`
+    method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file228.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.7**: Posterior mean of `model_reg` with bands for 1 and 2 standard
+    deviations'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we saw in *Chapter [4](CH04.xhtml#x1-760004)*, we can use a linear model
+    with a non-Gaussian likelihood and a proper inverse link function to extend the
+    range of useful linear models. We can do the same for GPs. We can, for example,
+    use a Poisson likelihood with an exponential inverse link function. For a model
+    like this, the posterior is no longer analytically tractable, but, nevertheless,
+    we can use numerical methods to approximate it. In the following sections, we
+    will discuss these types of models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.6.1 Setting priors for the length scale
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For length-scale parameters, priors avoiding zero usually work better. As we
+    already saw, *ℓ* controls the smoothness of the function, thus a value of 0 for
+    *ℓ* implies a non-smooth function; we will get a function like ”the first one”
+    from *Figure [8.1](#x1-158016r1)*. But a far more important reason is that for
+    values of *ℓ* that are larger than 0 but still below the minimum spacing of the
+    covariates, we can get some nasty effects. Essentially, below that point, the
+    likelihood has no way to distinguish between different length scales, so all of
+    them are equally good. This is a type of non-identifiability issue. As a result,
+    we will have a GP that will tend to overfit and exactly interpolate between the
+    input data. Additionally, the MCMC sampler will have a harder time, and we could
+    get longer sampling times or simple unreliable samples. Something similar happens
+    for values beyond the range of the data. If the range of your data is 10 and the
+    value of *ℓ >*= 10, this implies a flat function. And again beyond that point,
+    you (and the likelihood) have no way of distinguishing between different values
+    of the parameter. Thus even if you have no idea how smooth or wiggly your function
+    is, you can still set a prior that avoids very low and very high values of *ℓ*.
+    For instance, to get the prior `pm.InverseGamma("`*ℓ*`", 7, 17)` we ask PreliZ
+    for the maximum entropy prior that has 0.95 of the mass between 1 and 5:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.6**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The InverseGamma is a common choice. Like the Gamma, it allows us to set a prior
+    that avoids 0, but unlike the Gamma, the InverseGamma has a lighter tail toward
+    0, or in other words, it allocates less mass for small values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the rest of this chapter, we will use the function `get_ig_params` to obtain
+    weakly informative priors from the scale of the covariates. You will find the
+    details in the accompanying code ([https://github.com/aloctavodia/BAP3](https://github.com/aloctavodia/BAP3)),
+    but essentially we are using the `maxent` function from PreliZ to set most of
+    the prior mass in a range compatible with the range of the covariates.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.7 Gaussian process classification
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In *Chapter [4](CH04.xhtml#x1-760004)*, we saw how a linear model can be used
+    to classify data. We used a Bernoulli likelihood with a logistic inverse link
+    function. Then, we applied a boundary decision rule. In this section, we are going
+    to do the same, but this time using a GP instead of a linear model. As we did
+    with `model_lrs` from *Chapter [4](CH04.xhtml#x1-760004)*, we are going to use
+    the iris dataset with two classes, `setosa` and `versicolor`, and one predictor
+    variable, the `sepal length`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this model, we cannot use the `pm.gp.Marginal` class, because that class
+    is restricted to Gaussian likelihoods as it takes advantage of the mathematical
+    tractability of the combination of a GP prior with a Gaussian likelihood. Instead,
+    we need to use the more general class `pm.gp.Latent`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.7**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we can see, *Figure [8.8](#x1-165012r8)* looks pretty similar to *Figure
+    [4.11](CH04.xhtml#x1-85023r11)*. Please take some time to compare these figures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file229.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.8**: Logistic regression, result of `model_lrs`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You probably have already noticed that the inferred function looks similar to
+    a sigmoid curve, except for the tails that go up at lower values of `sepal_length`,
+    and down at higher values of `sepal_length`. Why are we seeing this? Because when
+    there is little or no data available, a GP posterior tends to revert to the GP
+    prior. This makes sense if we think that in the absence of data, your posterior
+    essentially becomes the prior.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If our only concern is the decision boundary, then the behavior at the tails
+    may be irrelevant. But if we want to model the probabilities of belonging to setosa
+    or versicolor at different values of `sepal_length`, we should do something to
+    improve the model at the tails. One way to achieve this is to add more structure
+    to the Gaussian process. One very nice feature of GP is that we can combine covariance
+    functions. Hence, for the next model, we are going to combine three kernels: the
+    exponential quadratic kernel, a linear kernel, and a white noise kernel.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The linear kernel will have the effect of making the tails go to 0 or 1 at
+    the boundaries of the data. Additionally, we use the white noise kernel just as
+    a trick to stabilize the computation of the covariance matrix. Kernels for Gaussian
+    processes are restricted to guarantee the resulting covariance matrix is positive
+    definite. Nevertheless, numerical errors can lead to violating this condition.
+    One manifestation of this problem is that we get NaNs when computing posterior
+    predictive samples of the fitted function. One way to mitigate this error is to
+    stabilize the computation by adding some noise. As a matter of fact, PyMC already
+    does something similar to this under the hood, but sometimes a little bit more
+    noise is needed, as shown in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.8**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can see the result of this model in *Figure [8.9](#x1-165027r9)*. Notice
+    how this figure looks much more similar now to *Figure [4.11](CH04.xhtml#x1-85023r11)*
+    than *Figure [8.8](#x1-165012r8)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file230.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.9**: Logistic regression, result of `model_lrs`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The example discussed in this section has two main aims:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Showing how we can easily combine kernels to get a more expressive model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Showing how we can *recover* a logistic regression using a Gaussian process
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Regarding the second point, logistic regression is indeed a special case of
+    Gaussian processes, because a simple linear regression is just a particular case
+    of a Gaussian process. In fact, many known models can be seen as special cases
+    of GPs, or at least they are somehow connected to GPs. If you want to learn more
+    about this, you can read Chapter 15 from Kevin Murphy’s Machine Learning: A Probabilistic
+    Perspective (first edition) [[Murphy](Bibliography.xhtml#Xpml0Book), [2012](Bibliography.xhtml#Xpml0Book)],
+    and also Chapter 18 from the second edition [[Murphy](Bibliography.xhtml#Xpml2Book), [2023](Bibliography.xhtml#Xpml2Book)].'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.7.1 GPs for space flu
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In practice, it does not make too much sense to use a GP to model a problem
+    we can just solve with a logistic regression. Instead, we want to use a GP to
+    model more complex data that is not well captured with less flexible models. For
+    instance, suppose we want to model the probability of getting a disease as a function
+    of age. It turns out that very young and very old people have a higher risk than
+    people of middle age. The dataset `space_flu.csv` is a synthetic dataset inspired
+    by the previous description. *Figure [8.10](#x1-166011r10)* shows a plot of it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s fit the following model and plot the results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.9**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice, as illustrated in *Figure [8.10](#x1-166011r10)*, that the GP can fit
+    this space flu dataset very well, even when the data demands the function to be
+    more complex than a logistic one. Fitting this data well will be impossible for
+    a simple logistic regression, unless we introduce some ad hoc modifications to
+    help it a little bit (see exercise 6 at the end of the chapter for a discussion
+    of such modifications).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file231.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.10**: Logistic regression, result of `model_space_flu`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.8 Cox processes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now we are going to model count data. We will see two examples; one with a time-varying
+    rate and one with a 2D spatially varying rate. To do this, we will use a Poisson
+    likelihood and the rate will be modeled using a Gaussian process. Because the
+    rate of the Poisson distribution is limited to positive values, we will use an
+    exponential as the inverse link function, as we did for the NegativeBinomial regression
+    from *Chapter [4](CH04.xhtml#x1-760004)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can think of a Poisson process as a distribution over collections of points
+    in a given space where every finite collection of those random variables has a
+    Poisson distribution. When the rate of the Poisson process is itself a stochastic
+    process, such as, for example, a Gaussian process, then we have a Cox process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.8.1 Coal mining disasters
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The first example is known as the coal mining disasters. This example consists
+    of a record of coal-mining disasters in the UK from 1851 to 1962\. The number
+    of disasters is thought to have been affected by changes in safety regulations
+    during this period. We want to model the rate of disasters as a function of time.
+    Our dataset consists of a single column and each entry corresponds to the time
+    a disaster happened. The model we will use to fit the data has the form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_01.PNG)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As you can see, this is a Poisson regression problem. You may be wondering
+    at this point how we’re going to perform a regression if we only have a single
+    column with just the date of the disasters. The answer is to discretize the data,
+    just as if we were building a histogram. We are going to use the centers of the
+    bins as the *X* variable and the counts per bin as the *Y* variable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.10**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now we define and solve the model with PyMC:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.11**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Figure [8.11](#x1-168023r11)* shows the median disaster rate as a function
+    of time (white line). The bands describe the 50% HDI (darker) and the 94% HDI
+    (lighter). At the bottom, the black markers indicate the moment of each disaster.
+    As we can see, the rate of accidents decreases with time, except for a brief initial
+    increase. The PyMC documentation includes the coal mining disaster but is modeled
+    from a different perspective. I strongly recommend that you check that example
+    as it is very useful on its own and is also useful to compare it with the approach
+    we just implemented here.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file232.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.11**: Logistic regression, result of `model_coal`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Notice that even when we binned the data, we obtained, as a result, a smooth
+    curve. In this sense, we can see `model_coal` (and, in general, this type of model)
+    as building a histogram and then smoothing it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.8.2 Red wood
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Let’s apply the same approach we just did to a 2D spatial problem. We are going
+    to use the redwood data as shown in *Figure [8.12](#x1-169015r12)*. This dataset
+    (distributed with a GPL license) is from the GPstuff package. The dataset consists
+    of the location of redwood trees over a given area. The motivation of the inference
+    is to obtain a map of a rate, the number of trees in a given area.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As with the coal-mining disaster example, we need to discretize the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.12**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![PIC](img/file233.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.12**: Redwood data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Notice that instead of doing a mesh grid, we treat `x1` and `x2` data as being
+    distinct arrays. This allows us to build a covariance matrix independently for
+    each coordinate, effectively reducing the size of the matrix needed to compute
+    the GP. We then combine both matrices using the `LatentKron` class. It is important
+    to note that this is not a numerical trick, but a mathematical property of the
+    structure of this type of matrix, so we are not introducing any approximation
+    or error in our model. We are just expressing it in a way that allows faster computations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.13**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: In *Figure [8.13](#x1-169028r13)*, the darker the shade of gray, the higher
+    the rate of trees. We may imagine that we are interested in finding high-growing
+    rate zones, because we may be interested in how a wood is recovering from a fire,
+    or maybe we are interested in some properties of the soil and we use the trees
+    as a proxy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file234.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.13**: Logistic regression, result of `model_rw`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.9 Regression with spatial autocorrelation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The following example is taken from *Statistical Rethinking: A Bayesian Course
+    with Examples in R and STAN, Second Edition by Richard McElreath, Copyright (2020)
+    by Chapman and Hall/CRC. Reproduced by permission of Taylor & Francis Group*.
+    I strongly recommend reading this book, as you will find many good examples like
+    this and very good explanations. The only *caveat* is that the book examples are
+    in R/Stan, but don’t worry and keep sampling; you will find the Python/PyMC version
+    of those examples in the [https://github.com/pymc-devs/pymc-resources](https://github.com/pymc-devs/pymc-resources)
+    resources.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this example we have 10 different island societies; for each one of them,
+    we have the number of tools they use. Some theories predict that larger populations
+    develop and sustain more tools than smaller populations. Thus, we have a regression
+    problem where the dependent variable is the number of tools and the independent
+    variable is the population. Because the number of tools is a count variable, we
+    can use a Poisson distribution. Additionally, we have good theoretical reasons
+    to think the logarithm of the population is a better variable than absolute size
+    because what really matters (according to the theory) is the order of magnitude
+    of the population.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, the model we have in mind is a Poisson regression, but here comes the
+    interesting part. Another important factor affecting the number of tools is the
+    contact rates among the island societies. One way to include the contact rate
+    in our model is to gather information on how frequent these societies were in
+    contact throughout history and to create a categorical variable such as low/high
+    rate. Yet another way is to use the distance between societies as a proxy of the
+    contact rate, since it is reasonable to assume that geographically close societies
+    come into contact more often than distant ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The number of tools, the population size, and the coordinates are stored in
+    the file `islands.csv` in the GitHub repo of this book ([https://github.com/aloctavodia/BAP3](https://github.com/aloctavodia/BAP3)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Omitting the priors, the model we are going to build is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_02.PNG)'
+  prefs: []
+  type: TYPE_IMG
+- en: This model is a linear model plus a GP term. We use the linear part to model
+    the effect of the logarithm of the population and the GP term to model the effect
+    of the distance/contact rate. In this way, we will be effectively incorporating
+    a measure of similarity in technology exposure (estimated from the distance matrix).
+    Thus, instead of assuming the total number is just a consequence of population
+    alone and independent from one society to the next, we will be modeling the number
+    of tools in each society as a function of their spatial distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The information about the spatial distribution is in terms of latitudes and
+    longitudes, but the kernels in PyMC assume the distances are all Euclidean. This
+    can be problematic. Probably the cleanest way to circumvent this issue is to work
+    with a distance that takes into account that the islands are on an approximately
+    spherical planet. For instance, we can use the haversine distance, which determines
+    the great-circle distance between two points on a sphere given their longitudes
+    and latitudes. The great-circle distance is the shortest distance between two
+    points on the surface of a sphere, measured along the surface of the sphere. To
+    use this distance, we need to create a new kernel as shown in the next code block.
+    If you are not very familiar with classes in Python, you just need to know that
+    what I did is copy the code for the `ExpQuad` from the PyMC code base and tweak
+    it a little bit to create a new class, `ExpQuadHaversine`. The largest change
+    is the addition of the function/method `haversine_distance`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.14**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now that we have defined the class `ExpQuadHaversine` we can use it to define
+    the covariance matrix as we did with the previous models with the built-in kernels.
+    For this model, we are going to introduce another change. We are going to define
+    a parameter *η*. The role of this parameter is to scale the GP in the y-axis direction.
+    It is pretty common to define GPs with both *ℓ* and *η*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.15**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: To understand the posterior distribution of covariance functions in terms of
+    distances, we can plot a few samples from the posterior distribution as in *Figure
+    [8.14](#x1-170037r14)*. The black curve represents the posterior median covariance
+    at each distance and the gray curves sample functions from the joint posterior
+    distribution of *ℓ* and *η*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file235.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.14**: Posterior distribution of the spatial covariance'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The thick black line in *Figure [8.14](#x1-170037r14)* is the posterior median
+    of the covariance between pairs of societies as a function of distance. We use
+    the median because the distributions for *ℓ* and *η* are very skewed. We can see
+    that the covariance is, on average, not that high and also drops to almost 0 at
+    about 2,000 kilometers. The thin lines represent the uncertainty, and we can see
+    that there is a lot of uncertainty.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now let’s take a look at how strongly correlated the island societies are according
+    to the model and data. To do this, we have to turn the covariance matrix into
+    a correlation matrix. See the accompanying code for details. *Figure [8.15](#x1-170038r15)*
+    shows a heatmap of the mean correlation matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file236.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.15**: Posterior mean correlation matrix'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Two observations that stand out from the rest is, first, that Hawaii is very
+    lonely. This makes sense, as Hawaii is very far away from the rest of the island
+    societies. Also, we can see that Malekula (Ml), Tikopia (Ti), and Santa Cruz (SC)
+    are highly correlated with one another. This also makes sense, as these societies
+    are very close together, and they also have a similar number of tools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The left panel of *Figure [8.16](#x1-170039r16)* is essentially a map. The island
+    societies are represented in their relative positions. The lines are the posterior
+    median correlations among societies. The opacity of the lines is proportional
+    to the value of the correlations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file237.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.16**: Posterior distribution of the spatial covariance'
+  prefs: []
+  type: TYPE_NORMAL
+- en: On the right panel of *Figure [8.16](#x1-170039r16)* , we have again the posterior
+    median correlations, but this time plotted in terms of the log population versus
+    the total number of tools. The dashed lines represent the median number of tools
+    and the HDI of 94% as a function of log population. In both panels of *Figure
+    [8.16](#x1-170039r16)*, the size of the dots is proportional to the population
+    of each island society. Notice how the correlations among Malekula, Tikopia, and
+    Santa Cruz describe the fact that they have a rather low number of tools close
+    to the median or lower than the expected number of tools for their populations.
+    Something similar is happening with Trobriand and Manus; they are geographically
+    close and have fewer tools than expected for their population sizes. Tonga has
+    way more tools than expected for its population and a relatively high correlation
+    with Fiji. In a way, the model is telling us that Tonga has a positive effect
+    on Lua Fiji, increasing the total number of tools and counteracting the effect
+    of it on its close neighbors, Malekula, Tikopia, and Santa Cruz.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.10 Hilbert space GPs
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Gaussian processes can be slow. The main reason is that their computation requires
+    us to invert a matrix, whose size grows with the number of observations. This
+    operation is computationally costly and does not scale very nicely. For that reason,
+    a large portion of the research around GPs has been to find approximations to
+    compute them faster and allow scaling them to large data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are going to discuss only one of those approximations, namely the **Hilbert
+    Space Gaussian Process** (**HSGP**), without going into the details of how this
+    approximation is achieved. Conceptually, we can think of it as a basis function
+    expansion similar, in spirit, to how splines are constructed (see *Chapter [6](CH06.xhtml#x1-1200006)*).
+    The consequence of this approximation is that it turns the matrix inversion into
+    just matrix multiplication, a much faster operation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But When Will It Work?
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can only use HSGPs for low dimensions (1 to maybe 3 or 4), and only for some
+    kernels like the exponential quadratic or Matern. The reason is that for the HSGP
+    approximation to work, the kernel has to be written in a special form known as
+    power spectral density, and not all kernels can be written in this form.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the HSGP approximation in PyMC is straightforward, as we will demonstrate
+    with the bikes dataset. We want to model the number of rented bikes as a function
+    of the time of the day in hours. The following code block shows the PyMC implementation
+    of such a model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.16**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The main difference from previous GP models is the use of the `pm.gp.HSGP(.)`
+    class instead of the `pm.gp.Latent(.)` class, which we should have used for non-Gaussian
+    likelihoods and standard GPs. The class `pm.gp.HSGP(.)` has two parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`m` is the number of basic functions we use to approximate the GP. The larger
+    the value of `m`, the better the approximation will be and the more costly the
+    computation.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`c` is a boundary factor. For a fixed and sufficiently large value of `m`,
+    `c` affects the approximation of the mean function mainly near the boundaries.
+    It should not be smaller than 1.2 (PyMC will give you a warning if you use a value
+    lower than this), and usually 1.5 is a good choice. Changing this parameter does
+    not affect the speed of the computations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We set `m=10` partially because we are fans of the decimal system and partially
+    based on the recommendations in the paper *Practical Hilbert space approximate
+    Bayesian Gaussian processes for probabilistic programming* written by [Riutort-Mayol
+    et al.](Bibliography.xhtml#Xriutortmayol_2022) [[2022](Bibliography.xhtml#Xriutortmayol_2022)].
+    In practice, the results are robust to the exact values of `m` and `c`, as long
+    as they are within a certain range based on what your prior for the length scale
+    is. For details on how HSGP works and some advice on how to use it in practice,
+    you can read [Riutort-Mayol et al.](Bibliography.xhtml#Xriutortmayol_2022) [[2022](Bibliography.xhtml#Xriutortmayol_2022)].
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now let’s see the results. *Figure [8.17](#x1-171015r17)* shows the mean posterior
+    GP in black and 100 samples (realizations) from the GP posterior (gray lines).
+    You can compare these results to the ones obtained using splines (see *Figure
+    [6.8](CH06.xhtml#x1-124013r8)*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file238.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.17**: Posterior mean for the HSGP model for rented bikes as a function
+    of the time of the day'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The HSGP approximation is also implemented in Bambi. Let’s see how we can use
+    it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.10.1 HSGP with Bambi
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To fit the previous model with Bambi, we need to write the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.17**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will work, but instead, we will provide priors to Bambi, as we did with
+    PyMC. This will result in a much faster sampling and more reliable samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As we saw in *Chapter [6](CH06.xhtml#x1-1200006)*, to define priors in Bambi,
+    we just need to pass a dictionary to the `priors` argument of `bmb.Model`. But
+    we must be aware that HSGP terms do not receive priors. Instead, we need to define
+    priors for *ℓ* (called `ell` in Bambi) and *η* (called `sigma` in Bambi) and pass
+    those priors to the HSGP terms. One more thing: as in the previous model, we did
+    not use *η* but since Bambi is expecting it, we use a dirty trick to define a
+    prior that is essentially 1.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 8.18**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: I invite you to check that the parameters computed by Bambi are very similar
+    to those we got with PyMC. *Figure [8.18](#x1-172023r18)* shows the mean posterior
+    GP in black and a band for the HDI of 94%. The figure was generated with `bmb.interpret.plot_predictions`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file239.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 8.18**: Posterior mean for the HSGP model for rented bikes as a function
+    of the time of the day, using Bambi'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we have explored the concept of HSGP as a powerful approximation
+    to scale Gaussian processes to large datasets. By combining the flexibility of
+    PyMC and Bambi with the scalability offered by HSGPs, researchers and practitioners
+    can more effectively tackle complex modeling tasks, paving the way for the application
+    of Gaussian processes on increasingly large and intricate datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.11 Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: A Gaussian process is a generalization of the multivariate Gaussian distribution
+    to infinitely many dimensions and is fully specified by a mean function and a
+    covariance function. Since we can conceptually think of functions as infinitely
+    long vectors, we can use Gaussian processes as priors over functions. In practice,
+    we do not work with infinite objects but with multivariate Gaussian distributions
+    with as many dimensions as data points. To define their corresponding covariance
+    function, we used properly parameterized kernels; and by learning about those
+    hyperparameters, we ended up learning about arbitrary complex functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we have given a short introduction to GPs. We have covered
+    regression, semi-parametric models (the islands example), combining two or more
+    kernels to better describe the unknown function, and how a GP can be used for
+    classification tasks. There are many other topics we could have discussed. Nevertheless,
+    I hope this introduction to GPs has motivated you sufficiently to keep using,
+    reading, and learning about Gaussian processes and Bayesian non-parametric models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 8.12 Exercises
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For the example in the *Covariance functions and kernels* section, make sure
+    you understand the relationship between the input data and the generated covariance
+    matrix. Try using other input such as `data = np.random.normal(size=4)`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Rerun the code generating *Figure [8.3](#x1-160010r3)* and increase the number
+    of samples obtained from the GP prior to around 200\. In the original figure,
+    the number of samples is 2\. What is the range of the generated values?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'For the generated plot in the previous exercise, compute the standard deviation
+    for the values at each point. Do this in the following form:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Visually, just observing the plots
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Directly from the values generated from `pz.MVNormal(.).rvs`
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: By inspecting the covariance matrix (if you have doubts go back to exercise
+    1)
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Did the values you get from these three methods match?
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Use test points `np.linspace(np.floor(x.min()), 20, 100)[:,None]` and re-run
+    `model_reg`. Plot the results. What did you observe? How is this related to the
+    specification of the GP prior?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Repeat exercise 1, but this time use a linear kernel (see the accompanying code
+    for a linear kernel).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Check out [https://www.pymc.io/projects/examples/en/latest/gaussian_processes/GP-MeansAndCovs.html](https://www.pymc.io/projects/examples/en/latest/gaussian_processes/GP-MeansAndCovs.html)
+    in PyMC’s documentation.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Run a logistic regression model for the `space_flu` data. What do you see? Can
+    you explain the result?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Change the logistic regression model in order to fit the data. Tip: Use an
+    order 2 polynomial.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Compare the model for the coal mining disaster with the one from the PyMC documentation
+    ( [https://www.pymc.io/projects/docs/en/stable/learn/core_notebooks/pymc_overview.html#case-study-2-coal-mining-disasters](https://www.pymc.io/projects/docs/en/stable/learn/core_notebooks/pymc_overview.html#case-study-2-coal-mining-disasters)).
+    Describe the differences between both models in terms of model specification and
+    results.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Join our community Discord space
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Join our Discord community to meet like-minded people and learn alongside more
+    than 5000 members at: [https://packt.link/bayesian](https://packt.link/bayesian)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1.png)'
+  prefs: []
+  type: TYPE_IMG

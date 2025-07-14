@@ -1,0 +1,810 @@
+- en: Build an App to Find Cheap Airfares
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let's talk about mistakes. They're part of life; everyone makes them—even airlines.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In 2014, I happened to be reading my Twitter feed one afternoon when one of
+    the accounts I follow tweeted that a major US airline had fares to Europe that
+    were significantly below what would be expected. At the time, the cheapest fare
+    from New York to Vienna was around $800, but the advertised fares for a select
+    number of dates were between $350 and $450\. This seemed too good to be true.
+    But it wasn't. I had lucked upon what's known in the industry as a *mistake fare*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the super-secretive society of travel hackers and mileage junkies, it's well-known
+    that airlines occasionally—and accidentally—post fares that exclude fuel surcharges.
+    And remarkably, this isn't the only type of mistake they make. You might expect
+    advanced algorithms would be updating fares for each flight, taking into account
+    an enormous number of factors. And for the most part, you'd be right. But due
+    to legacy systems and the complexity of dealing with multiple carriers and multiple
+    jurisdictions, mistakes do sometimes occur.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a list of some of these more recent mistake fares:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In 2007, United Airlines sold business fare tickets from San Francisco to New
+    Zealand for $1,500
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In 2013, Delta sold economy fare tickets from multiple US cities to Hawaii for
+    $6.90
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In 2015, American Airlines sold business class fares to China from Washington,
+    DC for $450
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Now that you know these fares exist, how can you get in on them? Machine learning,
+    of course! Since they typically last just a few hours before they disappear, we're
+    going to build an application that continually monitors fare pricing, checking
+    for anomalous prices that will generate an alert we can quickly act on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s what we''ll cover in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sourcing airfare pricing on the web
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Retrieving fare data with advanced web scraping techniques
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Parsing the DOM to extract prices
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Identifying outlier fares with anomaly detection techniques
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Sending real-time text alerts with IFTTT
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Sourcing airfare pricing data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Fortunately, sourcing airfare data is somewhat easier that real estate data.
+    There are a number of providers of this data, as well as paid and unpaid APIs.
+    One challenging aspect of retrieving the data is that it requires a number of
+    web requests. In the previous edition of this book, we outlined how to scrape
+    data from Google''s **Flight Explorer** page. This was the ideal presentation
+    for seeing weeks of pricing data on one page for multiple cities. Unfortunately,
+    that page has now been removed, and Google now provides a more typical search
+    interface that requires the user to input the departure city, the destination
+    city, start date, and end date. One fortunate feature that remains is the ability
+    to input an entire region rather than a specific city. We''ll make use of this
+    in our scraping. An example of this can be seen in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/02d0154d-8231-47b0-ad25-e8e5ed48eb86.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see, we have input `New York` as our departure city and simply put
+    `Asia` as our destination. This returns pricing for all the top cities in Asia
+    (as well as the Middle East, for some reason). This is great news as we want to
+    capture as many prices in one web request as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While the interface still has some features that make it easier to scrape this
+    data, we'll need to use some more advanced techniques than we've used in the past.
+    We'll discuss that next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Retrieving fare data with advanced web scraping
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In previous chapters, we've seen how to use the `Requests` library to retrieve
+    web pages. As I've said before, it is a fantastic tool, but unfortunately, it
+    won't work for us here. The page we want to scrape is entirely AJAX-based. **Asynchronous
+    JavaScript** (**AJAX**) is a method for retrieving data from a server without
+    having to reload the page. What this means for us is that we'll need to use a
+    browser to retrieve the data. While that might sound like it would require an
+    enormous amount of overhead, there are two libraries that, when used together,
+    make it a lightweight task.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The two libraries are Selenium and ChromeDriver. Selenium is a powerful tool
+    for automating web browsers, and ChromeDriver is a browser. Why use ChromeDriver
+    rather than Firefox or Chrome itself? ChromeDriver is what's known as a **headless
+    browser**. This means it has no user interface. This keeps it lean, making it
+    ideal for what we're trying to do.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To install ChromeDriver, you can download the binaries or source from [https://sites.google.com/a/chromium.org/chromedriver/downloads](https://sites.google.com/a/chromium.org/chromedriver/downloads).
+    As for Selenium, it can be pip installed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll also need another library called `BeautifulSoup` to parse the data from
+    the page. If you don't have that installed, you should `pip install` that now
+    as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With that done, let''s get started. We''ll start out within the Jupyter Notebook.
+    This works best for exploratory analysis. Later, when we''ve completed our exploration,
+    we''ll move on to working in a text editor for the code we want to deploy. This
+    is done in following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we import our routine libraries, as shown in the following code snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, make sure you have installed `BeautifulSoup` and `Selenium`, and downloaded
+    `ChromeDriver`, as mentioned previously. We''ll import those now in a new cell:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that I have referenced the path on my machine where I have downloaded
+    `ChromeDriver`. Note that you will have to replace that line with the path on
+    your own machine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a link
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now, remarkably, we have everything we need to begin our airline fare scraping,
+    with one exception: we need the URL. For this exercise, I''m going to focus on
+    flights leaving from NYC and flying to Europe. Since we don''t want to pull down
+    massive quantities of data and risk being blocked, we are going to just pull data
+    for non-stop flights that depart on Saturday and return on the following Saturday.
+    You are, of course, free to change this to whatever fares you''d like to target,
+    but we''ll use this for our sample project.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next step is to fill out the form in Google Flights. Make sure to choose
+    a future date. Once you have input your data and hit Search, copy the URL string
+    from your browser bar, as seen in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/508213ef-1d4f-4d8d-8dd3-59d5b186d821.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The URL I copied is for flights that depart on `2018-12-01` and return on `2018-12-08`.
+    Those dates can be seen in the search string. If you choose different dates, you
+    should see those reflected in the string you copy. Let''s code this now:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s input that string and save it as the variable `sats`, as seen in the
+    following block of code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we''ll test that we can successfully retrieve the content that we see
+    on the page. We''ll test that with the following line of code, which utilizes
+    `selenium`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: That one line of code was all we needed to retrieve the page. We can validate
+    that this was successful with a couple of additional lines of code.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'First, let''s check the title of the page:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting output can be seen as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/8098a33d-ea16-401c-b538-808ac5644ecc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It looks like we were able to get the correct page. Let''s now check to see
+    whether we captured everything we were seeking. We can do that by taking a screenshot
+    of the page. We do that with the following line of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Again, the path I used to save the screenshot was based on my machine; you
+    will need to reference a path on your own machine. As you should see based on
+    the following output, we were able to successfully get all the content of the
+    page:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ad72822c-a619-48ff-8154-d6736d5f8c59.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Since we appear to have all the page data we were seeking, we will now move
+    on to how to pull individual data points from the page. To do that, first, we'll
+    need to learn about the **Document Object Model** (**DOM**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parsing the DOM to extract pricing data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The DOM is the collection of elements that comprise a web page. It includes
+    HTML tags such as `body` and `div`, as well as the classes and IDs embedded within
+    these tags.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s take a look at the DOM for our Google page:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To see it, right-click on the page and click on Inspect. This should be the
+    same for Firefox or Chrome. This will open the developer tab that allows you to
+    see the page source information, as demonstrated in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/b0a6fcbc-0afa-421d-9664-23f9242afb5d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once this is open, choose the element selector in the upper left-hand corner,
+    and click on an element to jump to that element in the page source code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/eb476064-5fec-4898-9022-582df358a0e5.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The element that we are concerned with is the box that contains the flight
+    information. This can be seen in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/545cff57-fc62-4ec7-8698-f204cb72cd2b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: If you look closely at the element, you will notice that it is an element called
+    a `div`. This div has an attribute called `class`. The is a long string of random
+    numbers and letters in this `class`, but you will also notice that it contains
+    the string `info-container`. We can use this information to retrieve all the `div`
+    elements that have flight information for each city. We'll do that in a minute,
+    but for now, let's discuss the parsing process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parsing
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To begin our parsing, we will need to use the library we mentioned earlier
+    called `BeautifulSoup`. We imported it earlier, so now we just need to pass the
+    page source into `BeautifulSoup`. We do that by means of the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that the browser object contains a `page_source` attribute. That is all
+    the HTML we retrieved with our `get` request earlier. The other parameter passed
+    into `BeautifulSoup` is the parsing library it will use. Here, we will stick with
+    `html5lib`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, once the content of the page has been passed to `BeautifulSoup`, we want
+    to start to extract the elements of interest. That's where the `div` elements
+    with the `info-container` class come in. We are going to retrieve those. Each
+    one corresponds to a single city.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s retrieve them, but we''ll just look at the first one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output for the preceding code is shown as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9a502333-31f6-438b-a335-bc17013ed6da.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the preceding code, we used the `select` method on our `soup` object. The
+    select method allows us to use CSS selectors to reference the elements of interest.
+    Here, we have specified that we want divs that have a `class` attribute that contains
+    somewhere within the class name the string `info-container`. There is excellent
+    documentation on BeautifulSoup that explains these CSS selectors and other methods,
+    and is available at [https://www.crummy.com/software/BeautifulSoup/bs4/doc/#css-selectors](https://www.crummy.com/software/BeautifulSoup/bs4/doc/#css-selectors)[.](https://www.crummy.com/software/BeautifulSoup/bs4/doc/#css-selectors)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Looking at the preceding output, notice that buried deep within the markup,
+    there is the name of the destination city (`London`) and the fare price (`$440`).
+    Since we just want the data and not all the surrounding markup, we''ll need to
+    create code to iterate over each `info-container` divs and pull out the city and
+    the fare:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/227c0fc3-e4b5-4be8-9fee-cee005f602c8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Since it looks as if we were able to successfully retrieve the fares for each
+    city, let's now move on to constructing a full scrape and parse for a large number
+    of fares.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are now going to attempt to retrieve the lowest cost, non-stop fares from
+    NYC to Europe for a 26-week period. I'm using a start date of December 01, 2018,
+    but obviously, if you are reading this after that date, make sure to adjust your
+    dates accordingly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing we''ll need is to bring in some additional imports. We do that
+    in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we''ll construct the remainder of our scraping code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: That's a fair amount of code, so we'll unpack what is going on line by line.
+    The first two lines just create our start and end dates that we'll use. The next
+    two lines convert those date strings into `datetime` objects. This will be used
+    later on when we want to add a week to each using `timedelta`. The last line before
+    the `for` loop simply creates a dictionary that will hold our parsed data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next line begins a `for` loop. Inside this loop that will run `26` iterations,
+    we convert our `datetime` object back into a string so that we can pass it into
+    the URL that we will call with our browser object. Also, notice that on each iteration
+    we populate our fare dictionary with the start date. We then create our URL using
+    the date strings we created.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we insert a random pause using the `numpy.random` function and the Python
+    `sleep` function. This is simply to prevent us from appearing to be a bot and
+    overtaxing the site.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We then retrieve the page with our browser object, pass it into `BeautifulSoup`
+    for parsing, select the `info-container` divs, and then parse and update our fare
+    dictionary. Finally, we add one week to our start and end dates so that the next
+    iteration goes one week forward in time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s look at the data in our fare dictionary:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/e9b602b2-0979-4af4-9a8c-56a3e365b8d1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see, we have a dictionary with date as the primary key, and then
+    sub dictionaries with city/fare pairings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s dive into one city to examine the data. We''ll begin with `Berlin`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/49d0b34a-49e4-427e-9c09-a8ff18caed94.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'One thing we notice right away is that we''ll need to clean up the airfares
+    so that we can work with them. We''ll need to remove the dollar sign and the commas
+    and convert them into integers. We do that in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/66d482dd-d12a-4f6e-8dc3-890c8be649df.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Remember, the output shown in the preceding code is only for Berlin, as we are
+    just examining one city at the moment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s plot that data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/be3ca9f2-8abf-40bd-a4dd-65a07befade6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Notice that we have 26 consecutive weeks of data, in this case, for non-stop
+    flights from NYC to Berlin leaving on Saturday and returning the following Saturday.
+    There appears to be a fair amount of variation in these fares. Just eyeballing
+    the data, it appears that there might be two outliers on the high end toward the
+    beginning of the period and the end.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s take a look at another city. To do this, we simply need to return
+    to our code and change the `city_key` variable. We can then rerun the cells below
+    it. We''ll do that in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3a956cce-cbe3-49c6-b3b9-0349f9c553df.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We''ll need to remove the dollar sign and the commas and convert them into
+    integers. We do that in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5ea4b5e6-56ee-4bf5-b88d-48542d881c79.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, let''s plot that data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/472f83cb-3c53-4e46-a29d-8218243f70da.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, we can see even wider variations, with fares ranging from under $600 to
+    over $1,200\. Those cheap fares on the left are exactly the type of fares we'd
+    like to know about. We are going to want to create an outlier detection system
+    that will tell us about these bargain fares. We'll move on and discuss that now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Identifying outlier fares with anomaly detection techniques
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: There are various rigorous definitions of outliers, but for our purposes, an
+    **outlier** is any extreme value that is far from the other observations in the
+    dataset. There are numerous techniques, both parametric and non-parametric, that
+    are used to identify outliers; example algorithms include **density-based spatial
+    clustering of applications with noise** (**DBSCAN**), isolation forests, and Grubbs'
+    Test. Typically, the type of data determines the type of algorithm that is used.
+    For example, some algorithms do better on multivariate data than univariate data.
+    Here, we are dealing with univariate time-series data, so we'll want to choose
+    an algorithm that handles that well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you aren't familiar with the term *time series*, it simply means data that
+    is recorded at regular intervals, such as the daily closing price of a stock.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The algorithm that we are going to use for our data is called **Generalized
+    Extreme Studentized Deviate** (**Generalized ESD**) test for outliers. This algorithm
+    is well suited for our data, since it is univariate and approximately normal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are several tests we can use to ensure that our data is approximately
+    normally distributed, but we can also visually inspect our data for normality
+    using a normal probability plot. We''ll do that now for Moscow city data using
+    some functionality from the SciPy library:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/128bbbd5-12c0-4e06-be04-3d6f32717512.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: When assessing a **normal probability** or **quantile-quantile** (**Q-Q**) **plot**,
+    we are looking for the data to be as close to the straight line as possible to
+    reveal normality. Data that veers off in one direction or another, or with a strong
+    S shape, argues against normal data. Here, we have a fairly low number of data
+    points, and those that we do have are fairly balanced around the diagonal. If
+    we had more data, it is likely that we would more closely approximate the diagonal.
+    This should work well enough for our purposes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll now move on to our outlier detection code. We are going to be utilizing
+    another library for this called `PyAstronomy`. If you don't have it, it can easily
+    be pip installed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s look at the code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let's discuss what the preceding code does. The first line is simply our import.
+    Following that, we implement our generalized ESD algorithm. The parameters are
+    our fare prices, then the maximum number of outliers (here, we chose `3`), the
+    significance level (alpha, at `0.025`), and finally a Boolean to specify that
+    we want the full output. With respect to the significance level, the lower the
+    value, the less sensitive the algorithm and the fewer false positives will be
+    generated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next two lines simply print out data related to the `R` and `Lambda` values.
+    These are utilized in the determination of whether a data point is an outlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, the remainder of the code is simply for generating the scatter plot
+    and coloring those fares that are outliers red.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0a02c3e2-6605-45a9-9bac-8ec7430039b3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Again, this data is for Moscow. Make sure you changed your `city_key` variable
+    to reflect that to ensure you get that data. Notice that despite all the variations,
+    there are no outliers in the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s run it for Milan as well. We''ll go back up and change our `city_key`
+    variable and run the cells below that to update everything, as demonstrated in
+    the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/670a1a91-fc27-4831-83ad-1a78f54e0d10.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Notice that this time, we have three outliers, and these are fares that are
+    under $600 when the mean fare looks to be over $900, so this looks like a win
+    for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s try another city. This time, we''ll look at Athens by updating the `city_key` variable
+    and running the subsequent cells:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/080ba74c-e3d1-44b6-a9e2-0f156a14ae69.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Notice that again, we have three outliers, but that this time, they are extreme
+    fares to the upside. Since we are only interested in getting alerts for cheap
+    fares, we can build in a mechanism to only alert us when the fare outlier is less
+    than the mean fare.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we''ll now create some code to handle this element:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When we run the code for Athens, it will generate no output. When run for Milan,
+    it generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/24a54489-3428-4263-8be8-1bbaaf435f90.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: So, now, we have created a system to scrape the data, parse it, and identify
+    the outliers. Let's move on and create a fully-fledged application that can alert
+    us in real time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep in mind that we just did a very preliminary analysis on our outlier detection
+    model. In the real world, it would likely take a much more thorough series of
+    tests to identify whether we had selected workable parameters for our model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sending real-time alerts using IFTTT
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To have a chance at getting these cheap fares, we''re going to need to know
+    in nearly real time when they happen. To accomplish this, we''ll use a service
+    called **If This Then That** (**IFTTT**). This free service allows you to connect
+    a huge number of services with a series of triggers and actions. Want to save
+    as many pictures as you like on Instagram to your iPhone photos? Want to get an
+    email every time a particular person tweets? Want your Facebook updates posted
+    to Twitter? IFTTT can do all of this. Go through the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step is to sign up for an account at [http://www.ifttt.com](https://ifttt.com/).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once you've done that, you'll need to sign up for the Maker channel, [https://ifttt.com/maker_webhooks](https://ifttt.com/maker_webhooks),
+    and the SMS channel, [https://ifttt.com/sms](https://ifttt.com/sms).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Maker allows you to create IFTTT recipes by sending and receiving HTTP requests.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Once you''ve created an account and activated the Maker and SMS channels, click
+    My Applets from the home page, and then click New Applet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/3382cd71-d1f7-44ac-9377-d89b4187a378.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Then, click on this, as shown in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/b632a0c0-06f0-458f-8523-16b088845c3b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Then, search for `webhooks` and click Receive a web request:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/342a78ef-d23c-4862-8377-31740b0a6523.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Then, we''ll create an event called `cheap_fares`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/7c3025ec-fa02-4d77-a752-05e364451d77.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once you fill out the event name, click Create trigger. Next, we''ll set up
+    the +that:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/3fd8b525-d386-4614-900f-7ac084c380ba.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Click that, and then search for `SMS` and select it:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/b99706b9-ff75-41fa-b134-4b538bb21ff3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Then, choose Send me an SMS:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/290c915e-fb68-4fda-8eae-b07ab23f8d40.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After that, we''ll customize our message:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/0f5f71ef-2098-4701-9293-66f152f7eba2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once this is complete, click on Finish to wrap-up the setup:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/277b926f-3ec4-4dd2-8790-0efdeb1943e7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: To test the setup, go to [http://www.ifttt.com/maker_webhooks](https://ifttt.com/maker_webhooks)
+    and click on Settings. You should see your account information that includes a
+    URL with a secret key. Copy and paste that URL into your browser. It should have
+    a form with your secret key and a place to fill in the values that correspond
+    to your city and price.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fill in cheap_fares for event, and place the city and fare into value1 and
+    value2, respectively:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/07a5bbd4-c648-4a74-a2ac-bfb96c1abfce.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Finally, click Test It, and you should receive a text message in just a few
+    seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have all the pieces in place, it's time to pull it all together
+    into a single script that will monitor fares 24/7.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Putting it all together
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Up until this point, we've worked within the Jupyter Notebook, but now, in order
+    to deploy our app, we'll move on to working in a text editor. The notebook is
+    excellent for exploratory analysis and visualization, but running a background
+    job is best done within a simple `.py` file. So, let's get started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll begin with our imports. You may need to `pip install` a few of these
+    if you don''t already have them installed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we''ll create a function that pulls down the data and runs our algorithm:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we''ll include a scheduler. This will run our code every 60 minutes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'And that should do it. We can now save this as `fare_alerter.py`, and run it
+    from the command line. You will need to pass in three arguments. The first is
+    the city, the second is the start date, and the final one is the end date. An
+    example is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: The script will continue running and check fares every 60 minutes. If a mistake
+    fare occurs, we'll be one of the first to know!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We've covered a lot of ground in this chapter. We've learned how to find the
+    best airfare data on the web, how to work with the DOM to find the elements we
+    want to parse, how to identify outliers, and finally, how to send text alerts
+    from our code using web requests through IFTTT. While what we've covered here
+    is for airfares, nearly everything we've done could be reused for any type of
+    pricing you'd like to be alerted to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you do decide to use it for airfares though, I hope it provides you with
+    many happy travels!
+  prefs: []
+  type: TYPE_NORMAL

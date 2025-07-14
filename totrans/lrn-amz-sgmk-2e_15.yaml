@@ -1,0 +1,1695 @@
+- en: 'Chapter 11: Deploying Machine Learning Models'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In previous chapters, we''ve deployed models in the simplest way possible:
+    by configuring an estimator, calling the `fit()` `deploy()` API to create a real-time
+    endpoint. This is the simplest scenario for development and testing, but it''s
+    not the only one.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Models can be imported. For example, you could take an existing model that you
+    trained on your local machine, import it into SageMaker, and deploy it as if you
+    had trained it on SageMaker.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In addition, models can be deployed in different configurations, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A single model on a real-time endpoint, which is what we've done so far, as
+    well as several model variants in the same endpoint.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A sequence of up to five models, called an **inference pipeline**.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An arbitrary number of related models that are loaded on demand on the same
+    endpoint, known as a **multi-model endpoint**. We'll examine this configuration
+    in [*Chapter 13*](B17705_13_Final_JM_ePub.xhtml#_idTextAnchor290), *Optimizing
+    Cost and Performance*.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A single model or an inference pipeline that predicts data in batch mode through
+    a feature known as **batch transform**.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Of course, models can also be exported. You can grab a training artifact in
+    **Simple Storage Service** (**S3**), extract the model, and deploy it anywhere
+    you like.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''ll cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examining model artifacts and exporting models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deploying models on real-time endpoints
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deploying models on batch transformers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deploying models on inference pipelines
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Monitoring prediction quality with Amazon SageMaker Model Monitor
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Deploying models on container services
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let's get started!
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need an **Amazon Web Services** (**AWS**) account to run the examples
+    included in this chapter. If you haven't got one already, please browse to [https://aws.amazon.com/getting-started/](https://aws.amazon.com/getting-started/)
+    to create one. You should also familiarize yourself with the AWS Free Tier ([https://aws.amazon.com/free/](https://aws.amazon.com/free/)),
+    which lets you use many AWS services for free within certain usage limits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will need to install and configure the AWS **Command Line Interface** (**CLI**)
+    for your account ([https://aws.amazon.com/cli/](https://aws.amazon.com/cli/)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will need a working Python 3.x environment. Installing the Anaconda distribution
+    ([https://www.anaconda.com/](https://www.anaconda.com/)) is not mandatory but
+    strongly encouraged as it includes many projects that we will need (Jupyter, `pandas`,
+    `numpy`, and more).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code examples included in this book are available on GitHub at https://github.com/PacktPublishing/Learn-Amazon-SageMaker-second-edition.
+    You will need to install a Git client to access them ([https://git-scm.com/](https://git-scm.com/)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examining model artifacts and exporting models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A model artifact contains one or several files that are produced by a training
+    job and that are required for model deployment. The number and nature of these
+    files depend on the algorithm that was trained. As we've seen many times, the
+    model artifact is stored as a `model.tar.gz` file, at the S3 output location defined
+    in the estimator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's look at different examples, where we reuse artifacts from the jobs we
+    previously trained.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examining and exporting built-in models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Almost all built-in algorithms are implemented with **Apache MXNet**, and their
+    artifacts reflect this. For more information on MXNet, please visit [https://mxnet.apache.org/](https://mxnet.apache.org/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see how we can load these models directly. Another option would be to
+    use **Multi Model Server** (**MMS**) ([https://github.com/awslabs/multi-model-server](https://github.com/awslabs/multi-model-server)),
+    but we''ll proceed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start from the artifact for the **Linear Learner** model we trained
+    in [*Chapter 4*](B17705_04_Final_JM_ePub.xhtml#_idTextAnchor069), *Training Machine
+    Learning Models*, as illustrated in the following code snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We load the symbol file, which contains a **JavaScript Object Notation** (**JSON**)
+    definition of the model, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We use this JSON definition to instantiate a new Gluon model. We also define
+    the name of its input symbol (`data`), as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, we can easily plot the model, like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This creates the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.1 – Linear Learner model'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B17705_11_1.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.1 – Linear Learner model
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Then, we load the model parameters learned during training, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We define a test sample stored in an MXNet `NDArray` (https://mxnet.apache.org/versions/1.6/api/python/docs/api/ndarray/index.html),
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we forward it through the model and read the output, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The predicted price of this house is **US Dollars** (**USD**) 30,173, as illustrated
+    here:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This technique should work with all MXNet-based algorithms. Now, let's take
+    a look at the built-in algorithms for **Computer Vision** (**CV**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examining and exporting built-in CV models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The three built-in algorithms for CV are also based on Apache MXNet. The process
+    is exactly the same, as outlined here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following is the artifact for the **image classification** model we trained
+    on dogs and cats in [*Chapter 5*](B17705_05_Final_JM_ePub.xhtml#_idTextAnchor091),
+    *Training Computer Vision Models*:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Load the model and its parameters, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The input shape is a 300x300 color image with three channels (**red, green,
+    and blue**, or **RGB**). Accordingly, we create a fake image using random values.
+    We forward it through the model and read the results, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Funnily enough, this random image is classified as a cat, as defined in the
+    following code snippet:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Reusing **Object Detection** is more complicated as the training network needs
+    to be modified for prediction. You can find an example at [https://github.com/aws-samples/amazon-sagemaker-aws-greengrass-custom-object-detection-model/](https://github.com/aws-samples/amazon-sagemaker-aws-greengrass-custom-object-detection-model/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's look at **Extreme Gradient Boosting** (**XGBoost**) artifacts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examining and exporting XGBoost models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: An XGBoost artifact contains a single file—the model itself. However, the format
+    of the model depends on how you're using XGBoost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With the built-in algorithm, the model is a pickled file that stores a `Booster`
+    object. Once the artifact has been extracted, we simply unpickle the model and
+    load it, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With the built-in framework, the model is just a saved model. Once the artifact
+    has been extracted, we load the model directly, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, let's look at **scikit-learn** artifacts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examining and exporting scikit-learn models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Scikit-learn models are saved and loaded with `joblib` (https://joblib.readthedocs.io),
+    as illustrated in the following code snippet. This library contains a set of tools
+    that provide lightweight pipelining, but we''ll only use it to save models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Finally, let's look at **TensorFlow** artifacts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examining and exporting TensorFlow models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'TensorFlow and **Keras** models are saved in **TensorFlow Serving** format,
+    as illustrated in the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The easiest way to serve such a model is to run the **Docker** image for TensorFlow
+    Serving, as illustrated in the following code snippet. You can find more details
+    at [https://www.tensorflow.org/tfx/serving/serving_basic](https://www.tensorflow.org/tfx/serving/serving_basic):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let's look at a final example where we export a Hugging Face model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examining and exporting Hugging Face models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Hugging Face models can be trained on either TensorFlow or PyTorch. Let''s
+    reuse our Hugging Face example from [*Chapter 7*](B17705_07_Final_JM_ePub.xhtml#_idTextAnchor130),
+    *Extending Machine Learning Services with Built-in Frameworks*, where we trained
+    a sentiment analysis model with PyTorch, and proceed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We copy the model artifact from S3 and extract it, like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In a Jupyter notebook, we use the Hugging Face API to load the model configuration.
+    We then build the model using a `DistilBertForSequenceClassification` object,
+    which corresponds to the model that we trained on SageMaker. Here''s the code
+    to accomplish this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we fetch the tokenizer associated with the model, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We write a short function that will apply `softmax` to the activation values
+    returned by the output layer of the model, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we define a sample and predict it with our model, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As expected, the sentiment is strongly negative, as we can see here:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This concludes the section on exporting models from SageMaker. As you can see,
+    it's really not difficult at all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's learn how to deploy models on real-time endpoints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying models on real-time endpoints
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: SageMaker endpoints serve real-time predictions using models hosted on fully
+    managed infrastructure. They can be created and managed with either the SageMaker
+    `boto3`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can find information on your endpoints in SageMaker Studio, under **SageMaker
+    resources**/**Endpoints**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's look at the SageMaker SDK in greater detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Managing endpoints with the SageMaker SDK
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The SageMaker SDK lets you work with endpoints in several ways, as outlined
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring an estimator, training it with `fit()`, deploying an endpoint with
+    `deploy()`, and invoking it with `predict()`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Importing and deploying a model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Invoking an existing endpoint
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Updating an existing endpoint
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We've used the first scenario in many examples so far. Let's look at the other
+    ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Importing and deploying an XGBoost model
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'This is useful when you want to import a model that wasn''t trained on SageMaker,
+    or when you want to redeploy a SageMaker model. In the previous section, we saw
+    what model artifacts look like, and how we should use them to package models.
+    We''ll now proceed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Starting from an XGBoost model that we trained and saved locally with `save_model()`,
+    we first create a model artifact by running the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In a Jupyter notebook, we upload the model artifact to our default bucket,
+    like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we create an `XGBoostModel` object, passing the location of the artifact
+    and an inference script (more on this in a second). We also select a framework
+    version, and it should match the one we use to train the model. The code is illustrated
+    in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The inference script is very simple. It only needs to contain a model-loading
+    function, as explained when we discussed deploying framework models in [*Chapter
+    7*](B17705_07_Final_JM_ePub.xhtml#_idTextAnchor130), *Extending Machine Learning
+    Services with Built-in Frameworks*. The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Back in the notebook, we then deploy and predict as usual, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now, let's do the same with a TensorFlow model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Importing and deploying a TensorFlow model
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The process is very similar, as we will see next:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We first use `tar` to package a TensorFlow model that we trained and saved
+    in TensorFlow Serving format. Our artifact should look like this (please don''t
+    forget to create the top-level directory!):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, we upload the artifact to S3, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we create a SageMaker model from the artifact. By default, we don''t
+    have to provide an inference script. We would pass if we needed custom preprocessing
+    and postprocessing handlers for feature engineering, exotic serialization, and
+    so on. You''ll find more information at https://sagemaker.readthedocs.io/en/stable/frameworks/tensorflow/using_tf.html#deploying-from-an-estimator.
+    The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We then deploy and predict as usual, thanks to the **Deep Learning Container**
+    (**DLC**) for TensorFlow.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Now, let's do a final example, where we import and deploy a Hugging Face model
+    with the DLC for PyTorch and an inference script for model loading and custom
+    processing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Importing and deploying a Hugging Face model with PyTorch
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s reuse our Hugging Face example, and first focus on the inference script.
+    It contains four functions: model loading, preprocessing, prediction, and postprocessing.
+    We''ll proceed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The model-loading function uses the same code that we used when we exported
+    the model. The only difference is that we load the file from `model_dir`, which
+    is passed by SageMaker to the PyTorch container. We also load the tokenizer once.
+    The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The preprocessing and postprocessing functions are simple. They only check
+    for the correct content and accept types. You can see these in the following code
+    snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, the prediction function tokenizes input data, predicts it, and returns
+    the name of the most probable class, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now our inference script is ready, let''s move to a notebook, import the model,
+    and deploy it, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We create a `PyTorchModel` object, passing the location of the model artifact
+    in S3 and the location of our inference script, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We deploy with `model.deploy()`. Then, we create two samples and send them
+    to our endpoint, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As expected, the outputs are `positive` and `negative`.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: This concludes the section on importing and deploying models. Now, let's learn
+    how to invoke an endpoint that has already been deployed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Invoking an existing endpoint
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'This is useful when you want to work with a live endpoint but don''t have access
+    to the predictor. All we need to know is the endpoint''s name. Proceed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Build a `TensorFlowPredictor` predictor for the endpoint we deployed in a previous
+    example. Again, the object is framework-specific. The code is illustrated in the
+    following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Then, predict it as usual, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now, let's learn how to update endpoints.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Updating an existing endpoint
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `update_endpoint()` API lets you update the configuration of an endpoint
+    in a non-disruptive fashion. The endpoint stays in service, and you can keep predicting
+    with it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s try this on our TensorFlow endpoint, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We set the instance count to `2` and update the endpoint, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The endpoint is immediately updated, as shown in the following screenshot.![Figure
+    11.2 – Endpoint being updated
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_11_2.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.2 – Endpoint being updated
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Once the update is complete, the endpoint is now backed by two instances, as
+    shown in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.3 – Endpoint backed by two instances'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_11_3.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.3 – Endpoint backed by two instances
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, it's very easy to import, deploy, redeploy, and update models
+    with the SageMaker SDK. However, some operations require that we work with lower-level
+    APIs. They're available in the AWS language SDKs, and we'll use our good friend
+    `boto3` to demonstrate them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Managing endpoints with the boto3 SDK
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`boto3` is the AWS SDK for Python ([https://aws.amazon.com/sdk-for-python/](https://aws.amazon.com/sdk-for-python/)).
+    It includes APIs for all AWS services (unless they don''t have APIs!). The SageMaker
+    API is available at https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker.html.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`boto3` APIs are service-level APIs, and they give us full control over all
+    service operations. Let''s see how they can help us deploy and manage endpoints
+    in ways that the SageMaker SDK doesn''t allow.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying endpoints with the boto3 SDK
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Deploying an endpoint with `boto3` is a four-step operation, outlined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create one or more models with the `create_model()` API. Alternatively, we could
+    use existing models that have been trained or imported with the SageMaker SDK.
+    For the sake of brevity, we'll do this here.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Define one or more **production variants**, listing the infrastructure requirements
+    for each model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create an `create_endpoint_config()` API, passing the production variants defined
+    previously and assigning each one a weight.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create an endpoint with the `create_endpoint()` API.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s put these APIs to work and deploy an endpoint running two variants of
+    the XGBoost model we trained on the Boston Housing dataset, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We define two variants; both are backed by a single instance. However, they
+    will receive nine-tenths and one-tenth of incoming requests, respectively—that
+    is to say, "variant weight/sum of weights". We could use this setup if we wanted
+    to introduce a new model in production and make sure it worked fine before sending
+    it traffic. The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We create an endpoint configuration by passing our two variants and setting
+    optional tags, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We can list all endpoint configurations with `list_endpoint_configs()` and describe
+    a particular one with the `describe_endpoint_config()` `boto3` APIs.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We create an endpoint based on this configuration:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We can list all the endpoints with `list_endpoints()` and describe a particular
+    one with the `describe_endpoint()` `boto3` APIs.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Creating a `boto3` waiter is a handy way to wait for the endpoint to be in
+    service. You can see one being created here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: After a few minutes, the endpoint is in service. As shown in the following screenshot,
+    it now uses two production variants:![Figure 11.4 – Viewing production variants
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_11_4.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.4 – Viewing production variants
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Then, we invoke the endpoint, as shown in the following code snippet. By default,
+    prediction requests are forwarded to variants according to their weights:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We can also select the variant that receives the prediction request. This is
+    useful for A/B testing, where we need to stick users to a given model. The following
+    code snippet shows you how to do this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This results in the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We can also update weights—for example, give equal weights to both variants
+    so that they receive the same share of incoming traffic—as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We can remove one variant entirely and send all traffic to the remaining one.
+    Here too, the endpoint stays in service the whole time, and no traffic is lost.
+    The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we clean up by deleting the endpoint and the two endpoint configurations,
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can see, the `boto3` API is more verbose, but it also gives us the flexibility
+    we need for **machine learning** (**ML**) operations. In the next chapter, we'll
+    learn how to automate these.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying models on batch transformers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Some use cases don't require a real-time endpoint. For example, you may want
+    to predict 10 **gigabytes** (**GB**) of data once a week in one go, get the results,
+    and feed them to a downstream application. Batch transformers are a very simple
+    way to get this done.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this example, we will use the scikit-learn script that we trained on the
+    Boston Housing dataset in [*Chapter 7*](B17705_07_Final_JM_ePub.xhtml#_idTextAnchor130),
+    *Extending Machine Learning Services with Built-in Frameworks*. Let''s get started,
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Configure the estimator as usual, by running the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Let''s predict the training set in batch mode. We remove the target value,
+    save the dataset to a **comma-separated values** (**CSV**) file, and upload it
+    to S3, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a transformer object and launch batch processing, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: In the training log, we can see that SageMaker creates a temporary endpoint
+    and uses it to predict data. For large-scale jobs, we could optimize throughput
+    by mini-batching samples for prediction (using the `strategy` parameter), increase
+    the level of prediction concurrency (`max_concurrent_transforms`), and increase
+    the maximum payload size (`max_payload`).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Once the job is complete, predictions are available in S3, as indicated here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Using the AWS CLI, we can easily retrieve these predictions by running the
+    following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Just as for training, the infrastructure used by the transformer is shut down
+    as soon as the job completes, so there's nothing to clean up.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the next section, we will look at inference pipelines and how to use them
+    to deploy a sequence of related models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying models on inference pipelines
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Real-life ML scenarios often involve more than one model; for example, you may
+    need to run preprocessing steps on incoming data or reduce its dimensionality
+    with the **Principal Component Analysis** (**PCA**) algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, you could deploy each model to a dedicated endpoint. However, orchestration
+    code would be required to pass prediction requests to each model in sequence.
+    Multiplying endpoints would also introduce additional costs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead, **inference pipelines** let you deploy up to five models on the same
+    endpoint or for batch transform and automatically handle the prediction sequence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s say that we wanted to run PCA and then Linear Learner. Building the
+    inference pipeline would look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Train the PCA model on the input dataset.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Process the training and validation sets with PCA and store the results in S3\.
+    batch transform is a good way to do this.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Train the Linear Learner model using the datasets processed by PCA as input.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Use the `create_model()` API to create an inference pipeline, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Create an endpoint configuration and an endpoint in the usual way. We could
+    also use the pipeline with a batch transformer.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: You can find a complete example that uses scikit-learn and Linear Learner at
+    [https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk/scikit_learn_inference_pipeline](https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk/scikit_learn_inference_pipeline).
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Spark** is a very popular choice for data processing, and SageMaker lets
+    you deploy Spark models with the **SparkML Serving** built-in container (https://github.com/aws/sagemaker-sparkml-serving-container),
+    which uses the **mleap** library ([https://github.com/combust/mleap](https://github.com/combust/mleap)).
+    Of course, these models can be part of an **inference pipeline**. You can find
+    several examples at [https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality](https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This concludes our discussion on model deployment. In the next section, we''ll
+    introduce a SageMaker capability that helps us detect data issues that impact
+    prediction quality: **SageMaker Model Monitor**.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Monitoring prediction quality with Amazon SageMaker Model Monitor
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'SageMaker Model Monitor has two main features, outlined here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Capturing data sent to an endpoint, as well as predictions returned by the endpoint.
+    This is useful for further analysis, or to replay real-life traffic during the
+    development and testing of new models.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Comparing incoming traffic to a baseline built from the training set, as well
+    as sending alerts about data quality issues, such as missing features, mistyped
+    features, and differences in statistical properties (also known as "data drift").
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll use the **Linear Learner** example from [*Chapter 4*](B17705_04_Final_JM_ePub.xhtml#_idTextAnchor069),
+    *Training Machine Learning Models*, where we trained a model on the Boston Housing
+    dataset. First, we'll add data capture to the endpoint. Then, we'll build a **baseline**
+    and set up a **monitoring schedule** to periodically compare the incoming data
+    to that baseline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Capturing data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We can set up the data-capture process when we deploy an endpoint. We can also
+    enable it on an existing endpoint with the `update_endpoint()` API that we just
+    used with production variants.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'At the time of writing, there are certain caveats that you should be aware
+    of, as outlined here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can only send **one sample at a time** if you want to perform model monitoring.
+    Mini-batch predictions will be captured, but they will cause the monitoring job
+    to fail.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Likewise, data samples and predictions must be **flat, tabular data**. Structured
+    data (such as lists of lists and nested JSON) will be captured, but the model-monitoring
+    job will fail to process it. Optionally, you can add a preprocessing script and
+    a postprocessing script to flatten it. You can find more information at [https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-pre-and-post-processing.html](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-pre-and-post-processing.html).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The content type and the accept type must be **identical**. You can use either
+    CSV or JSON, but you can't mix them.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: You cannot delete an endpoint if it has a monitoring schedule attached to it.
+    You have to **delete the monitoring schedule first**, then delete the endpoint.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Knowing that, let''s capture some data! Here we go:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training takes place as usual. You can find the code in the GitHub repository.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We create a data-capture configuration for 100% of the prediction requests
+    and responses, storing everything in S3, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Once the endpoint is in service, we send data for prediction. Within a minute
+    or two, we see captured data in S3 and then copy it locally, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Opening one of the files, we see samples and predictions, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: If this were live data, we could use it to test new models later on in order
+    to compare their performance to existing models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's learn how to create a baseline from the training set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a baseline
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'SageMaker Model Monitor includes a built-in container we can use to build the
+    baseline, and we can use it directly with the `DefaultModelMonitor` object. You
+    can also bring your own container, in which case you would use the `ModelMonitor`
+    object instead. Let''s get started, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A baseline can only be built on CSV datasets and JSON datasets. Our dataset
+    is space-separated and needs to be converted into a CSV file, as follows. We can
+    then upload it to S3:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'There is a small caveat here: the baselining job is a Spark job running in
+    **SageMaker Processing**. Hence, column names need to be Spark-compliant, or your
+    job will fail in cryptic ways. In particular, dots are not allowed in column names.
+    We don''t have that problem here, but please keep this in mind.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Define the infrastructure requirements, the location of the training set, and
+    its format, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can guess, this is running as a SageMaker Processing job, and you can
+    find its log in `/aws/sagemaker/ProcessingJobs` prefix.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Two JSON artifacts are available at its output location: `statistics.json`
+    and `constraints.json`. We can view their content with `pandas` by running the
+    following code:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As shown in the following screenshot, the `constraints` file gives us the inferred
+    type of each feature, its completeness in the dataset, and whether it contains
+    negative values or not:![Figure 11.5 – Viewing the inferred schema
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_11_5.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.5 – Viewing the inferred schema
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The `statistics` file adds basic statistics, as shown in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.6 – Viewing data statistics'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_11_6.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.6 – Viewing data statistics
+  prefs: []
+  type: TYPE_NORMAL
+- en: It also includes distribution information based on KLL sketches (https://arxiv.org/abs/1603.05346v2),
+    a compact way to define quantiles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once a baseline has been created, we can set up a monitoring schedule in order
+    to compare incoming traffic to the baseline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting up a monitoring schedule
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We simply pass the name of the endpoint, the statistics, the constraints, and
+    the frequency at which the analysis should run. We will go for hourly, which is
+    the shortest frequency allowed. The code is illustrated in the following snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here, the analysis will be performed by a built-in container. Optionally, we
+    could provide our own container with bespoke analysis code. You can find more
+    information at [https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-byoc-containers.html](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-byoc-containers.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's send some nasty data to the endpoint and see if SageMaker Model Monitor
+    picks it up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sending bad data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Unfortunately, a model may receive incorrect data at times. Maybe it''s been
+    corrupted at the source, maybe the application in charge of invoking the endpoint
+    is buggy, and so on. Let''s simulate this and see how much impact this has on
+    the quality of the prediction, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Starting from a valid sample, we get a correct prediction, as illustrated here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The price of this house is USD 30,173:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, let''s multiply the first feature by 10,000, as shown in the following
+    code snippet. Scaling and unit errors are quite frequent in application code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Ouch! The price is negative, as we can see here. Clearly, this is a bogus prediction:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Let''s try negating the last feature by running the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The prediction is much higher than what it should be, as we can see in the
+    following snippet. This is a sneakier issue, which means it is harder to detect
+    and could have serious business consequences:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: You should try experimenting with bad data and see which features are the most
+    brittle. All this traffic will be captured by SageMaker Model Monitor. Once the
+    monitoring job has run, you should see entries in its **violation report**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Examining violation reports
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Previously, we created an hourly monitoring job. Don''t worry if it takes a
+    little more than 1 hour to see results; job execution is load-balanced by the
+    backend, and short delays are likely:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can find more information about our monitoring job in the SageMaker console,
+    in the `describe_schedule()` API and list executions with the `list_executions()`
+    API, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here, we can see three executions:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The violations report is stored as a JSON file in S3\. We can read it and display
+    it with `pandas`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This prints out the violations that were detected by the last monitoring job,
+    as shown in the following screenshot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 11.7 – Viewing violations'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B17705_11_7.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 11.7 – Viewing violations
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Of course, we can also fetch the file in S3 and display its contents, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here''s a sample entry, warning us that the model received a fractional value
+    for the `chas` feature, although it''s defined as an integer in the schema:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We could also emit these violations to CloudWatch metrics and trigger alarms
+    to notify developers of potential data-quality issues. You can find more information
+    at [https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-interpreting-cloudwatch.html](https://docs.aws.amazon.com/sagemaker/latest/dg/model-monitor-interpreting-cloudwatch.html).
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'When you''re done, don''t forget to delete the monitoring schedule and the
+    endpoint itself, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can see, SageMaker Model Monitor helps you capture both incoming data
+    and predictions, a useful feature for model testing. In addition, you can also
+    perform data-quality analysis using a built-in container or your own.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we're going to move away from endpoints and learn how to
+    deploy models to container services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deploying models to container services
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Previously, we saw how to fetch a model artifact in S3 and how to extract the
+    actual model from it. Knowing this, it's pretty easy to deploy it on a container
+    service, such as **Amazon Elastic Container Service** (**ECS**), **Amazon Elastic
+    Kubernetes Service** (**EKS**), or **Amazon Fargate**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Maybe it's company policy to deploy everything in containers, maybe you just
+    like them, or maybe both! Whatever the reason is, you can definitely do it. There's
+    nothing specific to SageMaker here, and the AWS documentation for these services
+    will tell you everything you need to know.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A sample high-level process could look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Train a model on SageMaker.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: When training is complete, grab the artifact and extract the model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Push the model to a Git repository.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Write a task definition (for ECS and Fargate) or a pod definition (for EKS).
+    It could use one of the built-in containers or your own. Then, it could run a
+    model server or your own code to clone the model from your Git repository, load
+    it, and serve predictions.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Using this definition, run a container on your cluster.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Let's apply this to Amazon Fargate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training on SageMaker and deploying on Amazon Fargate
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Amazon Fargate** lets you run containers on fully managed infrastructure
+    ([https://aws.amazon.com/fargate](https://aws.amazon.com/fargate)). There''s no
+    need to create and manage clusters, which makes it ideal for users who don''t
+    want to get involved with infrastructure details. However, please note that, at
+    the time of writing, Fargate doesn''t support **graphics processing unit** (**GPU**)
+    containers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing a model
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We prepare the model using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we train a TensorFlow model on Fashion-MNIST. Business as usual.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'We find the location of the model artifact in S3 and set it as an environment
+    variable, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We download the artifact from S3 and extract it to a local directory, like
+    this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We open a terminal and commit the model to a public Git repository, as illustrated
+    in the following code snippet. I''m using one of mine here ([https://gitlab.com/juliensimon/test-models](https://gitlab.com/juliensimon/test-models));
+    you should replace it with yours:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Configuring Fargate
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Now that the model is available in a repository, we need to configure Fargate.
+    We''ll use the command line this time. You could do the same with `boto3` or any
+    other language SDK. We''ll proceed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`ecs-cli` is a convenient CLI tool used to manage clusters. Let''s install
+    it by running the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We use it to "create" a Fargate cluster. In practice, this isn''t creating
+    any infrastructure; we''re only defining a cluster name that we''ll use to run
+    tasks. Please make sure that your `ecs:CreateCluster`. If not, please add it before
+    continuing. The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We create a log group in **CloudWatch** where our container will write its
+    output. We only need to do this once. Here''s the code to accomplish this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We will need a `8500` for Google remote procedure call (`8501` for the **REpresentational
+    State Transfer** (**REST**) API). If you don''t have one already, you can easily
+    create one in the **Elastic Compute Cloud** (**EC2**) console. Here, I created
+    one in my default **virtual private cloud** (**VPC**). It looks like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 11.8 – Viewing the security group'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_11_8.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 11.8 – Viewing the security group
+  prefs: []
+  type: TYPE_NORMAL
+- en: Defining a task
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Now, we need to write a **JSON** file containing a **task definition**: the
+    container image to use, its entry point, and its system and network properties.
+    Let''s get started, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we define the amount of **central processing unit** (**CPU**) and memory
+    that the task is allowed to consume. Unlike ECS and EKS, Fargate only allows a
+    limited set of values, available at [https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-cpu-memory-error.html](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-cpu-memory-error.html).
+    We will go for 4 **virtual CPUs** (**vCPUs**) and 8 GB of **random-access memory**
+    (**RAM**), as illustrated in the following code snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, we define a container that will load our model and run predictions. We
+    will use the DLC for TensorFlow 2.3.0\. You can find a full list at [https://github.com/aws/deep-learning-containers/blob/master/available_images.md](https://github.com/aws/deep-learning-containers/blob/master/available_images.md).
+    The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Its entry point creates a directory, clones the repository where we pushed
+    the model, and launches TensorFlow Serving, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Accordingly, we map the two TensorFlow Serving ports, like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We define the log configuration that''s pointing at the CloudWatch log group
+    we created earlier, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE84]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We set the networking mode for the container, as illustrated in the following
+    code snippet. `awsvpc` is the most flexible option, and it will allow our container
+    to be publicly accessible, as explained at [https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-networking.html](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-networking.html).
+    It will create an **elastic network interface** in the subnet of our choice:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE85]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we define an IAM role for the task. If this is the first time you''re
+    working with ECS, you should create this role in the IAM console. You can find
+    instructions for this at https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html.
+    The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE86]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Running a task
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We''re now ready to run our task using the security group we created earlier
+    and one of the subnets in our default VPC. Let''s get started, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We launch the task with the `run-task` API, passing the family name of the
+    task definition (not the filename!). Please pay attention to the version number
+    as well as it will automatically increase every time you register a new version
+    of the task definition, so make sure you''re using the latest one. The code is
+    illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE87]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'A few seconds later, we can see our prediction container running (showing the
+    task **identifier** (**ID**), state, ports, and task definition), as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE88]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Using the public **Internet Protocol** (**IP**) address of the container, we
+    build a TensorFlow Serving prediction request with 10 sample images and send it
+    to our container, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE89]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'When we''re done, we stop the task using the task `run-task` API and delete
+    the cluster, as illustrated in the following code snippet. Of course, you can
+    also use the ECS console:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE90]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The processes for ECS and EKS are extremely similar. You can find simple examples
+    at [https://gitlab.com/juliensimon/dlcontainers](https://gitlab.com/juliensimon/dlcontainers).
+    They should be a good starting point if you wish to build your own workflow.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kubernetes fans can also use `kubectl` to train and deploy models. A detailed
+    tutorial is available at [https://sagemaker.readthedocs.io/en/stable/workflows/kubernetes/index.html](https://sagemaker.readthedocs.io/en/stable/workflows/kubernetes/index.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you learned about model artifacts, what they contain, and how
+    to use them to export models outside of SageMaker. You also learned how to import
+    and deploy existing models, as well as how to manage endpoints in detail, both
+    with the SageMaker SDK and the `boto3` SDK.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, we discussed alternative deployment scenarios with SageMaker, using either
+    batch transform or inference pipelines, as well as outside of SageMaker with container
+    services.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, you learned how to use SageMaker Model Monitor to capture endpoint
+    data and monitor data quality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next chapter, we''ll discuss automating ML workflows with three different
+    AWS services: **AWS CloudFormation**, the **AWS Cloud Development Kit** (**AWS
+    CDK**), and **Amazon SageMaker Pipelines**.'
+  prefs: []
+  type: TYPE_NORMAL

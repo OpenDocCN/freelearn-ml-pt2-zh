@@ -1,0 +1,994 @@
+- en: 5\. Classification Techniques
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 5.01: Ordinary Least Squares Classifier – Binary Classifier'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Solution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the required dependencies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import struct
+  prefs: []
+  type: TYPE_NORMAL
+- en: import numpy as np
+  prefs: []
+  type: TYPE_NORMAL
+- en: import gzip
+  prefs: []
+  type: TYPE_NORMAL
+- en: import urllib.request
+  prefs: []
+  type: TYPE_NORMAL
+- en: import matplotlib.pyplot as plt
+  prefs: []
+  type: TYPE_NORMAL
+- en: from array import array
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.linear_model import LinearRegression
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the MNIST data into memory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/train-images-idx3-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size, rows, cols = struct.unpack(">IIII", f.read(16))
+  prefs: []
+  type: TYPE_NORMAL
+- en: img = np.array(array("B", f.read())).reshape((size, rows, cols))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/train-labels-idx1-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size = struct.unpack(">II", f.read(8))
+  prefs: []
+  type: TYPE_NORMAL
+- en: labels = np.array(array("B", f.read()))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/t10k-images-idx3-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size, rows, cols = struct.unpack(">IIII", f.read(16))
+  prefs: []
+  type: TYPE_NORMAL
+- en: img_test = np.array(array("B", f.read()))\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .reshape((size, rows, cols))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/t10k-labels-idx1-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size = struct.unpack(">II", f.read(8))
+  prefs: []
+  type: TYPE_NORMAL
+- en: labels_test = np.array(array("B", f.read()))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Visualize a sample of the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'for i in range(10):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.subplot(2, 5, i + 1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.imshow(img[i], cmap='gray');
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.title(f'{labels[i]}');
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.axis('off')
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.63: Sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-HVWAR7CZ.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.63: Sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Construct a linear classifier model to classify the digits 0 and 1\. The model
+    we are going to create is to determine whether the samples are either the digits
+    0 or 1\. To do this, we first need to select only those samples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: samples_0_1 = np.where((labels == 0) | (labels == 1))[0]
+  prefs: []
+  type: TYPE_NORMAL
+- en: images_0_1 = img[samples_0_1]
+  prefs: []
+  type: TYPE_NORMAL
+- en: labels_0_1 = labels[samples_0_1]
+  prefs: []
+  type: TYPE_NORMAL
+- en: samples_0_1_test = np.where((labels_test == 0) | (labels_test == 1))
+  prefs: []
+  type: TYPE_NORMAL
+- en: images_0_1_test = img_test[samples_0_1_test]\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .reshape((-1, rows * cols))
+  prefs: []
+  type: TYPE_NORMAL
+- en: labels_0_1_test = labels_test[samples_0_1_test]
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Visualize the selected information. Here''s the code for 0:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: sample_0 = np.where((labels == 0))[0][0]
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.imshow(img[sample_0], cmap='gray');
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.64: First sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-IPZUMLSW.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.64: First sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s the code for 1:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: sample_1 = np.where((labels == 1))[0][0]
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.imshow(img[sample_1], cmap='gray');
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.65: Second sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-ZJV8H2GT.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.65: Second sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to provide the image information to the model, we must first flatten
+    the data out so that each image is 1 x 784 pixels in shape:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: images_0_1 = images_0_1.reshape((-1, rows * cols))
+  prefs: []
+  type: TYPE_NORMAL
+- en: images_0_1.shape
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (12665, 784)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s construct the model; use the LinearRegression API and call the fit function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model = LinearRegression()
+  prefs: []
+  type: TYPE_NORMAL
+- en: model.fit(X=images_0_1, y=labels_0_1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: LinearRegression(copy_X=True, fit_intercept=True, n_jobs=None,
+  prefs: []
+  type: TYPE_NORMAL
+- en: normalize=False)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Determine the training set accuracy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model.score(X=images_0_1, y=labels_0_1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '0.9705320567708795'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Determine the label predictions for each of the training samples, using a threshold
+    of 0.5\. Values greater than 0.5 classify as 1, while values less than, or equal
+    to, 0.5 classify as 0:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred = model.predict(images_0_1) > 0.5
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred = y_pred.astype(int)
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: array([0, 1, 1, ..., 1, 0, 1])
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Compute the classification accuracy of the predicted training values versus
+    the ground truth:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: np.sum(y_pred == labels_0_1) / len(labels_0_1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '0.9947887879984209'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '10\. Compare the performance against the test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred = model.predict(images_0_1_test) > 0.5
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred = y_pred.astype(int)
+  prefs: []
+  type: TYPE_NORMAL
+- en: np.sum(y_pred == labels_0_1_test) / len(labels_0_1_test)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '0.9938534278959811'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to https://packt.live/3emRZAk.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at https://packt.live/37T4bGh. You must
+    execute the entire Notebook in order to get the desired result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 5.02: KNN Multiclass Classifier'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Import the following packages:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import struct
+  prefs: []
+  type: TYPE_NORMAL
+- en: import numpy as np
+  prefs: []
+  type: TYPE_NORMAL
+- en: import gzip
+  prefs: []
+  type: TYPE_NORMAL
+- en: import urllib.request
+  prefs: []
+  type: TYPE_NORMAL
+- en: import matplotlib.pyplot as plt
+  prefs: []
+  type: TYPE_NORMAL
+- en: from array import array
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.neighbors import KNeighborsClassifier as KNN
+  prefs: []
+  type: TYPE_NORMAL
+- en: Load the MNIST data into memory.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Training images:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/train-images-idx3-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size, rows, cols = struct.unpack(">IIII", f.read(16))
+  prefs: []
+  type: TYPE_NORMAL
+- en: img = np.array(array("B", f.read())).reshape((size, rows, cols))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Training labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/train-labels-idx1-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size = struct.unpack(">II", f.read(8))
+  prefs: []
+  type: TYPE_NORMAL
+- en: labels = np.array(array("B", f.read()))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Test images:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/t10k-images-idx3-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size, rows, cols = struct.unpack(">IIII", f.read(16))
+  prefs: []
+  type: TYPE_NORMAL
+- en: img_test = np.array(array("B", f.read()))\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .reshape((size, rows, cols))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Test labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/t10k-labels-idx1-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size = struct.unpack(">II", f.read(8))
+  prefs: []
+  type: TYPE_NORMAL
+- en: labels_test = np.array(array("B", f.read()))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Visualize a sample of the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'for i in range(10):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.subplot(2, 5, i + 1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.imshow(img[i], cmap='gray');
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.title(f'{labels[i]}');
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.axis('off')
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.66: Sample images'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-DA453QKK.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.66: Sample images'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Construct a KNN classifier with k=3 to classify the MNIST dataset. Again, to
+    save processing power, randomly sample 5,000 images for use in training:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: np.random.seed(0)
+  prefs: []
+  type: TYPE_NORMAL
+- en: selection = np.random.choice(len(img), 5000)
+  prefs: []
+  type: TYPE_NORMAL
+- en: selected_images = img[selection]
+  prefs: []
+  type: TYPE_NORMAL
+- en: selected_labels = labels[selection]
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to provide the image information to the model, we must first flatten
+    the data out so that each image is 1 x 784 pixels in shape:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: selected_images = selected_images.reshape((-1, rows * cols))
+  prefs: []
+  type: TYPE_NORMAL
+- en: selected_images.shape
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (5000, 784)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Build the three-neighbor KNN model and fit the data to the model. Note that,
+    in this activity, we are providing 784 features or dimensions to the model, not
+    just 2:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model = KNN(n_neighbors=3)
+  prefs: []
+  type: TYPE_NORMAL
+- en: model.fit(X=selected_images, y=selected_labels)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski',
+  prefs: []
+  type: TYPE_NORMAL
+- en: metric_params=None, n_jobs=None, n_neighbors=3, p=2,
+  prefs: []
+  type: TYPE_NORMAL
+- en: weights='uniform')
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Determine the score against the training set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model.score(X=selected_images, y=selected_labels)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '0.9692'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Display the first two predictions for the model against the training data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model.predict(selected_images)[:2]
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.subplot(1, 2, 1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.imshow(selected_images[0].reshape((28, 28)), cmap='gray');
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.axis('off');
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.subplot(1, 2, 2)
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.imshow(selected_images[1].reshape((28, 28)), cmap='gray');
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.axis('off');
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.67: First two values of the test set'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-PFHH0LLF.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.67: First two values of the test set'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Compare the performance against the test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model.score(X=img_test.reshape((-1, rows * cols)), y=labels_test)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '0.9376'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to https://packt.live/313xdlc.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at https://packt.live/2Nl6DMo. You must
+    execute the entire Notebook in order to get the desired result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 5.03: Binary Classification Using a CART Decision Tree'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Solution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the required dependencies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import struct
+  prefs: []
+  type: TYPE_NORMAL
+- en: import numpy as np
+  prefs: []
+  type: TYPE_NORMAL
+- en: import pandas as pd
+  prefs: []
+  type: TYPE_NORMAL
+- en: import gzip
+  prefs: []
+  type: TYPE_NORMAL
+- en: import urllib.request
+  prefs: []
+  type: TYPE_NORMAL
+- en: import matplotlib.pyplot as plt
+  prefs: []
+  type: TYPE_NORMAL
+- en: from array import array
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.model_selection import train_test_split
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.tree import DecisionTreeClassifier
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the MNIST data into memory:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/train-images-idx3-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size, rows, cols = struct.unpack(">IIII", f.read(16))
+  prefs: []
+  type: TYPE_NORMAL
+- en: img = np.array(array("B", f.read())).reshape((size, rows, cols))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/train-labels-idx1-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size = struct.unpack(">II", f.read(8))
+  prefs: []
+  type: TYPE_NORMAL
+- en: labels = np.array(array("B", f.read()))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/t10k-images-idx3-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size, rows, cols = struct.unpack(">IIII", f.read(16))
+  prefs: []
+  type: TYPE_NORMAL
+- en: img_test = np.array(array("B", f.read()))\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .reshape((size, rows, cols))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with gzip.open(''../Datasets/t10k-labels-idx1-ubyte.gz'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: magic, size = struct.unpack(">II", f.read(8))
+  prefs: []
+  type: TYPE_NORMAL
+- en: labels_test = np.array(array("B", f.read()))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Visualize a sample of the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'for i in range(10):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.subplot(2, 5, i + 1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.imshow(img[i], cmap='gray');
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.title(f'{labels[i]}');
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.axis('off')
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.68: Sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-HVWAR7CZ.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.68: Sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Construct a linear classifier model to classify the digits 0 and 1\. The model
+    we are going to create is to determine whether the samples are either the digits
+    0 or 1\. To do this, we first need to select only those samples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: samples_0_1 = np.where((labels == 0) | (labels == 1))[0]
+  prefs: []
+  type: TYPE_NORMAL
+- en: images_0_1 = img[samples_0_1]
+  prefs: []
+  type: TYPE_NORMAL
+- en: labels_0_1 = labels[samples_0_1]
+  prefs: []
+  type: TYPE_NORMAL
+- en: samples_0_1_test = np.where((labels_test == 0) | (labels_test == 1))
+  prefs: []
+  type: TYPE_NORMAL
+- en: images_0_1_test = img_test[samples_0_1_test]\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .reshape((-1, rows * cols))
+  prefs: []
+  type: TYPE_NORMAL
+- en: labels_0_1_test = labels_test[samples_0_1_test]
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Visualize the selected information. Here''s the code for 0:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: sample_0 = np.where((labels == 0))[0][0]
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.imshow(img[sample_0], cmap='gray');
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.69: First sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-CC4BKBHF.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.69: First sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s the code for 1:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: sample_1 = np.where((labels == 1))[0][0]
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.imshow(img[sample_1], cmap='gray');
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.70: Second sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-0WOP89CS.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.70: Second sample data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to provide the image information to the model, we must first flatten
+    the data out so that each image is 1 x 784 pixels in shape:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: images_0_1 = images_0_1.reshape((-1, rows * cols))
+  prefs: []
+  type: TYPE_NORMAL
+- en: images_0_1.shape
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: (12665, 784)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s construct the model; use the DecisionTreeClassifier API and call the
+    fit function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model = DecisionTreeClassifier(random_state=123)
+  prefs: []
+  type: TYPE_NORMAL
+- en: model = model.fit(X=images_0_1, y=labels_0_1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: model
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=None,
+  prefs: []
+  type: TYPE_NORMAL
+- en: max_features=None, max_leaf_nodes=None,
+  prefs: []
+  type: TYPE_NORMAL
+- en: min_impurity_decrease=0.0, min_impurity_split=None,
+  prefs: []
+  type: TYPE_NORMAL
+- en: min_samples_leaf=1, min_samples_split=2,
+  prefs: []
+  type: TYPE_NORMAL
+- en: min_weight_fraction_leaf=0.0, presort=False,
+  prefs: []
+  type: TYPE_NORMAL
+- en: random_state=None, splitter='best')
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Determine the training set accuracy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model.score(X=images_0_1, y=labels_0_1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '1.0'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Determine the label predictions for each of the training samples, using a threshold
+    of 0.5\. Values greater than 0.5 classify as 1, values less than or equal to 0.5,
+    classify as 0:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred = model.predict(images_0_1) > 0.5
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred = y_pred.astype(int)
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Compute the classification accuracy of the predicted training values versus
+    the ground truth:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: np.sum(y_pred == labels_0_1) / len(labels_0_1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Compare the performance against the test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred = model.predict(images_0_1_test) > 0.5
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred = y_pred.astype(int)
+  prefs: []
+  type: TYPE_NORMAL
+- en: np.sum(y_pred == labels_0_1_test) / len(labels_0_1_test)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '0.9962174940898345'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to https://packt.live/3hNUJbT.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at https://packt.live/2Cq5W25\. You must
+    execute the entire Notebook in order to get the desired result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 5.04: Breast Cancer Diagnosis Classification Using Artificial Neural
+    Networks'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Import the required packages. For this activity, we will require the pandas
+    package for loading the data, the matplotlib package for plotting, and scikit-learn
+    for creating the neural network model, as well as to split the dataset into training
+    and test sets. Import all the required packages and relevant modules for these
+    tasks:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import pandas as pd
+  prefs: []
+  type: TYPE_NORMAL
+- en: import matplotlib.pyplot as plt
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.neural_network import MLPClassifier
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.model_selection import train_test_split
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn import preprocessing
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the Breast Cancer Diagnosis dataset using pandas and examine the first
+    five rows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: df = pd.read_csv('../Datasets/breast-cancer-data.csv')
+  prefs: []
+  type: TYPE_NORMAL
+- en: df.head()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.71: First five rows of the breast cancer dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-D4G2QEWK.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.71: First five rows of the breast cancer dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Additionally, dissect the dataset into input (X) and output (y) variables:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: X, y = df[[c for c in df.columns if c != 'diagnosis']], df.diagnosis
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next step is feature engineering. Different columns of this dataset have
+    different scales of magnitude; hence, before constructing and training a neural
+    network model, we normalize the dataset. For this, we use the MinMaxScaler API
+    from sklearn, which normalizes each column''s values between 0 and 1, as discussed
+    in the Logistic Regression section of this chapter (see Exercise 5.03,Logistic
+    Regression – Multiclass Classifier): https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MinMaxScaler.html:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'X_array = X.values #returns a numpy array'
+  prefs: []
+  type: TYPE_NORMAL
+- en: min_max_scaler = preprocessing.MinMaxScaler()
+  prefs: []
+  type: TYPE_NORMAL
+- en: X_array_scaled = min_max_scaler.fit_transform(X_array)
+  prefs: []
+  type: TYPE_NORMAL
+- en: X = pd.DataFrame(X_array_scaled, columns=X.columns)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Examine the first five rows of the normalized dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: X = pd.DataFrame(X_array_scaled, columns=X.columns)
+  prefs: []
+  type: TYPE_NORMAL
+- en: X.head()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 5.72: First five rows of the normalized dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-EV96V76B.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 5.72: First five rows of the normalized dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we can construct the model, we must first convert the diagnosis values
+    into labels that can be used within the model. Replace the benign diagnosis string
+    with the value 0, and the malignant diagnosis string with the value 1:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: diagnoses = ['benign', 'malignant',]
+  prefs: []
+  type: TYPE_NORMAL
+- en: output = [diagnoses.index(diag) for diag in y]
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Also, in order to impartially evaluate the model, we should split the training
+    dataset into a training and a validation set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: train_X, valid_X, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: train_y, valid_y = train_test_split(X, output, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: test_size=0.2, random_state=123)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create the model using the normalized dataset and the assigned diagnosis labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model = MLPClassifier(solver='sgd', hidden_layer_sizes=(100,), \
+  prefs: []
+  type: TYPE_NORMAL
+- en: max_iter=1000, random_state=1, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: learning_rate_init=.01)
+  prefs: []
+  type: TYPE_NORMAL
+- en: model.fit(X=train_X, y=train_y)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: MLPClassifier(activation='relu', alpha=0.0001, batch_size='auto',
+  prefs: []
+  type: TYPE_NORMAL
+- en: beta_1=0.9, beta_2=0.999, early_stopping=False,
+  prefs: []
+  type: TYPE_NORMAL
+- en: epsilon=1e-08, hidden_layer_sizes=(100,),
+  prefs: []
+  type: TYPE_NORMAL
+- en: learning_rate='constant',
+  prefs: []
+  type: TYPE_NORMAL
+- en: learning_rate_init=0.01, max_iter=1000, momentum=0.9,
+  prefs: []
+  type: TYPE_NORMAL
+- en: n_iter_no_change=10, nesterovs_momentum=True, power_t=0.5,
+  prefs: []
+  type: TYPE_NORMAL
+- en: random_state=1, shuffle=True, solver='sgd', tol=0.0001,
+  prefs: []
+  type: TYPE_NORMAL
+- en: validation_fraction=0.1, verbose=False, warm_start=False)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Compute the accuracy of the model against the validation set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model.score(valid_X, valid_y)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '0.9824561403508771'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to https://packt.live/3dpNt2G.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at https://packt.live/37OpdWM. You must
+    execute the entire Notebook in order to get the desired result.
+  prefs: []
+  type: TYPE_NORMAL

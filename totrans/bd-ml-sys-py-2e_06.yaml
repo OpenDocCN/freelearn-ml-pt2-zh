@@ -1,0 +1,1218 @@
+- en: Chapter 6. Classification II – Sentiment Analysis
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For companies, it is vital to closely monitor the public reception of key events,
+    such as product launches or press releases. With its real-time access and easy
+    accessibility of user-generated content on Twitter, it is now possible to do sentiment
+    classification of tweets. Sometimes also called opinion mining, it is an active
+    field of research, in which several companies are already selling such services.
+    As this shows that there obviously exists a market, we have motivation to use
+    our classification muscles built in the last chapter, to build our own home-grown
+    sentiment classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sketching our roadmap
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Sentiment analysis of tweets is particularly hard, because of Twitter's size
+    limitation of 140 characters. This leads to a special syntax, creative abbreviations,
+    and seldom well-formed sentences. The typical approach of analyzing sentences,
+    aggregating their sentiment information per paragraph, and then calculating the
+    overall sentiment of a document does not work here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Clearly, we will not try to build a state-of-the-art sentiment classifier.
+    Instead, we want to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Use this scenario as a vehicle to introduce yet another classification algorithm,
+    **Naïve Bayes**
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Explain how **Part Of Speech** (**POS**) tagging works and how it can help us
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Show some more tricks from the scikit-learn toolbox that come in handy from
+    time to time
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Fetching the Twitter data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Naturally, we need tweets and their corresponding labels that tell whether a
+    tweet is containing a positive, negative, or neutral sentiment. In this chapter,
+    we will use the corpus from Niek Sanders, who has done an awesome job of manually
+    labeling more than 5,000 tweets and has granted us permission to use it in this
+    chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To comply with Twitter's terms of services, we will not provide any data from
+    Twitter nor show any real tweets in this chapter. Instead, we can use Sander's
+    hand-labeled data, which contains the tweet IDs and their hand-labeled sentiment,
+    and use his script, `install.py`, to fetch the corresponding Twitter data. As
+    the script is playing nice with Twitter's servers, it will take quite some time
+    to download all the data for more than 5,000 tweets. So it is a good idea to start
+    it right away.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The data comes with four sentiment labels:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Inside `load_sanders_data()`, we are treating irrelevant and neutral labels
+    together as neutral and drop ping all non-English tweets, resulting in 3,362 tweets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In case you get different counts here, it is because, in the meantime, tweets
+    might have been deleted or set to be private. In that case, you might also get
+    slightly different numbers and graphs than the ones shown in the upcoming sections.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing the Naïve Bayes classifier
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Naïve Bayes is probably one of the most elegant machine learning algorithms
+    out there that is of practical use. And despite its name, it is not that naïve
+    when you look at its classification performance. It proves to be quite robust
+    to irrelevant features, which it kindly ignores. It learns fast and predicts equally
+    so. It does not require lots of storage. So, why is it then called naïve?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The *Naïve* was added to account for one assumption that is required for Naïve
+    Bayes to work optimally. The assumption is that the features do not impact each
+    other. This, however, is rarely the case for real-world applications. Nevertheless,
+    it still returns very good accuracy in practice even when the independence assumption
+    does not hold.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting to know the Bayes' theorem
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'At its core, Naïve Bayes classification is nothing more than keeping track
+    of which feature gives evidence to which class. The way the features are designed
+    determines the model that is used to learn. The so-called Bernoulli model only
+    cares about Boolean features: whether a word occurs only once or multiple times
+    in a tweet does not matter. In contrast, the Multinomial model uses word counts
+    as features. For the sake of simplicity, we will use the Bernoulli model to explain
+    how to use Naïve Bayes for sentiment analysis. We will then use the Multinomial
+    model later on to set up and tune our real-world classifiers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s assume the following meanings for the variables that we will use to
+    explain Naïve Bayes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Variable | Meaning |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ![Getting to know the Bayes'' theorem](img/2772OS_06_08.jpg) | This is the
+    class of a tweet (positive or negative) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ![Getting to know the Bayes'' theorem](img/2772OS_06_09.jpg) | The word "awesome"
+    occurs at least once in the tweet |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ![Getting to know the Bayes'' theorem](img/2772OS_06_10.jpg) | The word "crazy"
+    occurs at least once in the tweet |'
+  prefs: []
+  type: TYPE_TB
+- en: During training, we learned the Naïve Bayes model, which is the probability
+    for a class ![Getting to know the Bayes' theorem](img/2772OS_06_08.jpg) when we
+    already know features ![Getting to know the Bayes' theorem](img/2772OS_06_09.jpg)
+    and ![Getting to know the Bayes' theorem](img/2772OS_06_10.jpg). This probability
+    is written as ![Getting to know the Bayes' theorem](img/2772OS_06_11.jpg).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since we cannot estimate ![Getting to know the Bayes'' theorem](img/2772OS_06_11.jpg)
+    directly, we apply a trick, which was found out by Bayes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Getting to know the Bayes'' theorem](img/2772OS_06_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If we substitute ![Getting to know the Bayes'' theorem](img/2772OS_06_13.jpg)
+    with the probability of both words "awesome" and "crazy", and think of ![Getting
+    to know the Bayes'' theorem](img/2772OS_06_14.jpg) as being our class ![Getting
+    to know the Bayes'' theorem](img/2772OS_06_08.jpg), we arrive at the relationship
+    that helps us to later retrieve the probability for the data instance belonging
+    to the specified class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Getting to know the Bayes'' theorem](img/2772OS_06_17.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This allows us to express ![Getting to know the Bayes'' theorem](img/2772OS_06_11.jpg)
+    by means of the other probabilities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Getting to know the Bayes'' theorem](img/2772OS_06_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We could also describe this as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Getting to know the Bayes'' theorem](img/2772OS_06_19.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The *prior* and the *evidence* are easily determined:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Getting to know the Bayes'' theorem](img/2772OS_06_20.jpg) is the prior probability
+    of class ![Getting to know the Bayes'' theorem](img/2772OS_06_08.jpg) without
+    knowing about the data. We can estimate this quantity by simply calculating the
+    fraction of all training data instances belonging to that particular class.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Getting to know the Bayes'' theorem](img/2772OS_06_21.jpg) is the evidence
+    or the probability of features ![Getting to know the Bayes'' theorem](img/2772OS_06_09.jpg)
+    and ![Getting to know the Bayes'' theorem](img/2772OS_06_10.jpg).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The tricky part is the calculation of the likelihood ![Getting to know the Bayes'
+    theorem](img/2772OS_06_22.jpg). It is the value describing how likely it is to
+    see feature values ![Getting to know the Bayes' theorem](img/2772OS_06_09.jpg)
+    and ![Getting to know the Bayes' theorem](img/2772OS_06_10.jpg) if we know that
+    the class of the data instance is ![Getting to know the Bayes' theorem](img/2772OS_06_08.jpg).
+    To estimate this, we need to do some thinking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Being naïve
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'From probability theory, we also know the following relationship:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Being naïve](img/2772OS_06_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This alone, however, does not help much, since we treat one difficult problem
+    (estimating ![Being naïve](img/2772OS_06_22.jpg)) with another one (estimating
+    ![Being naïve](img/2772OS_06_24.jpg)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, if we naïvely assume that ![Being naïve](img/2772OS_06_09.jpg) and
+    ![Being naïve](img/2772OS_06_10.jpg) are independent from each other, ![Being
+    naïve](img/2772OS_06_24.jpg) simplifies to ![Being naïve](img/2772OS_06_25.jpg)
+    and we can write it as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Being naïve](img/2772OS_06_26.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Putting everything together, we get the quite manageable formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Being naïve](img/2772OS_06_27.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The interesting thing is that although it is not theoretically correct to simply
+    tweak our assumptions when we are in the mood to do so, in this case, it proves
+    to work astonishingly well in real-world applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using Naïve Bayes to classify
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Given a new tweet, the only part left is to simply calculate the probabilities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using Naïve Bayes to classify](img/2772OS_06_28.jpg)![Using Naïve Bayes to
+    classify](img/2772OS_06_29.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Then choose the class ![Using Naïve Bayes to classify](img/2772OS_06_30.jpg)
+    having higher probability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As for both classes the denominator, ![Using Naïve Bayes to classify](img/2772OS_06_21.jpg),
+    is the same, we can simply ignore it without changing the winner class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note, however, that we don''t calculate any real probabilities any more. Instead,
+    we are estimating which class is more likely, given the evidence. This is another
+    reason why Naïve Bayes is so robust: It is not so much interested in the real
+    probabilities, but only in the information, which class is more likely. In short,
+    we can write:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using Naïve Bayes to classify](img/2772OS_06_31.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This is simply telling that we are calculating the part after *argmax* for all
+    classes of ![Using Naïve Bayes to classify](img/2772OS_06_08.jpg) (*pos* and *neg*
+    in our case) and returning the class that results in the highest value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But, for the following example, let''s stick to real probabilities and do some
+    calculations to see how Naïve Bayes works. For the sake of simplicity, we will
+    assume that Twitter allows only for the two aforementioned words, "awesome" and
+    "crazy", and that we had already manually classified a handful of tweets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Tweet | Class |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| awesome | Positive tweet |'
+  prefs: []
+  type: TYPE_TB
+- en: '| awesome | Positive tweet |'
+  prefs: []
+  type: TYPE_TB
+- en: '| awesome crazy | Positive tweet |'
+  prefs: []
+  type: TYPE_TB
+- en: '| crazy | Positive tweet |'
+  prefs: []
+  type: TYPE_TB
+- en: '| crazy | Negative tweet |'
+  prefs: []
+  type: TYPE_TB
+- en: '| crazy | Negative tweet |'
+  prefs: []
+  type: TYPE_TB
+- en: In this example, we have the tweet "crazy" both in a positive and negative tweet
+    to emulate some ambiguities you will often find in the real world (for example,
+    "being soccer crazy" versus "a crazy idiot").
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this case, we have six total tweets, out of which four are positive and
+    two negative, which results in the following priors:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using Naïve Bayes to classify](img/2772OS_06_32.jpg)![Using Naïve Bayes to
+    classify](img/2772OS_06_33.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This means, without knowing anything about the tweet itself, it would be wise
+    to assume the tweet to be positive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A still missing piece is the calculation of ![Using Naïve Bayes to classify](img/2772OS_06_34.jpg)
+    and ![Using Naïve Bayes to classify](img/2772OS_06_25.jpg), which are the probabilities
+    for the two features ![Using Naïve Bayes to classify](img/2772OS_06_09.jpg) and
+    ![Using Naïve Bayes to classify](img/2772OS_06_10.jpg) conditioned in class ![Using
+    Naïve Bayes to classify](img/2772OS_06_08.jpg).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is calculated as the number of tweets, in which we have seen the concrete
+    feature divided by the number of tweets that have been labeled with the class
+    of ![Using Naïve Bayes to classify](img/2772OS_06_08.jpg). Let''s say we want
+    to know the probability of seeing "awesome" occurring in a tweet, knowing that
+    its class is positive, we will have:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using Naïve Bayes to classify](img/2772OS_06_35.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Because out of the four positive tweets three contained the word "awesome".
+    Obviously, the probability for not having "awesome" in a positive tweet is its
+    inverse:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using Naïve Bayes to classify](img/2772OS_06_36.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Similarly, for the rest (omitting the case that a word is not occurring in
+    a tweet):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using Naïve Bayes to classify](img/2772OS_06_37.jpg)![Using Naïve Bayes to
+    classify](img/2772OS_06_38.jpg)![Using Naïve Bayes to classify](img/2772OS_06_39.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'For the sake of completeness, we will also compute the evidence so that we
+    can see real probabilities in the following example tweets. For two concrete values
+    of ![Using Naïve Bayes to classify](img/2772OS_06_09.jpg) and ![Using Naïve Bayes
+    to classify](img/2772OS_06_10.jpg), we can calculate the evidence as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using Naïve Bayes to classify](img/2772OS_06_40.jpg)![Using Naïve Bayes to
+    classify](img/2772OS_06_41.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This leads to the following values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using Naïve Bayes to classify](img/2772OS_06_42.jpg)![Using Naïve Bayes to
+    classify](img/2772OS_06_43.jpg)![Using Naïve Bayes to classify](img/2772OS_06_44.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now we have all the data to classify new tweets. The only work left is to parse
+    the tweet and featurize it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Tweet | ![Using Naïve Bayes to classify](img/2772OS_06_09.jpg) | ![Using
+    Naïve Bayes to classify](img/2772OS_06_10.jpg) | Class probabilities | Classification
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| "awesome" | 1 | 0 | ![Using Naïve Bayes to classify](img/2772OS_06_47.jpg)![Using
+    Naïve Bayes to classify](img/2772OS_06_48.jpg) | Positive |'
+  prefs: []
+  type: TYPE_TB
+- en: '| "crazy" | 0 | 1 | ![Using Naïve Bayes to classify](img/2772OS_06_49.jpg)![Using
+    Naïve Bayes to classify](img/2772OS_06_50.jpg) | Negative |'
+  prefs: []
+  type: TYPE_TB
+- en: '| "awesome crazy" | 1 | 1 | ![Using Naïve Bayes to classify](img/2772OS_06_45.jpg)![Using
+    Naïve Bayes to classify](img/2772OS_06_46.jpg) | Positive |'
+  prefs: []
+  type: TYPE_TB
+- en: So far, so good. The classification of trivial tweets seems to assign correct
+    labels to the tweets. The question remains, however, how we should treat words
+    that did not occur in our training corpus. After all, with the preceding formula,
+    new words will always be assigned a probability of zero.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Accounting for unseen words and other oddities
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: When we calculated the probabilities earlier, we actually cheated ourselves.
+    We were not calculating the real probabilities, but only rough approximations
+    by means of the fractions. We assumed that the training corpus will tell us the
+    whole truth about the real probabilities. It did not. A corpus of only six tweets
+    obviously cannot give us all the information about every tweet that has ever been
+    written. For example, there certainly are tweets containing the word "text" in
+    them. It is only that we have never seen them. Apparently, our approximation is
+    very rough and we should account for that. This is often done in practice with
+    the so-called **add-one smoothing**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Add-one smoothing is sometimes also referred to as **additive smoothing** or
+    **Laplace smoothing**. Note that Laplace smoothing has nothing to do with Laplacian
+    smoothing, which is related to the smoothing of polygon meshes. If we do not smooth
+    by `1` but by an adjustable parameter `alpha<0`, it is called Lidstone smoothing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is a very simple technique that adds one to all feature occurrences. It has
+    the underlying assumption that even if we have not seen a given word in the whole
+    corpus, there is still a chance that it is just that our sample of tweets happened
+    to not include that word. So, with add-one smoothing we pretend that we have seen
+    every occurrence once more than we actually did. That means that instead of calculating
+    ![Accounting for unseen words and other oddities](img/2772OS_06_54.jpg), we now
+    do ![Accounting for unseen words and other oddities](img/2772OS_06_55.jpg).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Why do we add 2 in the denominator? Because we have two features: the occurrence
+    of "awesome" and "crazy". Since we add 1 for each feature, we have to make sure
+    that the end result is again a probability. And indeed, we get 1 as the total
+    probability:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Accounting for unseen words and other oddities](img/2772OS_06_56.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Accounting for arithmetic underflows
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'There is yet another road block. In reality, we work with probabilities much
+    smaller than the ones we have dealt with in the toy example. Typically, we also
+    have many more than only two features, which we multiply with each other. This
+    will quickly lead to the point where the accuracy provided by NumPy does not suffice
+    any more:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'So, how probable is it that we will ever hit a number like `2.47E-324`? To
+    answer this, we just need to imagine a likelihood for the conditional probabilities
+    of 0.0001, and then multiply 65 of them together (meaning that we have 65 low
+    probable feature values) and you''ve been hit by the arithmetic underflow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A float in Python is typically implemented using double in C. To find out whether
+    this is the case for your platform you can check it as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: To mitigate this, one could switch to math libraries such as `mpmath` ([http://code.google.com/p/mpmath/](http://code.google.com/p/mpmath/))
+    that allow for arbitrary accuracy. However, they are not fast enough to work as
+    a NumPy replacement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fortunately, there is a better way to take care of this, and it has to do with
+    a nice relationship that we might still remember from school:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Accounting for arithmetic underflows](img/2772OS_06_58.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If we apply it to our case, we get the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Accounting for arithmetic underflows](img/2772OS_06_59.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: As the probabilities are in the interval between 0 and 1, the log of the probabilities
+    lies in the interval -∞ and 0\. Don't be bothered with that. Higher numbers are
+    still a stronger indicator for the correct class—it is only that they are negative
+    now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Accounting for arithmetic underflows](img/2772OS_06_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'There is one caveat though: we actually don''t have the log in the formula''s
+    nominator (the part above the fraction). We only have the product of the probabilities.
+    In our case, luckily, we are not interested in the actual value of the probabilities.
+    We simply want to know which class has the highest posterior probability. We are
+    lucky, because if we find that ![Accounting for arithmetic underflows](img/2772OS_06_60.jpg),
+    then we will always also have ![Accounting for arithmetic underflows](img/2772OS_06_61.jpg).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A quick look at the preceding graph shows that the curve is monotonically increasing,
+    that is, it never goes down, when we go from left to right. So let''s stick this
+    into the aforementioned formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Accounting for arithmetic underflows](img/2772OS_06_61a.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This will finally retrieve the formula for two features that will give us the
+    best class also for the real-world data that we will see in practice:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Accounting for arithmetic underflows](img/2772OS_06_62.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Of course, we will not be very successful with only two features, so, let''s
+    rewrite it to allow for an arbitrary number of features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Accounting for arithmetic underflows](img/2772OS_06_63.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: There we are, ready to use our first classifier from the scikit-learn toolkit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As mentioned earlier, we just learned the Bernoulli model of Naïve Bayes. Instead
+    of having Boolean features, we can also use the number of word occurrences, also
+    known as the Multinomial model. As this provides more information, and often also
+    results in better performance, we will use this for our real-world data. Note,
+    however, that the underlying formulas change a bit. However, no worries, as the
+    general idea how Naïve Bayes works, is still the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating our first classifier and tuning it
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The Naïve Bayes classifiers resides in the `sklearn.naive_bayes` package. There
+    are different kinds of Naïve Bayes classifiers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`GaussianNB`: This classifier assumes the features to be normally distributed
+    (Gaussian). One use case for it could be the classification of sex given the height
+    and width of a person. In our case, we are given tweet texts from which we extract
+    word counts. These are clearly not Gaussian distributed.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`MultinomialNB`: This classifier assumes the features to be occurrence counts,
+    which is our case going forward, since we will be using word counts in the tweets
+    as features. In practice, this classifier also works well with TF-IDF vectors.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`BernoulliNB`: This classifier is similar to `MultinomialNB`, but more suited
+    when using binary word occurrences and not word counts.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As we will mainly look at the word occurrences, for our purpose the `MultinomialNB`
+    classifier is best suited.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solving an easy problem first
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'As we have seen, when we looked at our tweet data, the tweets are not only
+    positive or negative. The majority of tweets actually do not contain any sentiment,
+    but are neutral or irrelevant, containing, for instance, raw information (for
+    example, "New book: Building Machine Learning … http://link"). This leads to four
+    classes. To not complicate the task too much, let''s only focus on the positive
+    and negative tweets for now.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, we have in `X` the raw tweet texts and in `Y` the binary classification,
+    `0` for negative and `1` for positive tweets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We just said that we will use word occurrence counts as features. We will not
+    use them in their raw form, though. Instead, we will use our power horse `TfidfVectorizer`
+    to convert the raw tweet text into TF-IDF feature values, which we then use together
+    with the labels to train our first classifier. For convenience, we will use the
+    `Pipeline` class, which allows us to hook the vectorizer and the classifier together
+    and provides the same interface:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `Pipeline` instance returned by `create_ngram_model()` can now be used to
+    fit and predict as if we had a normal classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we do not have that much data, we should do cross-validation. This time,
+    however, we will not use `KFold`, which partitions the data in consecutive folds,
+    but instead, we use `ShuffleSplit`. It shuffles the data for us, but does not
+    prevent the same data instance to be in multiple folds. For each fold, then, we
+    keep track of the area under the Precision-Recall curve and for accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To keep our experimentation agile, let's wrap everything together in a `train_model()`function,
+    which takes a function as a parameter that creates the classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Putting everything together, we can train our first model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: With our first try using Naïve Bayes on vectorized TF-IDF trigram features,
+    we get an accuracy of 78.8 percent and an average P/R AUC of 88.2 percent. Looking
+    at the P/R chart of the median (the train/test split that is performing most similar
+    to the average), it shows a much more encouraging behavior than the plots we have
+    seen in the previous chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Solving an easy problem first](img/2772OS_06_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: For a start, the results are quite encouraging. They get even more impressive
+    when we realize that 100 percent accuracy is probably never achievable in a sentiment
+    classification task. For some tweets, even humans often do not really agree on
+    the same classification label.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using all classes
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Once again, we simplified our task a bit, since we used only positive or negative
+    tweets. That means, we assumed a perfect classifier that upfront classified whether
+    the tweet contains a sentiment and forwarded that to our Naïve Bayes classifier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, how well do we perform if we also classify whether a tweet contains any
+    sentiment at all? To find that out, let''s first write a convenience function
+    that returns a modified class array providing a list of sentiments that we would
+    like to interpret as positive:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that we are talking about two different positives now. The sentiment of
+    a tweet can be positive, which is to be distinguished from the class of the training
+    data. If, for example, we want to find out how good we can separate tweets having
+    sentiment from neutral ones, we could do:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: In `Y` we have now `1` (positive class) for all tweets that are either positive
+    or negative and `0` (negative class) for neutral and irrelevant ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Have a look at the following plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using all classes](img/2772OS_06_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: As expected, P/R AUC drops considerably, being only 66 percent now. The accuracy
+    is still high, but that is only due to the fact that we have a highly imbalanced
+    dataset. Out of 3,362 total tweets, only 920 are either positive or negative,
+    which is about 27 percent. This means, if we create a classifier that always classifies
+    a tweet as not containing any sentiment, we will already have an accuracy of 73
+    percent. This is another case to always look at precision and recall if the training
+    and test data is unbalanced.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, how will the Naïve Bayes classifier perform on classifying positive tweets
+    versus the rest and negative tweets versus the rest? One word: bad.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Pretty unusable if you ask me. Looking at the P/R curves in the following plots,
+    we will also find no usable precision/recall trade-off, as we were able to do
+    in the last chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Using all classes](img/2772OS_06_04a.jpg)![Using all classes](img/2772OS_06_04b.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Tuning the classifier's parameters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Certainly, we have not explored the current setup enough and should investigate
+    more. There are roughly two areas, where we can play with the knobs: `TfidfVectorizer`
+    and `MultinomialNB`. As we have no real intuition in which area we should explore,
+    let''s try to distribute the parameters'' values.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will see the `TfidfVectorizer` parameter first:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using different settings for NGrams:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: unigrams (1,1)
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: unigrams and bigrams (1,2)
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: unigrams, bigrams, and trigrams (1,3)
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Playing with `min_df`: 1 or 2'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Exploring the impact of IDF within TF-IDF using `use_idf` and `smooth_idf`:
+    `False` or `True`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Whether to remove stop words or not, by setting `stop_words` to `english` or
+    `None`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Whether to use the logarithm of the word counts (`sublinear_tf`)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Whether to track word counts or simply track whether words occur or not, by
+    setting `binary` to `True` or `False`
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Now we will see the `MultinomialNB` classifier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Which smoothing method to use by setting `alpha`:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Add-one or Laplace smoothing: 1'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Lidstone smoothing: 0.01, 0.05, 0.1, or 0.5'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'No smoothing: 0'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A simple approach could be to train a classifier for all those reasonable exploration
+    values, while keeping the other parameters constant and check the classifier's
+    results. As we do not know whether those parameters affect each other, doing it
+    right will require that we train a classifier for every possible combination of
+    all parameter values. Obviously, this is too tedious for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Because this kind of parameter exploration occurs frequently in machine learning
+    tasks, scikit-learn has a dedicated class for it, called `GridSearchCV`. It takes
+    an estimator (instance with a classifier-like interface), which will be the `Pipeline`
+    instance in our case, and a dictionary of parameters with their potential values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`GridSearchCV` expects the dictionary''s keys to obey a certain format so that
+    it is able to set the parameters of the correct estimator. The format is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For example, if we want to specify the desired values to explore for the `min_df`
+    parameter of `TfidfVectorizer` (named `vect` in the `Pipeline` description), we
+    would have to say:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This will tell `GridSearchCV` to try out unigrams to trigrams as parameter values
+    for the `ngram_range` parameter of `TfidfVectorizer`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, it trains the estimator with all possible parameter value combinations.
+    Here, we make sure that it trains on random samples of the training data using
+    `ShuffleSplit`, which generates an iterator of random train/test splits. Finally,
+    it provides the best estimator in the form of the member variable, `best_estimator_`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we want to compare the returned best classifier with our current best one,
+    we need to evaluate it in the same way. Therefore, we can pass the `ShuffleSplit`
+    instance using the `cv` parameter (therefore, `CV` in `GridSearchCV`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The last missing piece is to define how `GridSearchCV` should determine the
+    best estimator. This can be done by providing the desired score function to (surprise!)
+    the `score_func` parameter. We can either write one ourselves, or pick one from
+    the `sklearn.metrics` package. We should certainly not take `metric.accuracy`
+    because of our class imbalance (we have a lot less tweets containing sentiment
+    than neutral ones). Instead, we want to have good precision and recall on both
+    classes, tweets with sentiment and tweets without positive or negative opinions.
+    One metric that combines both precision and recall is the so-called **F-measure**,
+    which is implemented as `metrics.f1_score`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Tuning the classifier''s parameters](img/2772OS_06_64.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After putting everything together, we get the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We have to be patient while executing this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since we have just requested a parameter, sweep over ![Tuning the classifier''s
+    parameters](img/2772OS_06_65.jpg) parameter combinations, each being trained on
+    10 folds:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: The best estimator indeed improves the P/R AUC by nearly 3.3 percent to now
+    70.2, with the settings shown in the previous code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Also, the devastating results for positive tweets against the rest and negative
+    tweets against the rest improve if we configure the vectorizer and classifier
+    with those parameters we have just found out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Have a look at the following plots:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Tuning the classifier''s parameters](img/2772OS_06_06a.jpg)![Tuning the classifier''s
+    parameters](img/2772OS_06_06b.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Indeed, the P/R curves look much better (note that the plots are from the medium
+    of the fold classifiers, thus, slightly diverging AUC values). Nevertheless, we
+    probably still wouldn't use those classifiers. Time for something completely different…
+  prefs: []
+  type: TYPE_NORMAL
+- en: Cleaning tweets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: New constraints lead to new forms. Twitter is no exception in this regard. Because
+    the text has to fit into 140 characters, people naturally develop new language
+    shortcuts to say the same in less characters. So far, we have ignored all the
+    diverse emoticons and abbreviations. Let's see how much we can improve by taking
+    that into account. For this endeavor, we will have to provide our own `preprocessor()`
+    to `TfidfVectorizer`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we define a range of frequent emoticons and their replacements in a
+    dictionary. Although we can find more distinct replacements, we go with obvious
+    positive or negative words to help the classifier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we define abbreviations as regular expressions together with their expansions
+    (`\b` marks the word boundary):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Certainly, there are many more abbreviations that can be used here. But already
+    with this limited set, we get an improvement for sentiment versus not sentiment
+    of half a point, being now 70.7 percent:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Taking the word types into account
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So far, our hope was that simply using the words independent of each other with
+    the bag-of-words approach would suffice. Just from our intuition, however, neutral
+    tweets probably contain a higher fraction of nouns, while positive or negative
+    tweets are more colorful, requiring more adjectives and verbs. What if we use
+    this linguistic information of the tweets as well? If we could find out how many
+    words in a tweet were nouns, verbs, adjectives, and so on, the classifier could
+    probably take that into account as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Determining the word types
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This is what part-of-speech tagging, or POS tagging, is all about. A POS tagger
+    parses a full sentence with the goal to arrange it into a dependence tree, where
+    each node corresponds to a word and the parent-child relationship determines which
+    word it depends on. With this tree, it can then make more informed decisions,
+    for example, whether the word "book" is a noun ("This is a good book.") or a verb
+    ("Could you please book the flight?").
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might have already guessed that NLTK will play its role in this area as
+    well. And indeed, it comes readily packaged with all sorts of parsers and taggers.
+    The POS tagger we will use, `nltk.pos_tag()`, is actually a full blown classifier
+    trained using manually annotated sentences from the Penn Treebank Project ([http://www.cis.upenn.edu/~treebank](http://www.cis.upenn.edu/~treebank)).
+    It takes as input a list of word tokens and outputs a list of tuples, where each
+    element contains the part of the original sentence and its part-of-speech tag.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The POS tag abbreviations are taken from the Penn Treebank (adapted from [http://www.anc.org/OANC/penn.html](http://www.anc.org/OANC/penn.html)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| POS tag | Description | Example |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| CC | coordinating conjunction | or |'
+  prefs: []
+  type: TYPE_TB
+- en: '| CD | cardinal number | 2, second |'
+  prefs: []
+  type: TYPE_TB
+- en: '| DT | determiner | the |'
+  prefs: []
+  type: TYPE_TB
+- en: '| EX | existential there | *there* are |'
+  prefs: []
+  type: TYPE_TB
+- en: '| FW | foreign word | kindergarten |'
+  prefs: []
+  type: TYPE_TB
+- en: '| IN | preposition/subordinating conjunction | on, of, like |'
+  prefs: []
+  type: TYPE_TB
+- en: '| JJ | adjective | cool |'
+  prefs: []
+  type: TYPE_TB
+- en: '| JJR | adjective, comparative | cooler |'
+  prefs: []
+  type: TYPE_TB
+- en: '| JJS | adjective, superlative | coolest |'
+  prefs: []
+  type: TYPE_TB
+- en: '| LS | list marker | 1) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| MD | modal | could, will |'
+  prefs: []
+  type: TYPE_TB
+- en: '| NN | noun, singular or mass | book |'
+  prefs: []
+  type: TYPE_TB
+- en: '| NNS | noun plural | books |'
+  prefs: []
+  type: TYPE_TB
+- en: '| NNP | proper noun, singular | Sean |'
+  prefs: []
+  type: TYPE_TB
+- en: '| NNPS | proper noun, plural | Vikings |'
+  prefs: []
+  type: TYPE_TB
+- en: '| PDT | predeterminer | both the boys |'
+  prefs: []
+  type: TYPE_TB
+- en: '| POS | possessive ending | friend''s |'
+  prefs: []
+  type: TYPE_TB
+- en: '| PRP | personal pronoun | I, he, it |'
+  prefs: []
+  type: TYPE_TB
+- en: '| PRP$ | possessive pronoun | my, his |'
+  prefs: []
+  type: TYPE_TB
+- en: '| RB | adverb | however, usually, naturally, here, good |'
+  prefs: []
+  type: TYPE_TB
+- en: '| RBR | adverb, comparative | better |'
+  prefs: []
+  type: TYPE_TB
+- en: '| RBS | adverb, superlative | best |'
+  prefs: []
+  type: TYPE_TB
+- en: '| RP | particle | give *up* |'
+  prefs: []
+  type: TYPE_TB
+- en: '| TO | to | *to* go, *to* him |'
+  prefs: []
+  type: TYPE_TB
+- en: '| UH | interjection | uhhuhhuhh |'
+  prefs: []
+  type: TYPE_TB
+- en: '| VB | verb, base form | take |'
+  prefs: []
+  type: TYPE_TB
+- en: '| VBD | verb, past tense | took |'
+  prefs: []
+  type: TYPE_TB
+- en: '| VBG | verb, gerund/present participle | taking |'
+  prefs: []
+  type: TYPE_TB
+- en: '| VBN | verb, past participle | taken |'
+  prefs: []
+  type: TYPE_TB
+- en: '| VBP | verb, sing. present, non-3d | take |'
+  prefs: []
+  type: TYPE_TB
+- en: '| VBZ | verb, 3rd person sing. present | takes |'
+  prefs: []
+  type: TYPE_TB
+- en: '| WDT | wh-determiner | which |'
+  prefs: []
+  type: TYPE_TB
+- en: '| WP | wh-pronoun | who, what |'
+  prefs: []
+  type: TYPE_TB
+- en: '| WP$ | possessive wh-pronoun | whose |'
+  prefs: []
+  type: TYPE_TB
+- en: '| WRB | wh-abverb | where, when |'
+  prefs: []
+  type: TYPE_TB
+- en: With these tags, it is pretty easy to filter the desired tags from the output
+    of `pos_tag()`. We simply have to count all words whose tags start with `NN` for
+    nouns, `VB` for verbs, `JJ` for adjectives, and `RB` for adverbs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Successfully cheating using SentiWordNet
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'While linguistic information, as mentioned in the preceding section, will most
+    likely help us, there is something better we can do to harvest it: SentiWordNet
+    ([http://sentiwordnet.isti.cnr.it](http://sentiwordnet.isti.cnr.it)). Simply put,
+    it is a 13 MB file that assigns most of the English words a positive and negative
+    value. More complicated put, for every synonym set, it records both the positive
+    and negative sentiment values. Some examples are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| POS | ID | PosScore | NegScore | SynsetTerms | Description |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| a | 00311354 | 0.25 | 0.125 | studious#1 | Marked by care and effort; "made
+    a studious attempt to fix the television set" |'
+  prefs: []
+  type: TYPE_TB
+- en: '| a | 00311663 | 0 | 0.5 | careless#1 | Marked by lack of attention or consideration
+    or forethought or thoroughness; not careful… |'
+  prefs: []
+  type: TYPE_TB
+- en: '| n | 03563710 | 0 | 0 | implant#1 | A prosthesis placed permanently in tissue
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: '| v | 00362128 | 0 | 0 | kink#2 curve#5 curl#1 | Form a curl, curve, or kink;
+    "the cigar smoke curled up at the ceiling" |'
+  prefs: []
+  type: TYPE_TB
+- en: With the information in the **POS** column, we will be able to distinguish between
+    the noun "book" and the verb "book". `PosScore` and `NegScore` together will help
+    us to determine the neutrality of the word, which is 1-PosScore-NegScore. `SynsetTerms`
+    lists all words in the set that are synonyms. We can safely ignore the **ID**
+    and **Description** columns for our purposes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The synset terms have a number appended, because some occur multiple times
+    in different synsets. For example, "fantasize" conveys two quite different meanings,
+    which also leads to different scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| POS | ID | PosScore | NegScore | SynsetTerms | Description |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| v | 01636859 | 0.375 | 0 | fantasize#2 fantasise#2 | Portray in the mind;
+    "he is fantasizing the ideal wife" |'
+  prefs: []
+  type: TYPE_TB
+- en: '| v | 01637368 | 0 | 0.125 | fantasy#1 fantasize#1 fantasise#1 | Indulge in
+    fantasies; "he is fantasizing when he says he plans to start his own company"
+    |'
+  prefs: []
+  type: TYPE_TB
+- en: To find out which of the synsets to take, we will need to really understand
+    the meaning of the tweets, which is beyond the scope of this chapter. The field
+    of research that is focusing on this challenge is called word-sense-disambiguation.
+    For our task, we take the easy route and simply average the scores over all the
+    synsets, in which a term is found. For "fantasize", `PosScore` will be 0.1875
+    and `NegScore` will be 0.0625.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following function, `load_sent_word_net()`, does all that for us and returns
+    a dictionary where the keys are strings of the form *word type/word*, for example,
+    n/implant, and the values are the positive and negative scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Our first estimator
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now, we have everything in place to create our own first vectorizer. The most
+    convenient way to do it is to inherit it from `BaseEstimator`. It requires us
+    to implement the following three methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`get_feature_names()`: This returns a list of strings of the features that
+    we will return in `transform()`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`fit(document, y=None)`: As we are not implementing a classifier, we can ignore
+    this one and simply return self.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`transform(documents)`: This returns `numpy.array()`, containing an array of
+    shape (`len(documents), len(get_feature_names)`). This means, for every document
+    in `documents`, it has to return a value for every feature name in `get_feature_names()`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Here is the implementation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Putting everything together
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Nevertheless, using these linguistic features in isolation without the words
+    themselves will not take us very far. Therefore, we have to combine the `TfidfVectorizer`
+    parameter with the linguistic features. This can be done with scikit-learn's `FeatureUnion`
+    class. It is initialized in the same manner as `Pipeline`; however, instead of
+    evaluating the estimators in a sequence each passing the output of the previous
+    one to the next one, `FeatureUnion` does it in parallel and joins the output vectors
+    afterwards.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Training and testing on the combined featurizers, gives another 0.4 percent
+    improvement on average P/R AUC for positive versus negative:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: With these results, we probably do not want to use the positive versus rest
+    and negative versus rest classifiers, but instead use first the classifier determining
+    whether the tweet contains sentiment at all (pos/neg versus irrelevant/neutral)
+    and then, in case it does, use the positive versus negative classifier to determine
+    the actual sentiment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Congratulations for sticking with us until the end! Together we have learned
+    how Naïve Bayes works and why it is not that naïve at all. Especially, for training
+    sets, where we don't have enough data to learn all the niches in the class probability
+    space, Naïve Bayes does a great job of generalizing. We learned how to apply it
+    to tweets and that cleaning the rough tweets' texts helps a lot. Finally, we realized
+    that a bit of "cheating" (only after we have done our fair share of work) is okay.
+    Especially when it gives another improvement of the classifier's performance,
+    as we have experienced with the use of `SentiWordNet`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we will look at regressions.
+  prefs: []
+  type: TYPE_NORMAL

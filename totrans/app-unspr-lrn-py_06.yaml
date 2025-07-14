@@ -1,0 +1,1273 @@
+- en: '*Chapter 6*'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: t-Distributed Stochastic Neighbor Embedding (t-SNE)
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Learning Objectives
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'By the end of this chapter, you will be able to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Describe and understand the motivation behind t-SNE
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Describe the derivation of SNE and t-SNE
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implement t-SNE models in scikit-learn
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Explain the limitations of t-SNE
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In this chapter, we will discuss Stochastic Neighbor Embedding (SNE) and t-Distributed
+    Stochastic Neighbor Embedding (t-SNE) as a means of visualizing high-dimensional
+    datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This chapter is the final instalment in the micro-series on dimensionality reduction
+    techniques and transformations. Our previous chapters in this series have described
+    a number of different methods for reducing the dimensionality of a dataset as
+    a means of either cleaning the data, reducing its size for computational efficiency,
+    or for extracting the most important information available within the dataset.
+    While we have demonstrated many methods for reducing high-dimensional datasets,
+    in many cases, we are unable to reduce the number of dimensions to a size that
+    can be visualized, that is, two or three dimensions, without excessively degrading
+    the quality of the data. Consider the MNIST dataset that we used in *Chapter 5*,
+    *Autoencoders*, which is a collection of digitized handwritten digits of the numbers
+    0 through 9\. Each image is 28 x 28 pixels in size, providing 784 individual dimensions
+    or features. If we were to reduce these 784 dimensions down to 2 or 3 for visualization
+    purposes, we would lose almost all the available information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will discuss Stochastic Neighbor Embedding (SNE) and t-Distributed
+    Stochastic Neighbor Embedding (t-SNE) as a means of visualizing high-dimensional
+    datasets. These techniques are extremely helpful in unsupervised learning and
+    the design of machine learning systems because the visualization of data is a
+    powerful tool. Being able to visualize data allows relationships to be explored,
+    groups to be identified, and results to be validated. t-SNE techniques have been
+    used to visualize cancerous cell nuclei that have over 30 characteristics of interest,
+    whereas data from documents can have over thousands of dimensions, sometimes even
+    after applying techniques such as PCA.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.1: MNIST data sample'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_01.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.1: MNIST data sample'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'Throughout this chapter, we will explore SNE and t-SNE using the MNIST dataset
+    provided with the accompanying source code as the basis of practical examples.
+    Before we continue, we will quickly review MNIST and the data that is within it.
+    The complete MNIST dataset is a collection of 60,000 training and 10,000 test
+    examples of handwritten digits of the numbers 0 to 9, represented as black and
+    white (or grayscale) images 28 x 28 pixels in size (giving 784 dimensions or features)
+    with equal numbers of each type of digit (or class) in the dataset. Due to its
+    size and the quality of the data, MNIST has become one of the quintessential datasets
+    in machine learning, often being used as the reference dataset for many research
+    papers in machine learning. One of the advantages of using MINST to explore SNE
+    and t-SNE compared to other datasets is that while the samples contain a high
+    number of dimensions, they can be visualized even after dimensionality reduction
+    because they can be represented as an image. [*Figure 6.1*](C12626_06_ePub_Final_SZ.xhtml#_idTextAnchor139)
+    shows a sample of the MNIST dataset, and [*Figure 6.2*](C12626_06_ePub_Final_SZ.xhtml#_idTextAnchor140)
+    shows the same sample, reduced to 30 components using PCA:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.2: MNST reduced using PCA to 30 components'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_02.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.2: MNST reduced using PCA to 30 components'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Stochastic Neighbor Embedding (SNE)
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Stochastic Neighbor Embedding (SNE) is one of a number of different methods
+    that fall within the category of **manifold learning**, which aims to describe
+    high-dimensional spaces within low-dimensional manifolds or bounded areas. At
+    first thought, this seems like an impossible task; how can we reasonably represent
+    data in two dimensions if we have a dataset with at least 30 features? As we work
+    through the derivation of SNE, it is hoped that you will see how it is possible.
+    Don''t worry, we will not be covering the mathematical details of this process
+    in great depth as it is outside of the scope of this chapter. Constructing an
+    SNE can be divided into the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Convert the distances between datapoints in the high-dimensional space to conditional
+    probabilities. Say we had two points, ![A close up of a sign
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/C12626_06_Formula_01.png) and ![A picture
+    containing furniture, table, seat
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/C12626_06_Formula_02.png), in high-dimensional
+    space, and we wanted to determine the probability (![](img/C12626_06_Formula_03.png))
+    that ![A picture containing furniture, table, seat
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/C12626_06_Formula_04.png) would be
+    picked as a neighbor of ![A close up of a sign
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Description automatically generated](img/C12626_06_Formula_05.png). To define
+    this probability, we use a Gaussian curve, and we see that the probability is
+    high for nearby points, while it is very low for distant points.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: We need to determine the width of the Gaussian curve as this controls the rate
+    of probability selection. A wide curve would suggest that many points are far
+    away, while a narrow curve suggests that they are tightly compacted.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once we project the data into the low-dimensional space, we can also determine
+    the corresponding probability (![](img/C12626_06_Formula_06.png)) between the
+    corresponding low-dimensional data, ![](img/C12626_06_Formula_07.png) and ![](img/C12626_06_Formula_08.png).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'What SNE aims to do is position the data in the lower dimensions to minimize
+    the differences between ![](img/C12626_06_Formula_09.png) and ![](img/C12626_06_Formula_06.png)
+    over all the data points using a cost function (C) known as the Kullback-Leibler
+    (KL) divergence:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.3: Kullback-Leibler divergence.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_03.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.3: Kullback-Leibler divergence.'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: For Python code to construct a Gaussian distribution, refer to the `GaussianDist.ipynb`
+    Jupyter notebook at [https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/blob/master/Lesson06/GaussianDist.ipynb](https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/blob/master/Lesson06/GaussianDist.ipynb).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Gaussian distribution maps the data into low-dimensional space. To do this,
+    SNE uses a process of gradient descent to minimize C using the standard parameters
+    of learning rate and epochs as we covered in the previous chapter, looking at
+    neural networks and autoencoders. SNE implements an additional term in the training
+    process—**perplexity**. Perplexity is a selection of the effective number of neighbors
+    used in the comparison and is relatively stable for the values of perplexity between
+    5 and 50\. In practice, a process of trial and error using perplexity values within
+    this range is recommended.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SNE provides an effective way of visualizing high-dimensional data in a low-dimensional
+    space, though it still suffers from an issue known as **the crowding problem**.
+    The crowding problem can occur if we have some points positioned approximately
+    equidistantly within a region around a point *i*. When these points are visualized
+    in the lower-dimensional space, they crowd around each other, making visualization
+    difficult. The problem is exacerbated if we try to put some more space between
+    these crowded points, because any other points that are further away will then
+    be placed very far away within the low-dimensional space. Essentially, we are
+    trying to balance being able to visualize close points while not losing information
+    provided by points that are further away.
+  prefs: []
+  type: TYPE_NORMAL
+- en: t-Distributed SNE
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: t-SNE aims to address the crowding problem using a modified version of the KL
+    divergence cost function and by substituting the Gaussian distribution with the
+    Student's t-distribution in the low-dimensional space. Student's t-distribution
+    is a continuous distribution that is used when one has a small sample size and
+    unknown population standard deviation. It is often used in the Student's t-test.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The modified KL cost function considers the pairwise distances in the low-dimensional
+    space equally, while the student's distribution employs a heavy tail in the low-dimensional
+    space to avoid the crowding problem. In the higher-dimensional probability calculation,
+    the Gaussian distribution is still used to ensure that a moderate distance in
+    the higher dimensions is still represented as such in the lower dimensions. This
+    combination of different distributions in the respective spaces allows the faithful
+    representation of datapoints separated by small and moderate distances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: For example code of how to reproduce the Student's t Distribution in Python
+    refer to the Jupyter notebook at [https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/blob/master/Lesson06/StudentTDist.ipynb](https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/blob/master/Lesson06/StudentTDist.ipynb).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thankfully, we don't need to worry about implementing t-SNE by hand, because
+    scikit-learn provides a very effective implementation in its straightforward API.
+    What we need to remember is that both SNE and t-SNE determine the probability
+    of two points being neighbors in both high- and low-dimensionality space and aim
+    to minimize the difference in the probability between the two spaces.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 24: t-SNE MNIST'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this exercise, we will use the MNIST dataset (provided in the accompanying
+    source code) to explore the scikit-learn implementation to t-SNE. As described
+    earlier, using MNIST allows us to visualize the high-dimensional space in a way
+    that is not possible in other datasets such as the Boston Housing Price or Iris
+    dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For this exercise, import `pickle`, `numpy`, `PCA`, and `TSNE` from scikit-learn,
+    as well as `matplotlib`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Load and visualize the MNIST dataset that is provided with the accompanying
+    source code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.4: Output after loading the dataset'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_04.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 6.4: Output after loading the dataset'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: This demonstrates that MNIST has been successfully loaded.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: In this exercise, we will use PCA on the dataset to reduce extract only the
+    first 30 components.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Visualize the effect of reducing the dataset to 30 components. To do this,
+    we must first transform the dataset into the lower-dimensional space and then
+    use the `inverse_transform` method to return the data to its original size for
+    plotting. We will, of book, need to reshape the data before and after the transform
+    process:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.5: Visualizing the effect of reducing the dataset'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_05.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 6.5: Visualizing the effect of reducing the dataset'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Note that while we have lost some clarity in the images, for the most part,
+    the numbers are still pretty clearly visible due to the dimension reduction process.
+    It is interesting to note, however, that the number four (4) seems to have been
+    the most visually affected by this process. Perhaps much of the discarded information
+    from the PCA process contained information specific to the samples of four (4).
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now, we will apply t-SNE to the PCA-transformed data to visualize the 30 components
+    in two-dimensional space. We can construct a t-SNE model in scikit-learn using
+    the standard model API interface. We will start off using the default values that
+    specify that we are embedding the 30 dimensions into two for visualization, using
+    a perplexity of 30, a learning rate of 200, and 1,000 iterations. We will specify
+    a `random_state` value of 0 and set `verbose` to 1:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.6: Applying t-SNE to PCA-transformed data'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_06.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 6.6: Applying t-SNE to PCA-transformed data'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: In the previous screenshot, we can see a number of configuration options available
+    for the t-distributed stochastic neighbor embedding model with some more important
+    than the others. We will focus on the values of `learning_rate`, `n_components`,
+    `n_iter`, `perplexity`, `random_state`, and `verbose`. For `learning_rate`, as
+    discussed previously, t-SNE uses stochastic gradient descent to project the high-dimensional
+    data in low-dimensional space. The learning rate controls the speed at which the
+    process is executed. If learning rate is too high, the model may fail to converge
+    on a solution or if too slow may take a very long time to reach it (if at all).
+    A good rule of thumb is to start with the default; if you find the model producing
+    NaNs (not a number values), you may need to reduce the learning rate. Once you
+    are happy with the model, it is also wise to reduce the learning rate and let
+    it run for longer (`increase n_iter`) as; you may in fact get a slightly better
+    result. `n_components` is the number of dimensions in the embedding (or visualization
+    space). More often than not, you would like a two-dimensional plot of the data,
+    hence you just need the default value of `2`. `n_iter` is the maximum number of
+    iterations of gradient descent. `perplexity`, as discussed in the previous section,
+    is the number of neighbors to use in the visualizing the data.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Typically, a value between 5 and 50 will be appropriate, knowing that larger
+    datasets typically require more perplexity than smaller ones. `random_state` is
+    an important variable for any model or algorithm that initializes its values randomly
+    at the start of training. The random number generators provided within computer
+    hardware and software tools are not, in fact, truly random; they are actually
+    pseudo-random number generators. They give a good approximation of randomness,
+    but are not truly random. Random numbers within computers start with a value known
+    as a seed and are then produced in a complicated manner after that. By providing
+    the same seed at the start of the process, the same "random numbers" are produced
+    each time the process is run. While this sounds counter-intuitive, it is great
+    for reproducing machine learning experiments as you won't see any difference in
+    performance solely due to the initialization of the parameters at the start of
+    training. This can provide more confidence that a change in performance is due
+    to the considered change to the model or training, for example, the architecture
+    of the neural network.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Producing true random sequences is actually one of the hardest tasks to achieve
+    with a computer. Computer software and hardware is designed such that the instructions
+    provided are executed in exactly the same way each time it is run so that you
+    get the same result. Random differences in execution, while being ideal for producing
+    sequences of random numbers, would be a nightmare in terms of automating tasks
+    and debugging problems.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`verbose` is the verbosity level of the model and describes the amount of information
+    printed to the screen during the model fitting process. A value of 0 indicates
+    no output, while 1 or greater indicates increasing levels of detail in the output.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Use t-SNE to transform the decomposed dataset of MNIST:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.7: Transforming the decomposed dataset'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_07.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 6.7: Transforming the decomposed dataset'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The output provided during the fitting process provides an insight into the
+    calculations being completed by scikit-learn. We can see that it is indexing and
+    computing neighbors for all the samples and is then determining the conditional
+    probabilities of being neighbors for the data in batches of 10\. At the end of
+    the process, it provides a mean standard deviation (variance) value of 304.9988
+    with KL divergence after 250 and 1,000 iterations of gradient descent.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now, visualize the number of dimensions in the returned dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: So, we have successfully reduced the 784 dimensions down to 2 for visualization,
+    so what does it look like?
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Create a scatter plot of the two-dimensional data produced by the model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.8: 2D representation of MNIST (no labels).'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_08.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 6.8: 2D representation of MNIST (no labels).'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: In [*Figure 6*](C12626_06_ePub_Final_SZ.xhtml#_idTextAnchor144)*.8*, we can
+    see that we have represented the MNIST data in two dimensions, but we can also
+    see that it seems to be grouped together. There are a number of different clusters
+    or clumps of data congregated together and separated from other clusters by some
+    white space. There also seem to be about nine different groups of data. All these
+    observations suggest that there is some relationship within and between the individual
+    clusters.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Plot the two-dimensional data grouped by the corresponding image label, and
+    use markers to separate the individual labels. Along with the data, add the image
+    labels to the plot to investigate the structure of the embedded data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.9: 2D representation of MNIST with labels.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_09.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 6.9: 2D representation of MNIST with labels.'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: '[*Figure*](C12626_06_ePub_Final_SZ.xhtml#_idTextAnchor145) *6.9* is very interesting!
+    We can see here that the clusters correspond with each of the different image
+    classes (zero through nine) within the dataset. In an unsupervised fashion, that
+    is, without providing the labels in advance, a combination of PCA and t-SNE has
+    been able to separate and group the individual classes within the MNIST dataset.
+    What is particularly interesting is that there seems to be some confusion within
+    the data regarding the number four images and the number nine images, as well
+    as the five and three images; the two clusters somewhat overlap. This makes sense
+    if we look at the number nine and number four PCA images extracted from *Step
+    4*, *Exercise 24*, *t-SNE MNIST*:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.10: PCA images of nine.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_10.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 6.10: PCA images of nine.'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'They do, in fact, look quite similar; perhaps it is due to the uncertainty
+    in the shape of the number four. Looking at the image that follows, we can see
+    in the four on the left-hand side that the two vertical lines almost join, while
+    the four on the right-hand side has the two lines parallel:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.11: Shape of number four'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_11.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 6.11: Shape of number four'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: The other interesting feature to note in *Figure 6.9* are the edge cases, better
+    shown in color in the Jupyter notebooks. We can see around the edges of each cluster
+    that some samples would be misclassified in the traditional supervised learning
+    sense but represent samples that may have more in common with other clusters than
+    their own. Let's take a look at an example; there are a number of samples of the
+    number three that are quite far from the correct cluster.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Get the index of all the number threes in the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.12: Index of threes in the dataset.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_12.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 6.12: Index of threes in the dataset.'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'Find the threes that were plotted with an `x` value of less than 0:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.13: The threes with x value less than zero.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_13.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 6.13: The threes with x value less than zero.'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'Display the coordinates to find one that is reasonably far from the three cluster:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.14: Coordinates away from the three cluster'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_14.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Figure 6.14: Coordinates away from the three cluster'
+  prefs:
+  - PREF_IND
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'Chose a sample with a reasonably high negative value as an `x` coordinate.
+    In this example, we will select the fourth sample, which is sample 10\. Display
+    the image for the sample:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.15: Image of sample ten'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_15.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.15: Image of sample ten'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Looking at this sample image and the corresponding t-SNE coordinates, approximately
+    (-8, 47), it is not surprising that this sample lies near the cluster of eights
+    and fives as there are quite a few features that are common to both of those numbers
+    in this image. In this example, we applied a simplified SNE, demonstrating some
+    of its efficiencies as well as possible sources of confusion and the output of
+    unsupervised learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Even with providing a random number seed, t-SNE does not guarantee identical
+    outputs each time it is executed because it is based upon selection probabilities.
+    As such, you may notice some differences in the specifics between the example
+    provided in the content and your implementation. While the specifics may differ,
+    the overall principals and techniques still apply. From a real-world application
+    perspective, it is recommended that the process is repeated multiple times to
+    discern the significant information from the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 12: Wine t-SNE'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this activity, we will reinforce our knowledge of t-SNE using the Wine dataset.
+    By completing this activity, you will be able to build-SNE models for your own
+    custom applications. The Wine dataset ([https://archive.ics.uci.edu/ml/datasets/Wine](https://archive.ics.uci.edu/ml/datasets/Wine))
+    is a collection of attributes regarding the chemical analysis of wine from Italy
+    from three different producers, but the same type of wine for each producer. This
+    information could be used as an example to verify the validity of a bottle of
+    wine made from the grapes from a specific region in Italy. The 13 attributes are
+    Alcohol, Malic acid, Ash, Alcalinity of ash, Magnesium, Total phenols, Flavanoids,
+    Nonflavanoid phenols, Proanthocyanins, Color intensity, Hue, OD280/OD315 of diluted
+    wines, and Proline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each sample contains a class identifier (1 – 3).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: This dataset is taken from [https://archive.ics.uci.edu/ml/machine-learning-databases/wine/](https://archive.ics.uci.edu/ml/machine-learning-databases/wine/).
+    It can be downloaded from [https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/tree/master/Lesson06/Activity12](https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/tree/master/Lesson06/Activity12).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'UCI Machine Learning Repository [http://archive.ics.uci.edu/ml]. Irvine, CA:
+    University of California, School of Information and Computer Science.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These steps will help you complete the activity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Import `pandas`, `numpy`, `matplotlib`, and the `t-SNE` and `PCA` models from
+    scikit-learn.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Load the Wine dataset using the `wine.data` file included in the accompanying
+    source code and display the first five rows of data.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: You can delete columns within Pandas DataFrames through use of the `del` keyword.
+    Simply pass `del` the DataFrame and the selected column within square root.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The first column contains the labels; extract this column and remove it from
+    the dataset.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Execute PCA to reduce the dataset to the first six components.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Determine the amount of variance within the data described by these six components.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a t-SNE model using a specified random state and a `verbose` value of
+    1.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Fit the PCA data to the t-SNE model.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Confirm that the shape of the t-SNE fitted data is two dimensional.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a scatter plot of the two-dimensional data.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create a secondary scatter plot of the two-dimensional data with the class labels
+    applied to visualize any clustering that may be present.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'At the end of this activity, you will have constructed a t-SNE visualization
+    of the Wine dataset described using its six components and identified some relationships
+    in the location of the data within the plot. The final plot will look similar
+    to the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.16: The expected plot'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_16.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.16: The expected plot'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The solution for this activity can be found on page 345.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we covered the basics of generating SNE plots. The ability
+    to represent high-dimensional data in low-dimensional space is critical, especially
+    for developing a thorough understanding of the data at hand. Occasionally, these
+    plots can be tricky to interpret as the exact relationships are sometimes contradictory,
+    leading at times to misleading structures.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Interpreting t-SNE Plots
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now that we are able to use t-distributed SNE to visualize high-dimensional
+    data, it is important to understand the limitations of such plots and what aspects
+    are important in interpreting and generating them. In this section of the chapter,
+    we will highlight some of the important features of t-SNE and demonstrate how
+    care should be taken when using the visualization technique.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Perplexity
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As described in the introduction to t-SNE, the perplexity values specify the
+    number of nearest neighbors to be used in computing the conditional probability.
+    The selection of this value can make a significant difference to the end result;
+    with a low value of perplexity, local variations in the data dominate because
+    a small number of samples are used in the calculation. Conversely, a large value
+    of perplexity considers more global variations as many more samples are used in
+    the calculation. Typically, it is worth trying a range of different values to
+    investigate the effect of perplexity. Again, values between 5 and 50 tend to work
+    quite well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 25: t-SNE MNIST and Perplexity'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this exercise, we will try a range of different values for perplexity and
+    look at the effect in the visualization plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `pickle`, `numpy`, `matplotlib`, and `PCA` and `t-SNE` from scikit-learn:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Load the MNIST dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Using PCA, select only the first 30 components of variance from the image data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In this exercise, we are investigating the effect of perplexity on the t-SNE
+    manifold. Iterate through a model/plot loop with a perplexity of 3, 30, and 300:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.17: Iterating through a model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_17.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.17: Iterating through a model'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Note the KL divergence in each of the three different perplexity values, along
+    with the increase in the average standard deviation (variance). Looking at the
+    three following t-SNE plots with class labels, we can see that with a low perplexity
+    value, the clusters are nicely contained with relatively few overlaps. However,
+    there is almost no space between the clusters. As we increase the perplexity,
+    the space between the clusters improves with reasonably clear distinctions at
+    a perplexity of 30\. As the perplexity increases to 300, we can see that the clusters
+    of eight and five, along with nine, four, and seven, are starting to converge.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Start with a low perplexity value:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.18: Plot of low perplexity value'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_18.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.18: Plot of low perplexity value'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'Increasing the perplexity by a factor of 10 shows much clearer clusters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.19: Plot after increasing perplexity by a factor of 10'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_19.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.19: Plot after increasing perplexity by a factor of 10'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'By increasing the perplexity to 300, we start to merge more of the labels together:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.20: Increasing the perplexity value to 300'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_20.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.20: Increasing the perplexity value to 300'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: In this exercise, we developed our understanding of the effect of perplexity
+    and the sensitivity of this value to the overall result. A small perplexity value
+    can lead to a more homogenous mix of locations with very little space between
+    them. Increasing the perplexity separates the clusters more effectively, but an
+    excessive value leads to overlapping clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 13: t-SNE Wine and Perplexity'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this activity, we will use the Wine dataset to further reinforce the influence
+    of perplexity on the t-SNE visualization process. In this activity, we are trying
+    to determine whether we can identify the source of the wine based on its chemical
+    composition. The t-SNE process provides an effective means of representing and
+    possibly identifying the sources.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: This dataset is taken from [https://archive.ics.uci.edu/ml/machine-learning-databases/wine/](https://archive.ics.uci.edu/ml/machine-learning-databases/wine/).
+    It can be downloaded from [https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/tree/master/Lesson06/Activity1](https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/tree/master/Lesson06/Activity12)3.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'UCI Machine Learning Repository [http://archive.ics.uci.edu/ml]. Irvine, CA:
+    University of California, School of Information and Computer Science.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Import `pandas`, `numpy`, `matplotlib`, and the `t-SNE` and `PCA` models from
+    scikit-learn.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Load the Wine dataset and inspect the first five rows.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The first column provides the labels; extract these from the DataFrame and store
+    them in a separate variable. Ensure that the column is removed from the DataFrame.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Execute PCA on the dataset and extract the first six components.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Construct a loop that iterates through the perplexity values (1, 5, 20, 30,
+    80, 160, 320). For each loop, generate a t-SNE model with the corresponding perplexity
+    and print a scatter plot of the labeled wine classes. Note the effect of different
+    perplexity values.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: By the end of this activity, you will have generated a two-dimensional representation
+    of the Wine dataset and inspected the resulting plot for clusters or groupings
+    of data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The solution for this activity can be found on page 348.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Iterations
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The final parameter we will experimentally investigate is that of iterations,
+    which, as per our investigation in autoencoders, is simply the number of training
+    epochs to apply to gradient descent. Thankfully, the number of iterations is a
+    reasonably simple parameter to adjust and often requires only a certain amount
+    of patience as the position of the points in the low-dimensional space stabilize
+    in their final locations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 26: t-SNE MNIST and Iterations'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In this exercise, we will look at the influence of a range of different iteration
+    parameters applied to the t-SNE model and highlight some indicators that perhaps
+    more training is required. Again, the value of these parameters is highly dependent
+    on the dataset and the volume of data available for training. Again, we will use
+    MNIST in this example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `pickle`, `numpy`, `matplotlib`, and `PCA` and `t-SNE` from scikit-learn:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Load the MNIST dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Using PCA, select only the first 30 components of variance from the image data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'In this exercise, we are investigating the effect of iterations on the t-SNE
+    manifold. Iterate through a model/plot loop with iteration and iteration with
+    progress values of `250`, `500`, and `1000`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Plot the results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'A reduced number of iterations limits the extent to which the algorithm can
+    find relevant neighbors, leading to ill-defined clusters:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.21: Plot after 250 iterations'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_21.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.21: Plot after 250 iterations'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'Increasing the number of iterations provides the algorithm with sufficient
+    time to adequately project the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.22: Plot after increasing the iterations to 500'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_22.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.22: Plot after increasing the iterations to 500'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: 'Once the clusters have settled, increased iterations have an extremely small
+    effect and essentially lead to increased training time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 6.23: Plot after 1,000 iterations'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/C12626_06_23.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 6.23: Plot after 1,000 iterations'
+  prefs:
+  - PREF_H6
+  type: TYPE_NORMAL
+- en: Looking at the previous plots, we can see that the cluster positions with iteration
+    values of 500 and 1,000 are stable and relatively unchanged between the plots.
+    The most interesting plot is that of an iteration value of 250, where it seems
+    as though the clusters are still in a process of motion, making their way to the
+    final positions. As such, there is sufficient evidence to suggest an iteration
+    value of 500 is sufficient.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 14: t-SNE Wine and Iterations'
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In this activity, we will investigate the effect of the number of iterations
+    on the visualization of the Wine dataset. This is a process that's commonly used
+    during the exploration phase of data processing, cleaning, and understanding the
+    relationships in the data. Depending on the dataset and the type of analysis,
+    we may need to try a number of different iterations, such as those completed in
+    this activity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: This dataset is taken from [https://archive.ics.uci.edu/ml/machine-learning-databases/wine/](https://archive.ics.uci.edu/ml/machine-learning-databases/wine/).
+    It can be downloaded from [https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/tree/master/Lesson06/Activity1](https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/tree/master/Lesson06/Activity12)4.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'UCI Machine Learning Repository [http://archive.ics.uci.edu/ml]. Irvine, CA:
+    University of California, School of Information and Computer Science.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These steps will help you complete the activity:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Import `pandas`, `numpy`, `matplotlib`, and the `t-SNE` and `PCA` models from
+    scikit-learn.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Load the Wine dataset and inspect the first five rows.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The first column provides the labels; extract these from the DataFrame and store
+    them in a separate variable. Ensure that the column is removed from the DataFrame.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Execute PCA on the dataset and extract the first six components.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Construct a loop that iterates through the iteration values (`250`, `500`, `1000`).
+    For each loop, generate a t-SNE model with the corresponding number of iterations
+    and an identical number of iterations without progress values.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Construct a scatter plot of the labeled wine classes. Note the effect of different
+    iteration values.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: By completing this activity, we will have investigated the effect of modifying
+    the iteration parameter of the model. This is an important parameter in ensuring
+    that the data has settled into a somewhat final position in the low-dimensional
+    space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The solution for this activity can be found on page 353.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Final Thoughts on Visualizations
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As we conclude our chapter on t-Distributed Stochastic Neighbor Embeddings,
+    there are a couple of important aspects to note regarding the visualizations.
+    The first is that the size of the clusters or the relative space between clusters
+    may not actually provide any real indication of proximity. As we discussed earlier
+    in the chapter, a combination of Gaussian and Student's t-distributions is used
+    to represent high-dimensional data in a low-dimensional space. As such, there
+    is no guarantee of a linear relationship in distance, as t-SNE balances the positions
+    of localized and global data structures. The actual distance between points in
+    local structures may be visually very close within the representation, but still
+    might be some distance away in high-dimensional space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This property also has additional consequences in that sometimes, random data
+    can be present as if it had some structure, and that it is often required to generate
+    multiple visualizations using differing values of perplexity, learning rate, number
+    of iterations, and random seed values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this chapter, we were introduced to t-Distributed Stochastic Neighbor Embeddings
+    as a means of visualizing high-dimensional information that may have been produced
+    from prior processes such as PCA or autoencoders. We discussed the means by which
+    t-SNEs produce this representation and generated a number of them using the MNIST
+    and Wine datasets and scikit-learn. In this chapter, we were able to see some
+    of the power of unsupervised learning because PCA and t-SNE were able to cluster
+    the classes of each image without knowing the ground truth result. In the next
+    chapter, we will build on this practical experience as we look into the applications
+    of unsupervised learning, including basket analysis and topic modeling.
+  prefs: []
+  type: TYPE_NORMAL

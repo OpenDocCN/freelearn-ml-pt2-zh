@@ -1,0 +1,782 @@
+- en: Chapter 11. Dimensionality Reduction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Garbage in, garbage out—throughout the book, we saw this pattern also holds
+    true when applying machine learning methods to training data. Looking back, we
+    realize that the most interesting machine learning challenges always involved
+    some sort of feature engineering, where we tried to use our insight into the problem
+    to carefully crafted additional features that the machine learner hopefully picks
+    up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will go in the opposite direction with dimensionality reduction
+    involving cutting away features that are irrelevant or redundant. Removing features
+    might seem counter-intuitive at first thought, as more information should always
+    be better than less information. Also, even if we had redundant features in our
+    dataset, would not the learning algorithm be able to quickly figure it out and
+    set their weights to 0? The following are several good reasons that are still
+    in practice for trimming down the dimensions as much as possible:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Superfluous features can irritate or mislead the learner. This is not the case
+    with all machine learning methods (for example, Support Vector Machines love high
+    dimensional spaces). However, most of the models feel safer with fewer dimensions.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Another argument against high dimensional feature spaces is that more features
+    mean more parameters to tune and a higher risk to overfit.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The data we retrieved to solve our task might have just artificially high dimensionality,
+    whereas the real dimension might be small.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Fewer dimensions = faster training = more parameter variations to try out in
+    the same time frame = better end result.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Visualization—if we want to visualize the data we are restricted to two or three
+    dimensions.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So, here we will show how to get rid of the garbage within our data while keeping
+    the real valuable part of it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sketching our roadmap
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Dimensionality reduction can be roughly grouped into feature selection and feature
+    extraction methods. We already employed some kind of feature selection in almost
+    every chapter when we invented, analyzed, and then probably dropped some features.
+    In this chapter, we will present some ways that use statistical methods, namely
+    correlation and mutual information, to be able to do so in vast feature spaces.
+    Feature extraction tries to transform the original feature space into a lower-dimensional
+    feature space. This is especially useful when we cannot get rid of features using
+    selection methods, but still we have too many features for our learner. We will
+    demonstrate this using **principal component analysis** (**PCA**), **linear discriminant
+    analysis** (**LDA**), and **multidimensional scaling** (**MDS**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Selecting features
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: If we want to be nice to our machine learning algorithm, we provide it with
+    features that are not dependent on each other, yet highly dependent on the value
+    to be predicted. This means that each feature adds salient information. Removing
+    any of the features will lead to a drop in performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we have only a handful of features, we could draw a matrix of scatter plots
+    (one scatter plot for every feature pair combination). Relationships between the
+    features could then be easily spotted. For every feature pair showing an obvious
+    dependence, we would then think of whether we should remove one of them or better
+    design a newer, cleaner feature out of both.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most of the time, however, we have more than a handful of features to choose
+    from. Just think of the classification task where we had a bag of words to classify
+    the quality of an answer, which would require a 1,000 by 1,000 scatter plot. In
+    this case, we need a more automated way to detect overlapping features and to
+    resolve them. We will present two general ways to do so in the following subsections,
+    namely filters and wrappers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Detecting redundant features using filters
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Filters try to clean up the feature forest independent of any later used machine
+    learning method. They rely on statistical methods to find which of the features
+    are redundant or irrelevant. In case of redundant features, it keeps only one
+    per redundant feature group. Irrelevant features will simply be removed. In general,
+    the filter works as depicted in the following workflow:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Detecting redundant features using filters](img/2772OS_11_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Correlation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Using correlation, we can easily see linear relationships between pairs of features.
+    In the following graphs, we can see different degrees of correlation, together
+    with a potential linear dependency plotted as a red-dashed line (fitted 1-dimensional
+    polynomial). The correlation coefficient ![Correlation](img/2772OS_11_14.jpg)
+    at the top of the individual graphs is calculated using the common Pearson correlation
+    coefficient (Pearson `r` value) by means of the `pearsonr()` function of `scipy.stat`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Given two equal-sized data series, it returns a tuple of the correlation coefficient
+    value and the p-value. The p-value describes how likely it is that the data series
+    has been generated by an uncorrelated system. In other words, the higher the p-value,
+    the less we should trust the correlation coefficient:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the first case, we have a clear indication that both series are correlated.
+    In the second case, we still have a clearly non-zero ![Correlation](img/2772OS_11_15.jpg)
+    value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, the p-value of 0.84 tells us that the correlation coefficient is not
+    significant and we should not pay too close attention to it. Have a look at the
+    following graphs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Correlation](img/2772OS_11_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the first three cases that have high correlation coefficients, we would probably
+    want to throw out either ![Correlation](img/2772OS_11_16.jpg) or ![Correlation](img/2772OS_11_17.jpg)
+    because they seem to convey similar, if not the same, information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the last case, however, we should keep both features. In our application,
+    this decision would, of course, be driven by this p-value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Although, it worked nicely in the preceding example, reality is seldom nice
+    to us. One big disadvantage of correlation-based feature selection is that it
+    only detects linear relationships (a relationship that can be modelled by a straight
+    line). If we use correlation on a non-linear data, we see the problem. In the
+    following example, we have a quadratic relationship:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Correlation](img/2772OS_11_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Although, the human eye immediately sees the relationship between X[1] and X[2]
+    in all but the bottom-right graph, the correlation coefficient does not. It's
+    obvious that correlation is useful to detect linear relationships, but fails for
+    everything else. Sometimes, it already helps to apply simple transformations to
+    get a linear relationship. For instance, in the preceding plot, we would have
+    got a high correlation coefficient if we had drawn X[2] over X[1] squared. Normal
+    data, however, does not often offer this opportunity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Luckily, for non-linear relationships, mutual information comes to the rescue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mutual information
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: When looking at the feature selection, we should not focus on the type of relationship
+    as we did in the previous section (linear relationships). Instead, we should think
+    in terms of how much information one feature provides (given that we already have
+    another).
+  prefs: []
+  type: TYPE_NORMAL
+- en: To understand this, let's pretend that we want to use features from `house_size`,
+    `number_of_levels`, and `avg_rent_price` feature set to train a classifier that
+    outputs whether the house has an elevator or not. In this example, we intuitively
+    see that knowing `house_size` we don't need to know `number_of_levels` anymore,
+    as it contains, somehow, redundant information. With `avg_rent_price`, it's different
+    because we cannot infer the value of rental space simply from the size of the
+    house or the number of levels it has. Thus, it would be wise to keep only one
+    of them in addition to the average price of rental space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mutual information formalizes the aforementioned reasoning by calculating how
+    much information two features have in common. However, unlike correlation, it
+    does not rely on a sequence of data, but on the distribution. To understand how
+    it works, we have to dive a bit into information entropy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s assume we have a fair coin. Before we flip it, we will have maximum
+    uncertainty as to whether it will show heads or tails, as both have an equal probability
+    of 50 percent. This uncertainty can be measured by means of Claude Shannon''s
+    information entropy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Mutual information](img/2772OS_11_18.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In our fair coin case, we have two cases: Let ![Mutual information](img/2772OS_11_19.jpg)
+    be the case of head and ![Mutual information](img/2772OS_11_20.jpg) the case of
+    tail with ![Mutual information](img/2772OS_11_21.jpg).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Thus, it concludes to:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Mutual information](img/2772OS_11_22.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For convenience, we can also use `scipy.stats.entropy([0.5, 0.5], base=2)`.
+    We set the base parameter to `2` to get the same result as earlier. Otherwise,
+    the function will use the natural logarithm via `np.log()`. In general, the base
+    does not matter (as long as you use it consistently).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, imagine we knew upfront that the coin is actually not that fair with heads
+    having a chance of 60 percent showing up after flipping:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Mutual information](img/2772OS_11_23.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We see that this situation is less uncertain. The uncertainty will decrease
+    the farther away we get from 0.5 reaching the extreme value of 0 for either 0
+    percent or 100 percent of heads showing up, as we can see in the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Mutual information](img/2772OS_11_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: We will now modify entropy ![Mutual information](img/2772OS_11_24.jpg) by applying
+    it to two features instead of one in such a way that it measures how much uncertainty
+    is removed from X when we learn about Y. Then, we can catch how one feature reduces
+    the uncertainty of another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, without having any further information about the weather, we are
+    totally uncertain whether it's raining outside or not. If we now learn that the
+    grass outside is wet, the uncertainty has been reduced (we will still have to
+    check whether the sprinkler had been turned on).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'More formally, mutual information is defined as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Mutual information](img/2772OS_11_25.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: This looks a bit intimidating, but is really not more than sums and products.
+    For instance, the calculation of ![Mutual information](img/2772OS_11_26.jpg) is
+    done by binning the feature values and then calculating the fraction of values
+    in each bin. In the following plots, we have set the number of bins to ten.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to restrict mutual information to the interval [0,1], we have to divide
+    it by their added individual entropy, which gives us the normalized mutual information:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Mutual information](img/2772OS_11_27.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The nice thing about mutual information is that unlike correlation, it does
+    not look only at linear relationships, as we can see in the following graphs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Mutual information](img/2772OS_11_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As we can see, mutual information is able to indicate the strength of a linear
+    relationship. The following diagram shows that, it also works for squared relationships:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Mutual information](img/2772OS_11_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: So, what we would have to do is to calculate the normalized mutual information
+    for all feature pairs. For every pair having too high value (we would have to
+    determine what this means), we would then drop one of them. In case of regression,
+    we could drop this feature that has too low mutual information with the desired
+    result value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This might work for a not too-big set of features. At some point, however, this
+    procedure can be really expensive, because the amount of calculation grows quadratically
+    (as we are computing the mutual information between feature pairs).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another huge disadvantage of filters is that they drop features that seem to
+    be not useful in isolation. More often than not, there are a handful of features
+    that seem to be totally independent of the target variable, yet when combined
+    together they rock. To keep these, we need wrappers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Asking the model about the features using wrappers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'While filters can help tremendously in getting rid of useless features, they
+    can go only so far. After all the filtering, there might still be some features
+    that are independent among themselves and show some degree of dependence with
+    the result variable, but yet they are totally useless from the model''s point
+    of view. Just think of the following data that describes the XOR function. Individually,
+    neither `A` nor `B` would show any signs of dependence on `Y`, whereas together
+    they clearly do:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| A | B | Y |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0 | 0 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0 | 1 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 0 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 1 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'So, why not ask the model itself to give its vote on the individual features?
+    This is what wrappers do, as we can see in the following process chart:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Asking the model about the features using wrappers](img/2772OS_11_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, we pushed the calculation of feature importance to the model training
+    process. Unfortunately (but understandably), feature importance is not determined
+    as a binary, but as a ranking value. So, we still have to specify where to make
+    the cut, what part of the features are we willing to take, and what part do we
+    want to drop?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Coming back to scikit-learn, we find various excellent wrapper classes in the
+    `sklearn.feature_selection` package. A real workhorse in this field is `RFE`,
+    which stands for recursive feature elimination. It takes an estimator and the
+    desired number of features to keep as parameters and then trains the estimator
+    with various feature sets as long as it has found a subset of features that is
+    small enough. The `RFE` instance itself pretends to be like an estimator, thereby,
+    indeed, wrapping the provided estimator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following example, we create an artificial classification problem of
+    100 samples using datasets'' convenient `make_classification()` function. It lets
+    us specify the creation of 10 features, out of which only three are really valuable
+    to solve the classification problem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The problem in real-world scenarios is, of course, how can we know the right
+    value for `n_features_to_select`? Truth is, we can't. However, most of the time
+    we can use a sample of the data and play with it using different settings to quickly
+    get a feeling for the right ballpark.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The good thing is that we don''t have to be that exact using wrappers. Let''s
+    try different values for `n_features_to_select` to see how `support_` and `ranking_`
+    change:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| n_features_to_select | support_ | ranking_ |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | [False False False True False False False False False False] | [ 6 3
+    5 1 10 7 9 8 2 4] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | [False False False True False False False False True False] | [5 2 4
+    1 9 6 8 7 1 3] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | [False True False True False False False False True False] | [4 1 3 1
+    8 5 7 6 1 2] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 4 | [False True False True False False False False True True] | [3 1 2 1
+    7 4 6 5 1 1] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 5 | [False True True True False False False False True True] | [2 1 1 1 6
+    3 5 4 1 1] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 6 | [ True True True True False False False False True True] | [1 1 1 1 5
+    2 4 3 1 1] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 7 | [ True True True True False True False False True True] | [1 1 1 1 4
+    1 3 2 1 1] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 8 | [ True True True True False True False True True True] | [1 1 1 1 3 1
+    2 1 1 1] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 9 | [ True True True True False True True True True True] | [1 1 1 1 2 1
+    1 1 1 1] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 10 | [ True True True True True True True True True True] | [1 1 1 1 1 1
+    1 1 1 1] |'
+  prefs: []
+  type: TYPE_TB
+- en: We see that the result is very stable. Features that have been used when requesting
+    smaller feature sets keep on getting selected when letting more features in. At
+    last, we rely on our train/test set splitting to warn us when we go the wrong
+    way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other feature selection methods
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: There are several other feature selection methods that you will discover while
+    reading through machine learning literature. Some even don't look like being a
+    feature selection method because they are embedded into the learning process (not
+    to be confused with the aforementioned wrappers). Decision trees, for instance,
+    have a feature selection mechanism implanted deep in their core. Other learning
+    methods employ some kind of regularization that punishes model complexity, thus
+    driving the learning process towards good performing models that are still "simple".
+    They do this by decreasing the less impactful features importance to zero and
+    then dropping them (L1-regularization).
+  prefs: []
+  type: TYPE_NORMAL
+- en: So watch out! Often, the power of machine learning methods has to be attributed
+    to their implanted feature selection method to a great degree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature extraction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: At some point, after we have removed redundant features and dropped irrelevant
+    ones, we, often, still find that we have too many features. No matter what learning
+    method we use, they all perform badly and given the huge feature space we understand
+    that they actually cannot do better. We realize that we have to cut living flesh;
+    we have to get rid of features, for which all common sense tells us that they
+    are valuable. Another situation when we need to reduce the dimensions and feature
+    selection does not help much is when we want to visualize data. Then, we need
+    to have at most three dimensions at the end to provide any meaningful graphs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Enter feature extraction methods. They restructure the feature space to make
+    it more accessible to the model or simply cut down the dimensions to two or three
+    so that we can show dependencies visually.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Again, we can distinguish feature extraction methods as being linear or non-linear
+    ones. Also, as seen before in the *Selecting features* section, we will present
+    one method for each type (principal component analysis as a linear and non-linear
+    version of multidimensional scaling). Although, they are widely known and used,
+    they are only representatives for many more interesting and powerful feature extraction
+    methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: About principal component analysis
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**Principal component analysis** (**PCA**) is often the first thing to try
+    out if you want to cut down the number of features and do not know what feature
+    extraction method to use. PCA is limited as it''s a linear method, but chances
+    are that it already goes far enough for your model to learn well enough. Add to
+    this the strong mathematical properties it offers and the speed at which it finds
+    the transformed feature space and is later able to transform between original
+    and transformed features; we can almost guarantee that it also will become one
+    of your frequently used machine learning tools.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Summarizing it, given the original feature space, PCA finds a linear projection
+    of itself in a lower dimensional space that has the following properties:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The conserved variance is maximized.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The final reconstruction error (when trying to go back from transformed features
+    to original ones) is minimized.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As PCA simply transforms the input data, it can be applied both to classification
+    and regression problems. In this section, we will use a classification task to
+    discuss the method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sketching PCA
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'PCA involves a lot of linear algebra, which we do not want to go into. Nevertheless,
+    the basic algorithm can be easily described as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Center the data by subtracting the mean from it.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate the covariance matrix.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Calculate the eigenvectors of the covariance matrix.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: If we start with ![Sketching PCA](img/2772OS_11_28.jpg) features, then the algorithm
+    will return a transformed feature space again with ![Sketching PCA](img/2772OS_11_28.jpg)
+    dimensions (we gained nothing so far). The nice thing about this algorithm, however,
+    is that the eigenvalues indicate how much of the variance is described by the
+    corresponding eigenvector.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's assume we start with ![Sketching PCA](img/2772OS_11_29.jpg) features and
+    we know that our model does not work well with more than ![Sketching PCA](img/2772OS_11_30.jpg)
+    features. Then, we simply pick the ![Sketching PCA](img/2772OS_11_30.jpg) eigenvectors
+    with the highest eigenvalues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Applying PCA
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s consider the following artificial dataset, which is visualized in the
+    following left plot diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Applying PCA](img/2772OS_11_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Scikit-learn provides the `PCA` class in its decomposition package. In this
+    example, we can clearly see that one dimension should be enough to describe the
+    data. We can specify this using the `n_components` parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Also, here we can use the `fit()` and `transform()` methods of `pca` (or its
+    `fit_transform()` combination) to analyze the data and project it in the transformed
+    feature space:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: As we have specified, `Xtrans` contains only one dimension. You can see the
+    result in the preceding right plot diagram. The outcome is even linearly separable
+    in this case. We would not even need a complex classifier to distinguish between
+    both classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get an understanding of the reconstruction error, we can have a look at
+    the variance of the data that we have retained in the transformation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: This means that after going from two to one dimension, we are still left with
+    96 percent of the variance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Of course, it''s not always this simple. Oftentimes, we don''t know what number
+    of dimensions is advisable upfront. In that case, we leave `n_components` parameter
+    unspecified when initializing `PCA` to let it calculate the full transformation.
+    After fitting the data, `explained_variance_ratio_` contains an array of ratios
+    in decreasing order: The first value is the ratio of the basis vector describing
+    the direction of the highest variance, the second value is the ratio of the direction
+    of the second highest variance, and so on. After plotting this array, we quickly
+    get a feel of how many components we would need: the number of components immediately
+    before the chart has its elbow is often a good guess.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Plots displaying the explained variance over the number of components is called
+    a Scree plot. A nice example of combining a Scree plot with a grid search to find
+    the best setting for the classification problem can be found at [http://scikit-learn.sourceforge.net/stable/auto_examples/plot_digits_pipe.html](http://scikit-learn.sourceforge.net/stable/auto_examples/plot_digits_pipe.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Limitations of PCA and how LDA can help
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Being a linear method, PCA has, of course, its limitations when we are faced
+    with data that has non-linear relationships. We won't go into details here, but
+    it's sufficient to say that there are extensions of PCA, for example, Kernel PCA,
+    which introduces a non-linear transformation so that we can still use the PCA
+    approach.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another interesting weakness of PCA, which we will cover here, is when it''s
+    being applied to special classification problems. Let''s replace `good = (x1 >
+    5) | (x2 > 5)` with `good = x1 > x2` to simulate such a special case and we quickly
+    see the problem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Limitations of PCA and how LDA can help](img/2772OS_11_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, the classes are not distributed according to the axis with the highest
+    variance, but the second highest variance. Clearly, PCA falls flat on its face.
+    As we don't provide PCA with any cues regarding the class labels, it cannot do
+    any better.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Linear Discriminant Analysis** (**LDA**) comes to the rescue here. It''s
+    a method that tries to maximize the distance of points belonging to different
+    classes, while minimizing the distances of points of the same class. We won''t
+    give any more details regarding how in particular the underlying theory works,
+    just a quick tutorial on how to use it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That''s all. Note that in contrast to the previous PCA example, we provide
+    the class labels to the `fit_transform()` method. Thus, PCA is an unsupervised
+    feature extraction method, whereas LDA is a supervised one. The result looks as
+    expected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Limitations of PCA and how LDA can help](img/2772OS_11_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: So, why then consider PCA at all and not simply use LDA? Well, it's not that
+    simple. With an increasing number of classes and fewer samples per class, LDA
+    does not look that well any more. Also, PCA seems to be not as sensitive to different
+    training sets as LDA. So, when we have to advise which method to use, we can only
+    suggest a clear "it depends".
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multidimensional scaling
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Although, PCA tries to use optimization for retained variance, **multidimensional
+    scaling** (**MDS**) tries to retain the relative distances as much as possible
+    when reducing the dimensions. This is useful when we have a high-dimensional dataset
+    and want to get a visual impression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'MDS does not care about the data points themselves; instead, it''s interested
+    in the dissimilarities between pairs of data points and interprets these as distances.
+    The first thing the MDS algorithm is doing is, therefore, taking all the ![Multidimensional
+    scaling](img/2772OS_11_28.jpg) datapoints of dimension ![Multidimensional scaling](img/2772OS_11_31.jpg)
+    and calculates a distance matrix using a distance function ![Multidimensional
+    scaling](img/2772OS_11_32.jpg), which measures the (most of the time, Euclidean)
+    distance in the original feature space:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Multidimensional scaling](img/2772OS_11_33.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now, MDS tries to position the individual datapoints in the lower dimensional
+    space such that the new distance there resembles the distances in the original
+    space as much as possible. As MDS is often used for visualization, the choice
+    of the lower dimension is most of the time two or three.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s have a look at the following simple data consisting of three datapoints
+    in five-dimensional space. Two of the datapoints are close by and one is very
+    distinct and we want to visualize this in three and two dimensions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using the `MDS` class in scikit-learn''s `manifold` package, we first specify
+    that we want to transform `X` into a three-dimensional Euclidean space:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: To visualize it in two dimensions, we would need to set `n_components` accordingly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The results can be seen in the following two graphs. The triangle and circle
+    are both close together, whereas the star is far away:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Multidimensional scaling](img/2772OS_11_13.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s have a look at the slightly more complex Iris dataset. We will use it
+    later to contrast LDA with PCA. The Iris dataset contains four attributes per
+    flower. With the preceding code, we would project it into three-dimensional space
+    while keeping the relative distances between the individual flowers as much as
+    possible. In the previous example, we did not specify any metric, so `MDS` will
+    default to Euclidean. This means that flowers that were "different" according
+    to their four attributes should also be far away in the MDS-scaled three-dimensional
+    space and flowers that were similar should be near together now, as shown in the
+    following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Multidimensional scaling](img/2772OS_11_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Reducing the dimensional reduction to three and two dimensions with PCA instead,
+    we see the expected bigger spread of the flowers belonging to the same class,
+    as shown in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Multidimensional scaling](img/2772OS_11_12.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Of course, using MDS requires an understanding of the individual feature's units;
+    maybe we are using features that cannot be compared using the Euclidean metric.
+    For instance, a categorical variable, even when encoded as an integer (0= circle,
+    1= star, 2= triangle, and so on), cannot be compared using Euclidean (is circle
+    closer to star than to triangle?).
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, once we are aware of this issue, MDS is a useful tool that reveals
+    similarities in our data that otherwise would be difficult to see in the original
+    feature space.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Looking a bit deeper into MDS, we realize that it's not a single algorithm,
+    but rather a family of different algorithms, of which we have used just one. The
+    same was true for PCA. Also, in case you realize that neither PCA nor MDS solves
+    your problem, just look at the many other manifold learning algorithms that are
+    available in the scikit-learn toolkit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, before you get overwhelmed by the many different algorithms, it's always
+    best to start with the simplest one and see how far you get with it. Then, take
+    the next more complex one and continue from there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You learned that sometimes you can get rid of complete features using feature
+    selection methods. We also saw that in some cases, this is not enough and we have
+    to employ feature extraction methods that reveal the real and the lower-dimensional
+    structure in our data, hoping that the model has an easier game with it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For sure, we only scratched the surface of the huge body of available dimensionality
+    reduction methods. Still, we hope that we got you interested in this whole field,
+    as there are lots of other methods waiting for you to be picked up. At the end,
+    feature selection and extraction is an art, just like choosing the right learning
+    method or training model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next chapter covers the use of Jug, a little Python framework to manage
+    computations in a way that takes advantage of multiple cores or multiple machines.
+    You will also learn about AWS, the Amazon Cloud.
+  prefs: []
+  type: TYPE_NORMAL

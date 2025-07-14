@@ -1,0 +1,1185 @@
+- en: Making Decisions with Trees
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we are going to start by looking at our first supervised learning
+    algorithm—decision trees. The decision tree algorithm is versatile and easy to
+    understand. It is widely used and also serves as a building block for the numerous
+    advanced algorithms that we will encounter later on in this book. In this chapter,
+    we will learn how to train a decision tree and use it for either classification
+    or regression problems. We will also understand the details of its learning process
+    in order to know how to set its different hyperparameters. Furthermore, we will
+    use a real-world dataset to apply what we are going to learn here in practice.
+    We will start by getting and preparing the data and apply our algorithm to it.
+    Along the way, we will also try to understand key machine learning concepts, such
+    as cross-validation and model evaluation metrics. By the end of this chapter,
+    you will have a very good understanding of the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding decision trees
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How do decision trees learn?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Getting a more reliable score
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tuning the hyperparameters for higher accuracy
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Visualizing the tree's decision boundaries
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Building decision tree regressors
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understanding decision trees
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: I chose to start this book with decision trees because I've noticed that the
+    majority of new machine learning practitioners have previous experience in one
+    of two fields—software development, or statistics and mathematics. Decision trees
+    can conceptually resemble some of the concepts software developers are used to,
+    such as nested `if-else` conditions and binary search trees. As for the statisticians,
+    bear with me—soon, you will feel at home when we reach the chapter about linear
+    models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What are decision trees?
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'I think the best way to explain what decision trees are is by showing the rules
+    they generate after they are trained. Luckily, we can access those rules and print
+    them. Here is an example of how decision tree rules look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As you can see, it''s basically a set of conditions. If the chance of rain
+    falling is above `0.6` (60%), then I need to take an umbrella with me. If it is
+    below `0.6`, then it all depends on the UV index. If the UV index is above `7`,
+    then an umbrella is needed; otherwise, I will be fine without one. Now, you might
+    be thinking <q>well, a few nested `if-else` conditions will do the trick.</q>
+    True, but the main difference here is that I didn''t write any of these conditions
+    myself. The algorithm just learned the preceding conditions automatically after
+    it went through the following data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/cd239667-c242-4ff7-8ac2-2ced3473d72d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Of course, for this simple case, anyone can manually go through the data and
+    come up with the same conditions. Nevertheless, when dealing with a bigger dataset,
+    the number of conditions we need to program will quickly grow with the number
+    of columns and the values in each column. At such a scale, it is not possible
+    to manually perform the same job, and an algorithm that can learn the conditions
+    from the data is needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Conversely, it is also possible to map a constructed tree back to the nested
+    `if-else` conditions. This means that you can use Python to build a tree from
+    data, then export the underlying conditions to be implemented in a different language
+    or even to put them in **Microsoft Excel** if you want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Iris classification
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: scikit-learn comes loaded with a number of datasets that we can use to test
+    new algorithms. One of these datasets is the Iris set. Iris is a genus of 260–300
+    species of flowering plants with showy flowers. However, in our dataset, just
+    three species are covered—**Setosa**, **Versicolor**, and **Virginica**. Each
+    example in our dataset has the length and the widths of the sepal and petal of
+    each plant (the features), along with whether it is a Setosa, a Versicolor, or
+    a Virginica (the target). Our task is to be able to identify the species of a
+    plant given its sepal and petal dimensions. Clearly, this is a classification
+    problem. It is a supervised learning problem since the targets are provided with
+    the data. Furthermore, it is a classification problem since we take a limited
+    number of predefined values (three species).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loading the Iris dataset
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s now startby loading the dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We import the dataset''s module from scikit-learn, and then load the Iris data
+    into a variable, which we are going to call `iris` as well:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Using`dir`, we can see what methods and attributes the dataset provides:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: We get a list of the `DESCR`, `data`, `feature_names`, `filename`, `target`,
+    and `target_names`methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's nice of the data creators to provide descriptions with each one, which
+    we can access using `DESCR`.*This is rarely the case with real-life data, however.
+    Usually, in real life, we need to talk to the people who produced the data in
+    the first place to understand what each value means, or at least use some descriptive
+    statistics to understand the data before using it.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*3.  For now, let''s print the Iris data''s description:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Have a look at the description now and try to think of some of the main takeaways
+    from it. I will list my own takeaways afterward:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This description holds some useful information for us, and I found the following
+    points the most interesting:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The data is composed of 150 rows (or 150 samples). This is a reasonably small
+    dataset. Later on, we will see how to deal with this fact when evaluating our
+    model.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The class labels or targets take three values—`Iris-Setosa`, `Iris-Versicolor`,
+    and `Iris-Virginica`. Some classification algorithms can only deal with two class
+    labels; we call them binary classifiers. Luckily, the decision tree algorithm
+    can deal with more than two classes, so we have no problems this time.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The data is balanced; there are 50 samples for each class. This is something
+    we need to keep in mind when training and evaluating our model later on.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We have four features—`sepal length`, `sepal width`, `petal length`, and `petal
+    width`—and all four features are numeric. In [Chapter 3](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=26&action=edit),
+    *Preparing Your Data*, we will learn how to deal with non-numeric data.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: There are no missing attribute values. In other words, none of our samples contains
+    null values. Later on in this book, we will learn how to deal with missing values
+    if we encounter them.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The petal dimensions correlate with the class values more than the sepal dimensions.
+    I wish we had never seen this piece of information. Understanding your data is
+    useful, but the problem here is that this correlation is calculated for the entire
+    dataset. Ideally, we will only calculate it for our training data. Anyway, let's
+    ignore this information for now and just use it for a sanity check later on.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It's time to put all the dataset information into one DataFrame.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The `feature_names`methodreturns the names of our features, while the `data`
+    method returns their values in the form of a NumPy array. Similarly, the `target`variable
+    has the values of the target in the form of zeros, ones, and twos, and `target_names`
+    maps `0`, `1`, and `2` to`Iris-Setosa`, `Iris-Versicolor`, and `Iris-Virginica`,
+    respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: NumPy arrays are efficient to deal with, but they do not allow columns to have
+    names. I find column names to be useful for debugging purposes. I find `pandas`
+    DataFrames to be more suitable here since we can use column names and combine
+    the features and target into one DataFrame.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we can see the first eight rows we get using`iris.data[:8]`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following code uses the `data`, `feature_names`, and `target` methods to
+    combine all the dataset information into one DataFrame and assign its column names
+    accordingly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: scikit-learn versions 0.23 and up support loading datasets as `pandas` DataFrames
+    right away. You can do this by setting `as_frame=True` in `datasets.load_iris`
+    and its similar data-loading methods. Nevertheless, this has not been tested in
+    this book since version 0.22 is the most stable release at the time of writing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `target` column now has the class IDs. However, for more clarity, we can
+    also create a new column called `target_names`, where we can map our numerical
+    target values to the class names:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, let''s print a sample of six rows to see how our new DataFrame looks.
+    Running the following code in a Jupyter notebook or a Jupyter lab will just print
+    the contents of the DataFrame; otherwise, you need to surround your code with
+    a `print` statement. I will assume that a Jupyter notebook environment is used
+    in all later code snippets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This gave me the following random sample:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/4904624a-669a-4eb1-b625-1e3e15cf59b7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The sample methods picked six random rows to display. This means that you will
+    get a different set of rows each time you run the same code. Sometimes, we need
+    to get the same random results every time we run the same code. Then, we use a
+    pseudo-random number generator with a preset seed. A pseudo-random number generator
+    initialized with the same seed will produce the same results every time it runs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, set the`random_state`parameter in the`sample()`method to `42`, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: You will get the exact same rows shown earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Splitting the data
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s split the DataFrame we have just created into two—70% of the records
+    (that is, 105 records) should go into the training set, while 30% (45 records)
+    should go into testing. The choice of 70/30 is arbitrary for now. We will use
+    the `train_test_split()` function provided by scikit-learn and specify`test_size`
+    to be `0.3`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can use`df_train.shape[0]`and `df_test.shape[0]`to check how many rows thereare
+    in the newly created DataFrames. We can also list the columns of the new DataFrames
+    using `df_train.columns` and `df_test.columns`. They both have the same six columns:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`sepal length (cm)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`sepal width (cm)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`petal length (cm)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`petal width (cm)`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`target`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`target_names`'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The first four columns are our features, while the fifth column is our target
+    (or label). The sixthcolumn will not be needed for now. Visually, you could say
+    that we have split our data vertically into training and test sets. Usually, it
+    makes sense to further split each of our DataFrames horizontally into two parts—one
+    part for the features, which we usually call *x*, and another part for the targets,
+    which is usually called *y*. We will continue to use this *x* and *y* naming convention
+    throughout the rest of this book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some prefer to use a capital *X* to illustrate that it is a two-dimensional
+    array (or DataFrames) and use a small letter for *y* when it is a single-dimensional
+    array (or series). I find it more practical to stick to a single case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you know, the`feature_names` method in`iris` contains a list of the corresponding
+    column names to our features. We will use this information, along with the `target`
+    label, to create our *x* and *y* sets, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: Training the model and using it for prediction
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To get a feel for how everything works, we will train our algorithm using its
+    default configuration for now. Later on in this chapter, I will explain the details
+    of the decision tree algorithms and how to configure them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We need to import `DecisionTreeClassifier` first, and then create an instance
+    of it, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'One commonly used synonym for training is fitting. This is how an algorithm
+    uses the training data (*x* and *y*) to learn its parameters. All scikit-learn
+    models implement a`fit()`method that takes`x_train`and`y_train`, and `DecisionTreeClassifier`
+    is no different:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By calling the `fit()` method, the `clf` instance is trained and ready to be
+    used for predictions. We then call the`predict()`method on`x_test`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: When predicting, we usually don't know the actual targets (*y*) for our features
+    (*x*). That's why we only provide the `predict()` method here with`x_test`. In
+    this particular case, we happened to know`y_test`; nevertheless, we will pretend
+    that we don't know it for now, and only use it later on for evaluation. As our
+    actual targets are called `y_test`, we will call the predicted ones `y_test_pred`
+    and compare the two later on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Evaluating our predictions
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As we have `y_test_predict`, all we need now is to compare it to`y_test` to
+    check how good our predictions are. If you remember from the previous chapter,
+    there are multiple metrics for evaluating a classifier, such as`precision`,`recall`,
+    and`accuracy`. The Iris dataset is a balanced dataset; it has the same number
+    of instances for each class. Therefore, it is apt to use the accuracy metric here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Calculating the accuracy, as follows, gives us a score of`0.91`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: Did you get a different score than mine? Don't worry. In the *Getting a more
+    reliable score* section, I will explain why the accuracy score calculated here
+    may vary.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Congratulations! You''ve just trained your first supervised learning algorithm.
+    From now on, all the algorithms we are going to use in this book have a similar
+    interface:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `fit()` method takes the *x* and *y* parts of your training data.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The `predict()` method takes *x* only and returns a predicted *y*.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Which features were more important?
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We may now ask ourselves,*Which features did the model find more useful in
+    deciding the iris species?* Luckily,`DecisionTreeClassifier` has a method called
+    `feature_importances_`, which is computed after the classifier is fitted and scores
+    how important each feature is to the model''s decision. In the following code
+    snippet, we will create a DataFrames where we will put the features'' names and
+    their importance together and then sort the features by their importance:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the output we get:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7886cc3b-3c70-4db3-ac76-e483c6f2140e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you will recall, when we printed the dataset's description, the petal length
+    and width values started to correlate highly with the target. They also have high
+    feature importance scores here, which confirms what is stated in the description.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Displaying the internal tree decisions
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We can also print the internal structure of the learned tree using the following
+    code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will print the following text:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you print the complete dataset description, you will notice that toward
+    the end, it says the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: One class is linearly separable from the other two; the latter are NOT linearly
+    separable from each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This means that one class is easier to separate from the other two, while the
+    other two are harder to separate from each other. Now, look at the internal tree's
+    structure. You may notice that in the first step, it decided that anything with
+    a petal width below or equal to `0.8` belongs to class `0` (`Setosa`). Then, for
+    petal widths above `0.8`, the tree kept on branching, trying to differentiate
+    between classes `1` and `2` (`Versicolor` and `Virginica`). Generally, the harder
+    it is to separate classes, the deeper the branching goes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How do decision trees learn?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: It's time to find out how decision trees actually learn in order to configure
+    them. In the internal structure we just printed, the tree decided to use a petal
+    width of `0.8` as its initial splitting decision. This was done because decision
+    trees try to build the smallest possible tree using the following technique.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It went through all the features trying to find a feature (`petal width`, here)
+    and a value within that feature (`0.8`, here) so that if we split all our training
+    data into two parts (one for `petal width ≤ 0.8`, and one for `petal width > 0.8`),
+    we get the purest split possible. In other words, it tries to find a condition
+    where we can separate our classes as much as possible. Then, for each side, it
+    iteratively tries to split the data further using the same technique.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Splitting criteria
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: If we onlyhad two classes, an ideal split would put members of one class on
+    one side and members of the others on the other side. In our case, we succeeded
+    in putting members of class `0` on one side and members of classes `1` and `2`
+    on the other. Obviously, we are not always guaranteed to get such a pure split.
+    As we can see in the other branches further down the tree, we always had a mix
+    of samples from classes `1` and `2` on each side.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having said that, we need a way to measure purity. We need a criterion based
+    on if one split is purer than the other. There are two criteria that scikit-learn
+    uses for classifiers' purity—`gini` and `entropy`—with the `gini` criterion as
+    its default option. When it comes to decision tree regression, there are other
+    criteria that we will come across later on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preventing overfitting
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '"If you look for perfection, you''ll never be content."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Leo Tolstoy
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After the first split, the tree went on to try to separate between the remaining
+    classes; the `Versicolor` and the `Virginica` irises. However, are we really sure
+    that our training data is detailed enough to explain all the nuances that differentiate
+    between the two classes? Isn''t it possible that all those branches are driving
+    the algorithm to learn things that happen to exist in the training data, but will
+    not generalize well enough when faced with future data? Allowing a tree to grow
+    so much results in what is called overfitting. The tree tries to perfectly fit
+    the training data, forgetting that the data it may encounter in the future may
+    be different. To prevent overfitting, the following settings may be used to limit
+    the growth of a tree:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`max_depth`:This is the maximum depth a tree can get to. A lower number means
+    that the tree will stop branching earlier. Setting it to `None` means that the
+    tree will continue to grow until all the leaves are pure or until all the leaves
+    contain fewer than the `min_samples_split` samples.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`min_samples_split`: The minimum number of samples needed in a level to allow
+    further splitting there. A higher number means that the tree will stop branching
+    earlier.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`min_samples_leaf`:**The minimum number of samples needed in a level to allow
+    it to become a leaf node. A leaf node is a node where there are no further splits
+    and where decisions are made. A higher number may have the effect of smoothing
+    the model, especially in regression.**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**One quick way to check for overfitting is to compare the classifier''s accuracy
+    on the test set to its accuracy on the training set. Having a much higher score
+    for your training set compared to the test set is a sign of overfitting. A smaller
+    and more pruned tree is recommended in this case.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If `max_depth` is not set at training time to limit the tree's growth, then
+    alternatively, you can prune the tree after it has been built. Curious readers
+    can check the `cost_complexity_pruning_path()` method of the decision tree and
+    find out how to use it to prune an already-grown tree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Predictions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: At the end of the training process, nodes that aren't split any further are
+    called leaf nodes. Within a leaf node, we may have five samples—four of them from
+    class `1`, one from class `2`, and none from class `0`. Then, at prediction time,
+    if a sample ends up in the same leaf node, we can easily decide that the new sample
+    belongs to class `1` since this leaf node had a 4:1 ratio of its training samples
+    from class `1` compared to the other two classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When we make predictions on the test set, we can evaluate the classifier's accuracy
+    versus the actual labels we have in the test set. Nevertheless, the manner in
+    which we split our data may affect the reliability of the scores we get. In the
+    next section, we will see how to get more reliable scores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting a more reliable score
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The Iris dataset is a small set of just 150 samples. When we randomly split
+    it into training and test sets, we ended up with 45 instances in the test set.
+    With such a small number, we may have variations in the distribution of our targets.
+    For example, when I randomly split the data, I got 13 samples from class `0` and
+    16 samples from each one of the two other classesin my test set. Knowing that
+    predicting class `0` is easier than the other two classes in this particular dataset,
+    we can tell that if I was luckier and had more samples of class `0` in the test
+    set, I'd have had a higher score. Furthermore, decision trees are very sensitive
+    to data changes, and you may get a very different tree with every slight change
+    in your training data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What to do now to get a more reliable score
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'A statistician would say <q>let''s run the whole process of data splitting,
+    training, and predicting, more than once, and get the distribution of the different
+    accuracy scores we get each time</q>. The following code does exactly that for
+    100 iterations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After importing the required modules and defining an `accuracy_scores` list
+    to store the scores we are going get with each iteration, it is time to write
+    a `for` loop to freshly split the data and recalculate the classifier''s accuracy
+    with each iteration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following snippet lets us plot the accuracy''s distribution using a box
+    plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will give us the following graphical analysis of the accuracy. Your results
+    might vary slightlydue to the random split of the training and test sets and the
+    random initial settings of the decision trees. Almost all of the scikit-learn
+    modules support a pseudo-random number generator that can be initialized via a
+    `random_state` hyperparameter. This can be used to enforce code reproducibility.
+    Nevertheless, I deliberately ignored it this time to show how the model''s results
+    may vary from one run to the other, and to show the importance of estimating the
+    distributions of your models'' errors via iterations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b2fcecc8-a3cc-43a5-85ab-bee4e8a38b41.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Box plots are good at showing distributions. Rather than having a single number,
+    we now have an estimation of the best- and the worst-case scenarios of our classifier's
+    performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If, at any point, you do not have access to NumPy, you can still calculate a
+    sample's mean and standard deviation using the `mean()` and `stdev()` methods
+    provided by Python's built-in `statistics` module. It also provides functionalities
+    for calculating the geometric and harmonic mean, as well as the median and quantiles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ShuffleSplit
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Generating different train and test splits is called cross-validation. This
+    helps us have a more reliable estimation of our model's accuracy. What we did
+    in the previous section is one of many cross-validation strategies called repeated
+    random sub-sampling validation, or Monte Carlo cross-validation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In probability theory, the law of large numbers states that if we repeat the
+    same experiment a large number of times, the average of the results obtained should
+    be close to the expected outcome. The Monte Carlo methods make use of random sampling
+    in order to repeat an experiment over and over to reach better estimates for the
+    results, thanks to the law of large numbers. The Monte Carlo methods were made
+    possible due to the existence of computers, and here we use the same method to
+    repeat the training/test split over and over to reach a better estimation of the
+    model's accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'scikit-learn''s `ShuffleSplit` module provides us with the functionality to
+    perform Monte Carlo cross-validation. Rather than us splitting the data ourselves,
+    `ShuffleSplit` gives us lists of indices to use for splitting our data. In the
+    following code, we are going to use the DataFrame''s `loc()` method and the indices
+    we get from `ShuffleSplit`to randomly split the dataset into 100 training and
+    test pairs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Alternatively, we can simplify the preceding code even further by using scikit-learn's`cross_validate`**functionality.
+    This time, we are not event splitting the data into training and test sets ourselves.
+    We will give `cross_validate` the`x`and`y` values for the entire set, and then
+    give it our `ShuffleSplit` instance for it to use internally to split the data.
+    We also give it the classifier and specify what kind of scoring metric to use.
+    When done, it will give us back a list with the calculated test set scores:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**[PRE23]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can plot the resulting series of accuracy scores now to get the same box
+    plot as earlier. Cross-validation is recommended when dealing with a small dataset
+    since a group of accuracy scores will give us a better understanding of the classifier's
+    performance compared to a single score calculated after a single trial.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tuning the hyperparameters for higher accuracy
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now that we have learned how to evaluate the model''s accuracy more reliably
+    using the `ShuffleSplit` cross-validation method, it is time to test our earlier
+    hypothesis: would a smaller tree be more accurate?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is what we are going to do in the following sub sections:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Split the data into training and test sets.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Keep the test side to one side now.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Limit the tree's growth using different values of `max_depth`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: For each `max_depth` setting, we will use the `ShuffleSplit` cross-validation
+    method on the training set to get an estimation of the classifier's accuracy.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Once we decide which value to use for `max_depth`, we will train the algorithm
+    one last time on the entire training set and predict on the test set.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Splitting the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Here is the usual code for splitting the data into training and test sets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: Trying different hyperparameter values
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If we allowed our earlier treeto grow indefinitely, we would get a tree depth
+    of `4`. You can check the depth of a tree by calling`clf.get_depth()`once it is
+    trained. So, it doesn''t make sense to try any `max_depth` values above `4`. Here,
+    we are going to loop over the maximum depths from `1` to `4` and use `ShuffleSplit`
+    to get the classifier''s accuracy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: We called the `cross_validate()` method as we did earlier, giving it the classifier's
+    instance, as well as the `ShuffleSplit` instance. We also defined our evaluation
+    score as `accuracy`. Finally, we print the scores we get with each iteration.
+    We will look more at the printed values in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Comparing the accuracy scores
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Since we have a list of scores for each iteration, we can calculate their mean,
+    or, as we will do here, we will print their 10^(th) and 90^(th) percentiles to
+    get an idea of the accuracy ranges versus each `max_depth`setting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Running the preceding code gave me the following results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: One thing I am sure about now is that a single-level tree (usually called a
+    stub) is not as accurate as deeper trees. In other words, having a single decision
+    based on whether the petal width is less than `0.8` is not enough. Allowing the
+    tree to grow further improves the accuracy, but I can't see many differences between
+    trees of depths `2`, `3`, and `4`. I'd conclude that contrary to my earlier speculations,
+    we shouldn't worry too much about overfitting here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we tried different values for a single parameter, `max_depth`. That's
+    why a simple `for` loop over its different values was feasible. In later chapters,
+    we will see what to do when we need to tune multiple hyperparameters at once to
+    reach a combination that gives the best accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, you can train your model once more using the entire training set and
+    a `max_depth` value of, say, `3`. Then, use the trained model to predict the classes
+    for the test set in order to evaluate your final model. I won't bore you with
+    the code for it this time as you can easily do it yourself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to printing the classifier's decision and descriptive statistics
+    about its accuracy, it is useful to also see its decision boundaries visually.
+    Mapping those boundaries versus the data samples helps us understand why the classifier
+    made certain mistakes. In the next section, we are going to check the decision
+    boundaries we got for the Iris dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing the tree's decision boundaries
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To be able to pick the right algorithm for the problem, it is important to
+    have a conceptual understanding of how an algorithm makes its decision. As we
+    already know by now, decision trees pick one feature at a time and try to split
+    the data accordingly. Nevertheless, it is important to be able to visualize those
+    decisions as well. Let me first plot our classes versus our features, then I will
+    explain further:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5c2e9fe5-3635-4869-968b-cca3102ef337.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: When the tree made a decision to split the data around a petal width of `0.8`,
+    you can think of it as drawing a horizontal line in the right-hand side graph
+    at the value of `0.8`. Then, with every later split, the tree splits the space
+    further using combinations of horizontal and vertical lines. By knowing this,
+    you should not expect the algorithm to use curves or 45-degree lines to separate
+    the classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One trick to plot the decision boundaries that a tree has after it has been
+    trained is to use contour plots. For simplicity, let''s assume we only have two
+    features—petal length and petal width. We then generate almost all the possible
+    values for those two features and predict the class labels for our new hypothetical
+    data. Then, we create a contour plot using those predictions to see the boundaries
+    between the classes. The following function, created by Richard Johanssonof the
+    University of Gothenburg, does exactly that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This time, we will train our classifier using two features only, and then call
+    the preceding function using the newly trained model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Richard Johansson''s functions overlay the contour graph over our samples to
+    give us the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/cb06f70a-1971-4b6c-af62-8b99a2cf0943.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: By seeing the decision boundaries as well as the data samples, you can make
+    better decisions on whether one algorithm is good for the problem at hand.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature engineering
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '"Every man takes the limits of his own field of vision for the limits of the
+    world."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Arthur Schopenhauer
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On seeing the class distribution versus the petal lengths and widths, you may
+    wonder: *what if the decision trees could also draw boundaries that are at 40
+    degrees? Wouldn''t 40-degree boundaries be more apt than those horizontal and
+    vertical jigsaws?*Unfortunately, decision trees cannot do that, but let''s put
+    the algorithm aside for a moment and think about the data instead. How about creating
+    a new axis where the class boundaries change their orientation?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create two new columns—`petal length x width (cm)` and `sepal length
+    x width (cm)`—and see how the class distribution will look:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following code will plot the classes versus the newly derived features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running this code will produce the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/64d6b59e-2a67-4eb3-9178-a5e76bc876de.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This new projection looks better; it makes the data more vertically separable.
+    Nevertheless, the proof of the pudding is still in the eating. So, let's train
+    two classifiers—one on the original features and one on the newly derived features—and
+    see
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'how their accuracies compare. The following code goes through 500 iterations,
+    each time splitting the data randomly, and then training both models, each with
+    its own set of features, and storing the accuracy we get with each iteration:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we can use box plots to compare the accuracies of the two classifiers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we put the top plots side by side to be able to compare them to each
+    other:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9df33baf-3354-44c7-bc30-e30c7c988f9f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Clearly, the derived features helped a bit. Its accuracy is higher on average
+    (`0.96` versus `0.93`), and its lower bound is also higher.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building decision tree regressors
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Decision tree regressors work in a similar fashion to their classifier counterparts.
+    The algorithm splits the data recursively using one feature at a time. At the
+    end of the process, we end up with leaf nodes—that is, nodes where there are no
+    further splits. In the case of a classifier, if, at training time, a leaf node
+    has three instances of class `A` and one instance of class `B`, then at prediction
+    time, if an instance lands in the same leaf node, the classifier decides that
+    it belongs to the majority class (class `A`). In the case of a regressor, if,
+    at training time, a leaf node has three instances of values `12`, `10`, and `8`,then,
+    at prediction time, if an instance lands in the same leaf node, the regressor
+    predicts its value to be `10` (the average of the three values at training time).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Actually, picking the average is not always the best case. It rather depends
+    on the splitting criterion used. In the next section, we are going to see this
+    in more detail with the help of an example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Predicting people's heights
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Say we have two populations. Population `1` has an average height of 155 cm
+    for females, with a standard deviation of `4`, and an average height of 175 cm
+    for males, with a standard deviation of `5`. Population 2 has an average height
+    of 165 cm for females, with a standard deviation of `15`, and an average height
+    of 185 cm for males, with a standard deviation of `12`. We decide to take 200
+    males and 200 females from each population. To be able to simulate this, we can
+    use a function provided by NumPy that draws random samples from a normal (Gaussian)
+    distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the code for generating random samples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'At the moment, we don''t actually care about which population each sample comes
+    from. So, we will use`concatenate`to group all the males and all the females together:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then put this data into a DataFrame (`df_height`) to be able to deal with
+    it easily. There, we also give a label of `1` to females and `2` to males:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s plot our fictional data using histograms to see the height distributions
+    among each gender:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code gives us the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f1e0d999-9406-45ad-ac4b-8ec91eff3917.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As you can see, the resulting distributions are notsymmetrical. Although normal
+    distributions are symmetrical, these artificial distributions are made of two
+    sub-distributions combined. We can use this line of code to see that their mean
+    and median values are not equal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we have the mean and median heights for each group:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c33b936d-270e-47fd-816a-13413360c83c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, we want to predict people''s heights using one feature—their gender. Therefore,
+    we are going to split our data into training and test sets and create our *x*
+    and *y* sets, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Remember that in the case of classifications, the trees use either `gini` or
+    `entropy` to decide the best split at each step during the training process. The
+    goal for these criteria was to find a split where each of the two resulting sub-groups
+    is as pure as possible. In the case of regression, we have a different goal. We
+    want the members of each group to have target values that are as close as possible
+    to the predictions they make. scikit-learn implements two criteria to achieve
+    this goal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Mean squared error** (**MSE or L2**):Say after the split, we get three samples
+    in one group with targets of `5`, `5`, and `8`. We calculate the mean value of
+    these three numbers (`6`). Then, we calculate the squared differences between
+    each sample and the calculated mean—`1`, `1`, and `4`. We then take the mean of
+    these squared differences, which is `2`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Mean absolute error** (**MAE or L1**): Say after the split, we get three
+    samples in one group with targets of `5`, `5`, and `8`. We calculate the median
+    value of these three numbers (`5`). Then, we calculate the absolute differences
+    between each sample and the calculated median—`0`, `0`, and `3`. We then take
+    the mean of these absolute differences, which is `1`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For each possible split at training time, the tree calculates either L1 or L2
+    for each of the expected sub-groups after the split. A split with the minimum
+    L1 or L2 is then chosen at this step. L1 may be preferred sometimes due to its
+    robustness to outliers. The other important difference to keep in mind is that
+    L1 uses median while L2 uses mean in its calculations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If, at training time, we see 10 samples with almost identical features but different
+    targets, they may all end up together in one leaf node. Now, if we use L1 as the
+    splitting criterion when building our regressor, then if we get a sample at prediction
+    time with identical features to the 10 training samples, we should expect the
+    prediction to be close to the median value of the targets of the 10 training samples.
+    Likewise, if L2 is used for building the regressor, we should then expect the
+    prediction of the new sample to be close to the mean value of the targets of the
+    10 training samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s now compare the effect of the splitting criteria on our height dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We get the following two trees depending on the chosen criterion:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: As expected, when MSE was used, the predictions were close to the mean of each
+    gender, while for MAE, the predictions were close to the median.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Of course, we only had one binary feature in our dataset—gender. That's why
+    we had a very shallow tree with a single split (a **stub**). Actually, in this
+    case, we do not even need to train a decision tree; we could have easily calculated
+    the mean heights for males and females and used them as our expected values right
+    away. The decisions made by such a shallow tree are called biased decisions. If
+    we would have allowed each individual to express themselves using more information,
+    rather than just their gender, then we would have been able to make more accurate
+    predictions for each individual.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, just as in the classification trees, we have the same knobs, such as
+    `max_depth`, `min_samples_split`, and `min_samples_leaf`**,** to control the growth
+    of a regression tree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Regressor's evaluation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The very same MSE and MAE scores can also be used to evaluate a regressor''s
+    accuracy. We use them to compare the regressor''s predictions to the actual targets
+    in the test set. Here is the code predicting and evaluating the predictions made:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: Using MSE as a splitting criterion gives us an MSE of `117.2` and an MAE of
+    `8.2`, while using MAE as a splitting criterion gives us an MSE of `123.3`and
+    an MAE of `7.8`. Clearly, using MAE as the splitting criterion gives a lower MAE
+    at test time, and vice versa. In other words, if your aim is to reduce the error
+    of your predictions based on a certain metric, it is advised to use the same metric
+    when growing your tree at the time of training.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Setting sample weights
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Both the decision tree classifiers and the regressors allow us to give more
+    or less emphasis to the individual training samples via setting their weights
+    while fitting. This is a common feature in many estimators, and decision trees
+    are no exception here. To see the effect of sample weights, we are going to give
+    10 times more weight to users above 150 cm versus the remaining users:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Conversely, we can also give more weights to users who are 150 cm and below
+    by changing the `sample_weight` calculations, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: By using the `export_text()` function, as we did in the previous section, we
+    can display the resulting trees. We can see how `sample_weight`**affected their
+    final structures:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**[PRE44]'
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, all samples are given the same weight. Weighting individual samples
+    differently is useful when dealing with imbalanced data or imbalanced business
+    decisions; maybe you can tolerate delaying a shipment for a new customer more
+    than you can do for your loyal ones. In [Chapter 8](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=30&action=edit),
+    *Ensembles – When One Model Is Not Enough*, we will also see how sample weights
+    are an integral part of how the AdaBoost algorithm learns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Decision trees are intuitive algorithms that are capable of performing classification
+    and regression tasks. They allow users to print out their decision rules, which
+    is a plus when communicating the decisions you made to business personnel and
+    non-technical third parties. Additionally, decision trees are easy to configure
+    since they have a limited number of hyperparameters. The two main decisions you
+    need to make when training a decision tree are your splitting criterion and how
+    to control the growth of your tree to have a good balance between *overfitting*
+    and *underfitting*. Your understanding of the limitations of the tree's decision
+    boundaries is paramount in deciding whether the algorithm is good enough for the
+    problem at hand.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we looked at how decision trees learn and used them to classify
+    a well-known dataset. We also learned about the different evaluation metrics and
+    how the size of our data affects our confidence in a model's accuracy. We then
+    learned how to deal with the evaluation's uncertainties using different data-splitting
+    strategies. We saw how to tune the algorithm's hyperparameters for a good balance
+    between overfitting and underfitting. Finally, we built on the knowledge we gained
+    to build decision tree regressors and learned how the choice of a splitting criterion
+    affects our resulting predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I hope this chapter has served as a good introduction to scikit-learn and its
+    consistent interface. With this knowledge at hand, we can move on to our next
+    algorithm and see how it compares to this one. In the next chapter, we will learn
+    about linear models. This set of algorithms has its roots back in the 18^(th)
+    century, and it is still one of the most commonly used algorithms today.*******
+  prefs: []
+  type: TYPE_NORMAL

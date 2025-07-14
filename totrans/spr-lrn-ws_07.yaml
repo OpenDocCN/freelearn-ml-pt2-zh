@@ -1,0 +1,1933 @@
+- en: 7\. Model Evaluation
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Overview
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: This chapter is an introduction to how you can improve a model's performance
+    by using hyperparameters and model evaluation metrics. You will see how to evaluate
+    regression and classification models using a number of metrics and learn how to
+    choose a suitable metric for evaluating and tuning a model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By the end of this chapter, you will be able to implement various sampling techniques
+    and perform hyperparameter tuning to find the best model. You will also be well
+    equipped to calculate feature importance for model evaluation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introduction
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'In the previous chapters, we discussed the two types of supervised learning
+    problems, regression and classification, followed by ensemble models, which are
+    built from a combination of base models. We built several models and discussed
+    how and why they work. However, that is not enough to take a model to production.
+    Model development is an iterative process, and the model training step is followed
+    by validation and updating steps, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.1: Machine learning model development process'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-91L52I4W.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.1: Machine learning model development process'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chapter will explain the peripheral steps in the process shown in the
+    preceding flowchart; we will discuss how to select the appropriate hyperparameters
+    and how to perform model validation using the appropriate error metrics. Improving
+    a model''s performance happens by iteratively performing these two tasks. But
+    why is it important to evaluate your model? Say you''ve trained your model and
+    provided some hyperparameters, made predictions, and found its accuracy. That''s
+    the gist of it, but how do you make sure that your model is performing to the
+    best of its ability? We need to ensure that the performance measure that you''ve
+    come up with is actually representative of the model and that it will indeed perform
+    well on an unseen test dataset. The essential part of making sure that the model
+    is the best version of itself comes after the initial training: the process of
+    evaluating and improving the performance of the model. This chapter will take
+    you through the essential techniques required when it comes to this.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will first discuss why model evaluation is important, and
+    introduce several evaluation metrics for both regression tasks and classification
+    tasks that can be used to quantify the predictive performance of a model. This
+    will be followed by a discussion on hold-out datasets and k-fold cross-validation
+    and why it is imperative to have a test set that is independent of the validation
+    set. After this, we''ll look at tactics we can use to boost the performance of
+    the model. In the previous chapter, we talked about how having a model with a
+    high bias or a high variance can result in suboptimal performance, and how building
+    an ensemble of models can help us build a robust system that makes more accurate
+    predictions without increasing the overall variance. We also mentioned the following
+    as techniques to avoid overfitting our model to the training data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get more data: A highly complex model can easily overfit to a small dataset
+    but may not be able to as easily on a larger dataset.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Dimensionality reduction: Reducing the number of features can help make the
+    model less complex.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Regularization: A new term is added to the cost function in order to adjust
+    the coefficients (especially the high-degree coefficients in linear regression)
+    toward a small value.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we'll introduce learning curves and validation curves as a
+    way to see how variations in training and validation errors allow us to see whether
+    the model needs more data, and where the appropriate level of complexity is. This
+    will be followed by a section on hyperparameter tuning in an effort to boost performance,
+    and a brief introduction to feature importance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'All the relevant code for this chapter can be found here: https://packt.live/2T1fCWM.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Importing the Modules and Preparing Our Dataset
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: In the previous exercises and activities, we used terms such as Mean Absolute
+    Error (MAE) and accuracy. In machine learning terms, these are called evaluation
+    metrics and, in the next sections, we will discuss some useful evaluation metrics,
+    what they are, and how and when to use them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Although this section is not positioned as an exercise, we encourage you to
+    follow through this section carefully by executing the presented code. We will
+    be using the code presented here in the upcoming exercises.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will now load the data and models that we trained as part of Chapter 6, Ensemble
+    Modeling. We will use the stacked linear regression model from Activity 6.01,
+    Stacking with Standalone and Ensemble Algorithms, and the random forest classification
+    model to predict the survival of passengers from Exercise 6.06, Building the Ensemble
+    Model Using Random Forest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need to import the relevant libraries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import pandas as pd
+  prefs: []
+  type: TYPE_NORMAL
+- en: import numpy as np
+  prefs: []
+  type: TYPE_NORMAL
+- en: import pickle
+  prefs: []
+  type: TYPE_NORMAL
+- en: '%matplotlib inline'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import matplotlib.pyplot as plt
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, load the processed data files from Chapter 6, Ensemble Modeling. We will
+    use pandas'' read_csv() method to read in our prepared datasets, which we will
+    use in the exercises in this chapter. First, we''ll read the house price data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: house_prices_reg = \
+  prefs: []
+  type: TYPE_NORMAL
+- en: pd.read_csv('../Datasets/boston_house_prices_regression.csv')
+  prefs: []
+  type: TYPE_NORMAL
+- en: house_prices_reg.head()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.2: First five rows of house_prices'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-RII8SDX9.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.2: First five rows of house_prices'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we''ll read in the Titanic data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: titanic_clf = pd.read_csv('../Datasets/titanic_classification.csv')
+  prefs: []
+  type: TYPE_NORMAL
+- en: titanic_clf.head()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll see the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.3: First five rows of Titanic'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-7X7RBYDH.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.3: First five rows of Titanic'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, load the model files that we will use for the exercises in this chapter
+    by using the pickle library to load them from a binary file:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with open(''../../Saved_Models/titanic_regression.pkl'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: reg = pickle.load(f)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'with open(''../../Saved_Models/random_forest_clf.pkl'', ''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: rf = pickle.load(f)
+  prefs: []
+  type: TYPE_NORMAL
+- en: with open('../../Saved_Models/stacked_linear_regression.pkl',\
+  prefs: []
+  type: TYPE_NORMAL
+- en: '''rb'') as f:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: reg = pickle.load(f)
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, we have successfully loaded the necessary datasets as well as trained
+    machine learning models from our previous exercises and activities in this section.
+    Before starting to use these loaded datasets and models to explore the evaluation
+    metrics, let's first acquire an understanding of different kinds of evaluation
+    metrics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'You can find the files for saved models at the following link: https://packt.live/2vjoSwf.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Evaluation Metrics
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Evaluating a machine learning model is an essential part of any project: once
+    we have allowed our model to learn from the training data, the next step is to
+    measure the performance of the model. We need to find a metric that can not only
+    tell us how accurate the predictions made by the model are, but also allow us
+    to compare the performance of a number of models so that we can select the one
+    best suited for our use case.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Defining a metric is usually one of the first things we should do when defining
+    our problem statement and before we begin the exploratory data analysis, since
+    it's a good idea to plan ahead and think about how we intend to evaluate the performance
+    of any model we build and how to judge whether it is performing optimally. Eventually,
+    calculating the performance evaluation metric will fit into the machine learning
+    pipeline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Needless to say, evaluation metrics will be different for regression tasks and
+    classification tasks, since the output values in the former are continuous, while
+    the outputs in the latter are categorical. In this section, we'll look at the
+    different metrics we can use to quantify the predictive performance of a model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Regression Metrics
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: For an input variable, X, a regression model gives us a predicted value that
+    can take on a range of values. The ideal scenario would be to have the model predict
+    values that are as close as possible to the actual value of y. Therefore, the
+    smaller the difference between the two, the better the model performs. Regression
+    metrics mostly involve looking at the numerical difference between the predicted
+    value and actual value (that is, the residual or error value) for each data point,
+    and subsequently aggregating these differences in some way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s look at the following plot, which plots the actual and predicted values
+    for every point X:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.4: Residuals between actual and predicted outputs in a linear regression
+    problem'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-R47Y9F4G.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.4: Residuals between actual and predicted outputs in a linear regression
+    problem'
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, we can't just find the mean value of overall data points, since there
+    could be data points that have a prediction error that is positive or negative,
+    and the aggregate would ultimately end up canceling out a lot of the errors and
+    severely overestimate the performance of the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Instead, we can consider the absolute error for each data point and find the
+    MAE, which is given by the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.5: MAE'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-HF45QXRY.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.5: MAE'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, yi and ŷi are the actual and predicted values, respectively, for the ith
+    data point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: MAE is a linear scoring function, which means that it gives each residual an
+    equal weight when it aggregates the errors. The MAE can take on any value from
+    zero to infinity and is indifferent to the direction (positive or negative) of
+    errors. Since these are error metrics, a lower value (as close to zero as possible)
+    is usually desirable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In order to not let the direction of the error affect the performance estimate,
+    we can also take the square of the error terms. Taking the mean of the squared
+    errors gives us the Mean Squared Error (MSE):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.6: MSE'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-E2RVLXAK.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.6: MSE'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'While the MAE has the same units as the target variable, y, the units for the
+    MSE will be the squared unit of y, which may make the MSE slightly less interpretable
+    while judging the model in real-world terms. However, if we take the square root
+    of the MSE, we get the Root Mean Squared Error (RMSE):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.7: Root Mean Squared Error'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-TZPF7OIL.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.7: Root Mean Squared Error'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since the errors are squared before they are averaged, having even a few error
+    values that are high can cause the RMSE value to significantly increase. This
+    means that the RMSE is more useful than MAE for judging models in which we want
+    to penalize large errors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since MAE and RMSE have the same units as the target variable, it can be hard
+    to judge whether a particular value of the MAE or RMSE is good or bad, since there
+    is no scale to refer to. A metric that is commonly used to overcome this problem
+    is the R2 Score, or the R-Squared Score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.8: R-squared score'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-BTCJID5U.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.8: R-squared score'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The R2 score has a lower limit of -∞ and an upper limit of 1\. The base model
+    predicts the target variable to be equal to the mean of the target values in the
+    training dataset, μ, mathematically written as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.9: Expression for the mean of the target values in the training
+    dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-KMJDX6RT.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.9: Expression for the mean of the target values in the training dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'And so, for the base model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.10: Expression for the base model target variable'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-01N2DWDR.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.10: Expression for the base model target variable'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keeping this in mind, a negative value of R2 would be one where the trained
+    model makes a prediction that is worse than simply predicting the mean value for
+    all the data, and a value close to 1 would be achieved if the MSE of the model
+    is close to 0.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 7.01: Calculating Regression Metrics'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'In this exercise, we will use the same model and processed dataset that we
+    trained in Activity 6.01, Stacking with Standalone and Ensemble Algorithms, in
+    Chapter 6, Ensemble Modeling, to calculate regression metrics. We will use scikit-learn''s
+    implementation of MAE and MSE:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Before beginning this exercise, make sure you have imported the relevant libraries
+    and models as listed in the Importing the Modules and Preparing Our Dataset section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code for this exercise can be found here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the metric functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.metrics import mean_absolute_error, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: mean_squared_error, r2_score
+  prefs: []
+  type: TYPE_NORMAL
+- en: from math import sqrt
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the loaded model to predict the output on the given data. We will use the
+    same features as we did in Activity 6.01, Stacking with Standalone and Ensemble
+    Algorithms, in Chapter 6, Ensemble Modeling, and use the model to make a prediction
+    on the loaded dataset. The column we saved as y is the target variable, and we
+    will create X and y accordingly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: X = house_prices_reg.drop(columns=['y'])
+  prefs: []
+  type: TYPE_NORMAL
+- en: y = house_prices_reg['y'].values
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred = reg.predict(X)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Calculate the MAE, RMSE, and R2 scores. Let''s print the values of the MAE
+    and the RMSE from the predicted values. Also, print the R2 score for the model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('Mean Absolute Error = {}'\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .format(mean_absolute_error(y, y_pred)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('Root Mean Squared Error = {}'\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .format(sqrt(mean_squared_error(y, y_pred))))
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('R Squared Score = {}'.format(r2_score(y, y_pred)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mean Absolute Error = 2.874084343939712
+  prefs: []
+  type: TYPE_NORMAL
+- en: Root Mean Squared Error = 4.50458397908091
+  prefs: []
+  type: TYPE_NORMAL
+- en: R Squared Score = 0.7634986504091822
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that the RMSE is higher than the MAE. This shows that there are some
+    data points where the residuals are particularly high, which is being highlighted
+    by the larger RMSE value. But the R2 score is close to 1, indicating that the
+    model actually has close to ideal performance compared to a base model, which
+    would predict a mean value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to https://packt.live/3epdfp3.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at https://packt.live/3hMLBnY. You must
+    execute the entire Notebook in order to get the desired result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classification Metrics
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: For an input variable, X, a classification task gives us a predicted value,
+    which can take on a limited set of values (two in the case of binary classification
+    problems). Since the ideal scenario would be to predict a class for each data
+    point that is the same as the actual class, there is no measure of how close or
+    far the predicted class is from the actual class. Therefore, to judge the model's
+    performance, it would be as simple as determining whether the model predicted
+    the class correctly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Judging a classification model''s performance can be done in two ways: using
+    numerical metrics, or by plotting a curve and looking at the shape of the curve.
+    Let''s explore both of these options in greater detail.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Numerical Metrics
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'The simplest and most basic way to judge the performance of the model is to
+    calculate the proportion of the correct predictions to the total number of predictions,
+    which gives us the accuracy, as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.11: Accuracy'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-LTXKNB1V.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.11: Accuracy'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although the accuracy metric is the same irrespective of the number of classes,
+    the next few metrics are discussed keeping in mind a binary classification problem.
+    Additionally, accuracy may not be the best metric to judge the performance of
+    a classification task in many cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s look at an example of fraud detection: say the problem statement is
+    to detect whether a particular email is fraudulent. Our dataset, in this case,
+    is highly skewed (or imbalanced, that is, there are many more data points belonging
+    to one class compared to the other class), with 100 out of 10,000 emails (1% of
+    the total) having been classified as fraudulent (having class 1). Say we build
+    two models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first model simply predicts each email as not being fraud, that is, each
+    of the 10,000 emails is classified with class 0\. In this case, 9,900 of the 10,000
+    were classified correctly, which means the model has 99% accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The second model predicts the 100 fraud emails as being fraud, but also predicts
+    another 100 emails incorrectly as fraud. In this case as well, 100 data points
+    were misclassified out of 10,000, and the model has an accuracy level of 99%.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'How do we compare these two models? The purpose of building a fraud detection
+    model is to allow us to know how well the fraud was detected: it matters more
+    that the fraudulent emails were correctly classified than if non-fraudulent emails
+    were classified as fraudulent. Although both the models were equally high in accuracy,
+    the second was actually more effective than the first.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since this cannot be captured using accuracy, we need the confusion matrix,
+    a table with n different combinations of predicted and actual values, where n
+    is the number of classes. The confusion matrix essentially gives us a summary
+    of the prediction results of a classification problem. Figure 7.12 shows an example
+    confusion matrix for a binary classification problem:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.12: Confusion matrix'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-U9FWM5QS.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.12: Confusion matrix'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since it is a binary classification problem, the preceding confusion matrix
+    can be viewed directly as a table of confusion, in other words, a matrix of true
+    positives, true negatives, false positives, and false negatives, as shown in Figure
+    7.13\. The table of confusion is always 2 x 2 in size, regardless of binary or
+    multiclass classification. In the case of multiclass classification, if we use
+    the one-versus-all classification approach, then there will be as many tables
+    of confusion as the number of classes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.13: Table of confusion'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-QJ73DZR8.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.13: Table of confusion'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is what the terms used in the table of confusion mean:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'True positives and true negatives: These are the counts of the correctly predicted
+    data points in the positive and negative classes, respectively.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'False positives: These are also known as Type 1 errors and refer to the count
+    of the data points that actually belong to the negative class but were predicted
+    to be positive. Continuing from the previous example, a false positive case would
+    be if a normal email is classified as a fraudulent email.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'False negatives: These are also known as Type 2 errors and refer to the count
+    of the data points that actually belong to the positive class but were predicted
+    to be negative. An example of a false negative case would be if a fraudulent email
+    was classified as not being one.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Two extremely important metrics can be derived from a confusion matrix: precision
+    and recall:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.14: Precision'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-U4FYMQ8E.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.14: Precision'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.15: Recall'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-3A2JB47P.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.15: Recall'
+  prefs: []
+  type: TYPE_NORMAL
+- en: While precision tells us how many of the predicted positives were actually positive
+    (from the results the model says are relevant, how many are actually relevant?),
+    recall tells us how many of the actual positives were correctly predicted to be
+    positive (from the real relevant results, how many are included in the model's
+    list of relevant results?). These two metrics are especially useful when there
+    is an imbalance between the two classes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There is usually a trade-off between the precision and recall of a model: if
+    you have to recall all the relevant results, the model will generate more results
+    that are not accurate, thereby lowering the precision. On the other hand, having
+    a higher percentage of relevant results from the generated results would involve
+    including as few results as possible. In most cases, you would give a higher priority
+    to either the precision or the recall, and this entirely depends on the problem
+    statement. For example, since it matters more that all the fraudulent emails are
+    correctly classified, recall would be an important metric that would need to be
+    maximized.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The next question that arises is how we take both precision and recall, evaluating
+    our model using a single number instead of balancing two separate metrics. The
+    F1 score combines the two into a single number that can be used for a fair judgment
+    of the model and is equal to the harmonic mean of precision and recall:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.16: F1 score'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-1WZ3SX0O.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.16: F1 score'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The value of the F1 score will always lie between 0 (if either precision or
+    recall is 0) and 1 (if both precision and recall are 1). The higher the score,
+    the better the model''s performance is said to be. The F1 score allows equal weightage
+    to both measures. It is a specific example of the Fβ metric, where β can be adjusted
+    to give more weight to either of the two parameters (recall or precision score)
+    using the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.17: F beta score'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-D8FPG7UG.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.17: F beta score'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A value of β < 1 focuses more on precision, while taking β > 1 focuses more
+    on recall. The F1 score takes β = 1 to give both equal weight.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Curve Plots
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Sometimes, instead of predicting the class, we have the class probabilities
+    at our disposal. Say, in a binary classification task, the class probabilities
+    of both the positive (class A) and negative (class B) classes will always add
+    up to unity (or 1), which means that if we take the classification probability
+    as equal to the probability of class A and apply a threshold, we can essentially
+    use it as a cut-off value to either round up (to 1) or down (to 0), which will
+    give the output class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Usually, by varying the threshold, we can get data points that have classification
+    probabilities closer to 0.5 from one class to another. For example, with a threshold
+    of 0.5, a data point having a probability of 0.4 would be assigned class B and
+    a data point having probability 0.6 would be assigned class A. But if we change
+    the threshold to 0.35 or 0.65, both those data points would be classified as the
+    other class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As it turns out, varying the probability threshold changes the precision and
+    recall values and this can be captured by plotting the precision-recall curve.
+    The plot has precision on the Y axis and recall on the X axis, and for a range
+    of thresholds starting from 0 to 1 plot each (recall, precision) point. Connecting
+    these points gives us the curve. The following graph provides an example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.18: Precision-recall curve'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-D9L0M4OZ.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.18: Precision-recall curve'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We know that in an ideal case, the values of precision and recall will be unity.
+    This means that upon increasing the threshold from 0 to 1, the precision would
+    stay constant at 1, but the recall would increase from 0 to 1 as more and more
+    (relevant) data points would be classified correctly. Thus, in an ideal case,
+    the precision-recall curve would essentially just be a square and the Area Under
+    the Curve (AUC) would be equal to one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thus, we can see that, as with the F1 score, the AUC is another metric derived
+    from the precision and recall behavior that uses a combination of their values
+    to evaluate the performance of the model. We want the model to achieve an AUC
+    as high and close to 1 as possible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Receiver Operating Characteristic (ROC) curve is another technique used
+    for visualizing the performance of a classification model. The ROC curve plots
+    the relationship between the True Positive Rate (TPR) on the Y axis and the False
+    Positive Rate (FPR) on the X axis across a varying classification probability
+    threshold. TPR is exactly the same as the recall (and is also known as the sensitivity
+    of the model), and FPR is an equal complement of the specificity (that is, 1 –
+    FPR = Specificity); both can be derived from the confusion matrix using these
+    formulas:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.19: True positive rate'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-RJ4GSRCG.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.19: True positive rate'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.20: False positive rate'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-2SYKGQPB.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.20: False positive rate'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following diagram shows an example of an ROC curve, plotted in the same
+    way as the precision-recall curve, by varying the probability threshold such that
+    each point on the curve represents a (TPR, FPR) data point corresponding to a
+    specific probability threshold:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.21: ROC curve'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-5EWLE67F.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.21: ROC curve'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ROC curves are more useful when the classes are fairly balanced, since they
+    tend to represent a favorable output of the model on datasets with a class imbalance
+    via their use of true negatives in the false positive rate in the ROC curve (which
+    is not present in the precision-recall curve).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 7.02: Calculating Classification Metrics'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'In this exercise, we will use the random forest model we trained in Chapter
+    6, Ensemble Modeling, and use its predictions to generate the confusion matrix
+    and calculate the precision, recall, and F1 scores as a way of rating our model.
+    We will use scikit-learn''s implementations to calculate these metrics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Before beginning this exercise, make sure you have imported the relevant libraries
+    and models as listed in the Importing the Modules and Preparing Our Dataset section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the relevant libraries and functions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.metrics import (accuracy_score, confusion_matrix, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: precision_score, recall_score, f1_score)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the model to predict classes for all data points. We will use the same
+    features as we did earlier and use the random forest classifier to make a prediction
+    in relation to the loaded dataset. Every classifier in scikit-learn has a .predict_proba()
+    function, which we will use here along with the standard .predict() function to
+    give us the class probabilities and the classes, respectively:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: X = titanic_clf.iloc[:, :-1]
+  prefs: []
+  type: TYPE_NORMAL
+- en: y = titanic_clf.iloc[:, -1]
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred = rf.predict(X)
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred_probs = rf.predict_proba(X)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Calculate the accuracy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('Accuracy Score = {}'.format(accuracy_score(y, y_pred)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Accuracy Score = 0.6251402918069585
+  prefs: []
+  type: TYPE_NORMAL
+- en: An accuracy score of 62.5% is not that great, especially considering the fact
+    that flipping a coin for guessing each output would result in an accuracy of 50%.
+    However, the goal of the current exercise is to get an understanding of how metrics
+    work. Hence, after noticing that our classifier doesn't really do well in terms
+    of accuracy, we move on to some other metrics that will help us to analyze the
+    model performance in more detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Print the confusion matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(confusion_matrix(y_pred=y_pred, y_true=y))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.22: Confusion matrix'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-882W286D.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.22: Confusion matrix'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we can see that the model seems to have a high number of false negatives,
+    which means that we can expect the recall value for this model to be extremely
+    low. Similarly, since the count of the false positives is just one, we can expect
+    the model to have high precision.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Calculate the precision and recall:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('Precision Score = {}'.format(precision_score(y, y_pred)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('Recall Score = {}'.format(recall_score(y, y_pred)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Precision Score = 0.9
+  prefs: []
+  type: TYPE_NORMAL
+- en: Recall Score = 0.02631578947368421
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Calculate the F1 score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('F1 Score = {}'.format(f1_score(y, y_pred)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: F1 Score = 0.05113636363636364
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that, since the recall is extremely low, this is affecting the F1
+    score as well, making it close to zero.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to https://packt.live/2V6mbYQ.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at https://packt.live/37XirOr. You must
+    execute the entire Notebook in order to get the desired result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have talked about the metrics that we can use to measure the predictive
+    performance of the model, let's talk about validation strategies, in which we
+    will use a metric to evaluate the performance of the model in different cases
+    and situations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Splitting a Dataset
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: A common mistake made when determining how well a model is performing is to
+    calculate the prediction error on the data that the model was trained on and conclude
+    that a model performs really well on the basis of a high prediction accuracy on
+    the training dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This means that we are trying to test the model on data that the model has already
+    seen, that is, the model has already learned the behavior of the training data
+    because it was exposed to it—if asked to predict the behavior of the training
+    data again, it would undoubtedly perform well. And the better the performance
+    on the training data, the higher the chances that the model knows the data too
+    well, so much so that it has even learned the noise and behavior of outliers in
+    the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, high training accuracy results in a model having high variance, as we saw
+    in the previous chapter. In order to get an unbiased estimate of the model's performance,
+    we need to find its prediction accuracy on data it has not already been exposed
+    to during training. This is where the hold-out dataset comes into the picture.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hold-Out Data
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The hold-out dataset refers to a sample of the dataset that has been held back
+    from training the model on and is essentially unseen by the model. The hold-out
+    data points will likely contain outliers and noisy data points that behave differently
+    from those in the training dataset, given that noise is random. Thus, calculating
+    the performance on the hold-out dataset would allow us to validate whether the
+    model is overfitting or not, as well as give us an unbiased view of the model's
+    performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We began our previous chapter by splitting the Titanic dataset into training
+    and validation sets. What is this validation dataset, and how is it different
+    from a test dataset? We often see the terms validation set and test set used interchangeably—although
+    they both characterize a hold-out dataset, there are some differences in purpose:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Validation data: After the model learns from the training data, its performance
+    is evaluated on the validation dataset. However, in order to get the model to
+    perform the best it can, we need to fine-tune the model and iteratively evaluate
+    the updated model''s performance repeatedly, and this is done on the validation
+    dataset. The fine-tuned version of the model that performs best on the validation
+    dataset is usually chosen to be the final model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The model is therefore exposed to the validation dataset multiple times, at
+    each iteration of improvement, although it does not essentially learn from the
+    data. It can be said that the validation set does affect the model, although indirectly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Test data: The final model that was chosen is now evaluated on the test dataset.
+    The performance measured on this dataset will be an unbiased measure that is reported
+    as the final performance metric of the model. This final evaluation is done once
+    the model has been completely trained on the combined training and validation
+    datasets. No training or updating of the model is performed after this metric
+    has been calculated.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This means that the model is exposed to the test dataset only once, when calculating
+    the final performance metric.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It should be kept in mind that the validation dataset should never be used
+    to evaluate the final performance of the model: our estimate of the true performance
+    of a model will be positively biased if the model has seen and been modified subsequently
+    in an effort to specifically improve performance in relation to the validation
+    set.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having a single hold-out validation dataset does have some limitations, however
+    since the model is only validated once in each iteration of improvement, it might
+    be difficult to capture the uncertainty in prediction using this single evaluation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dividing the data into training and validation sets decreases the size of the
+    data upon which the model is trained, and this can lead to the model having a
+    high variance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The final model may overfit to this validation set since it was tuned in order
+    to maximize performance on this dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These challenges can be overcome if we use a validation technique called k-fold
+    cross-validation instead of using a single validation dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: K-Fold Cross-Validation
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'K-fold cross-validation is a validation technique that helps us get an unbiased
+    estimate of the model''s performance by essentially rotating the validation set
+    in k folds. This is how it works:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, we choose the value of k and divide the data into k subsets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, we set aside the first subset as the validation set and use the remaining
+    data to train the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We measure the performance of the model on the validation subset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Then, we set aside the second subset as the validation subset and repeat the process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once we have done this k times, we aggregate the performance metric values over
+    all the folds and present the final metric.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following figure explains this visually:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.23: K-fold cross-validation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-9PFF1KHD.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.23: K-fold cross-validation'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although this method of validation is more computationally expensive, the benefits
+    outweigh the costs. This approach makes sure that the model is validated on each
+    example in the training dataset exactly once and that the performance estimate
+    we achieve in the end is not biased in favor of a validation dataset, especially
+    in the case of small datasets. A special case is leave-one-out cross-validation,
+    where the value of k is equal to the number of data points.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sampling
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Now that we''ve looked at the strategies for splitting the dataset for training
+    and validating the model, let''s discuss how to allocate data points to these
+    splits. There are two ways we can sample the data in the splits, and these are
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Random sampling: This is as simple as allocating random samples from the overall
+    dataset into training, validation, and/or test datasets. Randomly splitting the
+    data only works when all the data points are independent of each other. For example,
+    random splitting would not be the way to go if the data was in the form of a time
+    series, since the data points are ordered, and each depends on the previous one.
+    Randomly splitting the data would destroy that order and not take into account
+    this dependence. One common real-world example where random sampling could be
+    used to split training and test datasets is for the handwritten digits classification
+    task, because in this case, all data samples (images of handwritten digits) are
+    independent of one another and data is roughly equally distributed among all 10
+    classes (digits).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Stratified sampling: This is a way to ensure that each subset has the same
+    distribution of values of the target variable as the original dataset. For example,
+    if the original dataset has two classes in the ratio 3:7, stratified sampling
+    ensures that each subset will also contain the two classes in the ratio 3:7.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stratified sampling is important since testing our model on a dataset with a
+    different distribution of target values from the dataset on which the model was
+    trained can give us a performance estimate that is not representative of the model's
+    actual performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A real-life example where this sampling technique is used is fraud detection
+    in financial transactions. Because frauds occur rarely, the imbalance between
+    the FRAUD and NOT_FRAUD classes is huge. In order to split 1,000 financial transactions,
+    of which 5 are fraudulent, into training and test sets for the fraud detection
+    task, we must use stratified sampling. If we don't, then all 5 fraudulent samples
+    might end up in the training set (or test set), which will prevent us from performing
+    any useful validation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The size of the train, validation, and test samples also plays an important
+    role in the model evaluation process. Keeping aside a large dataset on which to
+    test the final performance of the model will help us get an unbiased estimate
+    of the model's performance and reduce the variance in prediction, but if the test
+    set is so large that it compromises the model's ability to train due to a lack
+    of training data, this will severely affect the model as well. This is a consideration
+    that is especially relevant for smaller datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 7.03: Performing K-Fold Cross-Validation with Stratified Sampling'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'In this exercise, we''ll implement K-fold cross-validation with stratified
+    sampling on scikit-learn''s random forest classifier. The StratifiedKFold class
+    in scikit-learn implements a combination of cross-validation and sampling together
+    in one class, and we will use this in our exercise:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Before beginning this exercise, make sure you have imported the relevant libraries
+    and models as listed in the Importing the Modules and Preparing Our Dataset section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the relevant classes. We will import scikit-learn''s StratifiedKFold
+    class, which is a variation of KFold that returns stratified folds, along with
+    RandomForestClassifier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.metrics import accuracy_score
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.model_selection import StratifiedKFold
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.ensemble import RandomForestClassifier
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Prepare data for training and initialize the k-fold object. Here, we will use
+    five folds to evaluate the model, and hence will give the n_splits parameter a
+    value of 5:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: X = titanic_clf.iloc[:, :-1].values
+  prefs: []
+  type: TYPE_NORMAL
+- en: y = titanic_clf.iloc[:, -1].values
+  prefs: []
+  type: TYPE_NORMAL
+- en: skf = StratifiedKFold(n_splits=5)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Train a classifier for each fold and record the score. The functioning of the
+    StratifiedKFold class is similar to the KFold class that we used in the previous
+    chapter, Chapter 6, Ensemble Modeling in Exercise 6.06, Building a Stacked Model.
+    For each of the five folds, we will train on the other four folds and predict
+    on the fifth fold, and find the accuracy score for predictions in relation to
+    the fifth fold. As we saw in the previous chapter, the skf.split() function takes
+    the dataset to split as input and returns an iterator comprising the index values
+    used to subdivide the training data for training and validation for each row:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: scores = []
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'for train_index, val_index in skf.split(X, y):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: X_train, X_val = X[train_index], X[val_index]
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_train, y_val = y[train_index], y[val_index]
+  prefs: []
+  type: TYPE_NORMAL
+- en: rf_skf = RandomForestClassifier(**rf.get_params())
+  prefs: []
+  type: TYPE_NORMAL
+- en: rf_skf.fit(X_train, y_train)
+  prefs: []
+  type: TYPE_NORMAL
+- en: y_pred = rf_skf.predict(X_val)
+  prefs: []
+  type: TYPE_NORMAL
+- en: scores.append(accuracy_score(y_val, y_pred))
+  prefs: []
+  type: TYPE_NORMAL
+- en: scores
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.24: Scores using the random forest classifier'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-G9XNLB0R.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.24: Scores using the random forest classifier'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Print the aggregated accuracy score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print('Mean Accuracy Score = {}'.format(np.mean(scores)))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mean Accuracy Score = 0.7105606912862568
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to https://packt.live/316TUF5.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at https://packt.live/2V6JilY. You must
+    execute the entire Notebook in order to get the desired result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thus, we have demonstrated how we can use k-fold cross-validation to have a
+    robust assessment of model performance. And we use stratified sampling in the
+    preceding approach that ensures that the training and validation sets have similar
+    class distribution. Next, we will focus on how to improve model performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Performance Improvement Tactics
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Performance improvement for supervised machine learning models is an iterative
+    process, and a continuous cycle of updating and evaluation is usually required
+    to get the perfect model. While the previous sections in this chapter dealt with
+    the evaluation strategies, this section will talk about model updating: we will
+    discuss some ways we can determine what our model needs to give it that performance
+    boost, and how to effect that change in our model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Variation in Train and Test Errors
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: In the previous chapter, we introduced the concepts of underfitting and overfitting,
+    and mentioned a few ways to overcome them, later introducing ensemble models.
+    But we didn't talk about how to identify whether our model was underfitting or
+    overfitting to the training data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's usually useful to look at the learning and validation curves.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Learning Curve
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The learning curve shows the variation in the training and validation errors
+    with the training data increasing in size. By looking at the shape of the curves,
+    we can get a good idea of whether more data will benefit the modeling and possibly
+    improve the model's performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s look at the following figure: the dotted curve represents the validation
+    error, and the solid curve represents the training error. The plot on the left
+    shows the two curves converging to an error value that is quite high. This means
+    that the model has a high bias and adding more data isn''t likely to affect the
+    model''s performance. So instead of wasting time and money collecting more data,
+    all we need to do is increase model complexity.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'On the other hand, the plot on the right shows a significant difference between
+    the training and test errors, even with an increasing number of data points in
+    the training set. The wide gap indicates a high variance in the system, which
+    means the model is overfitting. In this case, adding more data points will probably
+    help the model generalize better, as you can see in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.25: Learning curve for increasing data size'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-LBZS46E0.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.25: Learning curve for increasing data size'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But how will we recognize the perfect learning curve? When we have a model
+    with low bias and low variance, we will see a curve like the one shown in the
+    following figure. It shows a low training error (low bias) as well as a low gap
+    between the validation and training curves (low variance) as they converge. In
+    practice, the best possible learning curves we can see are those that converge
+    to the value of an irreducible error value (which exists due to noise and outliers
+    in the dataset), as shown in the following figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.26: Variation in training and validation error with an increasing
+    training data size for a low bias and variance model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-5EK0XCQE.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.26: Variation in training and validation error with an increasing
+    training data size for a low bias and variance model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Validation Curve
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'As we have discussed previously, the goal of a machine learning model is to
+    be able to generalize to unseen data. Validation curves allow us to find the ideal
+    point between an underfitted and an overfitted model where the model would generalize
+    well. In the previous chapter, we talked a bit about how model complexity affects
+    prediction performance: we said that as we move from an overly simplistic to an
+    overly complex model, we go from having an underfitted model with high bias and
+    low variance to an overfitted model with low bias and high variance.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A validation curve shows the variation in training and validation error with
+    a varying value of a model parameter that has some degree of control over the
+    model''s complexity—this could be the degree of the polynomial in linear regression,
+    or the depth of a decision tree classifier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.27: Variation in training and validation with increasing model complexity'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-1MWNFP2X.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.27: Variation in training and validation with increasing model complexity'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The preceding figure shows how the validation and training error will vary with
+    model complexity (of which the model parameter is an indicator). We can also see
+    how the point in between the shaded regions is where the total error would be
+    at a minimum, at the sweet spot between underfitting and overfitting. Finding
+    this point will help us find the ideal value of the model's parameters that will
+    help build a model with low bias as well as low variance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hyperparameter Tuning
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'We''ve talked about hyperparameter tuning several times previously. Now, let''s
+    discuss why it''s so important. First, it should be noted that model parameters
+    are different from model hyperparameters: while the former are internal to the
+    model and are learned from the data, the latter define the architecture of the
+    model itself.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Examples of hyperparameters include the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The degree of polynomial features to be used for a linear regressor
+  prefs: []
+  type: TYPE_NORMAL
+- en: The maximum depth allowed for a decision tree classifier
+  prefs: []
+  type: TYPE_NORMAL
+- en: The number of trees to be included in a random forest classifier
+  prefs: []
+  type: TYPE_NORMAL
+- en: The learning rate used for the gradient descent algorithm
+  prefs: []
+  type: TYPE_NORMAL
+- en: The design choices that define the architecture of the model can make a huge
+    difference in how well the model performs. Usually, the default values for the
+    hyperparameters work, but getting the perfect combination of values for the hyperparameters
+    can really give the predictive power of the model a boost as the default values
+    may be completely inappropriate for the problem we are trying to model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following diagram, we see how varying the values of two hyperparameters
+    can cause such a difference in the model score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.28: Variation in model score (Z axis) across the values of two model
+    parameters (the X and Y axes)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-2PLE7KLZ.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.28: Variation in model score (Z axis) across the values of two model
+    parameters (the X and Y axes)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding that perfect combination by exploring a range of possible values is
+    what is referred to as hyperparameter tuning. Since there is no loss function
+    that we can use to maximize the model performance, tuning the hyperparameters
+    generally just involves experimenting with different combinations and choosing
+    the one that performs best during validation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'There are a few ways in which we can go about tuning our model''s hyperparameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Hand-tuning: When we manually choose the values of our hyperparameters, this
+    is known as hand-tuning. It is usually inefficient, since solving a high-dimensional
+    optimization problem by hand can not only be slow, but also would not allow the
+    model to reach its peak performance as we probably wouldn''t try out every single
+    combination of hyperparameter values.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Grid search: Grid search involves training and evaluating a model for each
+    combination of the hyperparameter values provided and selecting the combination
+    that produces the best performing model. Since this involves performing an exhaustive
+    sampling of the hyperparameter space, it is quite computationally speaking and,
+    hence, inefficient.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Random search: While the first method was deemed inefficient because too few
+    combinations were tried, the second one was deemed so because too many combinations
+    were tried. Random search aims to solve this problem by selecting a random subset
+    of hyperparameter combinations from the grid (specified previously), and training
+    and evaluating a model just for those. Alternatively, we can also provide a statistical
+    distribution for each hyperparameter from which the values can be randomly sampled.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The logic behind random search was proved by Bergstra and Bengio, which states
+    that if at least 5% of the points on the grid yield a close-to-optimal solution,
+    then random search with 60 trials will find that region with a probability of
+    95%.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note:'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: You can read the paper by Bergstra and Bengio at http://www.jmlr.org/papers/v13/bergstra12a.html.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Bayesian optimization: The previous two methods involved independently experimenting
+    with combinations of hyperparameter values and recording the model performance
+    for each. However, Bayesian optimization iterates over experiments sequentially
+    and allows us to use the results of a previous experiment to improve the sampling
+    method for the next experiment.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 7.04: Hyperparameter Tuning with Random Search'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'In this exercise, we will perform hyperparameter tuning with the random search
+    method. We will define a grid of hyperparameter ranges and randomly sample from
+    the grid using the RandomizedSearchCV method. We will also be performing K-fold
+    cross-validation with each combination of values. This exercise is a continuation
+    of Exercise 7.03, Performing K-Fold Cross-Validation with Stratified Sampling:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the class for random search:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.ensemble import RandomForestClassifier
+  prefs: []
+  type: TYPE_NORMAL
+- en: from sklearn.model_selection import RandomizedSearchCV
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Prepare data for training and initialize the classifier. Here, we will initialize
+    our random forest classifier without passing any arguments, since this is just
+    a base object that will be instantiated for each grid point on which to perform
+    the random search:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: X = titanic_clf.iloc[:, :-1].values
+  prefs: []
+  type: TYPE_NORMAL
+- en: y = titanic_clf.iloc[:, -1].values
+  prefs: []
+  type: TYPE_NORMAL
+- en: rf_rand = RandomForestClassifier()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'def report(results, max_rank=3):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'for rank in range(1, max_rank+1):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: results_at_rank = np.flatnonzero\
+  prefs: []
+  type: TYPE_NORMAL
+- en: (results['rank_test_score'] == i)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'def report(results, n_top=3):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'for i in range(1, n_top + 1):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: candidates = np.flatnonzero\
+  prefs: []
+  type: TYPE_NORMAL
+- en: (results['rank_test_score'] == i)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'for candidate in candidates:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'print("Model with rank: {0}".format(i))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'print("Mean validation score: {0:.3f} (std: {1:.3f})"\'
+  prefs: []
+  type: TYPE_NORMAL
+- en: .format(results['mean_test_score'][candidate], \
+  prefs: []
+  type: TYPE_NORMAL
+- en: results['std_test_score'][candidate]))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'print("Parameters: {0}".format(results[''params'']\'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[candidate]))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: print("")
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Specify the parameters to sample from. Here, we will list the different values
+    for each hyperparameter that we would like to have in the grid:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'param_dist = {"n_estimators": list(range(10,210,10)), \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"max_depth": list(range(3,20)), \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"max_features": list(range(1, 10)), \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"min_samples_split": list(range(2, 11)), \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"bootstrap": [True, False], \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"criterion": ["gini", "entropy"]}'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run a randomized search. We initialize the random search object with the total
+    number of trials we want to run, the parameter values dictionary, the scoring
+    function, and the number of folds in the K-fold cross-validation. Then, we call
+    the .fit() function to perform the search:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: n_iter_search = 60
+  prefs: []
+  type: TYPE_NORMAL
+- en: random_search = RandomizedSearchCV(rf_rand, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: param_distributions=param_dist, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: scoring='accuracy', \
+  prefs: []
+  type: TYPE_NORMAL
+- en: n_iter=n_iter_search, cv=5)
+  prefs: []
+  type: TYPE_NORMAL
+- en: random_search.fit(X, y)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.29: Output for RandomizedSearchCV'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-VHCZRJC2.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.29: Output for RandomizedSearchCV'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Print the scores and hyperparameters for the top five models. Convert the results
+    dictionary into a pandas DataFrame and sort the values by rank_test_score. Then,
+    for the first five rows, print the rank, mean validation score, and the hyperparameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: results = pd.DataFrame(random_search.cv_results_)\
+  prefs: []
+  type: TYPE_NORMAL
+- en: .sort_values('rank_test_score')
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'for i, row in results.head().iterrows():'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'print("Model rank: {}".format(row.rank_test_score))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'print("Mean validation score: {:.3f} (std: {:.3f})"\'
+  prefs: []
+  type: TYPE_NORMAL
+- en: .format(row.mean_test_score, row.std_test_score))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'print("Model Hyperparameters: {}\n".format(row.params))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.30: Top five models’ scores and hyperparameters'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-AFPFRK4C.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.30: Top five models'' scores and hyperparameters'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generate the report for random search cv results
+  prefs: []
+  type: TYPE_NORMAL
+- en: report(random_search.cv_results_)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.31: Report for random search cv results'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-ZKVL6UYV.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.31: Report for random search cv results'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to https://packt.live/314tqUX.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at https://packt.live/2V3YC2z. You must
+    execute the entire Notebook in order to get the desired result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that the model that performs best has only 70 trees, compared to
+    the 160+ trees in the models ranked 2 to 7\. Also, the model ranked 5 only has
+    10 trees and still has a performance comparable to that of the more complex models.
+    This demonstrates that the number of trees in a random forest model is not solely
+    indicative of how well the model performs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A model''s performance is impacted by other factors, including the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How many maximum features are used for a tree (max_features)
+  prefs: []
+  type: TYPE_NORMAL
+- en: How descriptive are the features selected for each tree
+  prefs: []
+  type: TYPE_NORMAL
+- en: How distinct are those feature sets across trees
+  prefs: []
+  type: TYPE_NORMAL
+- en: How many data samples are used to train each tree
+  prefs: []
+  type: TYPE_NORMAL
+- en: How many decisions a data instance goes through in a decision tree (max_depth)
+  prefs: []
+  type: TYPE_NORMAL
+- en: How many minimum samples are allowed in a tree leaf (min_samples_split) and
+    so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature Importance
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'While it is essential to focus on model performance, it is also important to
+    understand how the features in our model contribute to the prediction:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need to be able to explain the model and how different variables affect the
+    prediction to the relevant stakeholders who might demand insight into why our
+    model is successful.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The data might be biased and training a model on this data could hurt the model's
+    performance and result in a biased model evaluation, in which case the ability
+    to interpret the model by finding the important features and analyzing them will
+    help debug the performance of the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to the previous point, it must be noted that some model biases might
+    just be socially or legally unacceptable. For example, if a model works well because
+    it implicitly places high importance on a feature based on ethnicity, this might
+    cause issues.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Besides these points, finding feature importance can also help in feature selection.
+    If the data has high dimensionality and the trained model has high variance, removing
+    features that have low importance is one way to achieve lowered variance through
+    dimensionality reduction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Exercise 7.05: Feature Importance Using Random Forest'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: In this exercise, we will find the feature importance from the random forest
+    model we loaded earlier. This exercise is a continuation of Exercise 7.04, Hyperparameter
+    Tuning with Random Search.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Find feature importance. Let''s find the feature importance and save it in
+    a pandas DataFrame with an index equal to the column names, and sort this DataFrame
+    in descending order:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'feat_imps = pd.DataFrame({''importance'': rf.feature_importances_}, \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: index=titanic_clf.columns[:-1])
+  prefs: []
+  type: TYPE_NORMAL
+- en: feat_imps.sort_values(by='importance', ascending=False, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: inplace=True)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Plot the feature importance as a bar plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: feat_imps.plot(kind='bar', figsize=(10,7))
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.legend()
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.show()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.32: Histogram of features'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-T0MUHCEU.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.32: Histogram of features'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Here, we can see that the Gender, Fare, and Pclass features seem to have the
+    highest importance; that is, they have the greatest impact on the target variable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to https://packt.live/2YYnxWz.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at https://packt.live/2Yo896Y. You must
+    execute the entire Notebook in order to get the desired result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 7.01: Final Test Project'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: In this activity, we'll use the Breast Cancer Diagnosis dataset that we used
+    in Chapter 5, Classification Techniques (refer to Activity 5.04, Breast Cancer
+    Diagnosis Classification Using Artificial Neural Networks for dataset details),
+    to solve a binary classification problem wherein we have to predict whether the
+    breast cell is benign or malignant given the features. In this problem, we want
+    to maximize our recall; that is, we want to be able to identify all malignant
+    cells, because if we miss any of those, we could detect no cancer, when there
+    actually is cancer. And, we do not want to end up in that scenario.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will use a gradient boosting classifier from scikit-learn to train the model.
+    This activity is intended as a final project that will help consolidate the practical
+    aspects of the concepts learned in this book, and particularly in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will find the most optimal set of hyperparameters for the model by using
+    random search with cross-validation. Then, we will build the final classifier
+    using the gradient boosting algorithm on a portion of the dataset and evaluate
+    its performance using the classification metrics we have learned about on the
+    remaining portion of the dataset. We will use precision and recall as the evaluation
+    metric for this activity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The steps to be performed are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Import the relevant libraries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Read the breast-cancer-data.csv dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Split the dataset into training and test sets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Choose a base model and define the range of hyperparameter values corresponding
+    to the model to be searched for hyperparameter tuning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Define the parameters with which to initialize the RandomizedSearchCV object
+    and use K-fold cross-validation to find the best model hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Split the training dataset further into training and validation sets and train
+    a new model using the final hyperparameters on the subdivided training dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calculate the accuracy, precision, and recall for predictions in relation to
+    the validation set, and print the confusion matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Experiment with varying thresholds to find the optimal point with high recall.
+    Plot the precision-recall curve.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.33: Precision recall curve'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-W7R7BD57.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.33: Precision recall curve'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finalize a threshold that will be used for predictions in relation to the test dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.34: Variation in precision and recall with increasing threshold
+    values'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-7WEPT1JF.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.34: Variation in precision and recall with increasing threshold values'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Predict the final values on the test dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.35: Predictions for the cancer dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-8Q00N88H.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 7.35: Predictions for the cancer dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Note:'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: The solution for this activity can be found via this link.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: This chapter discussed why model evaluation is important in supervised machine
+    learning and looked at several important metrics that are used to evaluate regression
+    and classification tasks. We saw that while regression models were fairly straightforward
+    to evaluate, the performance of classification models could be measured in a number
+    of ways, depending on what we want the model to prioritize. Besides numerical
+    metrics, we also looked at how to plot precision-recall and ROC curves to better
+    interpret and evaluate model performance. After this, we talked about why evaluating
+    a model by calculating the prediction error in relation to the data that the model
+    was trained on was a bad idea, and how testing a model on data that it has already
+    seen would lead to the model having a high variance. With this, we introduced
+    the concept of having a hold-out dataset and demonstrated why k-fold cross-validation
+    is a useful strategy to have, along with sampling techniques that ensure that
+    the model training and evaluation processes remain unbiased. The final section
+    on performance improvement tactics started with a discussion on learning and validation
+    curves, and how they can be interpreted to drive the model development process
+    toward finding a better-performing model. This was followed by a section on hyperparameter
+    tuning by way of an effort to boost performance, and a brief introduction to feature
+    importance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Right from the fundamentals of supervised learning and regression and classification
+    models to the concepts of ensembling and model performance evaluation, we have
+    now added all the necessary tools to our supervised learning toolkit. This means
+    that we are all set to start working on real-life supervised learning projects
+    and apply all the knowledge and skills that we have gained with this Workshop.
+  prefs: []
+  type: TYPE_NORMAL

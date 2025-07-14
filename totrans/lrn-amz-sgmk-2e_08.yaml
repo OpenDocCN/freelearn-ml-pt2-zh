@@ -1,0 +1,1574 @@
+- en: 'Chapter 6: Training Natural Language Processing Models'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, you learned how to use SageMaker's built-in algorithms
+    for **computer vision** (**CV**) to solve problems including image classification,
+    object detection, and semantic segmentation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Natural language processing** (**NLP**) is another very promising field in
+    ML. Indeed, NLP algorithms have proven very effective in modeling language and
+    extracting context from unstructured text. Thanks to this, applications such as
+    search and translation applications and chatbots are now commonplace.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, you will learn about built-in algorithms designed specifically
+    for NLP tasks and we''ll discuss the types of problems that you can solve with
+    them. As in the previous chapter, we''ll also cover in great detail how to prepare
+    real-life datasets such as Amazon customer reviews. Of course, we''ll train and
+    deploy models too. We will cover all of this under the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discovering the NLP built-in algorithms in Amazon SageMaker
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Preparing natural language datasets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using the built-in algorithms for NLP
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will need an **Amazon Web Services** (**AWS**) account to run the examples
+    included in this chapter. If you haven't got one already, please browse to [https://aws.amazon.com/getting-started/](https://aws.amazon.com/getting-started/)
+    to create it. You should also familiarize yourself with the AWS Free Tier ([https://aws.amazon.com/free/](https://aws.amazon.com/free/)),
+    which lets you use many AWS services for free within certain usage limits.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will need to install and configure the AWS **command-line interface** (**CLI**)
+    tool for your account ([https://aws.amazon.com/cli/](https://aws.amazon.com/cli/)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will need a working Python 3.x environment. Installing the Anaconda distribution
+    ([https://www.anaconda.com/](https://www.anaconda.com/)) is not mandatory but
+    strongly encouraged, as it includes many projects that we will need (Jupyter,
+    `pandas`, `numpy`, and more).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The code examples included in the book are available on GitHub at [https://github.com/PacktPublishing/Learn-Amazon-SageMaker-second-edition](https://github.com/PacktPublishing/Learn-Amazon-SageMaker-second-edition).
+    You will need to install a Git client to access them ([https://git-scm.com/](https://git-scm.com/)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discovering the NLP built-in algorithms in Amazon SageMaker
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'SageMaker includes four NLP algorithms, enabling **supervised learning** (**SL**)
+    and **unsupervised learning** (**UL**) scenarios. In this section, you''ll learn
+    about these algorithms, what kinds of problems they solve, and what their training
+    scenarios are. Let''s have a look at an overview of the algorithms we''ll be discussing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**BlazingText** builds text classification models (SL) or computes word vectors
+    (UL). **BlazingText** is an Amazon-invented algorithm.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**LDA** builds UL models that group a collection of text documents into topics.
+    This technique is called **topic modeling**.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**NTM** is another **topic modeling** algorithm based on neural networks, and
+    it gives you more insight into how topics are built.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Sequence to Sequence** (**seq2seq**) builds **deep learning** (**DL**) models,
+    predicting a sequence of output tokens from a sequence of input tokens.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Discovering the BlazingText algorithm
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The BlazingText algorithm was invented by Amazon. You can read more about it
+    at [https://dl.acm.org/doi/10.1145/3146347.3146354](https://dl.acm.org/doi/10.1145/3146347.3146354).
+    BlazingText is an evolution of **FastText**, a library for efficient text classification
+    and representation learning developed by Facebook ([https://fasttext.cc](https://fasttext.cc)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: It lets you train text classification models, as well as computing **word vectors**.
+    Also called **embeddings**, **word vectors** are the cornerstone of many NLP tasks,
+    such as finding word similarities, word analogies, and so on. **Word2Vec** is
+    one of the leading algorithms to compute these vectors ([https://arxiv.org/abs/1301.3781](https://arxiv.org/abs/1301.3781)),
+    and it's the one BlazingText implements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The main improvement of BlazingText is its ability to train on **graphics processing
+    unit** (**GPU**) instances, where FastText only supports **central processing
+    unit** (**CPU**) instances.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The speed gain is significant, and this is where its name comes from: "blazing"
+    is faster than "fast"! If you''re curious about benchmarks, you''ll certainly
+    enjoy this blog post: [https://aws.amazon.com/blogs/machine-learning/amazon-sagemaker-blazingtext-parallelizing-word2vec-on-multiple-cpus-or-gpus/](https://aws.amazon.com/blogs/machine-learning/amazon-sagemaker-blazingtext-parallelizing-word2vec-on-multiple-cpus-or-gpus/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, BlazingText is fully compatible with FastText. Models can be very easily
+    exported and tested, as you will see later in the chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discovering the LDA algorithm
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: This UL algorithm uses a generative technique, named **topic modeling**, to
+    identify topics present in a large collection of text documents. It was first
+    applied to ML in 2003 ([http://jmlr.csail.mit.edu/papers/v3/blei03a.html](http://jmlr.csail.mit.edu/papers/v3/blei03a.html)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Please note that LDA is not a classification algorithm. You pass it the number
+    of topics to build, not the list of topics you expect. To paraphrase Forrest Gump:
+    "*Topic modeling is like a box of chocolates, you never know what you''re gonna
+    get."*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: LDA assumes that every text document in a collection was generated from several
+    latent (meaning "hidden") topics. A topic is represented by a word probability
+    distribution. For each word present in a collection of documents, this distribution
+    gives the probability that the word appears in documents generated by this topic.
+    For example, in a "finance" topic, the distribution would yield high probabilities
+    for words such as "revenue," "quarter," or "earnings," and low probabilities for
+    "ballista" or "platypus" (or so I should think).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Topic distributions are not considered independently. They are represented by
+    a **Dirichlet distribution**, a multivariate generalization of univariate distributions
+    ([https://en.wikipedia.org/wiki/Dirichlet_distribution](https://en.wikipedia.org/wiki/Dirichlet_distribution)).
+    This mathematical object gives the algorithm its name.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given the number of words in the vocabulary and the number of latent topics,
+    the purpose of the LDA algorithm is to build a model that is as close as possible
+    to an ideal Dirichlet distribution. In other words, it will try to group words
+    so that distributions are as well formed as possible and match the specified number
+    of topics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Training data needs to be carefully prepared. Each document needs to be converted
+    into a **bag-of-words** (**BoW**) representation: each word is replaced by a pair
+    of integers, representing a unique word **identifier** (**ID**) and the word count
+    in the document. The resulting dataset can be saved either to **comma-separated
+    values** (**CSV**) format or to **RecordIO-wrapped protobuf** format, a technique
+    we already studied with **factorization machines** in [*Chapter 4*](B17705_04_Final_JM_ePub.xhtml#_idTextAnchor069),
+    *Training Machine Learning Models*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Once the model has been trained, we can score any document and get a score per
+    topic. The expectation is that documents containing similar words should have
+    similar scores, making it possible to identify their top topics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discovering the NTM algorithm
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'NTM is another algorithm for topic modeling. You can read more about it at
+    [https://arxiv.org/abs/1511.06038](https://arxiv.org/abs/1511.06038). The following
+    blog post also sums up the key elements of the paper: [https://aws.amazon.com/blogs/machine-learning/amazon-sagemaker-neural-topic-model-now-supports-auxiliary-vocabulary-channel-new-topic-evaluation-metrics-and-training-subsampling/](https://aws.amazon.com/blogs/machine-learning/amazon-sagemaker-neural-topic-model-now-supports-auxiliary-vocabulary-channel-new-topic-evaluation-metrics-and-training-subsampling/).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As with LDA, documents need to be converted to a BoW representation, and the
+    dataset can be saved to either CSV or RecordIO-wrapped protobuf format.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For training, NTM uses a completely different approach based on neural networks
+    and—more precisely—on an encoder architecture ([https://en.wikipedia.org/wiki/Autoencoder](https://en.wikipedia.org/wiki/Autoencoder)).
+    In true DL fashion, the encoder trains on mini-batches of documents. It tries
+    to learn their latent features by adjusting network parameters through backpropagation
+    and optimization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Unlike LDA, NTM can tell us which words are the most impactful in each topic.
+    It also gives us two per-topic metrics, **word embedding topic coherence** (**WETC**)
+    and **topic uniqueness** (**TU**). These are outlined in more detail here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: WETC tells us how semantically close the topic words are. This value is between
+    0 and 1; the higher, the better. It's computed using the **cosine similarity**
+    ([https://en.wikipedia.org/wiki/Cosine_similarity](https://en.wikipedia.org/wiki/Cosine_similarity))
+    of the corresponding word vectors in a pretrained **Global Vectors** (**GloVe**)
+    model (another algorithm similar to Word2Vec).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: TU tells us how unique the topic is—that is to say, whether its words are found
+    in other topics or not. Again, the value is between 0 and 1, and the higher the
+    score, the more unique the topic is.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Once the model has been trained, we can score documents and get a score per
+    topic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Discovering the seq2sea algorithm
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The seq2seq algorithm is based on **long short-term memory** (**LSTM**) neural
+    networks ([https://arxiv.org/abs/1409.3215](https://arxiv.org/abs/1409.3215)).
+    As its name implies, seq2seq can be trained to map one sequence of tokens to another.
+    Its main application is machine translation, training on large bilingual corpora
+    of text, such as the **Workshop on Statistical Machine Translation** (**WMT**)
+    dataset ([http://www.statmt.org/wmt20/](http://www.statmt.org/wmt20/)).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In addition to the implementation available in SageMaker, AWS has also packaged
+    the seq2seq algorithm into an open source project, **AWS Sockeye** ([https://github.com/awslabs/sockeye](https://github.com/awslabs/sockeye)),
+    which also includes tools for dataset preparation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: I won't cover seq2seq in this chapter. It would take too many pages to get into
+    the appropriate level of detail, and there's no point in just repeating what's
+    already available in the Sockeye documentation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can find a seq2seq example in the notebook available at [https://github.com/awslabs/amazon-sagemaker-examples/tree/master/introduction_to_amazon_algorithms/seq2seq_translation_en-de](https://github.com/awslabs/amazon-sagemaker-examples/tree/master/introduction_to_amazon_algorithms/seq2seq_translation_en-de).
+    Unfortunately, it uses the low-level `boto3` **application programming interface**
+    (**API**), which we will cover in [*Chapter 12*](B17705_12_Final_JM_ePub.xhtml#_idTextAnchor260),
+    *Automating Machine Learning Workflows*. Still, it's a valuable read, and you
+    won't have too much trouble figuring things out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training with NLP algorithms
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Just as for CV algorithms, training is the easy part, especially with the SageMaker
+    **software development kit** (**SDK**). By now, you should be familiar with the
+    workflow and the APIs, and we'll keep using them in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing data for NLP algorithms is another story. First, real-life datasets
+    are generally pretty bulky. In this chapter, we'll work with millions of samples
+    and hundreds of millions of words. Of course, they need to be cleaned, processed,
+    and converted to the format expected by the algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As we go through the chapter, we''ll use the following techniques:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Loading and cleaning data with the `pandas` library ([https://pandas.pydata.org](https://pandas.pydata.org))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Removing stop words and lemmatizing with the **Natural Language Toolkit** (**NLTK**)
+    library ([https://www.nltk.org](https://www.nltk.org))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tokenizing with the `spaCy` library ([https://spacy.io/](https://spacy.io/))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Building vocabularies and generating BoW representations with the `gensim` library
+    ([https://radimrehurek.com/gensim/](https://radimrehurek.com/gensim/))
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Running data processing jobs with **Amazon SageMaker Processing**, which we
+    studied in [*Chapter 2*](B17705_02_Final_JM_ePub.xhtml#_idTextAnchor030), *Handling
+    Data Preparation Techniques*
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Granted—this isn't an NLP book, and we won't go extremely far in processing
+    data. Still, this will be quite fun, and hopefully an opportunity to learn about
+    popular open source tools for NLP.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing natural language datasets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: For the CV algorithms in the previous chapter, data preparation focused on the
+    technical format required for the dataset (**image** format, **RecordIO**, or
+    **augmented manifest**). The images themselves weren't processed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Things are quite different for NLP algorithms. The text needs to be heavily
+    processed, converted, and saved in the right format. In most learning resources,
+    these steps are abbreviated or even ignored. Data is already "automagically" ready
+    for training, leaving the reader frustrated and sometimes dumbfounded on how to
+    prepare their own datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: No such thing here! In this section, you'll learn how to prepare NLP datasets
+    in different formats. Once again, get ready to learn a lot!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's start with preparing data for BlazingText.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing data for classification with BlazingText
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'BlazingText expects labeled input data in the same format as FastText, outlined
+    here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A plaintext file, with one sample per line.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Each line has two fields, as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: a) A label in the form of `__label__LABELNAME__`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b) The text itself, formed into space-separated tokens (words and punctuation)
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Let's get to work and prepare a customer review dataset for sentiment analysis
+    (positive, neutral, or negative). We'll use the **Amazon Customer Reviews** dataset
+    available at [https://s3.amazonaws.com/amazon-reviews-pds/readme.html](https://s3.amazonaws.com/amazon-reviews-pds/readme.html).
+    That should be more than enough real-life data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before starting, please make sure that you have enough storage space. Here,
+    I''m using a notebook instance with 10 **gigabytes** (**GB**) of storage. I''ve
+    also picked a C5 instance type to run the processing steps faster. We''ll proceed
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s download the camera reviews by running the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We load the data with `pandas`, ignoring any line that causes an error. We
+    also drop any line with missing values. The code is illustrated in the following
+    snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We print the data shape and the column names, like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This gives us the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '1.8 million lines! We keep 100,000, which is enough for our purpose. We also
+    drop all columns except `star_rating` and `review_body`, as illustrated in the
+    following code snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Based on star ratings, we add a new column named `label`, with labels in the
+    proper format. You have to love how `pandas` makes this so simple. Then, we drop
+    the `star_rating` column, as illustrated in the following code snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'BlazingText expects labels at the beginning of each line, so we move the `label`
+    column to the front, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The data should now look like this:![Figure 6.1 – Viewing the dataset
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_06_1.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 6.1 – Viewing the dataset
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'BlazingText expects space-separated tokens: each word and each punctuation
+    sign must be space-separated from the next. Let''s use the handy `punkt` tokenizer
+    from the `nltk` library. Depending on the instance type you''re using, this could
+    take a couple of minutes. Here''s the code you''ll need:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We join tokens into a single string, which we also convert to lowercase, as
+    follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The data should now look like this (notice that all tokens are correctly space-separated):![Figure
+    6.2 – Viewing the tokenized dataset
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_06_2.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 6.2 – Viewing the tokenized dataset
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Finally, we split the dataset for training (95%) and validation (5%), and we
+    save both splits as plaintext files, as illustrated in the following code snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Opening one of the files, you should see plenty of lines similar to this one:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The data preparation wasn't too bad, was it? Still, tokenization ran for a minute
+    or two. Now, imagine running it on millions of samples. Sure, you could fire up
+    a larger environment in **SageMaker Studio**. You'd also pay more for as long
+    as you're using it, which would probably be wasteful if only this one step required
+    extra computing muscle. In addition, imagine having to run the same script on
+    many other datasets. Do you want to do this manually again and again, waiting
+    20 minutes every time and hoping your notebook doesn't crash? Certainly not, I
+    should say!
+  prefs: []
+  type: TYPE_NORMAL
+- en: You already know the answer to both problems. It's **Amazon SageMaker Processing**,
+    which we studied in [*Chapter 2*](B17705_02_Final_JM_ePub.xhtml#_idTextAnchor030),
+    *Handling Data Preparation Techniques*. You should have the best of both worlds,
+    using the smallest and least-expensive environment possible for experimentation,
+    and running on-demand jobs when you need more resources. Day in, day out, you'll
+    save money and get the job done faster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's move this processing code to SageMaker Processing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing data for classification with BlazingText, version 2
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We''ve covered this in detail in [*Chapter 2*](B17705_02_Final_JM_ePub.xhtml#_idTextAnchor030),
+    *Handling Data Preparation Techniques*, so I''ll go faster this time. We''ll proceed
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We upload the dataset to **Simple Storage Service** (**S3**), as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We define the processor by running the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We run the processing job, passing the processing script and its arguments,
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The abbreviated preprocessing script is shown in the following code snippet.
+    The full version is in the GitHub repository for the book. We first install the
+    `nltk` package, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We read the command-line arguments, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We read the input dataset and process it, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, we split it for training and validation, and save it into two text
+    files, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can see, it doesn't take much to convert manual processing code into
+    a SageMaker Processing job. You can actually reuse most of the code too, as it
+    deals with generic topics such as command-line arguments, inputs, and outputs.
+    The only trick is using `subprocess.call` to install dependencies inside the processing
+    container.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Equipped with this script, you can now process data at scale as often as you
+    want, without having to run and manage long-lasting notebooks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s prepare data for the other BlazingText scenario: word vectors!'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing data for word vectors with BlazingText
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'BlazingText lets you compute word vectors easily and at scale. It expects input
+    data in the following format:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A plaintext file, with one sample per line.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Each sample must have space-separated tokens (words and punctuations).
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Let''s process the same dataset as in the previous section, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll need the `spaCy` library, so let''s install it along with its English
+    language model, like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We load the data with `pandas`, ignoring any line that causes an error. We
+    also drop any line with missing values. We should have more than enough data anyway.
+    Here''s the code you''ll need:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We keep 100,000 lines, and we also drop all columns except `review_body`, as
+    illustrated in the following code snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We write a function to tokenize reviews with `spaCy`, and we apply it to the
+    `DataFrame`. This step should be noticeably faster than `nltk` tokenization in
+    the previous example, as `spaCy` is based on `cython` ([https://cython.org](https://cython.org)).
+    The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The data should now look like this:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 6.3 – Viewing the tokenized dataset'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '](img/B17705_06_3.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 6.3 – Viewing the tokenized dataset
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Finally, we save the reviews to a plaintext file, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Opening this file, you should see one tokenized review per line, as illustrated
+    in the following code snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Here too, we should really be running these steps using SageMaker Processing.
+    You'll find the corresponding notebook and preprocessing script in the GitHub
+    repository for the book.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's prepare data for the LDA and NTM algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing data for topic modeling with LDA and NTM
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In this example, we will use the **Million News Headlines** dataset ([https://doi.org/10.7910/DVN/SYBGZL](https://doi.org/10.7910/DVN/SYBGZL)),
+    which is also available in the GitHub repository. As the name implies, it contains
+    a million news headlines from the Australian news source *ABC*. Unlike product
+    reviews, headlines are in very short sentences. Building a topic model should
+    be an interesting challenge!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tokenizing data
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'As you would expect, both algorithms require a tokenized dataset, so we''ll
+    proceed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll need the `nltk` and `gensim` libraries, so let''s install them, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Once we''ve downloaded the dataset, we load it entirely with `pandas`, like
+    this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The data should look like this:![Figure 6.4 – Viewing the tokenized dataset
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_06_4.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 6.4 – Viewing the tokenized dataset
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'It''s sorted by date, and we shuffle it as a precaution. We then drop the `date`
+    column by running the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We write a function to clean up and process the headlines. First, we get rid
+    of all punctuation signs and digits. Using `nltk`, we also remove stop words—namely,
+    words that are extremely common and don''t add any context, such as "this," "any,"
+    and so on. In order to reduce the vocabulary size while keeping context, we could
+    apply either **stemming** (https://en.wikipedia.org/wiki/Stemming) or **lemmatization**
+    ([https://en.wikipedia.org/wiki/Lemmatisation](https://en.wikipedia.org/wiki/Lemmatisation)),
+    two popular NLP techniques. Let''s go with the latter here. Depending on your
+    instance type, this could run for several minutes. Here''s the code you''ll need:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Once processed, the data should look like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.5 – Viewing the lemmatized dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_06_5.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.5 – Viewing the lemmatized dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now the reviews have been tokenized, we need to convert them to a BoW representation,
+    replacing each word with a unique integer ID and its frequency count.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Converting data to a BoW representation
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We will convert the reviews into a BoW representation using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `gensim` library has exactly what we need! We build a **dictionary**, a
+    list of all words present in the document collection, using the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The dictionary looks like this:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This number feels very high. If we have too many dimensions, training will be
+    very long, and the algorithm may have trouble fitting the data; for example, NTM
+    is based on a neural network architecture. The input layer will be sized based
+    on the number of tokens, so we need to keep them reasonably low. It will speed
+    up training and help the encoder learn a manageable number of latent features.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We could go back and clean the headlines some more. Instead, we use a `gensim`
+    function that removes extreme words—outlier words that are either extremely rare
+    or extremely frequent. Then, taking a bold bet, we decide to restrict the vocabulary
+    to the top 512 remaining words. Yes—that''s less than 1%. Here''s the code to
+    do this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We write the vocabulary to a text file. Not only does this help us check what
+    the top words are, but we''ll also pass this file to the NTM algorithm as an extra
+    **channel**. You''ll see why this is important when we train the model. The code
+    to do this is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We use the dictionary to build a BoW for each headline. It''s stored in a new
+    column called `tokens`. When we''re done, we drop the text review. The code is
+    illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The data should now look like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.6 – Viewing the BoW dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_06_6.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.6 – Viewing the BoW dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As you can see, each word has been replaced with its unique ID and its frequency
+    count in the review. For instance, the last line tells us that word #11 is present
+    once, word #12 is present once, and so on.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The data processing is now complete. The last step is to save it to the appropriate
+    input format.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Saving input data
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: NTM and LDA expect data in either a CSV format or a RecordIO-wrapped protobuf
+    format. Just as with the **factorization matrix** example in [*Chapter 4*](B17705_04_Final_JM_ePub.xhtml#_idTextAnchor069),
+    *Training Machine Learning Models*, the data we're working with is quite sparse.
+    Any given review only contains a small number of words from the vocabulary. As
+    CSV is a dense format, we would end up with a huge amount of zero-frequency words.
+    Not a good idea!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once again, we''ll use `lil_matrix`, a `SciPy`. It will have as many lines
+    as we have reviews, and as many columns as we have words in the dictionary. We''ll
+    proceed as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We create the sparse matrix, like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We write a function to add a headline to the matrix. For each token, we simply
+    write its frequency in the appropriate column, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We then iterate over headlines and add them to the matrix. Quick note: we can''t
+    use row index values, as they might be larger than the number of lines. The code
+    is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The last step is to write this matrix into a memory buffer in `protobuf` format
+    and upload it to S3 for future use, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Building the (1000000, 512) matrix takes a few minutes. Once it''s been uploaded
+    to S3, we can see that it''s only 42 **megabytes** (**MB**). Lil'' matrix indeed.
+    The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This concludes the data preparation for LDA and NTM. Now, let's see how we can
+    use text datasets prepared with **SageMaker Ground Truth**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using datasets labeled with SageMaker Ground Truth
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As discussed in [*Chapter 2*](B17705_02_Final_JM_ePub.xhtml#_idTextAnchor030),
+    *Handling Data Preparation Techniques*, SageMaker Ground Truth supports text classification
+    tasks. We could definitely use its output to build a dataset for FastText or BlazingText.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, I ran a quick text classification job on a few sentences, applying one
+    of two labels: "`aws_service`" if the sentence mentions an AWS service, and "`no_aws_service`"
+    if it doesn''t.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once the job is complete, I can fetch the **augmented manifest** from S3\.
+    It''s in **JavaScript Object Notation Lines** (**JSON Lines**) format, and here''s
+    one of its entries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Shall we write a bit of Python code to put this in BlazingText format? Of course!
+    Here we go:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We load the augmented manifest directly from S3, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The data looks like this:![Figure 6.7 – Viewing the labeled dataset
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '](img/B17705_06_7.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Figure 6.7 – Viewing the labeled dataset
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The label is buried in the `my-text-classification-job-metadata` column. We
+    extract it into a new column, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The data now looks like that shown in the following screenshot. From then on,
+    we can apply tokenization, and so on. That was easy, wasn't it?
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![Figure 6.8 – Viewing the processed dataset'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/B17705_06_8.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Figure 6.8 – Viewing the processed dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's build NLP models!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the built-in algorithms for NLP
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we're going to train and deploy models with BlazingText, LDA,
+    and NTM. Of course, we'll use the datasets prepared in the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Classifying text with BlazingText
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'BlazingText makes it extremely easy to build a text classification model, especially
+    if you have no NLP skills. Let''s see how, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We upload the training and validation datasets to S3\. Alternatively, we could
+    use the output paths returned by a SageMaker Processing job. The code is illustrated
+    in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We configure the `Estimator` function for BlazingText, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We set a single hyperparameter, telling BlazingText to train in supervised
+    mode, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We define channels, setting the content type to `text/plain`, and then we launch
+    the training, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We get a validation accuracy of 88.4%, which is quite good in the absence of
+    any hyperparameter tweaking. We then deploy the model to a small CPU instance,
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Once the endpoint is up, we send three tokenized samples for prediction, asking
+    for all three labels, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Printing the response, we see that the three samples were correctly categorized,
+    as illustrated here:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As usual, we delete the endpoint once we''re done by running the following
+    code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now, let's train BlazingText to compute word vectors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Computing word vectors with BlazingText
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The code is almost identical to the previous example, with only two differences.
+    First, there is only one channel, containing training data. Second, we need to
+    set BlazingText to UL mode.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'BlazingText supports the training modes implemented in Word2Vec: **skipgram**
+    and **continuous BoW** (**CBOW**). It adds a third mode, **batch_skipgram**, for
+    faster distributed training. It also supports **subword embeddings**, a technique
+    that makes it possible to return a word vector for words that are misspelled or
+    not part of the vocabulary.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s go for skipgram with subword embeddings. We leave the dimension of vectors
+    unchanged (the default is 100). Here''s the code you''ll need:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: Unlike other algorithms, there is nothing to deploy here. The model artifact
+    is in S3 and can be used for downstream NLP applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Speaking of which, BlazingText is compatible with FastText, so how about trying
+    to load the models we just trained into FastText?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using BlazingText models with FastText
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'First, we need to compile FastText, which is extremely simple. You can even
+    do it on a notebook instance without having to install anything. Here''s the code
+    you''ll need:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let's first try our classification model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a BlazingText classification model with FastText
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We will try the model using the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We copy the model artifact from S3 and extract it as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We load `model.bin` with FastText, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We predict samples and view their top class, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: We exit with *Ctrl* + *C*. Now, let's explore our vectors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using BlazingText word vectors with FastText
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We will now use FastText with the vectors, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We copy the model artifact from S3 and we extract it, like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We can explore word similarities. For example, let''s look for words that are
+    closest to "telephoto". This could help us improve how we handle search queries
+    or how we recommend similar products. Here''s the code you''ll need:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We can also look for analogies. For example, let''s ask our model the following
+    question: What''s the Canon equivalent for the Nikon D3300 camera? The code is
+    illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: According to our model, you should consider the XSI and 700D cameras!
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As you can see, word vectors are amazing and BlazingText makes it easy to compute
+    them at any scale. Now, let's move on to topic modeling, another fascinating subject.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Modeling topics with LDA
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In a previous section, we prepared a million news headlines, and we''re now
+    going to use them for topic modeling with LDA, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we define useful paths by running the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We configure the `Estimator` function, like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We set hyperparameters: how many topics we want to build (10), how many dimensions
+    the problem has (the vocabulary size), and how many samples we''re training on.
+    Optionally, we can set a parameter named `alpha0`. According to the documentation:
+    "*Small values are more likely to generate sparse topic mixtures and large values
+    (greater than 1.0) produce more uniform mixtures."* Let''s set it to 0.1 and hope
+    that the algorithm can indeed build well-identified topics. Here''s the code you''ll
+    need:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We launch the training. As RecordIO is the default format expected by the algorithm,
+    we don''t need to define channels. The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Once training is complete, we deploy to a small CPU instance, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Before we send samples for prediction, we need to process them just like we
+    processed the training set. We write a function that takes care of this: building
+    a sparse matrix, filling it with BoW, and saving to an in-memory protobuf buffer,
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Please note that we need the dictionary here. This is why the corresponding
+    SageMaker Processing job saved a pickled version of it, which we could later unpickle
+    and use.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Then, we define a Python array containing five headlines, named `samples`.
+    These are real headlines I copied from the ABC news website at [https://www.abc.net.au/news/](https://www.abc.net.au/news/).
+    The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Let''s process and predict them, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The response contains a score vector for each review (extra decimals have been
+    removed for brevity). Each vector reflects a mix of topics, with a score per topic.
+    All scores add up to 1\. The code is illustrated in the following snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This isn''t easy to read. Let''s print the top topic and its score, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'This prints out the following result:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As usual, we delete the endpoint once we''re done, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Interpreting LDA results is not easy, so let's be careful here. No wishful thinking!
+  prefs: []
+  type: TYPE_NORMAL
+- en: We see that each headline has a definite topic, which is good news. Apparently,
+    LDA was able to identify solid topics, maybe thanks to the low `alpha0` value.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The top topics for unrelated headlines are different, which is promising.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The last two headlines are both about sports and their top topic is the same,
+    which is another good sign.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: All five reviews scored zero on topics 5, 6, 8, and 9\. This probably means
+    that other topics have been built, and we would need to run more examples to discover
+    them.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Is this a successful model? Probably. Can we be confident that topic 0 is about
+    world affairs, topic 1 about sports, and topic 2 about sports? Not until we've
+    predicted a few thousand more reviews and checked that related headlines are assigned
+    to the same topic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As mentioned at the beginning of the chapter, LDA is not a classification algorithm.
+    It has a mind of its own and it may build totally unexpected topics. Maybe it
+    will group headlines according to sentiment or city names. It all depends on the
+    distribution of these words inside the document collection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Wouldn't it be nice if we could see which words "weigh" more in a certain topic?
+    That would certainly help us understand the topics a little better. Enter NTM!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Modeling topics with NTM
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'This example is very similar to the previous one. We''ll just highlight the
+    differences, and you''ll find a full example in the GitHub repository for the
+    book. Let''s get into it, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We upload the **vocabulary file** to S3, like this:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We select the NTM algorithm, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Once we''ve configured the `Estimator` function, we set the hyperparameters,
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'We launch training, passing the vocabulary file in the `auxiliary` channel,
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'When training is complete, we see plenty of information in the training log.
+    First, we see the average WETC and TU scores for the 10 topics, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs: []
+  type: TYPE_PRE
+- en: These are decent results. Topic unicity is high, and the semantic distance between
+    topic words is average.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For each topic, we see its WETC and TU scores, as well as its top words—that
+    is to say, the words that have the highest probability of appearing in documents
+    associated with this topic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's look at each one in detail and try to put names to topics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Topic 0 is pretty obvious, I think. Almost all words are related to crime,
+    so let''s call it `crime`. You can see this topic here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following topic 1 is a little fuzzier. How about `legal`? Have a look at
+    it here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Topic 2 is about accidents and fires. Let''s call it `disaster`. You can see
+    the topic here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Topic 3 is obvious: `sports`. The TU score is the highest, showing that sports
+    articles use a very specific vocabulary found nowhere else, as we can see here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Topic 4 is a strange mix of weather information and natural resources. It has
+    the lowest WETC and the lowest TU score too. Let''s call it `unknown1`. Have a
+    look at it here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Topic 5 is about world affairs, it seems. Let''s call it `international`. You
+    can see the topic here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Topic 6 feels like local news, as it contains abbreviations for Australian
+    regions: `qld` is Queensland, `ta` is Tasmania, `nsw` is New South Wales, and
+    so on. Let''s call it `local`. The topic is shown here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Topic 7 is a no-brainer: `finance`. It has the highest WETC score, showing
+    that its words are closely related from a semantic point of view. Topic unicity
+    is also very high, and we would probably see the same for domain-specific topics
+    on medicine or engineering. Have a look at the topic here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Topic 8 is about politics, with a bit of crime thrown in. Some people would
+    say that''s actually the same thing. As we already have a `crime` topic, we''ll
+    name this one `politics`. Have a look at the topic here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Topic 9 is another mixed bag. It''s hard to say whether it''s about farming
+    or missing people! Let''s go with `unknown2`. You can see the topic here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'All things considered, that''s a pretty good model: 8 clear topics out of 10\.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s define our list of topics and run our sample headlines through the model
+    after deploying it, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE84]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We use the following function to print the top three topics and their score:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE85]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here''s the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE86]'
+  prefs: []
+  type: TYPE_PRE
+- en: Headlines 0, 2, 3, and 4 are right on target. That's not surprising given how
+    strong these topics are.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Headline 1 scores very high on the topic we called `legal`. Maybe Adelaide passengers
+    should sue the train company? Seriously, we would need to find other matching
+    headlines to get a better sense of what the topic is really about.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, NTM makes it easier to understand what topics are about. We
+    could improve the model by processing the vocabulary file, adding or removing
+    specific words to influence topics, increasing the number of topics, fiddling
+    with `alpha0`, and so on. My intuition tells me that we should really see a "weather"
+    topic in there. Please experiment and see if you want to make it appear.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you''d like to run another example, you''ll find interesting techniques
+    in this notebook:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/awslabs/amazon-sagemaker-examples/blob/master/introduction_to_applying_machine_learning/ntm_20newsgroups_topic_modeling/ntm_20newsgroups_topic_model.ipynb](https://github.com/awslabs/amazon-sagemaker-examples/blob/master/introduction_to_applying_machine_learning/ntm_20newsgroups_topic_modeling/ntm_20newsgroups_topic_model.ipynb)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: NLP is a very exciting topic. It's also a difficult one because of the complexity
+    of language in general, and due to how much processing is required to build datasets.
+    Having said that, the built-in algorithms in SageMaker will help you get good
+    results out of the box. Training and deploying models are straightforward processes,
+    which leaves you more time to explore, understand, and prepare data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you learned about the BlazingText, LDA, and NTM algorithms.
+    You also learned how to process datasets using popular open source tools such
+    as `nltk`, `spaCy`, and `gensim`, and how to save them in the appropriate format.
+    Finally, you learned how to use the SageMaker SDK to train and deploy models with
+    all three algorithms, as well as how to interpret results. This concludes our
+    exploration of built-in algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you will learn how to use built-in ML frameworks such as
+    **scikit-learn**, **TensorFlow**, **PyTorch**, and **Apache MXNet**.
+  prefs: []
+  type: TYPE_NORMAL

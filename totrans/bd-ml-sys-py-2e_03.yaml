@@ -1,0 +1,1051 @@
+- en: Chapter 3. Clustering – Finding Related Posts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, you learned how to find the classes or categories of
+    individual datapoints. With a handful of training data items that were paired
+    with their respective classes, you learned a model, which we can now use to classify
+    future data items. We called this supervised learning because the learning was
+    guided by a teacher; in our case, the teacher had the form of correct classifications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now imagine that we do not possess those labels by which we can learn
+    the classification model. This could be, for example, because they were too expensive
+    to collect. Just imagine the cost if the only way to obtain millions of labels
+    will be to ask humans to classify those manually. What could we have done in that
+    case?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Well, of course, we will not be able to learn a classification model. Still,
+    we could find some pattern within the data itself. That is, let the data describe
+    itself. This is what we will do in this chapter, where we consider the challenge
+    of a question and answer website. When a user is browsing our site, perhaps because
+    they were searching for particular information, the search engine will most likely
+    point them to a specific answer. If the presented answers are not what they were
+    looking for, the website should present (at least) the related answers so that
+    they can quickly see what other answers are available and hopefully stay on our
+    site.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The naïve approach will be to simply take the post, calculate its similarity
+    to all other posts and display the top *n* most similar posts as links on the
+    page. Quickly, this will become very costly. Instead, we need a method that quickly
+    finds all the related posts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will achieve this goal in this chapter using clustering. This is a method
+    of arranging items so that similar items are in one cluster and dissimilar items
+    are in distinct ones. The tricky thing that we have to tackle first is how to
+    turn text into something on which we can calculate similarity. With such a similarity
+    measurement, we will then proceed to investigate how we can leverage that to quickly
+    arrive at a cluster that contains similar posts. Once there, we will only have
+    to check out those documents that also belong to that cluster. To achieve this,
+    we will introduce you to the marvelous SciKit library, which comes with diverse
+    machine learning methods that we will also use in the following chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Measuring the relatedness of posts
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: From the machine learning point of view, raw text is useless. Only if we manage
+    to transform it into meaningful numbers, can we then feed it into our machine
+    learning algorithms, such as clustering. This is true for more mundane operations
+    on text such as similarity measurement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How not to do it
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One text similarity measure is the Levenshtein distance, which also goes by
+    the name Edit Distance. Let's say we have two words, "machine" and "mchiene".
+    The similarity between them can be expressed as the minimum set of edits that
+    are necessary to turn one word into the other. In this case, the edit distance
+    will be 2, as we have to add an "a" after the "m" and delete the first "e". This
+    algorithm is, however, quite costly as it is bound by the length of the first
+    word times the length of the second word.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Looking at our posts, we could cheat by treating whole words as characters and
+    performing the edit distance calculation on the word level. Let's say we have
+    two posts (let's concentrate on the following title, for simplicity's sake) called
+    "How to format my hard disk" and "Hard disk format problems", we will need an
+    edit distance of 5 because of removing "how", "to", "format", "my" and then adding
+    "format" and "problems" in the end. Thus, one could express the difference between
+    two posts as the number of words that have to be added or deleted so that one
+    text morphs into the other. Although we could speed up the overall approach quite
+    a bit, the time complexity remains the same.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But even if it would have been fast enough, there is another problem. In the
+    earlier post, the word "format" accounts for an edit distance of 2, due to deleting
+    it first, then adding it. So, our distance seems to be not robust enough to take
+    word reordering into account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to do it
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'More robust than edit distance is the so-called **bag of word** approach. It
+    totally ignores the order of words and simply uses word counts as their basis.
+    For each word in the post, its occurrence is counted and noted in a vector. Not
+    surprisingly, this step is also called vectorization. The vector is typically
+    huge as it contains as many elements as words occur in the whole dataset. Take,
+    for instance, two example posts with the following word counts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Word | Occurrences in post 1 | Occurrences in post 2 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| disk | 1 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| format | 1 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| how | 1 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| hard | 1 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| my | 1 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| problems | 0 | 1 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| to | 1 | 0 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'The columns Occurrences in post 1 and Occurrences in post 2 can now be treated
+    as simple vectors. We can simply calculate the Euclidean distance between the
+    vectors of all posts and take the nearest one (too slow, as we have found out
+    earlier). And as such, we can use them later as our feature vectors in the clustering
+    steps according to the following procedure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extract salient features from each post and store it as a vector per post.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Then compute clustering on the vectors.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Determine the cluster for the post in question.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: From this cluster, fetch a handful of posts having a different similarity to
+    the post in question. This will increase diversity.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: But there is some more work to be done before we get there. Before we can do
+    that work, we need some data to work on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preprocessing – similarity measured as a similar number of common words
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As we have seen earlier, the bag of word approach is both fast and robust. It
+    is, though, not without challenges. Let's dive directly into them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Converting raw text into a bag of words
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We do not have to write custom code for counting words and representing those
+    counts as a vector. SciKit''s `CountVectorizer` method does the job not only efficiently
+    but also has a very convenient interface. SciKit''s functions and classes are
+    imported via the `sklearn` package:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The `min_df` parameter determines how `CountVectorizer` treats seldom words
+    (minimum document frequency). If it is set to an integer, all words occurring
+    less than that value will be dropped. If it is a fraction, all words that occur
+    in less than that fraction of the overall dataset will be dropped. The `max_df`
+    parameter works in a similar manner. If we print the instance, we see what other
+    parameters SciKit provides together with their default values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We see that, as expected, the counting is done at word level (`analyzer=word`)
+    and words are determined by the regular expression pattern `token_pattern`. It
+    will, for example, tokenize "cross-validated" into "cross" and "validated". Let''s
+    ignore the other parameters for now and consider the following two example subject
+    lines:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can now put this list of subject lines into the `fit_transform()` function
+    of our vectorizer, which does all the hard vectorization work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The vectorizer has detected seven words for which we can fetch the counts individually:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: This means that the first sentence contains all the words except "problems",
+    while the second contains all but "how", "my", and "to". In fact, these are exactly
+    the same columns as we have seen in the preceding table. From `X`, we can extract
+    a feature vector that we will use to compare two documents with each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will start with a naïve approach first, to point out some preprocessing peculiarities
+    we have to account for. So let's pick a random post, for which we then create
+    the count vector. We will then compare its distance to all the count vectors and
+    fetch the post with the smallest one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Counting words
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s play with the toy dataset consisting of the following posts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Post filename | Post content |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `01.txt` | This is a toy post about machine learning. Actually, it contains
+    not much interesting stuff. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `02.txt` | Imaging databases can get huge. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `03.txt` | Most imaging databases save images permanently. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `04.txt` | Imaging databases store images. |'
+  prefs: []
+  type: TYPE_TB
+- en: '| `05.txt` | Imaging databases store images. Imaging databases store images.
+    Imaging databases store images. |'
+  prefs: []
+  type: TYPE_TB
+- en: In this post dataset, we want to find the most similar post for the short post
+    "imaging databases".
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Assuming that the posts are located in the directory `DIR`, we can feed `CountVectorizer`
+    with it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We have to notify the vectorizer about the full dataset so that it knows upfront
+    what words are to be expected:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Unsurprisingly, we have five posts with a total of 25 different words. The
+    following words that have been tokenized will be counted:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now we can vectorize our new post.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Note that the count vectors returned by the `transform` method are sparse.
+    That is, each vector does not store one count value for each word, as most of
+    those counts will be zero (the post does not contain the word). Instead, it uses
+    the more memory-efficient implementation `coo_matrix` (for "COOrdinate"). Our
+    new post, for instance, actually contains only two elements:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Via its `toarray()` member, we can once again access the full `ndarray`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We need to use the full array, if we want to use it as a vector for similarity
+    calculations. For the similarity measurement (the naïve one), we calculate the
+    Euclidean distance between the count vectors of the new post and all the old posts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `norm()` function calculates the Euclidean norm (shortest distance). This
+    is just one obvious first pick and there are many more interesting ways to calculate
+    the distance. Just take a look at the paper *Distance Coefficients between Two
+    Lists or Sets* in The Python Papers Source Codes, in which Maurice Ling nicely
+    presents 35 different ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With `dist_raw`, we just need to iterate over all the posts and remember the
+    nearest one:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Congratulations, we have our first similarity measurement. Post 0 is most dissimilar
+    from our new post. Quite understandably, it does not have a single word in common
+    with the new post. We can also understand that Post 1 is very similar to the new
+    post, but not the winner, as it contains one word more than Post 3, which is not
+    contained in the new post.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Looking at Post 3 and Post 4, however, the picture is not so clear any more.
+    Post 4 is the same as Post 3 duplicated three times. So, it should also be of
+    the same similarity to the new post as Post 3.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Printing the corresponding feature vectors explains why:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Obviously, using only the counts of the raw words is too simple. We will have
+    to normalize them to get vectors of unit length.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Normalizing word count vectors
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We will have to extend `dist_raw` to calculate the vector distance not on the
+    raw vectors but on the normalized instead:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This leads to the following similarity measurement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: This looks a bit better now. Post 3 and Post 4 are calculated as being equally
+    similar. One could argue whether that much repetition would be a delight to the
+    reader, but from the point of counting the words in the posts this seems to be
+    right.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Removing less important words
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Let's have another look at Post 2\. Of its words that are not in the new post,
+    we have "most", "save", "images", and "permanently". They are actually quite different
+    in the overall importance to the post. Words such as "most" appear very often
+    in all sorts of different contexts and are called stop words. They do not carry
+    as much information and thus should not be weighed as much as words such as "images",
+    which doesn't occur often in different contexts. The best option would be to remove
+    all the words that are so frequent that they do not help to distinguish between
+    different texts. These words are called stop words.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As this is such a common step in text processing, there is a simple parameter
+    in `CountVectorizer` to achieve that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If you have a clear picture of what kind of stop words you would want to remove,
+    you can also pass a list of them. Setting `stop_words` to `english` will use a
+    set of 318 English stop words. To find out which ones, you can use `get_stop_words()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The new word list is seven words lighter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Without stop words, we arrive at the following similarity measurement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: Post 2 is now on par with Post 1\. It has, however, changed not much overall
+    since our posts are kept short for demonstration purposes. It will become vital
+    when we look at real-world data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stemming
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: One thing is still missing. We count similar words in different variants as
+    different words. Post 2, for instance, contains "imaging" and "images". It will
+    make sense to count them together. After all, it is the same concept they are
+    referring to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need a function that reduces words to their specific word stem. SciKit does
+    not contain a stemmer by default. With the **Natural Language Toolkit** (**NLTK**),
+    we can download a free software toolkit, which provides a stemmer that we can
+    easily plug into `CountVectorizer`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Installing and using NLTK
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: How to install NLTK on your operating system is described in detail at [http://nltk.org/install.html](http://nltk.org/install.html).
+    Unfortunately, it is not yet officially supported for Python 3, which means that
+    also pip install will not work. We can, however, download the package from [http://www.nltk.org/nltk3-alpha/](http://www.nltk.org/nltk3-alpha/)
+    and install it manually after uncompressing using Python's `setup.py` install.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To check whether your installation was successful, open a Python interpreter
+    and type:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: You will find a very nice tutorial to NLTK in the book *Python 3 Text Processing
+    with NLTK 3 Cookbook*, *Jacob Perkins*, *Packt Publishing*. To play a little bit
+    with a stemmer, you can visit the web page [http://text-processing.com/demo/stem/](http://text-processing.com/demo/stem/).
+  prefs: []
+  type: TYPE_NORMAL
+- en: NLTK comes with different stemmers. This is necessary, because every language
+    has a different set of rules for stemming. For English, we can take `SnowballStemmer`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Note that stemming does not necessarily have to result in valid English words.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It also works with verbs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This means, it works most of the time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: Extending the vectorizer with NLTK's stemmer
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'We need to stem the posts before we feed them into `CountVectorizer`. The class
+    provides several hooks with which we can customize the stage''s preprocessing
+    and tokenization. The preprocessor and tokenizer can be set as parameters in the
+    constructor. We do not want to place the stemmer into any of them, because we
+    will then have to do the tokenization and normalization by ourselves. Instead,
+    we overwrite the `build_analyzer` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This will do the following process for each post:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step is lower casing the raw post in the preprocessing step (done
+    in the parent class).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Extracting all individual words in the tokenization step (done in the parent
+    class).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This concludes with converting each word into its stemmed version.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'As a result, we now have one feature less, because "images" and "imaging" collapsed
+    to one. Now, the set of feature names is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running our new stemmed vectorizer over our posts, we see that collapsing "imaging"
+    and "images", revealed that actually Post 2 is the most similar post to our new
+    post, as it contains the concept "imag" twice:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Stop words on steroids
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Now that we have a reasonable way to extract a compact vector from a noisy textual
+    post, let's step back for a while to think about what the feature values actually
+    mean.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The feature values simply count occurrences of terms in a post. We silently
+    assumed that higher values for a term also mean that the term is of greater importance
+    to the given post. But what about, for instance, the word "subject", which naturally
+    occurs in each and every single post? Alright, we can tell `CountVectorizer` to
+    remove it as well by means of its `max_df` parameter. We can, for instance, set
+    it to `0.9` so that all words that occur in more than 90 percent of all posts
+    will always be ignored. But, what about words that appear in 89 percent of all
+    posts? How low will we be willing to set `max_df`? The problem is that however
+    we set it, there will always be the problem that some terms are just more discriminative
+    than others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This can only be solved by counting term frequencies for every post and in addition
+    discount those that appear in many posts. In other words, we want a high value
+    for a given term in a given value, if that term occurs often in that particular
+    post and very seldom anywhere else.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is exactly what **term frequency – inverse document frequency** (**TF-IDF**)
+    does. TF stands for the counting part, while IDF factors in the discounting. A
+    naïve implementation will look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: You see that we did not simply count the terms, but also normalize the counts
+    by the document length. This way, longer documents do not have an unfair advantage
+    over shorter ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the following documents, `D`, consisting of three already tokenized documents,
+    we can see how the terms are treated differently, although all appear equally
+    often per document:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: We see that `a` carries no meaning for any document since it is contained everywhere.
+    The `b` term is more important for the document `abb` than for `abc` as it occurs
+    there twice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In reality, there are more corner cases to handle than the preceding example
+    does. Thanks to SciKit, we don''t have to think of them as they are already nicely
+    packaged in `TfidfVectorizer`, which is inherited from `CountVectorizer`. Sure
+    enough, we don''t want to miss our stemmer:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: The resulting document vectors will not contain counts any more. Instead they
+    will contain the individual TF-IDF values per term.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our achievements and goals
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Our current text pre-processing phase includes the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Firstly, tokenizing the text.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: This is followed by throwing away words that occur way too often to be of any
+    help in detecting relevant posts.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Throwing away words that occur way so seldom so that there is only little chance
+    that they occur in future posts.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Counting the remaining words.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, calculating TF-IDF values from the counts, considering the whole text
+    corpus.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Again, we can congratulate ourselves. With this process, we are able to convert
+    a bunch of noisy text into a concise representation of feature values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'But, as simple and powerful the bag of words approach with its extensions is,
+    it has some drawbacks, which we should be aware of:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**It does not cover word relations**: With the aforementioned vectorization
+    approach, the text "Car hits wall" and "Wall hits car" will both have the same
+    feature vector.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**It does not capture negations correctly**: For instance, the text "I will
+    eat ice cream" and "I will not eat ice cream" will look very similar by means
+    of their feature vectors although they contain quite the opposite meaning. This
+    problem, however, can be easily changed by not only counting individual words,
+    also called "unigrams", but instead also considering bigrams (pairs of words)
+    or trigrams (three words in a row).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**It totally fails with misspelled words**: Although it is clear to the human
+    beings among us readers that "database" and "databas" convey the same meaning,
+    our approach will treat them as totally different words.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For brevity's sake, let's nevertheless stick with the current approach, which
+    we can now use to efficiently build clusters from.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Finally, we have our vectors, which we believe capture the posts to a sufficient
+    degree. Not surprisingly, there are many ways to group them together. Most clustering
+    algorithms fall into one of the two methods: flat and hierarchical clustering.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Flat clustering divides the posts into a set of clusters without relating the
+    clusters to each other. The goal is simply to come up with a partitioning such
+    that all posts in one cluster are most similar to each other while being dissimilar
+    from the posts in all other clusters. Many flat clustering algorithms require
+    the number of clusters to be specified up front.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In hierarchical clustering, the number of clusters does not have to be specified.
+    Instead, hierarchical clustering creates a hierarchy of clusters. While similar
+    posts are grouped into one cluster, similar clusters are again grouped into one
+    *uber-cluster*. This is done recursively, until only one cluster is left that
+    contains everything. In this hierarchy, one can then choose the desired number
+    of clusters after the fact. However, this comes at the cost of lower efficiency.
+  prefs: []
+  type: TYPE_NORMAL
+- en: SciKit provides a wide range of clustering approaches in the `sklearn.cluster`
+    package. You can get a quick overview of advantages and drawbacks of each of them
+    at [http://scikit-learn.org/dev/modules/clustering.html](http://scikit-learn.org/dev/modules/clustering.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following sections, we will use the flat clustering method K-means and
+    play a bit with the desired number of clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: K-means
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: k-means is the most widely used flat clustering algorithm. After initializing
+    it with the desired number of clusters, `num_clusters`, it maintains that number
+    of so-called cluster centroids. Initially, it will pick any `num_clusters` posts
+    and set the centroids to their feature vector. Then it will go through all other
+    posts and assign them the nearest centroid as their current cluster. Following
+    this, it will move each centroid into the middle of all the vectors of that particular
+    class. This changes, of course, the cluster assignment. Some posts are now nearer
+    to another cluster. So it will update the assignments for those changed posts.
+    This is done as long as the centroids move considerably. After some iterations,
+    the movements will fall below a threshold and we consider clustering to be converged.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s play this through with a toy example of posts containing only two words.
+    Each point in the following chart represents one document:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![K-means](img/2772OS_03_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After running one iteration of K-means, that is, taking any two vectors as
+    starting points, assigning the labels to the rest and updating the cluster centers
+    to now be the center point of all points in that cluster, we get the following
+    clustering:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![K-means](img/2772OS_03_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Because the cluster centers moved, we have to reassign the cluster labels and
+    recalculate the cluster centers. After iteration 2, we get the following clustering:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![K-means](img/2772OS_03_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: The arrows show the movements of the cluster centers. After five iterations
+    in this example, the cluster centers don't move noticeably any more (SciKit's
+    tolerance threshold is 0.0001 by default).
+  prefs: []
+  type: TYPE_NORMAL
+- en: After the clustering has settled, we just need to note down the cluster centers
+    and their identity. Each new document that comes in, we then have to vectorize
+    and compare against all cluster centers. The cluster center with the smallest
+    distance to our new post vector belongs to the cluster we will assign to the new
+    post.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting test data to evaluate our ideas on
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In order to test clustering, let's move away from the toy text examples and
+    find a dataset that resembles the data we are expecting in the future so that
+    we can test our approach. For our purpose, we need documents about technical topics
+    that are already grouped together so that we can check whether our algorithm works
+    as expected when we apply it later to the posts we hope to receive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One standard dataset in machine learning is the `20newsgroup` dataset, which
+    contains 18,826 posts from 20 different newsgroups. Among the groups' topics are
+    technical ones such as `comp.sys.mac.hardware` or `sci.crypt`, as well as more
+    politics- and religion-related ones such as `talk.politics.guns` or `soc.religion.christian`.
+    We will restrict ourselves to the technical groups. If we assume each newsgroup
+    as one cluster, we can nicely test whether our approach of finding related posts
+    works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The dataset can be downloaded from [http://people.csail.mit.edu/jrennie/20Newsgroups](http://people.csail.mit.edu/jrennie/20Newsgroups).
+    Much more comfortable, however, is to download it from MLComp at [http://mlcomp.org/datasets/379](http://mlcomp.org/datasets/379)
+    (free registration required). SciKit already contains custom loaders for that
+    dataset and rewards you with very convenient data loading options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The dataset comes in the form of a ZIP file `dataset-379-20news-18828_WJQIG.zip`,
+    which we have to unzip to get the directory `379`, which contains the datasets.
+    We also have to notify SciKit about the path containing that data directory. It
+    contains a metadata file and three directories `test`, `train`, and `raw`. The
+    `test` and `train` directories split the whole dataset into 60 percent of training
+    and 40 percent of testing posts. If you go this route, then you either need to
+    set the environment variable `MLCOMP_DATASETS_HOME` or you specify the path directly
+    with the `mlcomp_root` parameter when loading the dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '[http://mlcomp.org](http://mlcomp.org) is a website for comparing machine learning
+    programs on diverse datasets. It serves two purposes: finding the right dataset
+    to tune your machine learning program, and exploring how other people use a particular
+    dataset. For instance, you can see how well other people''s algorithms performed
+    on particular datasets and compare against them.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For convenience, the `sklearn.datasets` module also contains the `fetch_20newsgroups`
+    function, which automatically downloads the data behind the scenes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can choose between training and test sets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For simplicity''s sake, we will restrict ourselves to only some newsgroups
+    so that the overall experimentation cycle is shorter. We can achieve this with
+    the `categories` parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: Clustering posts
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You would have already noticed one thing—real data is noisy. The newsgroup dataset
+    is no exception. It even contains invalid characters that will result in `UnicodeDecodeError`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We have to tell the vectorizer to ignore them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: We now have a pool of 3,529 posts and extracted for each of them a feature vector
+    of 4,712 dimensions. That is what K-means takes as input. We will fix the cluster
+    size to 50 for this chapter and hope you are curious enough to try out different
+    values as an exercise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That''s it. We provided a random state just so that you can get the same results.
+    In real-world applications, you will not do this. After fitting, we can get the
+    clustering information out of members of `km`. For every vectorized post that
+    has been fit, there is a corresponding integer label in `km.labels_`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: The cluster centers can be accessed via `km.cluster_centers_`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will see how we can assign a cluster to a newly arriving
+    post using `km.predict`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solving our initial challenge
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We will now put everything together and demonstrate our system for the following
+    new post that we assign to the `new_post` variable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*"Disk drive problems. Hi, I have a problem with my hard disk.*'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: '*After 1 year it is working only sporadically now.*'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: '*I tried to format it, but now it doesn''t boot any more.*'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: ''
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: '*Any ideas? Thanks."*'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: 'As you learned earlier, you will first have to vectorize this post before you
+    predict its label:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we have the clustering, we do not need to compare `new_post_vec` to
+    all post vectors. Instead, we can focus only on the posts of the same cluster.
+    Let''s fetch their indices in the original data set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: The comparison in the bracket results in a Boolean array, and `nonzero` converts
+    that array into a smaller array containing the indices of the `True` elements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using `similar_indices`, we then simply have to build a list of posts together
+    with their similarity scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: We found 131 posts in the cluster of our post. To give the user a quick idea
+    of what kind of similar posts are available, we can now present the most similar
+    post (`show_at_1`), and two less similar but still related ones – all from the
+    same cluster.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following table shows the posts together with their similarity values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Position | Similarity | Excerpt from post |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 1 | 1.038 | BOOT PROBLEM with IDE controllerHi,I''ve got a Multi I/O card
+    (IDE controller + serial/parallel interface) and two floppy drives (5 1/4, 3 1/2)
+    and a Quantum ProDrive 80AT connected to it. I was able to format the hard disk,
+    but I could not boot from it. I can boot from drive A: (which disk drive does
+    not matter) but if I remove the disk from drive A and press the reset switch,
+    the LED of drive A: continues to glow, and the hard disk is not accessed at all.
+    I guess this must be a problem of either the Multi I/o card or floppy disk drive
+    settings (jumper configuration?) Does someone have any hint what could be the
+    reason for it. […] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 2 | 1.150 | Booting from B driveI have a 5 1/4" drive as drive A. How can
+    I make the system boot from my 3 1/2" B drive? (Optimally, the computer would
+    be able to boot: from either A or B, checking them in order for a bootable disk.
+    But: if I have to switch cables around and simply switch the drives so that: it
+    can''t boot 5 1/4" disks, that''s OK. Also, boot_b won''t do the trick for me.
+    […][…] |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 3 | 1.280 | IBM PS/1 vs TEAC FDHello, I already tried our national news group
+    without success. I tried to replace a friend s original IBM floppy disk in his
+    PS/1-PC with a normal TEAC drive. I already identified the power supply on pins
+    3 (5V) and 6 (12V), shorted pin 6 (5.25"/3.5" switch) and inserted pullup resistors
+    (2K2) on pins 8, 26, 28, 30, and 34\. The computer doesn''t complain about a missing
+    FD, but the FD s light stays on all the time. The drive spins up o.k. when I insert
+    a disk, but I can''t access it. The TEAC works fine in a normal PC. Are there
+    any points I missed? […][…] |'
+  prefs: []
+  type: TYPE_TB
+- en: It is interesting how the posts reflect the similarity measurement score. The
+    first post contains all the salient words from our new post. The second also revolves
+    around booting problems, but is about floppy disks and not hard disks. Finally,
+    the third is neither about hard disks, nor about booting problems. Still, of all
+    the posts, we would say that they belong to the same domain as the new post.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another look at noise
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We should not expect a perfect clustering in the sense that posts from the
+    same newsgroup (for example, `comp.graphics`) are also clustered together. An
+    example will give us a quick impression of the noise that we have to expect. For
+    the sake of simplicity, we will focus on one of the shorter posts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For this post, there is no real indication that it belongs to `comp.graphics`
+    considering only the wording that is left after the preprocessing step:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is only after tokenization, lowercasing, and stop word removal. If we
+    also subtract those words that will be later filtered out via `min_df` and `max_df`,
+    which will be done later in `fit_transform`, it gets even worse:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Even more, most of the words occur frequently in other posts as well, as we
+    can check with the IDF scores. Remember that the higher TF-IDF, the more discriminative
+    a term is for a given post. As IDF is a multiplicative factor here, a low value
+    of it signals that it is not of great value in general.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: So, the terms with the highest discriminative power, `birmingham` and `kingdom`,
+    clearly are not that computer graphics related, the same is the case with the
+    terms with lower IDF scores. Understandably, posts from different newsgroups will
+    be clustered together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For our goal, however, this is no big deal, as we are only interested in cutting
+    down the number of posts that we have to compare a new post to. After all, the
+    particular newsgroup from where our training data came from is of no special interest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tweaking the parameters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: So what about all the other parameters? Can we tweak them to get better results?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sure. We can, of course, tweak the number of clusters, or play with the vectorizer's
+    `max_features` parameter (you should try that!). Also, we can play with different
+    cluster center initializations. Then there are more exciting alternatives to K-means
+    itself. There are, for example, clustering approaches that let you even use different
+    similarity measurements, such as Cosine similarity, Pearson, or Jaccard. An exciting
+    field for you to play.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But before you go there, you will have to define what you actually mean by "better".
+    SciKit has a complete package dedicated only to this definition. The package is
+    called `sklearn.metrics` and also contains a full range of different metrics to
+    measure clustering quality. Maybe that should be the first place to go now. Right
+    into the sources of the metrics package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: That was a tough ride from pre-processing over clustering to a solution that
+    can convert noisy text into a meaningful concise vector representation, which
+    we can cluster. If we look at the efforts we had to do to finally being able to
+    cluster, it was more than half of the overall task. But on the way, we learned
+    quite a bit on text processing and how simple counting can get you very far in
+    the noisy real-world data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The ride has been made much smoother, though, because of SciKit and its powerful
+    packages. And there is more to explore. In this chapter, we were scratching the
+    surface of its capabilities. In the next chapters, we will see more of its power.
+  prefs: []
+  type: TYPE_NORMAL

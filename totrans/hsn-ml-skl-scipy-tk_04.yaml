@@ -1,0 +1,1369 @@
+- en: Making Decisions with Linear Equations
+  prefs: []
+  type: TYPE_NORMAL
+- en: The method of least squares regression analysis dates back to the time of Carl
+    Friedrich Gauss in the 18^(th) century. For over two centuries, many algorithms
+    have been built on top of it or have been inspired by it in some form. These linear
+    models are possibly the most commonly used algorithms today for both regression
+    and classification. We will start this chapter by looking at the basic least squares
+    algorithm, then we will move on to more advanced algorithms as the chapter progresses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a list of the topics covered in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding linear models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Predicting house prices in Boston
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Regularizing the regressor
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Finding regression intervals
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Additional linear regressors
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Using logistic regression for classification
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Additional linear classifiers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Understanding linear models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: To be able to explain linear models well, I would like to start with an example
+    where the solution can be found using a system of linear equations—a technique
+    we all learned in school when we were around 12 years old. We will then see why
+    this technique doesn't always work with real-life problems, and so a linear regression
+    model is needed. Then, we will apply the regression model to a real-life regression
+    problem and learn how to improve our solution along the way.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Linear equations
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '"Mathematics is the most beautiful and most powerful creation of the human
+    spirit."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Stefan Banach
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this example, we have five passengers who have taken a taxi trip. Here,
+    we have a record of the distance each taxi covered in kilometers and the fair
+    displayed on its meter at the end of each trip:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c515257d-2dbc-4faa-b78a-7ec497bd5bb9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We know that taxi meters usually start with a certain amount and then they
+    add a fixed charge for each kilometer traveled. We can model the meter using the
+    following equation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c2a865a5-da87-469e-84c3-a3412c7f67fd.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here, *A* is the meter''s starting value and *B* is the charge added per kilometer.
+    We also know that with two unknowns—*A* and *B*—we just need two data samples
+    to figure out that *A* is `5` and *B* is `2.5`. We can also plot the formula with
+    the values for *A* and *B*, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/284965ec-b7d8-4136-9c86-c73ed11ee969.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We also know that the blue line will meet the *y*-axis at the value of *A* (`5`).
+    So, we call *A* the **intercept**. We also know that the slope of the line equals
+    *B* (`2.5`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The passengers didn''t always have change, so they sometimes rounded up the
+    amount shown on the meter to add a tip for the driver. Here is the data for the
+    amount each passenger ended up paying:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/67a8b31e-d936-4d2a-8237-a3561d53129b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'After we add the tips, it''s clear that the relationship between the distance
+    traveled and the amount paid is no longer linear. The plot on the right-hand side
+    shows that a straight line cannot be drawn to capture this relationship:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/95527f92-ecc4-40f7-ab82-cdb9aae56698.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We now know that our usual method of solving equationswill not work this time.
+    Nevertheless, we can tell that there is still a line that can somewhat approximate
+    this relationship. In the next section, we will use a linear regression algorithm
+    to find this approximation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Linear regression
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Algorithms are all about objectives. Our objective earlier was to find a single
+    line that goes through all the points in the graph. We have seen that this objective
+    is not feasible if a linear relationship does not exist between the points. Therefore,
+    we will use the linear regression algorithm since it has a different objective.
+    The linear regression algorithm tries to find a line where the mean of the squared
+    errors between the estimated points on the line and the actual points is minimal.
+    Visually speaking, in the following graph, we want a dotted line that makes the
+    average squared lengths of the vertical lines minimal:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7cc116de-9a1e-436d-b53d-8a1da2aafe7f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The method used here to find a line that minimizes the **Mean Squared Error**
+    (**MSE**) is known as ordinary least squares. Often, linear regression just means
+    ordinary least squares. Nevertheless, throughout this chapter, I will be using
+    the term `LinearRegression` (as a single word) to refer to scikit-learn's implementation
+    of ordinary least squares, and I will reserve the term *linear regression* (as
+    two separate words) for referring to the general concept of linear regression,
+    whether the ordinary least squares method is used or a different method is being
+    employed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The method of ordinary least squares is about two centuries old and it uses
+    simple mathematics to estimate the parameters. That's why some may argue that
+    this algorithm is not actually a machine learning one. Personally, I follow a
+    more liberal approach when categorizing what is machine learning and what is not.
+    As long as the algorithm automatically learns from data and we use that data to
+    evaluate it, then for me, it falls within the machine learning paradigm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Estimating the amount paid to the taxi driver
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Now that we know how linear regression works, let's take a look at how to estimate
+    the amount paid to the taxi driver.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s use scikit-learn to build a regression model to estimate the amount
+    paid to the taxi driver:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Clearly, scikit-learn has a consistent interface. We have used the same `fit()`
+    and `predict()` methods as in the previous chapter, but this time with the `LinearRegression`
+    object.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We only have one feature this time, `Kilometres`; nevertheless, the `fit()`
+    and `predict()` methods expect a two-dimensional `ax`, which is why we enclosed
+    `Kilometers` in an extra set of square brackets—`df_taxi[['Kilometres']]`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We put our predictions in the same DataFrame under `Paid (Predicted)`. We can
+    then plot the actual values versus the estimated ones using the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'I cut out the formatting parts of the code to keep it short and to the point.
+    Here is the final result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/42d4da52-87fe-41c7-98ba-f1b78e138679.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once a linear model is trained, you can get its intercept and coefficients
+    using the `intercept_` and `coef_` parameters. So, we can use the following code
+    snippet to create the linear equations of the estimated line:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The following equation is then printed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/98c62d28-a9c5-4f5f-b481-c4fcdb8cc961.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Getting the parameters for the linear equation can be handy in cases where you
+    want to build a model in scikit-learn and then use it in another language or even
+    in your favorite spreadsheet software. Knowing the coefficient also helps us understand
+    why the model made certain decisions. More on this later in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In software, the input to functions and methods is referred to as parameters.
+    In machine learning, the weights learned for a model are also referred to as parameters.
+    When setting a model, we pass its configuration to its `__init__` method. Thus,
+    to prevent any confusion, the model's configurations are called hyperparameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Predicting house prices in Boston
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we understand how linear regression works, let's move on to looking
+    at a real dataset where we can demonstrate a more practical use case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Boston dataset is a small set representing the house prices in the city
+    of Boston. It contains 506 samples and 13 features. Let''s load the data into
+    a DataFrame, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Data exploration
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'It''s important to make sure you do not have any null values in your data;
+    otherwise, scikit-learn will complain about it. Here, I will count the sum of
+    the null values in each column, then take the sum of it. If I get `0`, then I
+    am a happy man:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: For a regression problem, the most important thing to do is to understand the
+    distribution of your target. If a target ranges between `1` and `10`, and after
+    training our model we get a mean absolute error of `5`, we can tell that the error
+    is large in this context.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, the same error for a target that ranges between `500,000` and `1,000,000`
+    is negligible. Histograms are your friend when you want to visualize distributions.
+    In addition to the target''s distribution, let''s also plot the mean values for
+    each feature:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This gives us the following graphs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0268778e-62bf-4ccf-abb4-b737d7f6f4f3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the preceding graph, it is observed that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The prices range between `5` and `50`. Obviously, these are not real prices,
+    probably normalized values, but this doesn't matter for now.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Furthermore, we can tell from the histogram that most of the prices are below
+    `35`. We can use the following code snippet to see that 90% of the prices are
+    below `34.8`:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: You can always go deeper with your data exploration, but we will stop here on
+    this occasion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Splitting the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When it comes to small datasets, it''s advised that you allocate enough data
+    for testing. So, we will split our data into 60% for training and 40% for testing
+    using the `train_test_split` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Once you have the training and test sets, split them further into *x* sets and
+    *y* sets. Then, we are ready to move to the next step.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calculating a baseline
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The distribution of the target gave us an idea of what level of error we can
+    tolerate. Nevertheless, it is always useful to compare our final model to something.
+    If we were in the real estate business and human agents were used to estimate
+    house prices, then we would most likely be expected to build a model that can
+    do better than the human agents. Nevertheless, since we do not know any real estimations
+    to compare our model to, we can come up with our own baseline instead. The mean
+    house price is `22.5`. If we build a dummy model that returns the mean price regardless
+    of the data given to it, then it would make a reasonable baseline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep in mind that the value of `22.5` is calculated for the entire dataset,
+    but since we are pretending to only have access to the training data, then it
+    makes sense to calculate the mean price for the training set only. To save us
+    all this effort, scikit-learn has dummy regressors available that do all this
+    work for us.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we will create a dummy regressor and use it to calculate baseline predictions
+    for the test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: There are other strategies that we can use, such as finding the median (the
+    50^(th) quantile) or any other *N*^(th) quantile. Keep in mind that for the same
+    data, using the mean as an estimation gives a lower MSE compared to when the median
+    is used. Conversely, the median gives a lower **Mean Absolute Error** (**MAE**).
+    We want our model to beat the baseline for both the MAE and MSE.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training the linear regressor
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Isn''t the code for the baseline model almost identical to the one for the
+    actual models? That''s the beauty of scikit-learn''s API. It means that when we
+    decide to try a different algorithm—say, the decision tree algorithm from the
+    previous chapter—we only need to change a few lines of code. Anyway, here is the
+    code for the linear regressor:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We are going to stick to the default configuration for now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Evaluating our model's accuracy
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'There are three commonly used metrics for regression: *R²*, *MAE*, and *MSE*.
+    Let''s first write the code that calculates the three metrics and prints the results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here are the results we get:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By now, you should already know how *MAE* and *MSE* are calculated. Just keep
+    in mind that *MSE* is more sensitive to outliers than *MAE*. That''s why the mean
+    estimations for the baseline scored badly there. As for the *R**²*, let''s look
+    at its formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f27ffaad-70dd-4596-85cd-172325776462.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Here''s an explanation of the preceding formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The numerator probably reminds you of *MSE*. We basically calculate the squared
+    differences between all the predicted values and their corresponding actual values.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As for the denominator, we use the mean of the actual values as pseudo estimations.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Basically, this metric tells us how much better our predictions are compared
+    to using the target's mean as an estimation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: An R² score of `1` is the best we could get, and a score of `0` means that we
+    offered no additional value in comparison to using a biased model that just relies
+    on the mean as an estimation.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A negative score means that we should throw our model in the trash and use the
+    target's mean instead.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Obviously, in the baseline model, we already used the target's mean as the prediction.
+    That's why its R² score is `0`.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: For*MAE*and*MSE*, the smaller their values, the better the model is. Conversely,
+    for *R**²*, the higher its values, the better the model is. In scikit-learn, the
+    names of metric functions, where higher values correlate with better results,
+    end with `_score`, while for functions ending with `_error` or `_loss`, the lower
+    the value, the better.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, if we compare the scores, it is clear that our model scored better than
+    the baseline in all of the three scores used. Congratulations!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Showing feature coefficients
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We know that a linear model multiplies each of the features by a certain coefficient,
+    and then gets the sum of these products as its final prediction. We can use the
+    regressor''s `coef_` method after the model is trained to print these coefficients:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As we can see in these results, some coefficients are positive and others are
+    negative. A positive coefficient means that the feature correlates positively
+    with the target and vice versa. I also added another column for the absolute values
+    of the coefficients:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/13b79c89-465b-4c68-b59e-cc398779f2a1.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the preceding screenshot, the following is observed :'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Ideally, the value for each coefficient should tell us how important each feature
+    is. A higher absolute value, regardless of its sign, reflects high importance.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: However, I made a mistake here. If you check the data, you will notice that
+    the maximum value for `NOX` is `0.87`, while `TAX` goes up to `711`. This means
+    that if `NOX` has just marginal importance, its coefficient will still be high
+    to balance its small value, while for `TAX` , its coefficient will always be small
+    compared to the high values of the feature itself.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: So, we want to scale the features to keep them all in the comparable ranges.
+    In the next section, we are going to see how to scale our features.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Scaling for more meaningful coefficients
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'scikit-learn has a number of scalers. We are going to use `MinMaxScaler` for
+    now. Using it with its default configuration will squeeze out all the values for
+    all the features between `0` and `1`. The scaler needs to be fitted first to learn
+    the features'' ranges. Fitting should be done on the training *x* set only. Then,
+    we use the scaler''s `transform` function to scale both the training and test
+    *x* sets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There is a shorthand version of this code for fitting one dataset and then
+    transforming it. In other words, the following uncommented line takes the place
+    of the two commented ones:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: We will be using the `fit_transform()` function a lot from now on where needed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's important to scale your features if you want meaningful coefficients. Furthermore,
+    scaling helps gradient-based solvers converge quicker (more on this later). In
+    addition to scaling, you should also make sure you don't have highly correlated
+    features for more meaningful coefficients and a stable linear regression model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that we have scaled our features and retrained the model, we can print
+    the features and their coefficients again:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/605484b4-76a8-455e-86ff-bfcdb35e22e7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Notice how `NOX` is less important now than before.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adding polynomial features
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Now that we know what the most important features are, we can plot the target
+    against them to see how they correlate with them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/abc909a7-3fe5-4cb0-ab64-0806c175e522.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the preceding screenshot, the following is observed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: These plots don't seem to be very linear to me, and a linear model will not
+    be able to capture this non-linearity.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Although we cannot turn a linear model into a non-linear one, we can still transform
+    the data instead.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Think of it this way: if *y* is a function of *x²*, we can either use a non-linear
+    model—one that is capable of capturing the quadratic relation between *x* and
+    *y*—or we can just calculate *x²* and give it to a linear model instead of *x*.
+    Furthermore, linear regression algorithms do not capture feature interactions.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The current model cannot capture interactions between multiple features.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'A polynomial transformation can solve both the non-linearity and feature interaction
+    issues for us. Given the original data, scikit-learn''s polynomial transformer
+    will transform the features into higher dimensions (for example, it will add the
+    quadratic and cubic values for each feature). Additionally, it will also add the
+    products to each feature-pair (or triplets). `PolynomialFeatures` works in a similar
+    fashion to the scaler we used earlier in this chapter. We are going to use its
+    `fit_transform` variable and a `transform()` method, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: To get both the quadratic and cubic feature transformation, we set the `degree`
+    parameter to `3`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One annoying thing about `PolynomialFeatures` is that it doesn''t keep track
+    of the DataFrame''s column names. It replaces the feature names with `x0`, `x1`,
+    `x2`, and so on. However, with our Python skills at hand, we can reclaim our column
+    names. Let''s do exactly that using the following block of code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can now use the newly derived polynomial features instead of the original
+    ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fitting the linear regressor with the derived features
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '*"When I was six, my sister was half my age. Now I am 60 years old, how old
+    is my sister?"*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*This is a puzzle found on the internet. If your answer is 30, then you forgot
+    to fit an intercept into your linear regression model.*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we are ready to use our linear regressor with the newly transformed features.
+    One thing to keep in mind is that the `PolynomialFeatures`transformer adds one
+    additional column where all the values are `1`. The coefficient this column gets
+    after training is equivalent to the intercept. So, we will not fit an intercept
+    by setting `fit_intercept=False`when training our regressor this time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, as we print the *R²*, *MAE*, and *MSE* results, we face the following
+    unpleasant surprise:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: The regressor is way worse than before and even worse than the baseline. What
+    did the polynomial features do to our model?
+  prefs: []
+  type: TYPE_NORMAL
+- en: One major problem with the ordinary least squares regression algorithm is that
+    it doesn't work well with highly correlated features (multicollinearity).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The polynomial feature transformation's kitchen-sink approach—where we add features,
+    their squared and cubic values, and the product of the features' pairs and triples—will
+    very likely give us multiple correlated features. This multi-collinearity harms
+    the model's performance. Furthermore, if you print the shape of `x_train_poly`,
+    you will see that it has 303 samples and 560 features. This is another problem
+    known as the curse of dimensionality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **curse of dimensionality** is when you have too many features compared
+    to your samples. If you imagine your DataFrame as a rectangle with the features
+    as its base and the samples as its height, you always want your rectangle to have
+    a much bigger height than its base. Imagine having two binary columns—`x1` and
+    `x2`. They can take four possible value combinations—`(0, 0)`, `(0, 1)`, `(1,
+    0)`, and `(1, 1)`. Similarly, for *n* columns, they can take *2^n* combinations.
+    As you can see, the number of possibilities increases exponentially with the number
+    of features. For a supervised learning algorithm to work well, it needs enough
+    samples to cover a reasonable number of all these possibilities. This problem
+    is even more drastic when we have non-binary features, as is our case here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Thankfully, two centuries is long enough for people to find solutions to these
+    two problems. Regularization is the solution we are going to have fun with in
+    the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Regularizing the regressor
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"It is vain to do with more what can be done with fewer."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – William of Occam
+  prefs: []
+  type: TYPE_NORMAL
+- en: Originally, our objective was to minimize the MSE value of the regressor. Later
+    on, we discovered that too many features are an issue. That's why we need a new
+    objective. We still need to minimize the MSE value of the regressor, but we also
+    need to incentivize the model to ignore the useless features. This second part
+    of our objective is what regularization does in a nutshell.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Two algorithms are commonly used for regularized linear regression—**lasso**
+    and **ridge**. Lasso pushes the model to have fewer coefficients—that is, it sets
+    as many coefficients as possible to `0`—while ridge pushes the model to have as
+    small values as possible for its coefficients. Lasso uses a form of regularization
+    called L1, which penalizes the absolute values of the coefficients, while ridge
+    uses L2, which penalizes the squared values of the coefficients. These two algorithms
+    have a hyperparameter (alpha), which controls how strongly the coefficients will
+    be regularized. Setting alpha to `0` means no regularization at all, which brings
+    us back to an ordinary least squares regressor. While larger values for alpha
+    specify stronger regularization, we will start with the default value for alpha,
+    and then see how to set it correctly later on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The standard approach used in the ordinary least squares algorithm does not
+    work here. We now have an objective function that aims to minimize the size of
+    the coefficients, in addition to minimizing the predictor's MSE values. So, a
+    solver is used to find the optimum coefficients to minimize the new objective
+    functions. We will look further at solvers later in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training the lasso regressor
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Training lasso is no different to training any other model. Similar to what
+    we did in the previous section, we will set `fit_intercept` to `False` here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once done, we can print the R², MAE, and MSE:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Not only did we fix the problems introduced by the polynomial features, but
+    we also have better performance than the original linear regressor. *MAE* is `2.4`
+    here, compared to `3.6` before, *MSE* is `16.2`, compared to `25.8` before, and
+    *R²* is `0.79`, compared to `0.73` before.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have seen promising results after applying regularization, it's
+    time to see how to set an optimum value for the regularization parameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding the optimum regularization parameter
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Ideally, after splitting the data into training and test sets, we would further
+    split the training set into *N* folds. Then, we would make a list of all the values
+    of alpha that we would like to test and loop over them one after the other. With
+    each iteration, we would apply *N*-fold cross-validation to find the value for
+    alpha that gives the minimal error. Thankfully, scikit-learn has a module called
+    `LassoCV` (`CV` stands for cross-validation). Here, we are going to use this module
+    to find the best value for alpha using five-fold cross-validation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Once done, we can use the model for predictions. You may want to predict for
+    both the training and test sets and see whether the model overfits on the training
+    set. We can also print the chosen alpha, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: I got an `alpha` value of `1151.4`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, we can also see, for each value of alpha, what the *MSE* value
+    for each of the five folds was. We can access this information via `mse_path_`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we have five values for *MSE* for each value of alpha, we can plot the
+    mean of these five values, as well as the confidence interval around the mean.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The confidence interval is used to show the expected range that observed data
+    may take. A 95% confidence interval means that we expect 95% of our values to
+    fall within this range. Having a wide confidence interval means that the data
+    may take a wide range of values, while a narrower confidence interval means that
+    we can almost pinpoint exactly what value the data will take.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A 95% confidence interval is calculated as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/01b5aeff-8657-4768-97f9-0ba308fb09c9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here, the standard error is equal to the standard deviation divided by the square
+    root of the number of samples ([![](img/be193ff5-f516-4cdf-a157-9287578ae2b2.png)],
+    since we have five folds here).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The equation for the confidence interval here is not 100% accurate. Statistically
+    speaking, when dealing with small samples, and their underlying variance is not
+    known, a t-distribution should be used instead of a z-distribution. Thus, given
+    the small number of folds here, the 1.96 coefficient should be replaced by a more
+    accurate value from the t-distribution table, where its degrees of freedom are
+    inferred from the number of folds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code snippets calculate and plot the confidence intervals for
+    MSE versus alpha:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start by calculating the descriptive statistics of the *MSE* values returned:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we put our calculations into a data frame and plot them using the default
+    line chart:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is the output of the previous code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7c750341-03f6-4570-8edb-b0b98a6920da.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The MSE value is lowest at the chosen alpha value. The confidence interval is
+    also narrower there, which reflects more confidence in the expected *MSE* result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Finally, setting the model''s alpha value to the onesuggested and using it
+    to make predictions for the test data gives us the following results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '|  | **Baseline** | **Linear Regression** | **Lasso at Alpha = 1151.4** |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **R²** | `0.00` | `0.73` | `0.83` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **MAE** | `7.20` | `3.56` | `2.76` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| **MSE** | `96.62` | `25.76` | `16.31` |'
+  prefs: []
+  type: TYPE_TB
+- en: Clearly, regularization fixed the issues caused by the curse of dimensionality
+    earlier. Furthermore, we were able to use cross-validation to find the optimum
+    regularization parameter. We plotted the confidence intervals of errors to visualize
+    the effect of alpha on the regressor. The fact that I have been talking about
+    the confidence intervals in this section inspired me to dedicate the next section
+    to regression intervals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding regression intervals
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"Exploring the unknown requires tolerating uncertainty."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Brian Greene
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's not always guaranteed that we have accurate models. Sometimes, our data
+    is inherently noisy and we cannot model it using a regressor. In these cases,
+    it is important to be able to quantify how certain we arein our estimations. Usually,
+    regressors make point predictions. These are the expected values (typically the
+    mean) of the target (*y*) at each value of *x*. A Bayesian ridge regressor is
+    capable of returning the expected values as usual, yet it also returns the standard
+    deviation of the target (*y*) at each value of *x*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To demonstrate how this works, let''s create a noisy dataset, where ![](img/e6f30f23-e2ed-4ea5-827e-21067cb1c1d8.png):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we can plot it in the form of a scatter plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Plotting the resulting data frame will give us the following plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/253614ca-7f47-4c93-be97-f64ca09cc0d9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, let''s train two regressors on the same data—`LinearRegression` and `BayesianRidge`.
+    I will stick to the default values for the Bayesian ridge hyperparameters here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice how the Bayesian ridge regressor returns two values when predicting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Bayesian approach to linear regression differs from the aforementioned algorithms
+    in the way that it sees its coefficients. For all the algorithms we have seen
+    so far, each coefficient takes a single value after training, but for a Bayesian
+    model, a coefficient is rather a distribution with an estimated mean and standard
+    deviation. A coefficient is initialized using a prior distribution, which gets
+    updated by the training data to reach a posterior distribution via Bayes' theorem.
+    The Bayesian ridge regressor is a regularized Bayesian regressor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The predictions made by the two models are very similar. Nevertheless, we can
+    use the standard deviation returned to calculate a range around the values that
+    we expect most of the future data to fall into.The following code snippet creates
+    plots for the two models and their predictions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the preceding code gives us the following graphs. In the `BayesianRidge`
+    case, the shaded area shows where we expect 95% of our targets to fall:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c7f47af5-d666-4262-ad74-0716d20f0daa.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Regression intervals are handy when we want to quantify our uncertainties. In
+    [Chapter 8](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=30&action=edit),
+    *Ensembles – When One Model Is Not Enough*, we will revisit regression intervals
+  prefs: []
+  type: TYPE_NORMAL
+- en: Getting to know additional linear regressors
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before moving on to linear classifiers, it makes sense to also add the following
+    additional linear regression algorithms to your toolset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Elastic-net** uses a mixture of L1 and L2 regularization techniques, where
+    `l1_ratio` controls the mix of the two. This is useful in cases when you want
+    to learn a sparse model where few of the weights are non-zero (as in **lasso**)
+    while keeping the benefits of **ridge** regularization.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Random Sample Consensus**(**RANSAC**) is useful when your data has outliers.
+    It tries to separate the outliers from the inlier samples. Then, it fits the model
+    on the inliers only.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Least-Angle Regression** (**LARS**) is useful when dealing with high-dimensional
+    data—that is, when there is a significant number of features compared to the number
+    of samples. You may want to try it with the polynomial features example we saw
+    earlier and see how it performs there.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Let's move on to the next section of the book where you will learn to use logistic
+    regression to classify data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using logistic regression for classification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"You can tell whether a man is clever by his answers. You can tell whether
+    a man is wise by his questions."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Naguib Mahfouz
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'One day, when applying for a job, an interviewer asks: *So tell me, is logistic
+    regression a classification or a regression algorithm?* The short answer to this
+    is that it is a classification algorithm, but a longer and more interesting answer
+    requires a good understanding of the logistic function. Then, the question may
+    end up having a different meaning altogether.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the logistic function
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The logistic function is a member of the sigmoid (*s*-shaped) functions, and
+    it is represented by the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d263ba93-0475-4daa-91a5-1c6645de549f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Don''t let this equation scare you. What actually matters is how this function
+    looks visually. Luckily, we can use our computer to generate a bunch of values
+    for theta—for example, between `-10` and `10`. Then, we can plug these values
+    into the formula and plot the resulting `y` values versus the theta values, as
+    we have done in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running this code gives us the following graph:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/313d6584-8e70-4dc0-a531-b5c989b2975a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Two key characteristics to notice in the logistic function are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*y* only goes between `0` and `1`. It approaches `1` as theta approaches infinity,
+    and approaches `0` as theta approaches negative infinity.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`y` takes the value of `0.5` when theta is `0`.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Plugging the logistic function into a linear model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '"Probability is not a mere computation of odds on the dice or more complicated
+    variants; it is the acceptance of the lack of certainty in our knowledge and the
+    development of methods for dealing with our ignorance."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Nassim Nicholas Taleb
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For a line model with a couple of features, *x[1]* and *x[2]*, we can have
+    an intercept and two coefficients. Let''s call them ![](img/7b829d0f-4b60-4173-90b1-ca98ebe6e69d.png),
+    ![](img/16a7a93c-f405-4f3e-abff-a2a80688aaf3.png) , and ![](img/a914785a-b7f0-4197-8e3d-62e47bac1a5c.png).
+    Then, the linear regression equation will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/4cd8809f-b19d-4c1e-87e5-0a52e8419f49.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Separately, we can also plug the right-hand side of the preceding equation
+    into the logistic function in place of ![](img/e4173069-bef8-4e29-8c88-10cfc96da625.png).
+    This will give the following equation for *y*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d78652ca-db05-492b-a081-edde13e8d20f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this case, the variation in the values of *x* will move *y* between `0` and
+    `1`. Higher values for the products of *x* and its coefficients will move *y*
+    closer to `1`, and lower values will move it toward `0`. We also know that probabilities
+    take values between `0` and `1`. So, it makes sense to interpret *y* as the probability
+    of *y* belonging to a certain class, given the value of *x*. If we don't want
+    to deal with probabilities, we can just specify ![](img/d4188933-f93c-4834-9b32-7a83a1377fcd.png);
+    then, our sample belongs to class 1, and it belongs to class 0 otherwise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This was a brief look at how logistic regression works. It is a classifier,
+    yet it is called *regression* since it's basically a regressor returning a value
+    between `0` and `1`, which we interpret as probabilities.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To train the logistic regression model, we need an objective function, as well
+    as a solver that tries to find the optimal coefficients to minimize this function.
+    In the following sections, we will go through all of these in more detail.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Objective function
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'During the training phase, the algorithm loops through the data trying to find
+    the coefficients that minimize a predefined objective (loss) function. The loss
+    function we try to minimize in the case of logistic regression is called log loss.
+    It measures how far the predicted probabilities (*p*) are from the actual class
+    labels (*y*) using the following formula:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*-log(p) if y == 1 else -log(1 - p)*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mathematicians use a rather ugly way to express this formula due to their lack
+    of `if-else` conditions. So, I chose to display the Python form here for its clarity.
+    Jokes aside, the mathematical formula will turn out to be beautiful once you know
+    its informational theory roots, but that's not something we'll look at now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Regularization
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Furthermore, scikit-learn's implementation of logistic regression algorithms
+    uses regularization by default. Out of the box, it uses L2 regularization (as
+    in the ridge regressor), but it can also use L1 (as in lasso) or a mixture of
+    L1 and L2 (as in elastic-net).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Solvers
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Finally, how do we find the optimal coefficients to minimize our loss function?
+    A naive approach would be to try all the possible combinations of the coefficients
+    until the minimal loss is found. Nevertheless, since an exhaustive search is not
+    feasible given the infinite combinations, solvers are there to efficiently search
+    for the best coefficients. scikit-learn implements about half a dozen solvers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The choice of solver, along with the regularization method used, are the two
+    main decisions to take when configuring the logistic regression algorithm. In
+    the next section, we are going to see how and when to pick each one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Configuring the logistic regression classifier
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Before talking about solvers, let''s go through some of the common hyperparameters
+    used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**`fit_intercept`**: Usually, in addition to the coefficient for each feature,
+    there is a constant intercept in your equation. Nevertheless, there are cases
+    where you might not need an intercept—for example, if you know for sure that the
+    value of *y* is supposed to be `0.5` when all the values of *x* are `0`. One other
+    case is when your data already has an additional constant column with all values
+    set to `1`. This usually occurs if your data has been processed in an earlier
+    stage, as in the case of the polynomial processor. The coefficient for the `constant`
+    column will be interpreted as the intercept in this case. The same configuration
+    exits for the linear regression algorithms explained earlier.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**`max_iter`**: For the solver to find the optimum coefficients, it loops over
+    the training data more than once. These iterations are also called epochs. You
+    usually set a limit on the number of iterations to prevent overfitting. The same
+    hyperparameter is used by the lasso and ridge regressors explained earlier.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**`tol`**: This is another way to stop the solver from iterating too much.
+    If you set this to a high value, it means that only high improvements between
+    one iteration and the next are tolerated; otherwise, the solver will stop. Conversely,
+    a lower value will keep the solver going for more iterations until it reaches
+    **`max_iter`.**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**`penalty`**: This picks the regularization techniques to be used. This can
+    be either L1, L2, elastic-net, or none for no regularization. Regularization helps
+    to prevent overfitting, so it is important to use it when you have a lot of features.
+    It also mitigates the overfitting effect when `max_iter` and**`tol`** are set
+    to high values.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`C` or `alpha`: These are parameters for setting how strong you want the regularization
+    to be. Since we are going to use two different implementations of the logistic
+    regression algorithm here, it is important to know that each of these two implementations
+    uses a different parameter (`C` versus `alpha`). `alpha` is basically the inverse
+    of `C`—(![](img/c4f16ce4-15f1-4eed-b539-3895626e3ad4.png)). This means that smaller
+    values for `C` specify stronger regularization, while for `alpha`, larger values
+    are needed for stronger regularization.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`l1_ratio`: When using a mixture of L1 and L2, as in elastic-net, this fraction
+    specifies how much weight to give to L1 versus L2\.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following are some of the solvers we can use:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`liblinear`:**This solver is implemented in `LogisticRegression` and is recommended
+    for smaller datasets. It supports L1 and L2 regularization, but you cannot use
+    it if you want to use elastic-net, nor if you do not want to use regularization
+    at all.**'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '***   `sag` or `saga`: These solvers are implemented in `LogisticRegression`
+    and `RidgeClassifier`. They are faster for larger datasets. However, you need
+    to scale your features for them to converge. We used `MinMaxScaler` earlier in
+    this chapter to scale our features. Now, it is not only needed for more meaningful
+    coefficients, but also for the solver to find a solution earlier. `saga` supports
+    all four penalty options.*   `lbfgs`:**This solver is implemented in `LogisticRegression`.
+    It supports the L2 penalty or no regularization at all.****'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*****   **Stochastic Gradient Descent** (**SGD**): There are dedicated implementations
+    for SGD—`SGDClassifier` and `SGDRegressor`. This is different to `LogisticRegression`,
+    where the focus is on performing logistic regression by optimizing the one-loss
+    function—log loss. The focus of `SGDClassifier` is on the SGD solver itself, which
+    means that the same classifier allows different loss functions to be used. If
+    `loss` is set to `log`, then it is a logistic regression model. However, setting
+    `loss` to `hinge` or `perceptron` turns it into a **Support Vector Machine** (**SVM**)
+    or perceptron, respectively. These are two other linear classifiers.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Gradie****nt****descent** is an optimization algorithm that aims to find
+    a local minimum in a function by iteratively moving in the direction of steepest
+    descent. The direction of the steepest descent is found using calculus, hence
+    the term *gradient*. If you imagine the objective (loss) function as a curve,
+    the gradient descent algorithm blindly lands on a random point on this curve and
+    uses the gradient at the point it is on as a guiding stick to move to a local
+    minimum step by step. Usually, the loss function is chosen to be a convex one
+    so that its local minima is also its global one. In**the **stochastic** version
+    of **gradient descent**, rather than calculating the gradient for the entire training
+    data, the estimator''s weights are updated with each training sample. Gradient
+    descent is covered in more detail in [Chapter 7](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=33&action=edit),
+    *Neural Networks – Here Comes the Deep Learning*.** **## Classifying the Iris
+    dataset using logistic regression'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will load the Iris dataset into a data frame. The following is a similar
+    block of code to the one used in [Chapter 2](http://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=25&action=edit),
+    *Making Decisions with Trees*, to load the dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we will use `cross_validate` to evaluate the accuracy of the `LogisticRegression`
+    algorithm using six-fold cross-validation, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: Running the preceding code will give us a set of accuracy scores with a 95%
+    confidence interval that ranges between `0.95` and `1.00`. Running the same code
+    for the decision tree classifier gives us a confidence interval that ranges between
+    `0.93` and `0.99`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we have three classes here, the coefficients calculated for each class
+    boundary are separate from the others. After we train the logistic regression
+    algorithm once more without the `cross_validate` wrapper, we can access the coefficients
+    via `coef_`. We can also access the intercepts via `intercept_`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the next code snippet, I will be using a dictionary comprehension. In Python,
+    one way to create the `[0, 1, 2, 3]` list is by using the `[i for i in range(4)]`
+    list comprehension. This basically executes the loop to populate the list. Similarly,
+    the `[''x'' for i in range(4)]` list comprehension will create the `[''x'', ''x'',
+    ''x, ''x'']` list. Dictionary comprehension works in the same fashion. For example,
+    the `{str(i): i for i in range(4)}` line of code will create the`{''0'': 0, ''1'':
+    1, ''2'': 2, ''3'': 3}` dictionary.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code puts the coefficients into a data frame. It basically creates
+    a dictionary whose keys are the class IDs and maps each ID to a list of its corresponding
+    coefficients. Once the dictionary is created, we convert it into a data frame
+    and add the intercepts to the data frame before displaying it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Don''t forget to scale your features before training. Then, you should get
+    a coefficient data frame that looks like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a1f7d610-7309-4052-9edd-39bd765144c6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The table in the preceding screenshot shows the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From the first row, we can tell that the increase in sepal length is correlated
+    with classes 1 and 2 more than the remaining class, based on the positive sign
+    of classes 1 and class 2's coefficients.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Having a linear model here means that the class boundaries will not be limited
+    to horizontal and vertical lines, as in the case of decision trees, but they will
+    take linear forms.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To better understand this, in the next section, we will draw the logistic regression
+    classifier's decision boundaries and compare them to those of decision trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding the classifier's decision boundaries
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'By seeing the decision boundaries visually, we can understand why the model
+    makes certain decisions. Here are the steps for plotting those boundaries:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We start by creating a function that takes the classifier''s object and data
+    samples and then plots the decision boundaries for that particular classifier
+    and data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we split our data into training and test sets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To be able to visualize things easily, we are going to use two features. In
+    the following code, we will train a logistic regression model and a decision tree
+    model, and then compare their decision boundaries when trained on the same data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running this code will give us the following graphs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/1b01de5a-6f69-4161-b6e9-8690fbfeb07a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the preceding graph, the following is observed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The logistic regression model did not perform well this time when only two features
+    were used. Nevertheless, what we care about here is the shape of the boundaries.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It's clear that the boundaries on the left are not horizontal and vertical lines
+    as on the right. While the ones on the right can be composed of multiple line
+    fragments, the ones on the left can only be made of continuous lines.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Getting to know additional linear classifiers
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Before ending this chapter, it is useful to highlight some additional linear
+    classification algorithms:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**SGD** is a versatile solver. As mentioned earlier, it can perform a logistic
+    regression classification in addition to SVM and perceptron classification, depending
+    on the loss function used. It also allows regularized penalties.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The r****ide****classifier** converts class labels into `1` and `-1` and
+    treats the problem as a regression task. It also deals well with non-binary classification
+    tasks. Due to its design, it uses a different set of solvers, so it''s worth trying
+    as it may be quicker to learn when dealing with a large number of classes.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Line****ar****Support****Vector****Classification** (**LinearSVC**) is another
+    linear model. Rather than log loss, it uses the `hinge` function, which aims to
+    find class boundaries where the samples of each class are as far as possible from
+    the boundaries. This is not to be confused with SVMs. Contrary to their linear
+    cousins, SVMs are non-linear algorithms, due to what is known as the kernel trick.
+    SVMs are not as commonly used as they used to be a couple of decades ago, and
+    they are beyond the scope of this book.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Linear models are found everywhere. Their simplicity, as well as the capabilities
+    they offer—such as regularization—makes them popular among practitioners. They
+    also share many concepts with neural networks, which means that understanding
+    them will help you in later chapters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Being linear isn't usually a limiting factor as long as we can get creative
+    with our feature transformation. Furthermore, in higher dimensions, the linearity
+    assumption may hold more often than we think. That's why it is advised to always
+    start with a linear model and then decide whether you need to go for a more advanced
+    model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Having that said, it can sometimesbe tricky to figure out the best configurations
+    for your linear model or decide on which solver to use. In this chapter, we learned
+    about using cross-validation to fine-tune a model's hyperparameters. We have also
+    seen the different hyperparameters and solvers available, with tips for when to
+    use each one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, for all the datasets that we have dealt with in the first two chapters,
+    we were lucky to have the data in the correct format. We have dealt only with
+    numerical data with no missing values. Nevertheless, in real-world scenarios,
+    this is rarely the case.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we are going to learn more about data preprocessing so
+    that we can seamlessly continue working with more datasets and more advanced algorithms
+    later on.******
+  prefs: []
+  type: TYPE_NORMAL

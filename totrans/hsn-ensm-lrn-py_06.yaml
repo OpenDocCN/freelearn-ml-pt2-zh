@@ -1,0 +1,452 @@
+- en: Stacking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Stacking** is the second ensemble learning technique that we will study.
+    Together with voting, it belongs to the non-generative methods class, as they
+    both use individually trained classifiers as base learners.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we will present the main ideas behind stacking, its strengths
+    and weaknesses, and how to select base learners. Furthermore, we will go through
+    the processes of implementing stacking for both regression and classification
+    problems with scikit-learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The main topics covered in this chapter are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The methodology of stacking and using a meta-learner to combine predictions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The motivation behind using stacking
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The strengths and weaknesses of stacking
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Selecting base learners for an ensemble
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Implementing stacking for regression and classification problems
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will require basic knowledge of machine learning techniques and algorithms.
+    Furthermore, a knowledge of python conventions and syntax is required. Finally,
+    familiarity with the NumPy library will greatly help the reader to understand
+    some custom algorithm implementations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code files of this chapter can be found on GitHub:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter04](https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter04)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Check out the following video to see the Code in Action: [http://bit.ly/2XJgyD2](http://bit.ly/2XJgyD2).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Meta-learning
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '**Meta-learning** is a broad machine learning term. It has a number of meanings,
+    but it generally entails utilizing metadata for a specific problem in order to
+    solve it. Its applications range from solving a problem more efficiently, to designing
+    entirely new learning algorithms. It is a growing research field that has recently
+    yielded impressive results by designing novel deep learning architectures.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stacking
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Stacking is a form of meta-learning. The main idea is that we use base learners
+    in order to generate metadata for the problem's dataset and then utilize another
+    learner called a meta-learner, in order to process the metadata. Base learners
+    are considered to be level 0 learners, while the meta learner is considered a
+    level 1 learner. In other words, the meta learner is stacked on top of the base
+    learners, hence the name stacking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A more intuitive way to describe the ensemble is to present an analogy with
+    voting. In voting, we combined a number of base learners'' predictions in order
+    to increase their performance. In stacking, instead of explicitly defining the
+    combination rule, we train a model that learns how to best combine the base learners''
+    predictions. The meta-learner''s input dataset consists of the base learners''
+    predictions (metadata), as shown in figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/8becb6b8-de8a-4fb7-9718-921f8c998776.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Stacking ensemble data flow, from original data to the base learners, creating
+    metadata for the meta-learner
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating metadata
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As mentioned earlier, we need metadata in order to both train and operate our
+    ensemble. During the operation phase, we simply pass the data from our base learners.
+    On the other hand, the training phase is a little more complicated. We want our
+    meta-learner to discover strengths and weaknesses between our base learners. Although
+    some would argue that we could train the base learners on the train set, predict
+    on it, and use the predictions in order to train our meta-learner, this would
+    induce variance. Our meta-learner would discover the strengths and weaknesses
+    of data that has already been seen (by the base learners). As we want to generate
+    models with decent predictive (out-of-sample) performance, instead of descriptive
+    (in-sample) capabilities, another approach must be utilized.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Another approach would be to split our training set into a base learner train
+    set and a meta-learner train (validation) set. This way, we would still retain
+    a true test set where we can measure the ensemble''s performance. The drawback
+    of this approach is that we must donate some of the instances to the validation
+    set. Furthermore, both the validation set size and the train set size will be
+    smaller than the original train set size. Thus, the preferred approach is to utilize
+    **K-fold cross validation**. For each *K*, the base learners will be trained on
+    the *K*-1 folds and predict on the *K*th fold, generating 100/*K* percent of the
+    final training metadata. By repeating the process *K* times, one for each fold,
+    we will have generated metadata for the whole training dataset. The process is
+    depicted in the following diagram. The final result is a set of metadata for the
+    whole dataset, where the metadata is generated on out-of-sample data (from the
+    perspective of the base learners, for each fold):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/63d4726b-b178-4827-aadd-36539dd7fe8d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Creating metadata with five-fold cross-validation
+  prefs: []
+  type: TYPE_NORMAL
+- en: Deciding on an ensemble's composition
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We described stacking as an advanced form of voting. Similarly to voting (and
+    most ensemble learning techniques for that matter), stacking is dependent on the
+    diversity of its base learners. If the base learners exhibit the same characteristics
+    and performance throughout the problem's domain, it will be difficult for the
+    meta-learner to dramatically improve their collective performance. Furthermore,
+    a complex meta-learner will be needed. If the base learners are diverse and exhibit
+    different performance characteristics in different domains of the problem, even
+    a simple meta-learner will be able to greatly improve their collective performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Selecting base learners
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'It is generally a good idea to mix different learning algorithms, in order
+    to capture both linear and non-linear relationships between the features themselves,
+    as well as the target variable. Take, for example, the following dataset, which
+    exhibits both linear and non-linear relationships between the feature (*x*) and
+    the target variable (*y*). It is evident that neither a single linear nor a single
+    non-linear regression will be able to fully model the data. A stacking ensemble
+    with a linear and non-linear regression will be able to greatly outperform either
+    of the two models. Even without stacking, by hand-crafting a simple rule, (for
+    example "use the linear model if x is in the spaces [0, 30] or [60, 100], else
+    use the non-linear") we can greatly outperform the two models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5e1ab97e-f28c-4e60-b92a-d9550621d653.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Combination of x=5 and x-squared for the example dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: Selecting the meta-learner
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Generally, the meta-learner should be a relatively simple machine learning
+    algorithm, in order to avoid overfitting. Furthermore, additional steps should
+    be taken in order to regularize the meta-learner. For example, if a decision tree
+    is used, then the tree''s maximum depth should be limited. If a regression model
+    is used, a regularized regression (such as elastic net or ridge regression) should
+    be preferred. If there is a need for more complex models in order to increase
+    the ensemble''s predictive performance, a multi-level stack could be used, in
+    which the number of models and each individual model''s complexity reduces as
+    the stack''s level increases:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7206e732-7010-4481-a15a-9667fd20e787.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Level stacking ensemble. Each level has simpler models than the previous level
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another really important characteristic of the meta-learner should be the ability
+    to handle correlated inputs and especially to not make any assumptions about the
+    independence of features from one another, as naive Bayes classifiers do. The
+    inputs to the meta-learner (metadata) will be highly correlated. This happens
+    because all base learners are trained to predict the same target. Thus, their
+    predictions will come from an approximation of the same function. Although the
+    predicted values will vary, they will be close to each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python implementation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Although scikit-learn does implement most ensemble methods that we cover in
+    this book, stacking is not one of them. In this section, we will implement custom
+    stacking solutions for both regression and classification problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stacking for regression
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Here, we will try to create a stacking ensemble for the diabetes regression
+    dataset. The ensemble will consist of a 5-neighbor **k-Nearest Neighbors** (**k-NN**),
+    a decision tree limited to a max depth of four, and a ridge regression (a regularized
+    form of least squares regression). The meta-learner will be a simple **Ordinary
+    Least Squares** (**OLS**) linear regression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we have to import the required libraries and data. Scikit-learn provides
+    a convenient method to split data into K-folds, with the `KFold` class from the `sklearn.model_selection`
+    module. As in previous chapters, we use the first 400 instances for training and
+    the remaining instances for testing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the following code, we instantiate the base and meta-learners. In order
+    to have ease of access to the individual base learners later on, we store each
+    base learner in a list, called `base_learners`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After instantiating our learners, we need to create the metadata for the training
+    set. We split the training set into five folds by first creating a `KFold` object,
+    specifying the number of splits (K) with `KFold(n_splits=5)`, and then calling
+    `KF.split(train_x)`. This, in turn, returns a generator for the train and test
+    indices of the five splits. For each of these splits, we use the data indicated
+    by `train_indices` (four folds) to train our base learners and create metadata
+    on the data corresponding to `test_indices`. Furthermore, we store the metadata
+    for each classifier in the `meta_data` array and the corresponding targets in
+    the `meta_targets` array. Finally, we transpose `meta_data` in order to get a
+    (instance, feature) shape:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For the test set, we do not need to split it into folds. We simply train the
+    base learners on the whole train set and predict on the test set. Furthermore,
+    we evaluate each base learner and store the evaluation metrics, in order to compare
+    them with the ensemble''s performance. As this is a regression problem, we use
+    R-squared and **Mean Squared Error** (**MSE**) as evaluation metrics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, that we have the metadata for both the train and test sets, we can train
+    our meta-learner on the train set and evaluate on the test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: As is evident, r-squared has improved by over 16% from the best base learner
+    (ridge regression), while MSE has improved by almost 20%. This is a considerable
+    improvement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stacking for classification
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Stacking is a viable method for both regression and classification. In this
+    section, we will use it to classify the breast cancer dataset. Again, we will
+    use three base learners. A 5-neighbor k-NN, a decision tree limited to a max depth
+    of 4, and a simple neural network with 1 hidden layer of 100 neurons. For the
+    meta-learner, we utilize a simple logistic regression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Again, we load the required libraries and split the data into a train and test
+    set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We instantiate the base learners and the meta-learner. Note that `MLPClassifier` has
+    a `hidden_layer_sizes =(100,)` parameter, which specifies the number of neurons
+    for each hidden layer. Here, we have a single layer of 100 neurons:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Again, using `KFolds`, we split the train set into five folds in order to train
+    on four folds and generate metadata for the remaining fold, repeated five times.
+    Note that we use `learner.predict_proba(train_x[test_indices])[:,0]` in order
+    to get the predicted probability that the instance belongs to in the first class.
+    Given that we have only two classes, this is sufficient. For *N* classes, we would
+    have to either save *N*-1 features or simply use `learner.predict`, in order to
+    save the predicted class:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then, we train the base classifiers on the train set and create metadata for
+    the test set, as well as evaluating their accuracy with `metrics.accuracy_score(test_y,
+    learner.predict(test_x))`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we fit the meta-learner on the train metadata, evaluate its performance
+    on the test data, and print both the ensemble''s and the individual learner''s
+    accuracy:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The final output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we can see that the meta-learner was only able to improve the ensemble''s
+    performance by 1%, compared to the best performing base learner. If we try to
+    utilize the `learner.predict` method to generate our metadata, we see that the
+    ensemble actually under performs, compared to the neural network:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Creating a stacking regressor class for scikit-learn
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We can utilize the preceding code in order to create a reusable class that
+    orchestrates the ensemble''s training and prediction. All scikit-learn classifiers
+    use the standard `fit(x, y)` and `predict(x)` methods, in order to train and predict
+    respectively. First, we import the required libraries and declare the class and
+    its constructor. The constructor''s argument is a list of lists of scikit-learn
+    classifiers. Each sub-list contains the level''s learners. Thus, it is easy to
+    construct a multi-level stacking ensemble. For example, a three-level ensemble
+    can be constructed with `StackingRegressor([ [l11, l12, l13],[ l21, l22], [l31]
+    ])`. We create a list of each stacking level''s size (the number of learners)
+    and also create deep copies of the base learners. The classifier in the last list
+    is considered to be the meta-learner:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: All of the following code, up to (not including) Section 5 (comment labels), is
+    part of the `StackingRegressor` class. It should be properly indented if it is
+    copied to a Python editor.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In following the constructor definition, we define the `fit` function. The
+    only difference from the simple stacking script we presented in the preceding
+    section is that instead of creating metadata for the meta-learner, we create a
+    list of metadata, one for each stacking level. We save the metadata and targets
+    in the `meta_data, meta_targets` lists and use `data_z, target_z` as the corresponding
+    variables for each level. Furthermore, we train the level''s learners on the metadata
+    of the previous level. We initialize the metadata lists with the original training
+    set and targets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, we define the `predict` function, which creates metadata for each
+    level for the provided test set, using the same logic as was used in `fit` (storing
+    each level''s metadata). The function returns the metadata for each level, as
+    they are also the predictions of each level. The ensemble''s output can be accessed
+    with `meta_data[-1]`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'If we instantiate `StackingRegressor` with the same meta-learner and base learners
+    as our regression example, we can see that it performs exactly the same! In order
+    to access intermediate predictions, we must access the level''s index plus one,
+    as the data in `meta_data[0]` is the original test data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The results match with our previous example''s result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In order to further clarify the relationships between the `meta_data` and `self.learners`
+    lists, we graphically depict their interactions as follows. We initialize `meta_data[0]`
+    for the sake of code simplicity. While it can be misleading to store the actual
+    input data in the `meta_data` list, it avoids the need to handle the first level
+    of base learners in a different way than the rest:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/90f001b3-9e06-4847-8dc0-7ed5beb2952f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The relationships between each level of meta_data and self.learners
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we presented an ensemble learning method called stacking (or
+    stacked generalization). It can be seen as a more advanced method of voting. We
+    first presented the basic concept of stacking, how to properly create the metadata,
+    and how to decide on the ensemble's composition. We presented one regression and
+    one classification implementation for stacking. Finally, we presented an implementation
+    of an ensemble class  (implemented similarly to scikit-learn classes), which makes
+    it easier to use multi-level stacking ensembles. The following are some key points
+    to remember from this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Stacking** can consist of many **levels**. Each level generates **metadata**
+    for the next. You should create each level''s metadata by splitting the train
+    set into **K folds** and iteratively **train on K-1 folds**, while creating **metadata
+    for the Kth fold**. After creating the metadata, you should train the current
+    level on the whole train set. Base learners must be diverse. The meta-learner
+    should be a relatively simple algorithm that is resistant to overfitting. If possible,
+    try to induce regularization in the meta-learner. For example, limit the maximum
+    depth if you use a decision tree or use a regularized regression. The meta-learner
+    should be able to handle correlated inputs relatively well. You should not be
+    afraid to **add under-performing models** to the ensemble, as long as they introduce
+    new information to the metadata (that is, they handle the dataset differently
+    from the other models). In the next chapter, we will introduce the first generative
+    ensemble method, Bagging.'
+  prefs: []
+  type: TYPE_NORMAL

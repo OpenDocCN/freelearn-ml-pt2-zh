@@ -1,0 +1,1210 @@
+- en: '*Chapter 4*: From Gradient Boosting to XGBoost'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: XGBoost is a unique form of gradient boosting with several distinct advantages,
+    which will be explained in [*Chapter 5*](B15551_05_Final_NM_ePUB.xhtml#_idTextAnchor117),
+    *XGBoost Unveiled*. In order to understand the advantages of XGBoost over traditional
+    gradient boosting, you must first learn how traditional gradient boosting works.
+    The general structure and hyperparameters of traditional gradient boosting are
+    incorporated by XGBoost. In this chapter, you will discover the power behind gradient
+    boosting, which is at the core of XGBoost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, you will build gradient boosting models from scratch before
+    comparing gradient boosting models and errors with previous results. In particular,
+    you will focus on the **learning rate** hyperparameter to build powerful gradient
+    boosting models that include XGBoost. Finally, you will preview a case study on
+    exoplanets highlighting the need for faster algorithms, a critical need in the
+    world of big data that is satisfied by XGBoost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will be covering the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: From bagging to boosting
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How gradient boosting works
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Modifying gradient boosting hyperparameters
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Approaching big data – gradient boosting versus XGBoost
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The code for this chapter is available at [https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter04](https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter04).
+  prefs: []
+  type: TYPE_NORMAL
+- en: From bagging to boosting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [*Chapter 3*](B15551_03_Final_NM_ePUB.xhtml#_idTextAnchor070), *Bagging with
+    Random Forests*, you learned why ensemble machine learning algorithms such as
+    random forests make better predictions by combining many machine learning models
+    into one. Random forests are classified as bagging algorithms because they take
+    the aggregates of bootstrapped samples (decision trees).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Boosting, by contrast, learns from the mistakes of individual trees. The general
+    idea is to adjust new trees based on the errors of previous trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In boosting, correcting errors for each new tree is a distinct approach from
+    bagging. In a bagging model, new trees pay no attention to previous trees. Also,
+    new trees are built from scratch using bootstrapping, and the final model aggregates
+    all individual trees. In boosting, however, each new tree is built from the previous
+    tree. The trees do not operate in isolation; instead, they are built on top of
+    one another.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing AdaBoost
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '**AdaBoost** is one of the earliest and most popular boosting models. In AdaBoost,
+    each new tree adjusts its weights based on the errors of the previous trees. More
+    attention is paid to predictions that went wrong by adjusting weights that affect
+    those samples at a higher percentage. By learning from its mistakes, AdaBoost
+    can transform weak learners into strong learners. A weak learner is a machine
+    learning algorithm that barely performs better than chance. By contrast, a stronger
+    learner has learned a considerable amount from data and performs quite well.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The general idea behind boosting algorithms is to transform weak learners into
+    strong learners. A weak learner is hardly better than random guessing. But there
+    is a purpose behind the weak start. Building on this general idea, boosting works
+    by focusing on iterative error correction, *not* by establishing a strong baseline
+    model. If the base model is too strong, the learning process is necessarily limited,
+    thereby undermining the general strategy behind boosting models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Weak learners are transformed into strong learners through hundreds of iterations.
+    In this sense, a small edge goes a long way. In fact, boosting has been one of
+    the best general machine learning strategies in terms of producing optimal results
+    for the past couple of decades.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A detailed study of AdaBoost is beyond the scope of this book. Like many scikit-learn
+    models, it's straightforward to implement AdaBoost in practice. The `AdaBoostRegressor`
+    and `AdaBoostClassifier` algorithms may be downloaded from the `sklearn.ensemble`
+    library and fit to any training set. The most important AdaBoost hyperparameter
+    is `n_estimators`, the number of trees (iterations) required to create a strong
+    learner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: For further information on AdaBoost, check out the official documentation at
+    [https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostClassifier.html)
+    for classifiers and [https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.AdaBoostRegressor.html)
+    for regressors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will now move on to gradient boosting, a strong alternative to AdaBoost with
+    a slight edge in performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Distinguishing gradient boosting
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Gradient boosting uses a different approach than AdaBoost. While gradient boosting
+    also adjusts based on incorrect predictions, it takes this idea one step further:
+    gradient boosting fits each new tree entirely based on the errors of the previous
+    tree''s predictions. That is, for each new tree, gradient boosting looks at the
+    mistakes and then builds a new tree completely around these mistakes. The new
+    tree doesn''t care about the predictions that are already correct.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Building a machine learning algorithm that solely focuses on the errors requires
+    a comprehensive method that sums errors to make accurate final predictions. This
+    method leverages residuals, the difference between the model''s predictions and
+    actual values. Here is the general idea:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Gradient boosting computes the residuals of each tree''s predictions and sums
+    all the residuals to score the model.*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's essential to understand **computing** and **summing residuals** as this
+    idea is at the core of XGBoost, an advanced version of gradient boosting. When
+    you build your own version of gradient boosting, the process of computing and
+    summing residuals will become clear. In the next section, you will build your
+    own version of a gradient boosting model. First, let's learn in detail how gradient
+    boosting works.
+  prefs: []
+  type: TYPE_NORMAL
+- en: How gradient boosting works
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we will look under the hood of gradient boosting and build
+    a gradient boosting model from scratch by training new trees on the errors of
+    the previous trees. The key mathematical idea here is the residual. Next, we will
+    obtain the same results using scikit-learn's gradient boosting algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Residuals
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The residuals are the difference between the errors and the predictions of a
+    given model. In statistics, residuals are commonly analyzed to determine how good
+    a given linear regression model fits the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Consider the following examples:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bike rentals
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'a) *Prediction*: 759'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'b) *Result*: 799'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'c) *Residual*: 799 - 759 = 40'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Income
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'a) *Prediction*: 100,000'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'b) *Result*: 88,000'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'c) *Residual*: 88,000 –100,000 = -12,000'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As you can see, residuals tell you how far the model's predictions are from
+    reality, and they may be positive or negative.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a visual example displaying the residuals of a **linear regression**
+    line:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.1 – Residuals of a linear regression line](img/B15551_04_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.1 – Residuals of a linear regression line
+  prefs: []
+  type: TYPE_NORMAL
+- en: The goal of linear regression is to minimize the square of the residuals. As
+    the graph reveals, a visual of the residuals indicates how well the line fits
+    the data. In statistics, linear regression analysis is often performed by graphing
+    the residuals to gain deeper insight into the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In order to build a gradient boosting algorithm from scratch, we will compute
+    the residuals of each tree and fit a new model to the residuals. Let's do this
+    now.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Learning how to build gradient boosting models from scratch
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Building a gradient boosting model from scratch will provide you with a deeper
+    understanding of how gradient boosting works in code. Before building a model,
+    we need to access data and prepare it for machine learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Processing the bike rentals dataset
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We continue with the bike rentals dataset to compare new models with the previous
+    models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will start by importing `pandas` and `numpy`. We will also add a line to
+    silence any warnings:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, load the `bike_rentals_cleaned` dataset and view the first five rows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Your output should look like this:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 4.2 – First five rows of Bike Rental Dataset](img/B15551_04_02.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 4.2 – First five rows of Bike Rental Dataset
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now, split the data into `X` and `y`. Then, split `X` and `y` into training
+    and test sets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: It's time to build a gradient boosting model from scratch!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building a gradient boosting model from scratch
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Here are the steps for building a gradient boosting machine learning model
+    from scratch:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fit the data to the decision tree: You may use a decision tree stump, which
+    has a `max_depth` value of `1`, or a decision tree with a `max_depth` value of
+    `2` or `3`. The initial decision tree, called a `max_depth=2` and fit it on the
+    training set as `tree_1`, since it''s the first tree in our ensemble:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Make predictions with the training set: Instead of making predictions with
+    the test set, predictions in gradient boosting are initially made with the training
+    set. Why? To compute the residuals, we need to compare the predictions while still
+    in the training phase. The test phase of the model build comes at the end, after
+    all the trees have been constructed. The predictions of the training set for the
+    first round are obtained by adding the `predict` method to `tree_1` with `X_train`
+    as the input:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Compute the residuals: The residuals are the differences between the predictions
+    and the target column. The predictions of `X_train`, defined here as `y_train_pred`,
+    are subtracted from `y_train`, the target column, to compute the residuals:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: The residuals are defined as `y2_train` because they are the new target column
+    for the next tree.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Fit the new tree on the residuals: Fitting a new tree on the residuals is different
+    than fitting a model on the training set. The primary difference is in the predictions.
+    In the bike rentals dataset, when fitting a new tree on the residuals, we should
+    progressively get smaller numbers.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Initialize a new tree and fit it on `X_train` and the residuals, `y2_train`:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Repeat steps 2-4: As the process continues, the residuals should gradually
+    approach `0` from the positive and negative direction. The iterations continue
+    for the number of estimators, `n_estimators`.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Let''s repeat the process for a third tree as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This process may continue for dozens, hundreds, or thousands of trees. Under
+    normal circumstances, you would certainly keep going. It will take more than a
+    few trees to transform a weak learner into a strong learner. Since our goal is
+    to understand how gradient boosting works behind the scenes, however, we will
+    move on now that the general idea has been covered.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Sum the results: Summing the results requires making predictions for each tree
+    with the test set as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Since the predictions are positive and negative differences, summing the predictions
+    should result in predictions that are closer to the target column as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Lastly, let''s compute the **mean squared error** (**MSE**) to obtain the results
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the expected output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Not bad for a weak learner that isn't yet strong! Now let's try to obtain the
+    same result using scikit-learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building a gradient boosting model in scikit-learn
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let''s see whether we can obtain the same result as in the previous section
+    using scikit-learn''s `GradientBoostingRegressor`. This may be done through a
+    few hyperparameter adjustments. The advantage of using `GradientBoostingRegressor`
+    is that it''s much faster to build and easier to implement:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, import the regressor from the `sklearn.ensemble` library:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'When initializing `GradientBoostingRegressor`, there are several important
+    hyperparameters. To obtain the same results, it''s essential to match `max_depth=2`
+    and `random_state=2`. Furthermore, since there are only three trees, we must have
+    `n_estimators=3`. Finally, we must set the `learning_rate=1.0` hyperparameter.
+    We will have much to say about `learning_rate` shortly:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now that the model has been initialized, it can be fit on the training data
+    and scored against the test data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The result is the same to 11 decimal places!
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Recall that the point of gradient boosting is to build a model with enough trees
+    to transform a weak learner into a strong learner. This is easily done by changing
+    `n_estimators`, the number of iterations, to a much larger number.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Let''s build and score a gradient boosting regressor with 30 estimators:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is an improvement. Now let''s look at 300 estimators:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The result is this:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This is a surprise! The score has gotten worse! Have we been misled? Is gradient
+    boosting not all that it's cracked up to be?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Whenever you get a surprise result, it's worth double-checking the code. Now,
+    we changed `learning_rate` without saying much about it. So, what happens if we
+    remove `learning_rate=1.0` and use the scikit-learn defaults?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s find out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Incredible! By using the scikit-learn default for the `learning_rate` hyperparameter,
+    the score has changed from `936` to `654`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will learn more about the different gradient boosting
+    hyperparameters with a focus on the `learning_rate` hyperparameter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Modifying gradient boosting hyperparameters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we will focus on the `learning_rate`, the most important gradient
+    boosting hyperparameter, with the possible exception of `n_estimators`, the number
+    of iterations or trees in the model. We will also survey some tree hyperparameters,
+    and `subsample`, which results in `RandomizedSearchCV` and compare results with
+    XGBoost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: learning_rate
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the last section, changing the `learning_rate` value of `GradientBoostingRegressor`
+    from `1.0` to scikit-learn's default, which is `0.1`, resulted in enormous gains.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`learning_rate`, also known as the *shrinkage*, shrinks the contribution of
+    individual trees so that no tree has too much influence when building the model.
+    If an entire ensemble is built from the errors of one base learner, without careful
+    adjustment of hyperparameters, early trees in the model can have too much influence
+    on subsequent development. `learning_rate` limits the influence of individual
+    trees. Generally speaking, as `n_estimators`, the number of trees, goes up, `learning_rate`
+    should go down.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Determining an optimal `learning_rate` value requires varying `n_estimators`.
+    First, let's hold `n_estimators` constant and see what `learning_rate` does on
+    its own. `learning_rate` ranges from `0` to `1`. A `learning_rate` value of `1`
+    means that no adjustments are made. The default value of `0.1` means that the
+    tree's influence is weighted at 10%.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a reasonable range to start with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`learning_rate_values = [0.001, 0.01, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 1.0]`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we will loop through the values by building and scoring a new `GradientBoostingRegressor`
+    to see how the scores compare:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The learning rate values and scores are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: As you can see from the output, the default `learning_rate` value of `0.1` gives
+    the best score for 300 trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now let''s vary `n_estimators`. Using the preceding code, we can generate `learning_rate`
+    plots with `n_estimators` of 30, 300, and 3,000 trees, as shown in the following
+    figure:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.3 – learning_rate plot for 30 trees](img/B15551_04_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 4.3 – learning_rate plot for 30 trees
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, with 30 trees, the `learning_rate` value peaks at around `0.3`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, let''s take a look at the `learning_rate` plot for 3,000 trees:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Fig 4.4 -- learning_rate plot for 3,000 trees](img/B15551_04_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Fig 4.4 -- learning_rate plot for 3,000 trees
+  prefs: []
+  type: TYPE_NORMAL
+- en: With 3,000 trees, the `learning_rate` value peaks at the second value, which
+    is given as `0.05`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These graphs highlight the importance of tuning `learning_rate` and `n_estimators`
+    together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Base learner
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The initial decision tree in the gradient boosting regressor is called the **base
+    learner** because it's at the base of the ensemble. It's the first learner in
+    the process. The term *learner* here is indicative of a *weak learner* transforming
+    into a *strong learner*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although base learners need not be fine-tuned for accuracy, as covered in [*Chapter
+    2*](B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047), *Decision Trees in Depth*,
+    it's certainly possible to tune base learners for gains in accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For instance, we can select a `max_depth` value of `1`, `2`, `3`, or `4` and
+    compare results as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: A `max_depth` value of `3` gives the best results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Other base learner hyperparameters, as covered in [*Chapter 2*](B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047),
+    *Decision Trees in Depth*, may be tuned in a similar manner.
+  prefs: []
+  type: TYPE_NORMAL
+- en: subsample
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: '`subsample` is a subset of samples. Since samples are the rows, a subset of
+    rows means that all rows may not be included when building each tree. By changing
+    `subsample` from `1.0` to a smaller decimal, trees only select that percentage
+    of samples during the build phase. For example, `subsample=0.8` would select 80%
+    of samples for each tree.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Continuing with `max_depth=3`, we try a range of subsample percentages to improve
+    results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: A `subsample` value of `0.7` with 300 trees and `max_depth` of `3` produces
+    the best score yet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When `subsample` is not equal to `1.0`, the model is classified as **stochastic
+    gradient descent**, where *stochastic* indicates that some randomness is inherent
+    in the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: RandomizedSearchCV
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We have a good working model, but we have not yet performed a grid search,
+    as covered in [*Chapter 2*](B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047), *Decision
+    Trees in Depth*. Our preliminary analysis indicates that a grid search centered
+    around `max_depth=3`, `subsample=0.7`, `n_estimators=300`, and `learning_rate
+    = 0.1` is a good place to start. We have already shown that as `n_estimators`
+    goes up, `learning_rate` should go down:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a possible starting point:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Since `n_estimators` is going up from the starting value of 300, `learning_rate`
+    is going down from the starting value of `0.1`. Let's keep `max_depth=3` to limit
+    the variance.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: With 27 possible combinations of hyperparameters, we use `RandomizedSearchCV`
+    to try 10 of these combinations in the hopes of finding a good model.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: While 27 combinations are feasible with `GridSearchCV`, at some point you will
+    end up with too many possibilities and `RandomizedSearchCV` will become essential.
+    We use `RandomizedSearchCV` here for practice and to speed up computations.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Let''s import `RandomizedSearchCV` and initialize a gradient boosting model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, initialize `RandomizedSearchCV` with `gbr` and `params` as inputs in
+    addition to the number of iterations, the scoring, and the number of folds. Recall
+    that `n_jobs=-1` may speed up computations and `random_state=2` ensures the consistency
+    of results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now fit the model on the training set and obtain the best parameters and scores:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: From here, it's worth experimenting by changing parameters individually or in
+    pairs. Even though the best model currently has `n_estimators=300`, it's certainly
+    possible that raising this hyperparameter will obtain better results with careful
+    adjustment of the `learning_rate` value. `subsample` may be experimented with
+    as well.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After a few rounds of experimentation, we obtained the following model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The result is the following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: With a larger value for `n_estimators` at `1600`, a smaller `learning_rate`
+    value at `0.02`, a comparable `subsample` value of `0.75`, and the same `max_depth`
+    value of `3`, we obtained the best `597`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It may be possible to do better. We encourage you to try!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now, let's see how XGBoost differs from gradient boosting using the same hyperparameters
+    covered thus far.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XGBoost
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: XGBoost is an advanced version of gradient boosting with the same general structure,
+    meaning that it transforms weak learners into strong learners by summing the residuals
+    of trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The only difference in hyperparameters from the last section is that XGBoost
+    refers to `learning_rate` as `eta`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's build an XGBoost regressor with the same hyperparameters to compare the
+    results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `XGBRegressor` from `xgboost`, and then initialize and score the model
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The result is this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: The score is better. The reason as to why the score is better will be revealed
+    in the next chapter, [*Chapter 5*](B15551_05_Final_NM_ePUB.xhtml#_idTextAnchor117),
+    *XGBoost Unveiled*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Accuracy and speed are the two most important concepts when building machine
+    learning models, and we have shown multiple times that XGBoost is very accurate.
+    XGBoost is preferred over gradient boosting in general because it consistently
+    delivers better results, and because it's faster, as demonstrated by the following
+    case study.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Approaching big data – gradient boosting versus XGBoost
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the real world, datasets can be enormous, with trillions of data points.
+    Limiting work to one computer can be disadvantageous due to the limited resources
+    of one machine. When working with big data, the cloud is often used to take advantage
+    of parallel computers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Datasets are big when they push the limits of computation. So far in this book,
+    by limiting datasets to tens of thousands of rows with a hundred or fewer columns,
+    there should have been no significant time delays, unless you ran into errors
+    (happens to everyone).
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we examine **exoplanets** over time. The dataset has 5,087
+    rows and 3,189 columns that record light flux at different times of a star's life
+    cycle. Multiplying columns and rows together results in 1.5 million data points.
+    Using a baseline of 100 trees, we need 150 million data points to build a model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, my 2013 MacBook Air had wait times of about 5 minutes. New
+    computers should be faster. I have chosen the exoplanet dataset so that wait times
+    play a significant role without tying up your computer for a very long time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Introducing the exoplanet dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The exoplanet dataset is taken from Kaggle and dates from around 2017: [https://www.kaggle.com/keplersmachines/kepler-labelled-time-series-data](https://www.kaggle.com/keplersmachines/kepler-labelled-time-series-data).
+    The dataset contains information about the light of stars. Each row is an individual
+    star and the columns reveal different light patterns over time. In addition to
+    light patterns, an exoplanet column is labeled `2` if the star hosts an exoplanet;
+    otherwise, it is labeled `1`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The dataset records the light flux from thousands of stars. **Light flux**,
+    often referred to as **luminous flux**, is the perceived brightness of a star.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: The perceived brightness is different than actual brightness. For instance,
+    an incredibly bright star very far away may have a small luminous flux (looks
+    dim), while a moderately bright star that is very close, like the sun, may have
+    a large luminous flux (looks bright).
+  prefs: []
+  type: TYPE_NORMAL
+- en: When the light flux of an individual star changes periodically, it is possible
+    that the star is being orbited by an exoplanet. The assumption is that when an
+    exoplanet orbits in front of a star, it blocks a small fraction of the light,
+    reducing the perceived brightness by a very slight amount.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finding exoplanets is rare. The predictive column, on whether a star hosts an
+    exoplanet or not, has very few positive cases, resulting in an imbalanced dataset.
+    Imbalanced datasets require extra precautions. We will cover imbalanced datasets
+    in [*Chapter 7*](B15551_07_Final_NM_ePUB.xhtml#_idTextAnchor161), *Discovering
+    Exoplanets with XGBoost*, where we go into further detail with this dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, let's access the exoplanet dataset and prepare it for machine learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preprocessing the exoplanet dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The exoplanet dataset has been uploaded to our GitHub page at [https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter04](https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter04).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the steps to load and preprocess the exoplanet dataset for machine
+    learning:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Download `exoplanets.csv` in the same folder as your Jupyter Notebook. Then,
+    open the file and take a look:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The DataFrame will look as shown in the following figure:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Fig 4.5 – Exoplanet DataFrame](img/B15551_04_05.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Fig 4.5 – Exoplanet DataFrame
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Not all columns are shown due to space limitations. The flux columns are floats,
+    while the `Label` column is `2` for an exoplanet star and `1` for a non-exoplanet
+    star.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Let''s'' confirm that all columns are numerical with `df.info()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can see from the output, `3197` columns are floats and `1` column is
+    an `int`, so all columns are numerical.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now, let''s confirm the number of null values with the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The output reveals that there are no null values.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Since all columns are numerical with no null values, we may split the data
+    into training and test sets. Note that the 0th column is the target column, `y`,
+    and all other columns are the predictor columns, `X`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: It's time to build a gradient boosting classifier to predict whether stars host
+    exoplanets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building gradient boosting classifiers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Gradient boosting classifiers work in the same manner as gradient boosting regressors.
+    The difference is primarily in the scoring.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s start by importing `GradientBoostingClassifer` and `XGBClassifier` in
+    addition to `accuracy_score` so that we may compare both models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, we need a way to compare models using a timer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Timing models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Python comes with a `time` library that can be used to mark time. The general
+    idea is to mark the time before and after a computation. The difference between
+    these times tells us how long the computation took.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `time` library is imported as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: Within the `time` library, the `.time()` method marks time in seconds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As an example, see how long it takes to run `df.info()` by assigning start
+    and end times before and after the computation using `time.time()`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The runtime is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: Your results will differ from ours, but hopefully it's in the same ballpark.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now compare `GradientBoostingClassifier` and `XGBoostClassifier` with
+    the exoplanet dataset for its speed using the preceding code to mark time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: Jupyter Notebooks come with magic functions, denoted by the `%` sign before
+    a command. `%timeit` is one such magic function. Instead of computing how long
+    it takes to run the code once, `%timeit` computes how long it takes to run code
+    over multiple runs. See [ipython.readthedocs.io/en/stable/interactive/magics.html](http://ipython.readthedocs.io/en/stable/interactive/magics.html)
+    for more information on magic functions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Comparing speed
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'It''s time to race `GradientBoostingClassifier` and `XGBoostClassifier` with
+    the exoplanet dataset. We have set `max_depth=2` and `n_estimators=100` to limit
+    the size of the model. Let''s start with `GradientBoostingClassifier`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we will mark the start time. After building and scoring the model, we
+    will mark the end time. The following code may take around 5 minutes to run depending
+    on the speed of your computer:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The result is this:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: '`GradientBoostingRegressor` took over 5 minutes to run on my 2013 MacBook Air.
+    Not bad for 150 million data points on an older computer.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: While a score of 98.7% percent is usually outstanding for accuracy, this is
+    not the case with imbalanced datasets, as you will see in [*Chapter 7*](B15551_07_Final_NM_ePUB.xhtml#_idTextAnchor161),
+    *Discovering Exoplanets with XGBoost*.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Next, we will build an `XGBClassifier` model with the same hyperparameters
+    and mark the time in the same manner:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: On my 2013 MacBook Air, XGBoost took under 2 minutes, making it more than twice
+    as fast. It's also more accurate by half a percentage point.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When it comes to big data, an algorithm twice as fast can save weeks or months
+    of computational time and resources. This advantage is huge in the world of big
+    data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the world of boosting, XGBoost is the model of choice due to its unparalleled
+    speed and impressive accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As for the exoplanet dataset, it will be revisited in [*Chapter 7*](B15551_07_Final_NM_ePUB.xhtml#_idTextAnchor161),
+    *Discovering Exoplanets with XGBoost*, in an important case study that reveals
+    the challenges of working with imbalanced datasets along with a variety of potential
+    solutions to those challenges.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'I recently purchased a 2020 MacBook Pro and updated all software. The difference
+    in time using the same code is staggering:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Gradient Boosting Run Time: 197.38 seconds'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'XGBoost Run Time: 8.66 seconds'
+  prefs: []
+  type: TYPE_NORMAL
+- en: More than a 10-fold difference!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you learned the difference between bagging and boosting. You
+    learned how gradient boosting works by building a gradient boosting regressor
+    from scratch. You implemented a variety of gradient boosting hyperparameters,
+    including `learning_rate`, `n_estimators`, `max_depth`, and `subsample`, which
+    results in stochastic gradient boosting. Finally, you used big data to predict
+    whether stars have exoplanets by comparing the times of `GradientBoostingClassifier`
+    and `XGBoostClassifier`, with `XGBoostClassifier` emerging as twice to over ten
+    times as fast and more accurate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The advantage of learning these skills is that you now understand when to apply
+    XGBoost rather than similar machine learning algorithms such as gradient boosting.
+    You can now build stronger XGBoost and gradient boosting models by properly taking
+    advantage of core hyperparameters, including `n_estimators` and `learning_rate`.
+    Furthermore, you have developed the capacity to time all computations instead
+    of relying on intuition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Congratulations! You have completed all of the preliminary XGBoost chapters.
+    Until now, the purpose has been to introduce you to machine learning and data
+    analytics within the larger XGBoost narrative. The aim has been to show how the
+    need for XGBoost emerged from ensemble methods, boosting, gradient boosting, and
+    big data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The next chapter starts a new leg on our journey with an advanced introduction
+    to XGBoost, where you will learn the mathematical details behind the XGBoost algorithm
+    in addition to hardware modifications that XGBoost makes to improve speed. You'll
+    also be building XGBoost models using the original Python API in a historically
+    relevant case study on the discovery of the Higgs boson. The chapters that follow
+    highlight exciting details, advantages, nuances, and tricks and tips to build
+    swift, efficient, powerful, and industry-ready XGBoost models that you can use
+    for years to come.
+  prefs: []
+  type: TYPE_NORMAL

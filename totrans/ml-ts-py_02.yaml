@@ -1,0 +1,1157 @@
+- en: '3'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Preprocessing Time-Series
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Preprocessing is a crucial step in machine learning that is nonetheless often
+    neglected. Many books don't cover preprocessing in any depth or skip preprocessing
+    entirely. When presenting to outsiders about a machine learning project, curiosity
+    is naturally attracted to the algorithm rather than the dataset or the preprocessing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One reason for the relative silence on preprocessing could be that it's less
+    glamorous than machine learning itself. It is, however, often the step that takes
+    the most time, sometimes estimated at around 98% of the whole machine learning
+    process. And it is often in preprocessing that relatively easy work can have a
+    great impact on the eventual performance of the machine learning model. The quality
+    of the data goes a long way toward determining the outcome – low-quality input,
+    in the worst case, can invalidate the machine learning work altogether (this is
+    summarized in the adage "garbage in, garbage out").
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preprocessing includes curating and screening the data, something that overlaps
+    with the analysis process covered in the previous chapter, *Chapter 2*, *Time-Series
+    Analysis with Python*. The expected output of the preprocessing is a dataset on
+    which it is easier to conduct machine learning. This can mean that it is more
+    reliable and less noisy than the original dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can find the code for this chapter as a Jupyter notebook in the book's GitHub
+    repository.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''re going to cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What Is Preprocessing?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Feature Transforms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Feature Engineering
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Python Practice
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll start off by discussing the basics of preprocessing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What Is Preprocessing?
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Anyone who's ever worked in a company on a machine learning project knows that
+    real-world data is messy. It's often aggregated from multiple sources or using
+    multiple platforms or recording devices, and it's incomplete and inconsistent.
+    In preprocessing, we want to improve the data quality to successfully apply a
+    machine learning model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Data preprocessing includes the following set of techniques:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature transforms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Scaling
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Power/log transforms
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Imputation
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Feature engineering
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'These techniques fall largely into two classes: either they tailor to the assumptions
+    of the machine learning algorithm (feature transforms) or they are concerned with
+    constructing more complex features from multiple underlying features (feature
+    engineering). We''ll only deal with univariate feature transforms, transforms
+    that apply to one feature at a time. We won''t discuss multivariate feature transforms
+    (data reduction) such as variable selection or dimensionality reduction since
+    they are not particular to time-series datasets.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Missing values are a common problem in machine learning, so we will discuss
+    replacing missing values (imputation) in this chapter as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll be talking about features as the elementary units of preprocessing. We
+    want to create input features for our machine learning process that make the model
+    easier to train, easier to evaluate, or to improve the quality of model predictions.
+    Our goal is to have features that are predictive of the target, and decorrelated
+    (not redundant between themselves). Decorrelation is a requirement for linear
+    models, but less important for more modern, for example tree-based, algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although we'll mostly deal with feature engineering, we'll also mention target
+    transformations. We could refer to target transformations more specifically as
+    target engineering; however, since methods applied on targets are the same methods
+    as those applied to features, I've included them under the same headings about
+    feature engineering or feature transformations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Please note that we define the main goal of our preprocessing as increasing
+    the predictiveness of our features, or, in other words, we want to elevate the
+    quality of our machine learning model predictions. We could have alternatively
+    defined data quality in terms of accuracy, completeness, and consistency, which
+    would have cast a much wider net including data aggregation and cleaning techniques,
+    and methods of data quality assessment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we are pragmatically reducing the scope of the treatment here
+    to usefulness in machine learning. If our model is not fit for purpose, we might
+    want to repeat or improve data collection, do more feature engineering, or build
+    a better model. This again emphasizes the point that data analysis, preprocessing,
+    and machine learning are an iterative process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Binning or discretization can be a part of preprocessing as well, but can also
+    be used for grouping data points by their similarity. We'll be discussing discretization
+    together with other clustering techniques in *Chapter 6*, *Unsupervised Methods
+    for Time-Series*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we continue, let's go through some of the basics of preprocessing time-series
+    datasets with Python. This will cover the theory behind operations with time-series
+    data as an introduction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature Transforms
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Many models or training processes depend on the assumption that the data is
+    distributed according to the normal distribution. Even the most widely used descriptors,
+    the arithmetic mean and standard deviation, are largely useless if your dataset
+    has a skew or several peaks (multi-modal). Unfortunately, observed data often
+    doesn't fall within the normal distribution, so that traditional algorithms can
+    yield invalid results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When data is non-normal, transformations of data are applied to make the data
+    as normal-like as possible and, thus, increase the validity of the associated
+    statistical analyses.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Often it can be easier to eschew traditional machine learning algorithms of
+    dealing with time-series data and, instead, use newer, so-called non-linear methods
+    that are not dependent on the distribution of the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As a final remark, while all the following transformations and scaling methods
+    can be applied to features directly, an interesting spin with time-series datasets
+    is that they change over time, and we might not have full knowledge of the time-series.
+    Many of these transformations have online variants, where all statistics are estimated
+    and adjusted on the fly. You can take a look at *Chapter 8*, *Online Learning
+    for Time-Series*, for more details on this topic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we'll look at scaling, which is a general issue in regression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaling
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Some features have natural bounds such as the age of a person or the year of
+    production of a product. If these ranges differ between features, some model types
+    (again, mostly linear models) struggle with this, preferring similar ranges, and
+    similar means.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Two very common scaling methods are min-max scaling and z-score normalization.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Min-max scaling** involves restricting the range of the feature within two
+    constants, *a* and *b*. This is defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_03_001.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the special case that *a* is 0 and *b* is 1, this restricts the range of
+    the feature within 0 and 1.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Z-score normalization** is setting the mean of the feature to 0 and the variance
+    to 1 (unit variance) like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_03_002.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the case that *x* comes from a Gaussian distribution, ![](img/B17577_03_003.png)
+    is a standard normal distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we'll look at log and power transformations. These transformations
+    are quite important, especially for the traditional time-series models that we'll
+    come across in *Chapter 5*, *Time-Series Forecasting with Moving Averages and
+    Autoregressive Models*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log and Power Transformations
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Both log and power transformations can compress values that spread over large
+    magnitudes into a narrow range of output values. A **log transformation** is a
+    feature transformation in which each value *x* gets replaced by *log(x)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The log function is the inverse of the exponential function, and it's important
+    to remember that the range between 0 and 1 gets mapped to negative numbers (![](img/B17577_03_004.png)
+    while numbers *x>=1* get compressed in the positive range. The choice of the logarithm
+    is usually between the natural and base 10 but can be anything that can help so
+    that your feature becomes closer to the symmetric bell-shaped distribution, which
+    is the normal distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log transformation is, arguably, one of the most popular among the different
+    types of transformations applied to take the distribution of the data closer to
+    a Gaussian distribution. Log transformation can be used to reduce the skew of
+    a distribution. In the best scenario, if the feature follows a log-normal distribution,
+    then the log-transformed data follows a normal distribution. Unfortunately, your
+    feature might not be distributed according to a log-normal distribution, so applying
+    this transformation doesn't help.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generally, I'd recommend exercising caution with data transformations. You should
+    always inspect your data before and after the transformation. You want the variance
+    of your feature to capture that of the target, so you should make sure you are
+    not losing resolution. Further, you might want to check your data conforms – as
+    should be the goal – more closely to the normal distribution. Many statistical
+    methods have been developed to test the normality assumption of observed data,
+    but even a simple histogram can give a great idea of the distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Power transformations are often applied to transform the data from its original
+    distribution to something that's more like a normal distribution. As discussed
+    in the introduction, this can make a huge difference to the machine learning algorithm's
+    ability to find a solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Power transforms** are transformations preserving the original order (this
+    property is called monotonicity) using power functions. A **power function** is
+    a function of this form:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_03_005.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: where ![](img/B17577_03_006.png).
+  prefs: []
+  type: TYPE_NORMAL
+- en: When *n* is an integer and bigger than 1, we can make two major distinctions
+    depending on whether *n* is odd or even. If it is even, the function ![](img/B17577_03_007.png)
+    will tend toward positive infinity with large *x*, either positive or negative.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If it is odd, *f(x)* will tend toward positive infinity with increasing *x*,
+    but toward negative infinity with *x*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A power transformation is generally defined like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_03_008.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'where *GM(x)* is the geometric mean of *x*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_03_009.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This reduces the transformation to the optimal choice of the parameter ![](img/B17577_03_010.png).
+    For practical purposes, two power transformations are most commonly used:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Box-Cox transformation
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Yeo–Johnson
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'For **Box-Cox transformation**, there are two variants, the one-parameter variant
+    and the two-parameter variant. One-parameter Box–Cox transformations are defined like
+    this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_03_011.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The value of the parameter ![](img/B17577_03_012.png) can be via different optimization
+    methods such as the maximum likelihood that the transformed feature is Gaussian.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So the value of lambda corresponds to the exponent of the power operation, for
+    example, ![](img/B17577_03_013.png) with ![](img/B17577_03_014.png) or ![](img/B17577_03_015.png)with
+    ![](img/B17577_03_016.png).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fun fact: Box-Cox transformation is named after statisticians George E.P Box
+    and David Cox, who decided they had to work together because Box-Cox would sound
+    good.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Yeo–Johnson transformation** is an extension of Box-Cox transformation that
+    allows zero and negative values of *x*. ![](img/B17577_03_017.png) can be any
+    real number, where ![](img/B17577_03_018.png) =1 produces the identity transformation.
+    The transformation is defined as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_03_019.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Finally, **quantile transformation** can map a feature to the uniform distribution
+    based on an estimate of the cumulative distribution function. Optionally, this
+    can then be mapped in a second step to normal distribution. The advantage of this
+    transform, similar to other transformations that we've talked about, is that it
+    makes features more convenient to process and plot, and easier to compare, even
+    if they were measured at different scales.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we'll look at imputation, which literally means the assignment
+    of values by inference, but in machine learning, often is more narrowly meant
+    to refer to replacing missing values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Imputation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Imputation is the replacement of missing values. This is important for any
+    machine learning algorithm that can''t handle missing values. Generally, we can
+    distinguish the following types of imputation techniques:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unit imputation – where missing values are replaced by a constant such as the
+    mean or 0
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Model-based imputation – where missing values are replaced with predictions
+    from a machine learning model
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Unit imputation is by far the most popular imputation technique, partly because
+    it's very easy to do, and because it's less heavy on computational resources than
+    model-based imputation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll do imputation in the practice section of this chapter. In the next section,
+    we'll talk about feature engineering.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature Engineering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Machine learning algorithms can use different representations of the input features.
+    As we've mentioned in the introduction, the goal of feature engineering is to
+    produce new features that can help us in the machine learning process. Some representations
+    or augmentations of features can boost performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can distinguish between hand-crafted and automated feature extraction, where
+    hand-crafted means that we look through the data and try to come up with representations
+    that could be useful, or we can use a set of features that have been established
+    from the work of researchers and practitioners before. An example of a set of
+    established features is **Catch22**, which includes 22 features and simple summary
+    statistics extracted from phase-dependant intervals. The Catch22 set is a subset
+    of the **Highly Comparative Time-Series Analysis** (**HCTSA**) toolbox, another
+    set of features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another distinction is between interpretable and non-interpretable features.
+    Interpretable features could be summary features such as the mean, max, min, and
+    others. These could be pooled within time periods, windows, to give us more features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In features for time-series, a few preprocessing methods come with their recommended
+    machine learning model. For example, a ROCKET model is a linear model on top of
+    the ROCKET features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Taken to the extreme, this can be a form of **model stacking**, where the outcomes
+    of models serve as the inputs to other models. This can be an effective way of
+    decomposing the learning problem by training less complex (fewer features, fewer
+    parameters) models in a supervised setting and using their outputs for training
+    other models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Please note it is important that any new feature depends only on past and present
+    inputs. In signal processing, this kind of operation is called a **causal filter**.
+    The word causal indicates that the filter output for a value at time *t* only
+    uses information available at time *t* and doesn't peek into the future. Conversely,
+    a filter whose output also depends on future inputs is non-causal. We'll discuss
+    Temporal Convolutional Networks, basically causal convolutions, in Chapter 10,
+    Deep Learning for Time-Series.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We should take great care in training and testing that any statistics extracted
+    and applied in preprocessing are carefully considered – at best, the model performance
+    will be overly optimistic if it relies on data that shouldn't be available during
+    prediction. We'll discuss leakage in the next chapter, *Chapter 4*, *Machine Learning
+    for Time-Series*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we have many features, we might want to simplify our model building process
+    by pruning the available features and using only a subset (feature selection),
+    or instead, using a new set of features that describe the essential quality of
+    the features (dimensionality reduction).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can distinguish the following types of features with time-series:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Date- and time-related features
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Calendar features (date-related)
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Time-related features
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Window-based features
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Calendar- and time-related features are very similar, so we'll discuss them
+    in the same section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Window-based features are features that integrate features within a (rolling)
+    window, that is, within a time period. Examples of these are averages over 15-minute
+    windows or sales within 7 days. Since we dealt with rolling windows in *Chapter
+    2*, *Time-Series Analysis with Python*, in this chapter, we'll deal with more
+    complex features such as convolutions and shapelets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many preprocessing algorithms are implemented in `sktime`. Another handy library
+    is tsfresh, which calculates an enormous number of interpretable features for
+    time-series. In the code in this chapter, we've accessed tsfresh features through
+    feature tools.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's do some more time-series preprocessing in Python! We'll discuss date-
+    and time-related features next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Date- and Time-Related Features
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Date and time variables contain information about dates, time, or a combination
+    (datetime). We saw several examples in the previous chapter, *Chapter 2*, *Time-Series
+    Analysis with Python* – one of them was the year corresponding to pollution. Other
+    examples could be the birth year of a person or the date of a loan being taken
+    out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: If we want to feed these fields into a machine learning model, we need to derive
+    relevant information. We could feed the year as an integer, for example, but there
+    are many more examples of extracted features from datetime variables, which we'll
+    deal with in this section. We can significantly improve the performance of our
+    machine learning model by enriching our dataset with these extracted features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Workalendar is a Python module that provides classes able to handle calendars,
+    including lists of bank and religious holidays, and it offers working-day-related
+    functions. Python-holidays is a similar library, but here we'll go with workalendar.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we'll discuss ROCKET features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ROCKET
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The research paper *ROCKET: Exceptionally fast and accurate time-series classification
+    using random convolutional kernels* (Angus Dempster, François Petitjean, Geoffrey
+    I. Webb; 2019) presents a novel methodology for convolving time-series data with
+    random kernels that can result in higher accuracy and faster training times for
+    machine learning models. What makes this paper unique is banking on the recent
+    successes of convolutional neural networks and transferring them to preprocessing
+    for time-series datasets.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We will go into more details of this paper. **ROCKET**, short for **RandOm Convolutional
+    KErnel Transform**, is based on convolutions, so let's start with convolutions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Convolutions are a very important transformation, especially in image processing,
+    and are one of the most important building blocks of deep neural networks in image
+    recognition. Convolutions consist of feedforward connections, called **filters**
+    or **kernels**, that are applied to rectangular patches of the image (the previous
+    layer). Each resulting image is then the sliding window of the kernel over the
+    whole image. Simply put, in the case of images, a kernel is a matrix used to modify
+    the images.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'A sharpening kernel can look like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_03_020.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'If we multiply this kernel to all local neighborhoods in turn, we get a sharper
+    image as illustrated below (original on the left, sharpened on the right):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![merged.png](img/B17577_03_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.1: Sharpening filter'
+  prefs: []
+  type: TYPE_NORMAL
+- en: This picture is a gray version of "A woman divided into two, representing life
+    and death" (owned by the Wellcome Collection, a museum and exhibition center in
+    London; licensed under CC BY 4.0).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The sharpening kernel emphasizes differences in adjacent pixel values. You can
+    see that the picture on the right is much grainier or vivid – a result of the
+    convolution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can apply kernels not only to images but also to vectors or matrices, and
+    this brings us back to ROCKET. ROCKET computes two aggregate features from each
+    kernel and feature convolution. The two features are created using the well-known
+    methodology global/average max pooling and a novel methodology that we'll come
+    to in a second.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Global max pooling** outputs the maximum value from the result of convolution
+    and max pooling takes the maximum value within a pool size. For example, if the
+    result of the convolution is 0,1,2,2,5,1,2, global max pooling returns 5, whereas
+    **max pooling** with pool size 3 outputs the maxima within windows of 3, so we''ll
+    get 2,2,5,5,5\.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Positive Proportion Value** (**PPV**), the methodology from the paper, is
+    the proportion (percentage) of values from the convolution that are positive (or
+    above a bias threshold).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can improve machine learning accuracy from time-series by applying transformations
+    with convolutional kernels. Each feature gets transformed by random kernels, the
+    number of which is a parameter to the algorithm. This is set to 10,000 by default.
+    The transformed features can now be fed as input into any machine learning algorithm.
+    The authors propose to use linear algorithms like ridge regression classifier
+    or logistic regression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The idea of ROCKET is very similar to Convolutional Neural Networks (CNNs),
+    which we''ll discuss in chapter 10, Deep Learning for Time-Series, however, two
+    big differences are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ROCKET doesn't use any hidden layers or non-linearities
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The convolutions are applied independently for each feature
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In the next section, we'll be discussing shapelets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Shapelets
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Shapelets for time-series were presented in the research paper *Time-Series
+    Shapelets: A New Primitive for Data Mining* (Lexiang Ye and Eamonn Keogh, 2009).
+    The basic idea of shapelets is decomposing time-series into discriminative subsections
+    (shapelets).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the first step, the shapelets are learned. The algorithm calculates the information
+    gain of possible candidates and picks the best candidates to create a shapelet
+    dictionary of discriminating subsections. This can be quite expensive. Then, based
+    on the shapelet decomposition of the features, a decision tree or other machine
+    learning algorithms can be applied.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Shapelets have several advantages over other methods:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: They can provide interpretable results
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The application of shapelets can be very fast – only depending on the matching
+    of features against the dictionary of shapelets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The performance of machine learning algorithms on top of shapelets is usually
+    very competitive
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It's time that we go through Python exercises with actual datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python Practice
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: NumPy and SciPy offer most of the functionality that we need, but we might need
+    a few more libraries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this section, we''ll use several libraries, which we can quickly install
+    from the terminal, **the Jupyter Notebook**, or similarly **from Anaconda Navigator**:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: All of these libraries are quite powerful and each of them deserves more than
+    the space we can give to it in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's start with log and power transformations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Log and Power Transformations in Practice
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Let's create a distribution that's not normal, and let's log-transform it. We'll
+    plot the original and transformed distribution for comparison, and we'll apply
+    a statistical test for normality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s first create the distribution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Values are sampled from a lognormal distribution. I've added a call to the random
+    number generator seed function to make sure the result is reproducible for readers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can visualize our array as a histogram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![lognormal_hist.png](img/B17577_03_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.2: An array sampled from a lognormal distribution'
+  prefs: []
+  type: TYPE_NORMAL
+- en: I've used a log scale on the y-axis. We can see that the values spread over
+    a number of orders of magnitude.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can apply the standard normalization to z-scores. We can also apply a statistical
+    normality test on one of the transformed distributions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The null hypothesis of this statistical test is that the sample comes from a
+    normal distribution. Therefore significance values (p-values) lower than a threshold,
+    typically set to 0.05 or 0.01, would let us reject the null hypothesis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We are getting this output: `significance: 0.00`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can conclude from the test that we are not getting a null distribution from
+    our transformation by standard scaling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This should be obvious, but let''s get it out of the way: we are getting the
+    same significance for the minmax transformed values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We therefore reach the same conclusion: the minmax transformation hasn''t helped
+    us get a normal-like distribution.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can plot the original and the standard scaled distribution against each other.
+    Unsurprisingly, visually, the two distributions look the same except for the scale.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![standard_scaled.png](img/B17577_03_03.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.3: The linear transformation against the original values'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see everything lies on the diagonal.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s use a log transformation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: We are getting a significance of `0.31`. This lets us conclude that we can't
+    reject the null hypothesis. Our distribution is similar to normal. In fact, we
+    get a standard deviation close to 1.0 and a mean close to 0.0 as we would expect
+    with a normal distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that the log-normal distribution is a continuous probability distribution
+    whose logarithm is normally distributed, so it's not entirely surprising that
+    we get this result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can plot the histogram of the log-transformed distribution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![log_transformed_hist.png](img/B17577_03_04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.4: Log-transformed lognormal array'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The log transform looks much more normal-like as we can appreciate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also apply Box-Cox transformation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We are getting a significance of 0.46\. Again, we can conclude that our Box-Cox
+    transform is normal-like. We can also see this in a plot of the Box-Cox transformed
+    distribution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![bc_transformed_hist.png](img/B17577_03_041.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.5: Box-Cox transformed lognormal array'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Again, this looks very much like a normal distribution. This plot looks pretty
+    much the same as the previous one of the log transformation, which shouldn't be
+    surprising given that the log operation corresponds to a lambda parameter of 0
+    in the Box-Cox transformation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is a small selection of transformations that can help us reconcile our
+    data with the common normality assumption in classical forecasting methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's look at imputation in practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Imputation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It is rather uncommon for machine learning algorithms to be able to deal with
+    missing values directly. Rather, we'll either have to replace missing values with
+    constants or infer probable values given the other features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The scikit-learn documentation lists a simple example of unit imputation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: We are again using (similar to the standard scaler before) the scikit-learn
+    transformers, which come with `fit()` and `transform()` methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We get the following imputed values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: The missing values are replaced with the mean of the columns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's look at annotating holidays as derived date features.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Holiday Features
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'If we want to get the holidays for the United Kingdom, we can do this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We get the following holidays:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can generate holidays by year and then look up holidays by date.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, we can get holidays for other places, for example, California, USA.
+    We can also extract lists of holidays, and add custom holidays:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This gives us our custom holidays for the year 2021:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Please note that we are using type hints in the code segment above. We are
+    declaring the signature of our function like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: This means we are expecting an integer called `year` and we are expecting a
+    `List` as an output. Annotations are optional and they are not getting checked
+    (if you don't invoke mypy), but they can make code in Python much clearer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we can implement a simple lookup like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: I am getting a `False` even though I wish it were a holiday.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This can be a very useful feature for a machine learning model. For example,
+    we could imagine a different profile of users who apply for loans on bank holidays
+    or on a weekday.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Date Annotation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The calendar module offers lots of methods, for example, `monthrange() - calendar.monthrange`
+    returns the first weekday of the month and the number of days in a month for a
+    given year and month. The day of the week is given as an integer, where Monday
+    is 0 and Sunday is 6.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: We should be getting (`4, 31`). This means the first weekday of 2021 was a Friday.
+    January 2021 had 31 days.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can also extract features relevant to the day with respect to the year.
+    The following function provides the number of days since the end of the previous
+    year and to the end of the current year:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: This feature could provide a general idea of how far into the year we are. This
+    can be useful both for estimating a trend and for capturing cyclic variations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Similarly, we can extract the number of days from the first of the month and
+    to the end of the month:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: A feature like this could also provide some useful information. I am getting
+    `(10, 8)`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In retail, it is very important to predict the spending behavior of customers.
+    Therefore, in the next section, we'll write annotation for pay days.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Paydays
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We could imagine that some people get paid in the middle or at the end of the
+    month, and would then access our website to buy our products.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Most people would get paid on the last Friday of the month, so let''s write
+    a function for this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: I am getting 30 as the last Friday.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Seasons can also be predictive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Seasons
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can get the season for a specific date:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: We should be getting `spring` here, but the reader is encouraged to try this
+    with different values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Sun and Moon
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The Astral module offers information about sunrise, moon phases, and more.
+    Let''s get the hours of sunlight for a given day in London:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: I am getting `9.788055555555555` hours of daylight.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It can often be observed that the more hours of daylight, the more business
+    activity. We could speculate that this feature could be helpful in predicting
+    the volume of our sales.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Business Days
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Similarly, if a month has more business days, we could expect more sales for
+    our retail store. On the other hand, if we are selling windsurfing lessons, we
+    might want to know the number of holidays in a given month. The following function
+    extracts the number of business days and weekends/holidays in a month:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: We should be getting `(22, 9)` – 22 business days and 9 weekend days and holidays.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Automated Feature Extraction
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We can also use automated feature extraction tools from modules like featuretools.
+    Featuretools calculates many datetime-related functions. Here''s a quick example:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Our features are `Minute`, `Hour`, `Day`, `Month`, `Year`, and `Weekday`. Here''s
+    our DataFrame, `fm`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![/var/folders/80/g9sqgdws2rn0yc3rd5y3nd340000gp/T/TemporaryItems/(A Document
+    Being Saved By screencaptureui 3)/Screenshot 2021-04-11 at 21.58.52.png](img/B17577_03_05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.6: Featuretools output'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We could extract many more features. Please see the featuretools documentation
+    for more details.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The tsfresh module also provides automated functionality for feature extraction:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: Please note that tsfresh optimizes features using statsmodels' autoregression,
+    and (last I checked) still hasn't been updated to use `statsmodels.tsa.AutoReg`
+    instead of `statsmodels.tsa.AR`, which has been deprecated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We get 1,574 features that describe our `time` object. These features could
+    help us in machine learning models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's demonstrate how to extract ROCKET features from a time-series.
+  prefs: []
+  type: TYPE_NORMAL
+- en: ROCKET
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We'll be using the implementation of ROCKET in the `sktime` library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `sktime` library represents data in a nested DataFrame. Each column stands
+    for a feature, as expected, however, what may be surprising is that each row is
+    an instance of a time-series. Each cell contains an array of all values for a
+    given feature over time. In other words, each cell has a nested object structure,
+    where instance-feature combinations are stored.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This structure makes sense, because it allows us to store multiple instances
+    of time-series in the same DataFrame, however, it's not intuitive at first. Fortunately,
+    SkTime provides utility functions to unnest the SkTime datasets, as we will see.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If we want to load an example time-series in SkTime, we can do this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We get an unnested DataFrame like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![../../../../../../Desktop/Screenshot%202021-04-12%20at%2](img/B17577_03_06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 3.7: ROCKET features'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Again, each row is a time-series. There's only one feature, called `dim_0`.
+    The time-series has 251 measurements.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can import ROCKET, and then create the ROCKET features. We'll first have
+    to learn the features and then apply them. This is a typical pattern for machine
+    learning. In scitkit-learn, we'd use the `fit()` and `predict()` methods for models,
+    where `fit()` is applied on the training data and `predict()` gives the predictions
+    on a test set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The learning step should only ever be applied to the training set. One of the
+    parameters in ROCKET is the number of kernels. We''ll set it to 1,000 here, but
+    we can set it to a higher number as well. 10,000 kernels is the default:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: The returned dataset is not nested, and it contains 2,000 columns. Each column
+    describes the whole time-series but is the result from a different kernel.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we'll do a shapelets exercise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Shapelets in Practice
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Let''s create shapelets for the dataset we used before when we looked at ROCKET.
+    We''ll again use `SkTime`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: The training could take a few minutes. We'll get some output about the candidates
+    that are being examined.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can again transform our time-series using our shapelet transformer. This
+    works as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: This gives us a transformed dataset that we can use in machine learning models.
+    We encourage the reader to play around with these feature sets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This concludes our Python practice.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Preprocessing is a crucial step in machine learning that is often neglected.
+    Many books don't cover preprocessing as a topic or skip preprocessing entirely.
+    However, it is often in preprocessing that relatively easy wins can be achieved.
+    The quality of the data determines the outcome.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preprocessing includes curating and screening the data. The expected output
+    of the preprocessing is a dataset on which it is easier to conduct machine learning.
+    This can mean that it is more reliable and less noisy than the original dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've talked about feature transforms and feature engineering approaches to
+    time-series data, and we've talked about automated approaches as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapters, we'll explore how we can use these extracted features
+    in a machine learning model. We'll discuss combinations of features and modeling
+    algorithms in the next chapter, *Chapter 4*, *Introduction to Machine Learning
+    for Time-Series*. In *Chapter 5*, *Time-Series Forecasting with Moving Averages
+    and Autoregressive Models*, we'll be using machine learning pipelines, where we
+    can connect feature extraction and machine learning models.
+  prefs: []
+  type: TYPE_NORMAL

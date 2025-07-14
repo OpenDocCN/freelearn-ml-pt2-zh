@@ -1,0 +1,726 @@
+- en: Building Collaborative Filters
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we mathematically defined the collaborative filtering
+    problem and gained an understanding of various data mining techniques that we
+    assumed would be useful in solving this problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The time has finally come for us to put our skills to the test. In the first
+    section, we will construct a well-defined framework that will allow us to build
+    and test our collaborative filtering models effortlessly. This framework will
+    consist of the data, the evaluation metric, and a corresponding function to compute
+    that metric for a given model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will be required to have Python installed on a system. Finally, to use the
+    Git repository of this book, the user needs to install Git.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code files of this chapter can be found on GitHub:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Recommendation-Systems-with-Python](https://github.com/PacktPublishing/Hands-On-Recommendation-Systems-with-Python).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the following video to see the code in action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://bit.ly/2mFmgRo](http://bit.ly/2mFmgRo)[.](http://bit.ly/2mFmgRo)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The framework
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Just like the knowledge-based and content-based recommenders, we will build
+    our collaborative filtering models in the context of movies. Since collaborative
+    filtering demands data on user behavior, we will be using a different dataset
+    known as MovieLens.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The MovieLens dataset
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The MovieLens dataset is made publicly available by GroupLens Research, a computer
+    science lab at the University of Minnesota. It is one of the most popular benchmark
+    datasets used to test the potency of various collaborative filtering models and
+    is usually available in most recommender libraries and packages:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/dc0f89d7-6e9c-4790-a6c0-06725f2dbe8a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: MovieLens gives us user ratings on a variety of movies and is available in various
+    sizes. The full version consists of more than 26,000,000 ratings applied to 45,000
+    movies by 270,000 users. However, for the sake of fast computation, we will be
+    using the much smaller 100,000 dataset, which contains 100,000 ratings applied
+    by 1,000 users to 1,700 movies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Downloading the dataset
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Without any further ado, let's go ahead and download the 100,000 dataset. The
+    dataset available on the official GroupLens site does not provide us with user
+    demographic information anymore. Therefore, we will use a legacy dataset made
+    available on Kaggle by Prajit Datta.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Download the MovieLens 100,000 dataset at [https://www.kaggle.com/prajitdatta/movielens-100k-dataset/data](https://www.kaggle.com/prajitdatta/movielens-100k-dataset/data).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unzip the folder and rename it `movielens`*. *Next, move this folder into the `data`folder
+    within `RecoSys`*. *The MovieLens dataset should contain around 23 files. However,
+    the only files we are interested in are `u.data`, `u.user`, and `u.item`*. *Let's
+    explore these files in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring the data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As mentioned in the previous section, we are only interested in three files
+    in the `movielens`folder: `u.data`, `u.user`, and `u.item`.Although these files
+    are not in CSV format, the code required to load them into a Pandas DataFrame
+    is almost identical.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's start with `u.user`*:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here is its output**:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/87603c24-aeb9-49c5-8d2e-9a08936e0a34.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We see that the `u.user`file contains demographic information about our users,
+    such as their age, sex, occupation, and zip_code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let''s take a look at the `u.item`file, which gives us information about
+    the movies that have been rated by our users:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here is its output**:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/1d17c470-2f66-4030-b088-a6e80885e42a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We see that this file gives us information regarding the movie''s title, release
+    date, IMDb URL, and its genre(s). Since we are focused on building only collaborative
+    filters in this chapter, we do not require any of this information, apart from
+    the movie title and its corresponding ID:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Lastly, let''s import the `u.data`file into our notebook. This is arguably
+    the most important file as it contains all the ratings that every user has given
+    to a movie. It is from this file that we will construct our ratings matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here is its output**:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/4d99de2f-2ad1-4930-8837-e0adc93bd4e6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We see that every row in our new `ratings`DataFrame denotes a rating given
+    by a user to a particular movie at a particular time. However, for the purposes
+    of the exercises in this chapter, we are not really worried about the time at
+    which the ratings were given. Therefore, we will just go ahead and drop it:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Training and test data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The `ratings`DataFrame contains user ratings for movies that range from 1 to
+    5\. Therefore, we can model this problem as an instance of supervised learning
+    where we need to predict the rating, given a user and a movie. Although the ratings
+    can take on only five discrete values, we will model this as a regression problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consider a case where the true rating given by a user to a movie is 5\. A classification
+    model will not distinguish between the predicted ratings of 1 and 4\. It will
+    treat both as misclassified. However, a regression model will penalize the former
+    more than the latter, which is the behavior we want.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we saw in [Chapter 5](cde5090f-2e41-4e6f-ab11-f5179f1ee2a6.xhtml), *Getting
+    Started with Data Mining Techniques*, one of the first steps towards building
+    a supervised learning model is to construct the test and training sets. The model
+    will learn using the training dataset and its potency will be judged using the
+    testing dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s now split our ratings dataset in such a way that 75% of a user''s ratings
+    is in the training dataset and 25% is in the testing dataset. We will do this
+    using a slightly hacky way: we will assume that the `user_id`field is the target
+    variable (or `y`) and that our `ratings`DataFrame consists of the predictor variables
+    (or `X`)*. *We will then pass these two variables into scikit-learn''s `train_test_split`function
+    and `stratify`it along *y. *This ensures that the proportion of each class is
+    the same in both the training and testing datasets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Evaluation
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We know from [Chapter 5](cde5090f-2e41-4e6f-ab11-f5179f1ee2a6.xhtml), *Getting
+    Started with Data Mining Techniques* that the RMSE, or root mean squared error,
+    is the most commonly used performance metric for regressors. We will be using
+    the RMSE to assess our modeling performance too. `scikit-learn` already gives
+    us an implementation of the mean squared error. So, all that we have to do is
+    define a function that returns the square root of the value returned by `mean_squared_error`*:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Next, let's define our baseline collaborative filter model. All our **collaborative
+    filter** (or **CF**) models will take in a `user_id`and `movie_id`as input and
+    output a floating point number between 1 and 5\. We define our baseline model
+    in such a way that it returns `3` regardless of `user_id`or `movie_id`*:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To test the potency of our model, we compute the RMSE obtained by that particular
+    model for all user-movie pairs in the test dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We''re all set. Let''s now compute the RMSE obtained by our baseline model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We obtain a score of `1.247`. For the models that we build in the subsequent
+    sections, we will try to obtain an RMSE that is less than that obtained for the
+    baseline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: User-based collaborative filtering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In [Chapter 1](c4bff0e9-57b3-44ec-90cb-9e5950696b27.xhtml), *Getting Started
+    with Recommender Systems*, we learned what user-based collaborative filters do:
+    they find users similar to a particular user and then recommend products that
+    those users have liked to the first user.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we will implement this idea in code. We will build filters
+    of increasing complexity and gauge their performance using the framework we constructed
+    in the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To aid us in this process, let''s first build a ratings matrix (described in
+    [Chapters 1](c4bff0e9-57b3-44ec-90cb-9e5950696b27.xhtml), *Getting Started with
+    Recommender Systems* and [Chapter 5](cde5090f-2e41-4e6f-ab11-f5179f1ee2a6.xhtml), *Getting
+    Started with Data Mining Techniques*) where each row represents a user and each
+    column represents a movie. Therefore, the value in the i^(th) row and j^(th) column
+    will denote the rating given by user `i` to movie `j`. As usual, pandas gives
+    us a very useful function, called `pivot_table`,to construct this matrix from
+    our `ratings`DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here is its output**:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/42d726f8-5bda-4f13-944d-7516f2744963.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We now have a new `r_matrix` DataFrame, where each row is a user and each column
+    is a movie. Also, notice that most values in the DataFrame are unspecified. This
+    gives us a picture of how sparse our matrix is.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mean
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let's first build one of the simplest collaborative filters possible. This simply
+    takes in `user_id`and `movie_id`and outputs the mean rating for the movie by all
+    the users who have rated it. No distinction is made between the users. In other
+    words, the rating of each user is assigned equal weight.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is possible that some movies are available only in the test set and not
+    the training set (and consequentially, not in our ratings matrix). In such cases,
+    we will just default to a rating of `3.0`, like the baseline model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: We see that the score obtained for this model is lower and therefore better
+    than the baseline.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Weighted mean
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous model, we assigned equal weights to all the users. However,
+    it makes intuitive sense to give more preference to those users whose ratings
+    are similar to the user in question than the other users whose ratings are not.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Therefore, let''s alter our previous model by introducing a weight coefficient.
+    This coefficient will be one of the similarity metrics that we computed in the
+    previous chapter. Mathematically, it is represented as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/be3fa7ee-447f-4d84-b674-97d3f20b2b9a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this formula, *r*[*u,m* ]represents the rating given by user *u* to movie
+    *m.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the sake of this exercise, we will use the cosine score as our similarity
+    function (or sim). Recall how we constructed a movie cosine similarity matrix
+    while building our content-based engine. We will be building a very similar cosine
+    similarity matrix for our users in this section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, scikit-learn''s`cosine_similarity`function does not work with `NaN`
+    values. Therefore, we will convert all missing values to zero in order to compute
+    our cosine similarity matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here is its output**:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5f2374b3-5ba3-43f4-88e2-9234f4c15f23.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: With the user cosine similarity matrix in hand, we are now in a position to
+    efficiently calculate the weighted mean scores for this model. However, implementing
+    this model in code is a little more nuanced than its simpler mean counterpart.
+    This is because we need to only consider those cosine similarity scores that have
+    a corresponding, non-null rating. In other words, we need to avoid all users that
+    have not rated movie *m:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: Since we are dealing with positive ratings, the cosine similarity score will
+    always be positive. Therefore, we do not need to explicitly add in a modulus function
+    while computing the normalizing factor (the denominator of the equation that ensures
+    the final rating is scaled back to between 1 and 5).
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, if you're working with a similarity metric that can be negative in
+    this scenario (for instance, the Pearson correlation score), it is important that
+    we factor in the modulus.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Running this code takes significantly more time than the previous model. However,
+    we achieve a (very small) improvement in our RMSE score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: User demographics
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Finally, let's take a look at filters that leverage user demographic information.
+    The basic intuition behind these filter is that users of the same demographic
+    tend to have similar tastes. Therefore, their effectiveness depends on the assumption
+    that women, or teenagers, or people from the same area will share the same taste
+    in movies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unlike the previous models, these filters do not take into account the ratings
+    given by all users to a particular movie. Instead, they only look at those users
+    that fit a certain demographic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now build a gender demographic filter. All this filter does is identify
+    the gender of a user, compute the (weighted) mean rating of a movie by that particular
+    gender, and return that as the predicted value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our `ratings`DataFrame does not contain the users'' demographics. We will import
+    that information from the `users`DataFrame by merging them into one (using pandas,
+    as usual). Readers familiar with SQL can see that this is extremely similar to
+    the JOIN functionality:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here is its output**:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6bf67257-c48f-44a6-b898-82685bd2ec96.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, we need to compute the `mean`rating of each movie by gender. Pandas makes
+    this possible with the `groupby`method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We are now in a position to define a function that identifies the gender of
+    the user, extracts the average rating given to the movie in question by that particular
+    gender, and return that value as output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: We see that this model actually performs worse than the standard mean ratings
+    collaborative filter. This indicates that a user's gender isn't the strongest
+    indicator of their taste in movies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s try building one more demographic filter, but this time using both gender
+    and occupation:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We see that the `pivot_table` method gives us the required DataFrame. However,
+    this could have been done using `groupby`too. `pivot_table`is simply a more compact,
+    easier-to-use interface for the `groupby`method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: We see that this model performs the worst out of all the filters we've built
+    so far, beating only the baseline. This strongly suggests that tinkering with
+    user demographic data may not be the best way to go forward with the data that
+    we are currently using. However, you are encouraged to try different permutations
+    and combinations of user demographics to see what performs best. You are also
+    encouraged to try other techniques of improving the model, such as using a weighted
+    mean for the `aggfunc` of the`pivot_table`and experimenting with different (perhaps
+    more informed) default ratings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Item-based collaborative filtering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Item-based collaborative filtering is essentially user-based collaborative filtering
+    where the users now play the role that items played, and vice versa.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In item-based collaborative filtering, we compute the pairwise similarity of
+    every item in the inventory. Then, given `user_id`and `movie_id`*, *we compute
+    the weighted mean of the ratings given by the user to all the items they have
+    rated. The basic idea behind this model is that a particular user is likely to
+    rate two items that are similar to each other similarly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building an item-based collaborative filter is left as an exercise to the reader.
+    The steps involved are exactly the same except now, as mentioned earlier, the
+    movies and users have swapped places.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Model-based approaches
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The collaborative filters we have built thus far are known as memory-basedfilters.
+    This is because they only make use of similarity metrics to come up with their
+    results. They learn any parameters from the data or assign classes/clusters to
+    the data. In other words, they do not make use of machine learning algorithms.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we will take a look at some filters that do. We spent an entire
+    chapter looking at various supervised and unsupervised learning techniques. The
+    time has finally come to see them in action and test their potency.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In our weighted mean-based filter, we took every user into consideration when
+    trying to predict the final rating. In contrast, our demographic-based filters
+    only took users that fit a certain demographic into consideration. We saw that
+    the demographic filters performed poorly compared to the weighted mean filter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But does this necessarily imply that we need to take all users into consideration
+    to achieve better results?
+  prefs: []
+  type: TYPE_NORMAL
+- en: One of the major drawbacks of the demographic filters was that they were based
+    on the assumption that people from a certain demographic think and rate alike.
+    However, we can safely say that this is an overreached assumption. Not all men
+    like action movies. Nor do all children like animated movies. Similarly, it is
+    extremely far-fetched to assume that people from a particular area or occupation
+    will have the same taste.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We need to come up with a way of grouping users with a much more powerful metric
+    than demographics. From [Chapter 5](cde5090f-2e41-4e6f-ab11-f5179f1ee2a6.xhtml), *Getting
+    Started with Data Mining Techniques*, we already know of one extremely powerful
+    tool: `clustering`*.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is possible to use a clustering algorithm, such as k-means, to group users
+    into a cluster and then take only the users from the same cluster into consideration
+    when predicting ratings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this section, we will use k-means'' sister algorithm, kNN*, *to build our
+    clustering-based collaborative filter. In a nutshell, given an user, *u*, and
+    a movie, *m*, these are the steps involved:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Find the k-nearest neighbors of *u *who have rated movie *m*
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Output the average rating of the *k* users for the movie *m*
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: That's it. This extremely simply algorithm happens to be one of the most popularly
+    used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Just like kNN, we will not be implementing the kNN-based collaborative filter
+    from scratch. Instead, we will use an extremely popular and robust library called `surprise`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6f23c30a-a1c2-4fa8-9209-dfb7090f95de.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Surprise is a scikit (or scientific kit) for building recommender systems in
+    Python. You can think of it as scikit-learn's recommender systems counterpart.
+    According to its documentation, `surprise`stands for Simple Python Recommendation
+    System Engine. Within a very short span of time, `surprise`has gone on to become
+    one of the most popularly used recommender libraries. This is because it is extremely
+    robust and easy to use. It gives us ready-to-use implementations of most of the
+    popular collaborative filtering algorithms and also allows us to integrate an
+    algorithm of our own into the framework.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To download `surprise`, like any other Python library, open up your Terminal
+    and type the following command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s now build and evaluate our kNN-based collaborative filter. Although *surprise *has
+    the MovieLens datasets available within the library, we will still use the external
+    data we have in order to get a feel for using the library with alien datasets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here is its output**:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f3296d5e-c2bf-4166-abd0-8ceef92b158f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The output indicates that the filter is making use of a technique known as fivefold `cross-validation`*. *In
+    a nutshell, this means that `surprise`divides the data into five equal parts.
+    It then uses four parts as the training data and tests it on the fifth part. This
+    is done five times, in such a way that every part plays the role of the test data
+    once.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We see that the RMSE obtained by this model is 0.9784\. This is, by far, the
+    best result we have achieved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now take a tour of some other model-based approaches to collaborative
+    filtering and implement a few of them using the *surprise *library.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Supervised learning and dimensionality reduction
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Consider our ratings matrix once again. It is of the *m* × *n* shape, where
+    every row represents one of the *m* users and every column represents one of the *n *items.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now remove one of the *n *columns (say n[j]). We now have an *m *× (*n*-1)
+    matrix. If we treat the *m* × (*n*-1) matrix as the predictor variables and n[j]
+    as the target variable, we can use supervised learning algorithms to train on
+    the values available in n[j] to predict values that are not. This can be repeated
+    n times for every column to eventually complete our matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One big problem is that most supervised learning algorithms do not work with
+    missing data. In standard problems, it is common practice to impute the missing
+    values with the mean or median of the column it belongs to.
+  prefs: []
+  type: TYPE_NORMAL
+- en: However, our matrix suffers from heavy data sparsity. More than 99% of the data
+    in the matrix is unavailable. Therefore, it is simply not possible to impute values
+    (such as mean or median) without introducing a large bias.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One solution that may come to mind is to compress the predictor matrix in such
+    a way that all the values are available. Unfortunately, dimensionality reduction
+    techniques, such as SVD and PCA, also do not work in an environment with missing
+    values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While working toward a solution for the Netflix Problem, Simon Funk came up
+    with a solution that could be used to reduce the *m* × (*n*-1) matrix into a lower-dimensional
+    *m* × *d* matrix where *d* << *n*. He used standard dimensionality-reduction techniques
+    (in his case, the SVD) but with slight tweaks. Explaining the technique is outside
+    the scope of this book, but is presented in the Appendix for advanced readers.
+    For the sake of this chapter, we will treat this technique as a black box that
+    converts an *m* × *n* sparse matrix into an *m* × *d* dense matrix where *d* <<
+    *n*, and call it `SVD-like`*.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now turn our attention to perhaps the most famous recommendation algorithm
+    of all time: singular-value decomposition*.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: Singular-value decomposition
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In [Chapter 5](cde5090f-2e41-4e6f-ab11-f5179f1ee2a6.xhtml), *Getting Started
+    with Data Mining Techniques*, we mentioned that the math behind singular-value
+    decomposition is well outside the scope of this book. However, let's try to gain
+    an understanding of how it works from a layman's perspective.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Recall from [Chapter 5](cde5090f-2e41-4e6f-ab11-f5179f1ee2a6.xhtml), *Getting
+    Started with Data Mining Techniques,* that **PCA** ( **Principal Component Analysis**)
+    transforms an *m* × *n* matrix into *n*, *m*-dimensional vectors (called principal
+    components) in such a way that each component is orthogonal to the next component.
+    It also constructs these components in such a way that the first component holds
+    the most variance (or information), followed by the second component, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's denote our ratings matrix as *A**. *The transpose of this matrix would
+    be *A**^T*, which would be of the *n* × *m* shape and each row would represent
+    a movie (instead of a user).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can now use PCA to construct two new matrices, *U *and *V*, from *A*and *A**^T*,
+    respectively.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Singular-value decomposition allows us to compute *U *and *V *in one go from *A*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/37b83a39-36b7-47eb-b790-3981bedf634b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In essence, singular-value decomposition is a matrix-factorization technique.
+    It takes in an input, *A*, and outputs *U *and *V *such that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/2ddd6e73-d027-463c-bb87-1a9f7f0c262f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Where ![](img/d4a5f097-a8e4-4459-9b20-2b07a31b5713.png) is a diagonal matrix.
+    It is used for scaling purposes and, for the sake of this illustration, can be
+    assumed to be merged with either *U *or *V. *Therefore, we now have:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/fd8ec9cb-9e3f-47a1-9490-35d2da0d9290.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The *U *matrix, which is essentially composed of user principal components,
+    is typically called the user-embedding matrix. Its counterpart, *V*, is called
+    the movie-embedding matrix.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The classic version of SVD, like most other machine learning algorithms, does
+    not work with sparse matrices. However, Simon Funk figured out a workaround for
+    this problem, and his solution led to one of the most famous solutions in the
+    world of recommender systems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Funk's system took in the sparse ratings matrix, *A*, and constructed two dense
+    user- and item-embedding matrices, *U *and *V *respectively. These dense matrices
+    directly gave us the predictions for all the missing values in the original matrix, *A.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s now implement the SVD filter using the `surprise` package:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Here is its output**:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/833e3cf4-cefb-4416-8332-e958d03d2e84.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The SVD filter outperforms all other filters, with an RMSE score of 0.9367.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: This brings us to the end of our discussion on collaborative filters. In this
+    chapter, we built various kinds of user-based collaborative filters and, by extension,
+    learned to build item-based collaborative filters as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We then shifted our focus to model-based approaches that rely on machine learning
+    algorithms to churn out predictions. We were introduced to the *surprise *library
+    and used it to implement a clustering model based on kNN. We then took a look
+    at an approach to using supervised learning algorithms to predict the missing
+    values in the ratings matrix. Finally, we gained a layman's understanding of the
+    singular-value decomposition algorithm and implemented it using `surprise`*.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: All the recommenders we've built so far reside only inside our Jupyter Notebooks.
+    In the next chapter, we will learn how to deploy our models to the web, where
+    they can be used by anyone on the internet.
+  prefs: []
+  type: TYPE_NORMAL

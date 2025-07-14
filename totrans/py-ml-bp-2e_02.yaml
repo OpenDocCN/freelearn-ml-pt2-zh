@@ -1,0 +1,1184 @@
+- en: Build an App to Find Underpriced Apartments
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In [Chapter 1](32e9f384-e739-4a1c-833e-11ee40051ac8.xhtml), *The Python Machine
+    Learning Ecosystem*, we learned the essentials for working with data. We''ll now
+    apply that knowledge to build out our first machine learning application. We''ll
+    begin with a minimal, but highly-practical example: building an application to
+    identify underpriced apartments.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: If you've ever searched for an apartment, you will appreciate just how frustrating
+    the process can be. Not only is it time-consuming, but even when you do find an
+    apartment you like, how do you know whether it's the right one?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Most likely, you have a target budget and a target location. But, if you are
+    anything like me, you are also willing to make a few trade-offs. For example,
+    I live in New York City, and being near an amenity like the subway is a big plus.
+    But how much is that worth? Should I trade being in a building with an elevator
+    for being closer to the train? How many minutes of walking to the train is worth
+    walking up a flight of stairs? When renting, there are dozens of questions like
+    this to consider. So how can we use machine learning to help us make these types
+    of decisions?
+  prefs: []
+  type: TYPE_NORMAL
+- en: We'll spend the remainder of this chapter exploring just that. We won't be able
+    to get answers to all the questions we have (for reasons that will become clear
+    later), but by the end of the chapter, we'll have created an application that
+    will make finding the right apartment just a little bit easier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s what we''ll cover in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sourcing apartment listing data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Inspecting and preparing the data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Visualizing the data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Regression modeling
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Forecasting
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Sourcing apartment listing data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the early 1970s, if you wanted to purchase a stock, you would need to engage
+    a broker, who would charge you a fixed commission of nearly 1%. If you wanted
+    to purchase an airline ticket, you would need to contact a travel agent, who would
+    earn a commission of around 7%. And if you wanted to sell a home, you would contact
+    a real estate agent, who would earn a commission of 6%. In 2018, you can do the
+    first two essentially for free. The last one remains as it was in the 1970s.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Why is this the case and, more importantly, what does any of this have to do
+    with machine learning? The reality is, it all comes down to data, and who has
+    access to that data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You might assume that you could easily access troves of real estate listing
+    data quite easily through APIs or by **web scraping** real estate websites. You
+    would be wrong. Well, wrong if you intend to follow the terms and conditions of
+    those sites. Real estate data is tightly controlled by the **National Association
+    of Realtors** (**NAR**), who run the **Multiple Listing Service** (**MLS**). This
+    is a service that aggregates listing data, and is only available to brokers and
+    agents at great expense. So, as you can imagine, they aren't too keen on letting
+    just anyone download it *en masse*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This is unfortunate, since opening up this data would undoubtedly lead to useful
+    consumer applications. This seems especially important for a purchase decision
+    that represents the largest portion of a family's budget.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With that said, not all hope is lost, as not every site explicitly bans scraping.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pulling down listing data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'We''ll be using the RentHop site, [http://www.renthop.com](https://www.renthop.com/),
+    to source our listing data. The following screenshot of the site shows the layout
+    of the listings we''ll be retrieving:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3ed2e732-72cd-481f-ac8d-1c37a4355b7b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: What we can see is that the listings have the address, the price, the number
+    of bedrooms, and the number of bathrooms. We'll start by retrieving this information
+    for each listing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We are going to be using the Python Requests library for this task. Requests
+    is dubbed *HTTP for humans*, and it makes it super easy to retrieve websites.
+    If you want an overview on how to use Requests, the quick start guide is available
+    at [http://docs.python-requests.org/en/master/user/quickstart/](http://docs.python-requests.org/en/master/user/quickstart/).
+    Follow these steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'So, the first step is to prepare our Jupyter Notebook with the imports we''ll
+    be using for this task. We do that in the following code snippet:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: We'll likely need to import more libraries later on, but for now this should
+    get us started.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We are going to use NYC apartment data in our model. The URL for that data
+    is [https://www.renthop.com/nyc/apartments-for-rent](https://www.renthop.com/nyc/apartments-for-rent).
+    Let''s run a quick test and make sure we can retrieve that page. We do that in
+    the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This code makes a call to the site, and retrieves the information, storing
+    it in the `r` object. There are a number of attributes we could retrieve from
+    that `r` object, but for now, we just want the page content. We can see the output
+    of that in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/f91672bd-b5d9-4562-840b-65431127b904.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Upon inspection, it looks like everything we want is contained in this. To verify
+    that, let's copy all of the HTML and paste it into a text editor, and then open
+    it in a browser. I'm going to do that using **Sublime Text**, a popular text editor
+    available at [https://www.sublimetext.com/](https://www.sublimetext.com/).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'In the following screenshot, you can see that I have pasted the copied HTML
+    from the Jupyter output into Sublime Text and saved it as `test.html`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/1e5be5b0-f835-42f5-8f9a-527637540495.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: HTML text
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we click on Open in Browser, and we can see output that resembles the
+    following image:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/85ddd01e-3d57-4e79-b922-2a0fa4d63082.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Notice that although the text doesn't render cleanly (due to the lack of CSS),
+    all the data we are targeting is there. Fortunately for us, that means the RentHop
+    site doesn't use any advanced JavaScript rendering, so that should make our job
+    much easier. If it did, we'd have to use a different tool like Selenium.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s now examine the page elements to see how we can parse the page data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Open the RentHop site in Chrome and right-click anywhere on the page.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'At the bottom of the context menu, you should see Inspect. Click on that. The
+    page should now resemble the following image:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/9e9a1c0e-8312-4e60-87b5-8dc1cd532333.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In the tool that just opened, in the upper left-hand corner, there is a square
+    with an arrow in the corner. Click that, and then click on the data on the page.
+    It should look like the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/d971858e-a691-4eae-94aa-b47f60d21317.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can see from this that each listing's data is in a table, and that the first
+    `td` tag contains the price, the second contains the number of bedrooms, and the
+    third contains the number of bathrooms. We will also want the address of the apartment
+    that can be found in an anchor, or a tag.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s now begin building out our code to test our parsing of the data. To
+    do our HTML parsing, we are going to use a library call **BeautifulSoup**. The
+    documentation for it can be found at [https://www.crummy.com/software/BeautifulSoup/](https://www.crummy.com/software/BeautifulSoup/).
+    BeautifulSoup is a popular, easy-to-use Python HTML parsing library. It can be
+    pip installed if you don''t already have it. We are going to use it to pull out
+    all of the individual specs for our apartment listings:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get started, we simply need to pass our page content into the `BeautifulSoup`
+    class. This can be seen in the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We now can use this `soup` object that we''ve created to begin parsing out
+    our apartment data. The first thing we want to do is retrieve that `div` tag that
+    contains our listing data on the page. We see that in the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: What we've done in the preceding code is to select all `divs` that contain `search-info`.
+    These are exactly the `divs` that have our data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we look at the output from this in the following screenshot:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/354d6474-7e80-4967-8f21-1fa657ceb267.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Notice that we have a Python list of all the `div` tags we were seeking. We
+    know from looking at the page that there should be twenty of these. Let''s confirm
+    that:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then see the following output, which confirms that we have captured them
+    all as we wanted:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/d65d3be9-fa3b-462d-84ad-ad353cb1087c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Pulling out the individual data points
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we have all the `divs` with our listing data for each apartment, we
+    need to pull out the individual data points for each apartments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'These are the points in each that we want to target:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: URL of the listing
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Address of the apartment
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Neighborhood
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Number of bedrooms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Number of bathrooms
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Obviously, we love to have way more info—things such as square footage, for
+    example, but we'll have to make do with what we have.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s begin by looking at the first listing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/d622f786-908e-4e9f-9578-cfc63d1c150d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Notice that this first `div` contains all of the data points we were looking
+    for. We just now need to begin our parse to target them each individually. Let's
+    look at the first one we want to retrieve, the URL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can see that the URL for the page is with an anchor, or a tag. Let''s parse
+    that out now. We can do that with another `select` statement, as can be seen in
+    the following code snippet:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We see the output in the following screenshot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/783a7653-3757-4149-bd8c-a5fdcb4a2a1e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This is exactly what we were hoping for. We can now continue to retrieve the
+    other data points for the listing. We do that in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s now verify this by printing out what we''ve captured. We do that in
+    the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/fc936587-2ea0-4ff4-983d-cf957338dd68.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Based on this output, we are getting the data we need. Let's continue on with
+    the last few items we need—the bedrooms, bathrooms, and the price.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Since these items have a slightly different presentation in that they are in
+    a `table` tag in our `div` and then inside a table row, or `tr`, we will need
+    to iterate over each point to capture our data. We do that in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c9d91942-f5cd-48f0-b7ea-187affdea492.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Again, this is exactly what we were looking for. We now have all the data that
+    we were seeking. Let's now pull it all together in a loop so that we can pull
+    the data from each listing and save it into a list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following code, we will pull out all the data points for each listing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s unpack a bit what we did in the preceding code. We know we have 20 divs
+    that contain the apartment listing on the page, so we create a `for` loop that
+    goes through each one and pulls out the data and adds it to `indv_listing`. When
+    that is complete, all the data for the individual listing is then added to the
+    `listing_list`, which contains all the final info for the 20 apartment listings.
+    We verify that with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/829b00c3-db15-4c34-a87c-84e7244a8865.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Again, we appear to be getting the results we expect, so we will continue on.
+    A check of the number of items in `listing_list` also confirms we have all 20
+    apartments on the page.
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far, we have successfully retrieved one page of data. While that is great,
+    we are going to need far more apartments if we want to build any kind of meaningful
+    model. To do this, we will need to iterate over a number of pages. To that end,
+    we'll need to use the appropriate URLs. We can see that at the bottom of the listings,
+    there is a button that says Next. If you right-click on that button, and click
+    Copy Link Address, you see it looks like the following URL: [https://www.renthop.com/search/nyc?max_price=50000&min_price=0&page=2&sort=hopscore&q=&search=0](https://www.renthop.com/search/nyc?max_price=50000&min_price=0&page=2&sort=hopscore&q=&search=0).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parsing data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A basic analysis of the URL tells us that we are passing in parameters that
+    include min price and max price, but most importantly, the page number. We can
+    use this in our code, and just dynamically change that page number to pull additional
+    pages using a loop.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s try this with some sample code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/439f0f72-5676-4282-85e4-1996bcd9e60d.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'This looks like a success. Now we need to just put it all together. We''ll
+    start by turning our parsing loop into a proper function that we can call for
+    each of the pages. We do that in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: This function will take in a page full of `listing_divs` and return the data
+    payload for each. We can then keep adding the data to our master list of apartment
+    data. Notice that there is some additional code in there to validate and remove
+    some erroneous `'_'` values that get added in the `listing_spec` loop. This was
+    to avoid some bad parsing that added an additional column when there shouldn't
+    have been one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, we will build the main loop that will retrieve each page, get the `listing_divs`,
+    parse out the data points, and finally add all of the info to our final Python
+    list of all data points for each listing. We do that in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: Before trying this on 100 pages, you should confirm that it works on a much
+    smaller number, like 3.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You should have noticed the page being printed out as the code ran. If you used
+    30 pages, you should see that there are 2,000 listings in your `all_pages_parsed`
+    list.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s now move our data into a `pandas` DataFrame, so that we can work with
+    it more easily. We do that in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c5103f6c-211e-4b4a-a991-255f8cfd26f7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Now that we have all our data pulled down, parsed, and incorporated in a DataFrame,
+    let's move on to cleansing and verifying our data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Inspecting and preparing the data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s begin by inspecting the data points for each of our columns. We want
+    to look for odd and outlier values in our data. We will start by looking at the
+    bedroom and bathroom columns:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the following code, we look at the unique values for bedrooms:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/10ec2364-5b9f-4e4c-b291-4b1e4a52813a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Now, let''s look at bathrooms. We do that in the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6502f7a8-337c-47ad-8a37-379e3fc9a140.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Based on the output from the two preceding queries, we see that we need to
+    correct some items that have a leading underscore. Let''s do that now:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'In the preceding code, we ran a pandas `map` function with a `lambda` function
+    that essentially checks whether the element begins with an underscore and, if
+    so, removes it. A quick check of the unique values for beds and baths should reveal
+    that our erroneous starting underscores have been removed:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b020bf80-3365-4261-b9fe-501c97c84d0f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Let''s execute the following line of code and look at the results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/05be5f71-4fb5-49d7-932f-50ce674e00e3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, we want to look at some descriptive statistics to better understand our
+    data. One way to do that is with the `describe` method. Let''s try that in the
+    following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b1e30c62-34f6-4ea3-bb92-c3870e31c936.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'While we were hoping to get metrics such as the average number of beds and
+    baths, and things like the max rent, what we instead received was much less than
+    that. The problem is that the data is not the correct data type for these operations.
+    Pandas can''t perform those types of operation on what are string objects. We
+    will need to clean up our data further and set it to the correct data types. We
+    will do that in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: What we have done in the preceding code is to remove anything that is non-numeric
+    from each of the values. You can see that we removed `_Bed` and `_Bath` to leave
+    just the number, and that we replaced words such as `Studio` and `Loft` with the
+    actual number of bedrooms, which is zero.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Sneak-peek at the data types
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s now look at our data types:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/004c3498-365f-4413-a374-cc313910ac25.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: This is what we want to see. Notice that since we can have a half bath, we needed
+    a float there rather than an integer.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, let''s carry out an inspection. Let''s get a count of the number of units
+    in each neighborhood:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0b82a455-5b59-4ba6-8f11-7783d31ab819.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It looks like most of the units are in Manhattan, which is what we might expect.
+    Let''s make sure that our neighborhood strings are clean. We can do that by doing
+    a number of `groupby` operations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/088f78f1-58b4-452b-8bef-d64b0bc2074a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It looks like we have some issues with leading and possibly trailing spaces.
+    Let''s clean that up. We do so in the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'That should clear it up. Let''s validate that:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/cd7f984d-69f4-4fcf-8d77-68be60114fe3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Perfect. Exactly what we want to see. At this point, we can do a few more inspections.
+    Let''s just take a look at the mean rent by neighborhood:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7abacf8e-6a05-46a9-a20b-1a8f0672482b.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We see that the Lincoln Square area appears to have the highest rent on average.
+    At this point, we could continue on querying the data for interesting patterns,
+    but let's move on to visualizing the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing our data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When dealing with geographic data, as we are here, it is immensely valuable
+    to be able to plot that information. One way of doing that is with something called
+    a **choropleth** map. A choropleth is essentially a geographic heat map. We are
+    going to build a choropleth to create a heat map of average rental price by ZIP
+    code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first thing we will need to do this is the ZIP code. Unfortunately for us,
+    our dataset does not contain ZIP code information. We do, however, have the address
+    for the properties. With a little help from the Google Maps API, we can retrieve
+    this information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Currently, the Google Maps API is a paid API. The rates are reasonable, 1,000
+    calls for $5, but they also give you a credit of $200 each month (at the time
+    of writing). They also allow you to sign up for a free trial before they will
+    start billing you, and they won''t bill unless you explicitly give them the okay
+    to do so. Since there really is no free alternative out there, we''ll go ahead
+    and sign up for an account. I''ll walk you through the steps in the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first step is to go to the Google Maps API page at [https://developers.google.com/maps/documentation/geocoding/intro](https://developers.google.com/maps/documentation/geocoding/intro):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/26646108-bf3e-4860-94b6-6cf5bcabdcb9.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Click on GET STARTED in the upper right-hand corner. You''ll next be prompted
+    to create a project. Give it any name you like:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/eb95ec16-8435-4b33-a113-4c8196564d63.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Creating a project
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Then you will enable billing:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/38605d33-524b-4534-abb2-751e12451633.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Next, you will enable your API keys:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/78f3f58e-76f5-451c-9d65-ac02b116f6fd.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Once this is completed and you have your API keys, head back to the front page
+    to enable the Geolocation API. Click on APIs in the left-hand side pane:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/50eb78d9-6e3d-45c3-829e-4e842689f153.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'And then, under Unused APIs, click Geolocation API:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '![](img/f998f931-657d-4ff6-a8e8-86e78e4848b6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Once all of this is complete, and you have your API keys, pip install Google
+    Maps. That can be done from your command line with `pip install -U googlemaps`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s continue on now with this API in our Jupyter Notebook. We''ll import
+    our new mapping API and test it out:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5f6b021c-588f-4b4c-b09e-a3f4d93e74a2.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Okay, so essentially, all we did in the final bit of code was to import and
+    initialize our `googlemaps` client, as well as use piece together from one of
+    our apartments as usable address. Let''s now pass in that address to the Google
+    Maps API:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ab9e809c-61bc-42ad-a4af-86d262f6030e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Remember, we are looking to extract just the ZIP code here. The ZIP code is
+    embedded in the JSON, but it will take a bit of work to extract due to the formatting
+    of this response JSON object. Let''s do that now:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code results in the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/aee66726-b6b6-4501-ae33-4c65987eb78a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It looks like we''re getting the information we want. There is one caveat,
+    however. Looking deeper into the address column, we can see that occasionally,
+    a full address is not given. This will result in no ZIP code coming back. We''ll
+    just have to deal with that later. For now, let''s build a function to retrieve
+    the ZIP codes that we can do as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: There's a fair bit of code in the preceding snippet, so let's talk about what's
+    going on here.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, at the bottom, you see that we are running an `apply` method on our DataFrame.
+    Because we have set `axis=1`, each row of the `df` DataFrame will be passed into
+    our function. Within the function, we are piecing together an address to call
+    with the Google Maps Geolocation API. We are using regex to limit our calls to
+    only those that start with a street number. We then iterate over the JSON response
+    to parse out the ZIP code. If we find a ZIP code, we return it, otherwise we return
+    a `np.nan`, or null value. Note that this function will take some time to run
+    as we have to make many hundreds of calls and then parse out the response.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Once that completes, we will have a DataFrame that now has the ZIP code for
+    those properties that had a proper address provided. Let''s take a look and see
+    how many that actually is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generated the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/c182f5b9-f892-46cf-8c3e-2730e41403fc.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: So, we lost quite a bit of our data, but nevertheless, what we have now is more
+    useful in many ways, so we will continue on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, since it takes so long to retrieve all the ZIP code data, let''s now
+    store what we have so that we can always retrieve it later if necessary, and not
+    have to make all those API calls again. We do that with the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s also store just the data with the ZIP code information in a new DataFrame.
+    We will call that one `zdf`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Finally, let''s do an aggregation by ZIP code to see what the average rental
+    price is by ZIP:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/bc5c1458-e3e6-4320-adaf-0179894ec839.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can see this jibes with our earlier finding that the Lincoln Center area
+    had the highest mean rental prices, since 10069 is in the Lincoln Center region.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now move on to visualizing this information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visualizing the data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Since this data is based on ZIP codes, the best way to visualize it is with
+    a choropleth. If you're unfamiliar with a choropleth, it's simply a visualization
+    that represents the data according to a color spectrum. Let's create one now using
+    a Python mapping library called `folium` at [https://github.com/python-visualization/folium](https://github.com/python-visualization/folium)**.**
+    If you don't have folium installed, again, it can be done with pip install on
+    the command line.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we''ll go ahead and create our visualization:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'There''s a lot going on here, so let''s take it step by step:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: After importing `folium`, we create a `.Map()` object. We need to pass in coordinates
+    and a zoom level to center the map. A Google search for the coordinates of the
+    Empire State Building will give us the proper lat and long (flip the sign on the
+    longitude to render it properly). Finally, adjust the zoom to get it centered
+    appropriately for our data.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: The next line requires something called a GeoJSON file. This is an open format
+    for representing geographic attributes. This can be found by searching for NYC
+    GeoJSON files—specifically, ones with ZIP code mappings. Once that is done, we
+    reference the GeoJSON file by inputting its path.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Next, we reference our DataFrame in the `data` parameter. Here, we are using
+    the mean rent by ZIP code we created previously. The `columns` parameter references
+    those. The `key_on` parameter references the part of our JSON file that we are
+    targeting, in this instance, the `postalCode`.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Finally, the other options determine the color palette and certain other parameters
+    to adjust the legend and coloring.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'When the cell is run, the map should render inline in your Jupyter Notebook,
+    as can be seen in the following diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/9d831ef3-59ab-4d65-9bf7-d06ff1c1f525.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: With the heat map completed, you can begin to get a sense of which areas have
+    higher or lower rents. This could help when targeting a particular area, but let's
+    take our analysis deeper by using regression modeling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Modeling the data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s begin modeling by using our dataset. We''re going to examine the effect
+    that the ZIP code and the number of bedrooms have on the rental price. We''ll
+    use two packages here: the first, `statsmodels`, we introduced in [Chapter 1](32e9f384-e739-4a1c-833e-11ee40051ac8.xhtml), *The
+    Python Machine Learning Ecosystem*,  but the second, `patsy`, [https://patsy.readthedocs.org/en/latest/index.html](https://patsy.readthedocs.org/en/latest/index.html),
+    is a package that makes working with `statsmodels` easier. Patsy allows you to
+    use R-style formulas when running a regression. Let''s do that now:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/f3b6bd1e-72ff-467c-b633-784f63ec3eef.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Note that the preceding output is truncated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With those few lines of code, we have just run our first machine learning algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: While most people don't tend to think of linear regression as machine learning,
+    that's exactly what it is. Linear regression is a type of supervised machine learning.
+    Supervised, in this context, simply means we provide the output values for our
+    training set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now unpack what happened there. After our imports, we have two lines that
+    relate to the `patsy` module. The first line is the formula we will be using.
+    On the left-hand side (before the tilde) is our response, or dependent, variable,
+    `rent`. On the right-hand side, we have our independent, or predictor, variables,
+    `zip` and `beds`. This formula simply means we want to know how the ZIP code and
+    the number of bedrooms will affect the rental price.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Our formula is then passed into `patsy.dmatrices()` along with our DataFrame
+    containing corresponding column names. Patsy is then set to return a DataFrame
+    with our `X` matrix of predictor variables and a *y* vector with our response
+    variable. These are then passed into `sm.OLS()`, on which we also call `.fit()` to
+    run our model. Finally, we print out the results of the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, there is a lot of information provided in the resulting output.
+    Let's begin by looking at the topmost section. We see that the model included
+    `555` observations, that it has an adjusted R² of `.367`, and that it is significant
+    with an `F-statistic` probability of `3.50e-31`. What is the significance of this?
+    It means that we have created a model that is able to explain about a third of
+    the variance in price using just bedrooms and ZIP code. Is this a good result?
+    In order to better answer that, let's now look at the center section of the output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The center section provides us with information on each of the independent
+    variables in our model. From left to right, we see the following: the variable,
+    the variable''s coefficient in the model, the standard error, the *t*-statistic,
+    the *p*-value for the *t*-statistic, and a 95% confidence interval.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What does all of this tell us? If we look at the *p*-value column, we can determine
+    whether our individual variables are statistically significant. Statistically
+    significant in a regression model means that the relationship between an independent
+    variable and a response variable is unlikely to have occurred by chance. Typically,
+    statisticians use a *p*-value of `.05` when determining this. A `.05` *p*-value
+    means that the results we see would occur by chance only 5% of the time. In terms
+    of our output here, the number of bedrooms is clearly significant. What about
+    the ZIP codes?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The first thing to notice here is that our intercept represents the 07302 ZIP
+    code. When modeling a linear regression, an intercept is needed. The intercept
+    is simply where the regression line meets the *y* axis. Statsmodels will automatically
+    select one of the predictor variables to use as the intercept. Here it decided
+    on Jersey City, 07302, since it organized the ZIP codes in ascending order. We
+    can confirm this by examining the data as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6fa694ea-2579-4909-b200-2075c06a0d6e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Notice that they are in ascending order, and if we look at the sorted ZIP code
+    values in our DataFrame, we see the same with the exception of the missing ZIP
+    07302, which is now our baseline against which all the others will be compared.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Looking at our results output again, we notice that some ZIP codes are highly
+    significant and others are not. Let's look at our old friend, the Lincoln Center
+    neighborhood, or 10069\. If you remember, it was the area with the highest rents
+    in our sample. We would expect that it would be significant and have a large positive
+    coefficient when compared to the baseline of Jersey City, and, in fact, it does.
+    The *p*-value is 0.000, and the coefficient is 4116\. This means that you can
+    expect the rent to be significantly higher near Lincoln Center, compared to an
+    equivalent apartment in Jersey City—no surprise there.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's now use our model to make a number of forecasts.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Forecasting
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s say we''ve decided from our prior analysis that we are interested in
+    three particular ZIP codes: `10002`, `10003`, and `10009`. How can we use our
+    model to determine what we should pay for a given apartment? Let''s now take a
+    look.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need to know what the inputs into the model looked like so that we
+    know how to enter a new set of values. Let''s take a look at our `X` matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6ecddbd6-bd84-4377-a099-b82414cb21e8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'What we see is that our input is coded with what are called **dummy variables.**
+    To represent a ZIP code feature, since it is not numerical, dummy coding is used.
+    If the apartment is in 10003, then that column will be coded as `1`, while all
+    other ZIP codes are coded as `0`. Beds will be coded according to the actual number
+    since they are numerical. So let''s now create our own input row to predict:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/7bdb87fb-ee6f-4d97-b81c-e70471996391.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We have just used the index from the `X` matrix and filled in the data with
+    all zeros. Let''s now fill in our values. We are going to price a one-bedroom
+    apartment in the `10009` area code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs: []
+  type: TYPE_PRE
+- en: The intercept value for a linear regression must always be set to `1` for the
+    model in order to return accurate statistical values.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a3a0c802-ddb2-4516-acd2-a2227ade41e8.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We have set our features to the appropriate values, so let''s now use our model
+    to return a prediction. We''ll need to convert it to a DataFrame and transpose
+    it in order to get the correct format. We do this as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0d362192-3996-4c4d-9e57-e5395eb12744.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: You will recall that `results` was the variable name we saved our model to.
+    That model object has a `.predict()` method, which we call with our input values.
+    And, as you can see, the model returns a predicted value.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What if we want to add another bedroom? We can do it as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s change our inputs and see:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then we''ll run the prediction again:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ebd4fa95-44eb-44f5-9924-a0e47df69849.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'It looks like that extra bedroom will cost us about $800 more a month. But
+    what if we choose `10069` instead? Lets change our input and see:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding code generates the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/6bf9e978-fcc7-4f1f-ae05-b3fb976d051e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: According to our model, two bedrooms in the Lincoln Center area is going to
+    cost a pretty penny compared to the East Village.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Extending the model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: At this point, we have only examined the relationship between the ZIP code,
+    bedrooms, and rental price. And while our model had some explanatory benefit,
+    we had a minimal dataset and far too few features to adequately examine the complex
+    world of real estate valuation.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fortunately, however, if we were to add more data and features to the model,
+    we could use the exact same framework to expand our analysis.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some possible future extensions to explore would be utilizing data for restaurants
+    and bars available from APIs such as Foursquare or Yelp, or walkability and transportation-proximity
+    measures from providers such as Walk Score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There are a number of ways to extend the model, and I suggest if you do pursue
+    working on a project such as this that you explore a variety of measures. More
+    data is released every day and, with it, models can only improve.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, we learned how to acquire data on real estate listings, how
+    to utilize the functionality of pandas to manipulate and sanitize that data, how
+    to inspect the data visually with choropleths, and finally, how to build and use
+    regression modeling to price out an apartment.
+  prefs: []
+  type: TYPE_NORMAL
+- en: At this point, we have just touched the surface of machine learning. In the
+    chapters that follow, we'll go further into how to evaluate the quality of our
+    model, and we'll also learn how to turn them into full-scale solutions.
+  prefs: []
+  type: TYPE_NORMAL

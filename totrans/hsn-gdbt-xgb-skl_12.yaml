@@ -1,0 +1,1409 @@
+- en: '*Chapter 9*: XGBoost Kaggle Masters'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you will learn valuable tips and tricks from `VotingClassifier`
+    and `VotingRegressor` to build non-correlated machine learning ensembles, and
+    the advantages of **stacking** a final model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring Kaggle competitions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Engineering new columns of data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Building non-correlated ensembles
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Stacking final models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The code for this chapter can be found at [https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter09](https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter09).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exploring Kaggle competitions
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"I used only XGBoost (tried others but none of them performed well enough to
+    end up in my ensemble)."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – *Qingchen Wang, Kaggle Winner*
+  prefs: []
+  type: TYPE_NORMAL
+- en: ([https://www.cnblogs.com/yymn/p/4847130.html](https://www.cnblogs.com/yymn/p/4847130.html))
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we will investigate Kaggle competitions by looking at a brief
+    history of Kaggle competitions, how they are structured, and the importance of
+    a hold-out/test set as distinguished from a validation/test set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: XGBoost in Kaggle competitions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: XGBoost built its reputation as the leading machine learning algorithm on account
+    of its unparalleled success in winning Kaggle competitions. XGBoost often appeared
+    in winning ensembles along with deep learning models such as **neural networks**,
+    in addition to winning outright. A sample list of XGBoost Kaggle competition winners
+    appears on the *Distributed (Deep) Machine Learning Community* web page at [https://github.com/dmlc/xgboost/tree/master/demo#machine-learning-challenge-winning-solutions](https://github.com/dmlc/xgboost/tree/master/demo#machine-learning-challenge-winning-solutions).
+    For a list of more XGBoost Kaggle competition winners, it's possible to sort through
+    *Winning solutions of Kaggle competitions* ([https://www.kaggle.com/sudalairajkumar/winning-solutions-of-kaggle-competitions](https://www.kaggle.com/sudalairajkumar/winning-solutions-of-kaggle-competitions))
+    to research the winning models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: While XGBoost is regularly featured among the winners, other machine learning
+    models make appearances as well.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As mentioned in [*Chapter 5*](B15551_05_Final_NM_ePUB.xhtml#_idTextAnchor117),
+    *XGBoost Unveiled*, Kaggle competitions are machine learning competitions where
+    machine learning practitioners compete against one another to obtain the best
+    possible score and win cash prizes. When XGBoost exploded onto the scene in 2014
+    during the *Higgs Boson Machine Learning Challenge*, it immediately jumped the
+    leaderboard and became one of the most preferred machine learning algorithms in
+    Kaggle competitions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Between 2014 and 2018, XGBoost consistently outperformed the competition on
+    tabular data—data organized in rows and columns as contrasted with unstructured
+    data such as images or text, where neural networks had an edge. With the emergence
+    of **LightGBM** in 2017, a lightning-fast Microsoft version of gradient boosting,
+    XGBoost finally had some real competition with tabular data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following introductory paper, *LightGBM: A Highly Efficient Gradient Boosting
+    Decision Tree*, written by eight authors, is recommended for an introduction to
+    LightGBM: [https://papers.nips.cc/paper/6907-lightgbm-a-highly-efficient-gradient-boosting-decision-tree.pdf](https://papers.nips.cc/paper/6907-lightgbm-a-highly-efficient-gradient-boosting-decision-tree.pdf).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementing a great machine algorithm such as XGBoost or LightGBM in Kaggle
+    competitions isn't enough. Similarly, fine-tuning a model's hyperparameters often
+    isn't enough. While individual model predictions are important, it's equally important
+    to engineer new data and to combine optimal models to attain higher scores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The structure of Kaggle competitions
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It's worth understanding the structure of Kaggle competitions to gain insights
+    into why techniques such as non-correlated ensemble building and stacking are
+    widespread. Furthermore, exploring the structure of Kaggle competitions will give
+    you confidence in entering Kaggle competitions down the road if you choose to
+    pursue that route.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Kaggle recommends *Housing Prices: Advanced Regression Techniques*, [https://www.kaggle.com/c/house-prices-advanced-regression-techniques](https://www.kaggle.com/c/house-prices-advanced-regression-techniques),
+    for machine learning students looking to transition beyond the basics to advanced
+    competitions. This is one of many knowledge-based competitions that do not offer
+    cash prizes.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Kaggle competitions exist on the Kaggle website. Here is the website from *Avito
+    Context Ad Clicks* from 2015 won by XGBoost user Owen Zhang: [https://www.kaggle.com/c/avito-context-ad-clicks/overview](https://www.kaggle.com/c/avito-context-ad-clicks/overview).
+    Several XGBoost Kaggle competition winners, Owen Zhang included, are from 2015,
+    indicating XGBoost''s circulation before Tianqi Chin''s landmark paper, *XGBoost:
+    A Scalable Tree Boosting System* published in 2016: [https://arxiv.org/pdf/1603.02754.pdf](https://arxiv.org/pdf/1603.02754.pdf).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the top of the *Avito Context Ad Clicks* website:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 9.1 – Avito Context Ad Clicks Kaggle competition website](img/B15551_09_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.1 – Avito Context Ad Clicks Kaggle competition website
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This overview page explains the competition as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Additional links next to **Overview** (highlighted in blue) include **Data**,
+    where you access data for the competition.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Notebooks**, where Kagglers post solutions and starter notebooks.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Discussion**, where Kagglers post and answer questions.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Leaderboard**, where the top scores are displayed.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Rules**, which explains how the competition works.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Additionally, note the **Late Submission** link on the far-right side, which
+    indicates that submissions are still acceptable even though the competition is
+    over, a general Kaggle policy.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To download the data, you need to enter the competition by signing up for a
+    free account. The data is typically split into two datasets, `training.csv`, the
+    training set used to build a model, and `test.csv`, the test set used to score
+    the model. After submitting a model, you earn a score on the public leaderboard.
+    At the competition's end, a final model is submitted against a private test set
+    to determine the winning solution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hold-out sets
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It's important to make the distinction between building machine learning models
+    for Kaggle competitions and building them on your own. Up to this point, we have
+    split datasets into training and test sets to ensure that our models generalize
+    well. In Kaggle competitions, however, models must be tested in a competitive
+    environment. For that reason, data from the test set remains hidden.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the differences between Kaggle''s training set and test set:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`training.csv`: This is where you train and score models on your own. This
+    training set should be split into its own training and test sets using `train_test_split`
+    or `cross_val_score` to build models that generalize well to new data. The test
+    sets used during training are often referred to as **validation sets** since they
+    validate the models.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '`test.csv`: This is a separate hold-out set. You don''t use the test set until
+    you have a final model ready to test on data it has never seen before. The purpose
+    of the hidden test set is to maintain the integrity of the competition. The test
+    data is hidden from participants and the results are only revealed after participants
+    submit a model.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: It's always good practice to keep a test set aside when building a model for
+    research or industry. When a model is tested using data it has already seen, the
+    model risks overfitting the test set, a possibility that often arises in Kaggle
+    competitions when competitors obsess over improving their position in the public
+    leaderboard by few thousandths of a percent.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kaggle competitions intersect with the real world regarding this hold-out set.
+    The purpose of building machine learning models is to make accurate predictions
+    using unknown data. For example, if a model gives 100% accuracy on the training
+    set, but only gives 50% accuracy on unknown data, the model is basically worthless.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This distinction, between validating models on test sets and testing models
+    on hold-out sets, is very important.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is a general approach for validating and testing machine learning models
+    on your own:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Split data into a training set and a hold-out set**: Keep the hold-out set
+    away and resist the temptation to look at it.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**Split the training set into a training and test set or use cross-validation**:
+    Fit new models on the training set and validate the model, going back and forth
+    to improve scores.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**After obtaining a final model, test it on the hold-out set**: This is the
+    real test of the model. If the score is below expectations, return to *step 2*
+    and repeat. Do not—and this is important—use the hold-out set as the new validation
+    set, going back and forth adjusting hyperparameters. When this happens, the model
+    is adjusting itself to match the hold-out set, which defeats the purpose of a
+    hold-out set in the first place.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: In Kaggle competitions, adjusting the machine learning model too closely to
+    the test set will not work. Kaggle often splits test sets into an additional public
+    and private component. The public test set gives participants a chance to score
+    their models and work on improvements, adjusting and resubmitting along the way.
+    The private test set is not revealed until the last day of the competition. Although
+    rankings are displayed for the public test set, competition winners are announced
+    based on the results of the unseen test set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Winning a Kaggle competition requires getting the best possible score on the
+    private test set. In Kaggle competitions, every percentage point matters. The
+    need for this kind of precision, sometimes scoffed at by the industry, has led
+    to innovative machine learning practices to improve scores. Understanding these
+    techniques, as presented in this chapter, can lead to stronger models and a deeper
+    understanding of machine learning overall.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Engineering new columns
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"Almost always I can find open source code for what I want to do, and my time
+    is much better spent doing research and feature engineering."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – *Owen Zhang, Kaggle Winner*
+  prefs: []
+  type: TYPE_NORMAL
+- en: ([https://medium.com/kaggle-blog/profiling-top-kagglers-owen-zhang-currently-1-in-the-world-805b941dbb13](https://medium.com/kaggle-blog/profiling-top-kagglers-owen-zhang-currently-1-in-the-world-805b941dbb13))
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many Kagglers and data scientists have confessed to spending considerable time
+    on research and feature engineering. In this section, we will use `pandas` to
+    engineer new columns of data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is feature engineering?
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Machine learning models are as good as the data that they train on. When data
+    is insufficient, building a robust machine learning model is impossible.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A more revealing question is whether the data can be improved. When new data
+    is extracted from other columns, these new columns of data are said to be *engineered*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature engineering is the process of developing new columns of data from the
+    original columns. The question is not whether you should implement feature engineering,
+    but how much feature engineering you should implement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's practice feature engineering on a dataset predicting the cab fare of **Uber**
+    and **Lyft** rides.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Uber and Lyft data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In addition to hosting competitions, Kaggle hosts a large number of datasets
+    that include public datasets such as the following one, which predicts Uber and
+    Lyft cab prices: [https://www.kaggle.com/ravi72munde/uber-lyft-cab-prices](https://www.kaggle.com/ravi72munde/uber-lyft-cab-prices):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get started, first import all the libraries and modules needed for this
+    section and silence the warnings:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, load the `''cab_rides.csv''` CSV file and view the first five rows. Limit
+    `nrows` to `10000` to expedite computations. There are 600,000+ rows in total:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the expected output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.2 – Cab rides dataset](img/B15551_09_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.2 – Cab rides dataset
+  prefs: []
+  type: TYPE_NORMAL
+- en: This display reveals a wide range of columns, including categorical features
+    and a timestamp.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Null values
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'As always, check for null values before making any computations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Recall that `df.info()` also provides information about column types:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can see from the output, null values exist in the `price` column since
+    there are less than `10,000` non-null floats.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'It''s worth checking the null values to see whether more information can be
+    gained about the data:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here are the first five rows of the output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.3 – Null values in the cab rides dataset](img/B15551_09_03.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 9.3 – Null values in the cab rides dataset
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: As you can see, there is nothing particularly glaring about these rows. It could
+    be that the price of the ride was never recorded.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Since `price` is the target column, these rows can be deleted with `dropna`
+    using the `inplace=True` parameter to ensure that drops occur within the DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: You can verify that no null values are present by using `df.na()` or `df.info()`
+    one more time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature engineering time columns
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: '**Timestamp** columns often represent **Unix time**, which is the number of
+    milliseconds since January 1st, 1970\. Specific time data can be extracted from
+    the timestamp column that may help predict cab fares, such as the month, hour
+    of the day, whether it is rush hour, and so on:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, convert the timestamp column into a time object using `pd.to_datetime`,
+    and then view the first five rows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the expected output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.4 – The cab rides dataset after time_stamp conversion](img/B15551_09_04.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 9.4 – The cab rides dataset after time_stamp conversion
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Something is wrong with this data. It doesn't take much domain expertise to
+    know that Lyft and Uber were not around in 1970\. The extra decimal places are
+    a clue that the conversion is incorrect.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'After trying several multipliers to make an appropriate conversion, I discovered
+    that `10**6` gives the appropriate results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the expected output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.5 – The cab rides dataset after ''date'' conversion](img/B15551_09_05.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 9.5 – The cab rides dataset after 'date' conversion
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'With a datetime column, you can extract new columns, such as `month`, `hour`,
+    and `day of week`, after importing `datetime`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now, you can use these columns to feature engineer more columns, such as whether
+    it's the weekend or rush hour.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'The following function determines whether a day of the week is a weekend by
+    checking whether `''dayofweek''` is equivalent to `5` or `6`, which represent
+    Saturday or Sunday, according to the official documentation: [https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.dt.weekday.html](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.dt.weekday.html):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, apply the function to the DataFrame as a new column, `df[''weekend'']`,
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The same strategy can be implemented to create a rush hour column by seeing
+    whether the hour is between 6–10 AM (hours `6–10`) and 3–7 PM (hours `15–19`):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, apply the function to a new `''rush_hour''` column:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The last five rows show variation in the new columns, as `df.tail()` reveals:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is an excerpt from the output revealing the new columns:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.6 – The last five rows of the cab rides dataset after feature engineering](img/B15551_09_06.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.6 – The last five rows of the cab rides dataset after feature engineering
+  prefs: []
+  type: TYPE_NORMAL
+- en: The process of extracting and engineering new time columns can continue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs: []
+  type: TYPE_NORMAL
+- en: When engineering a lot of new columns, it's worth checking to see whether new
+    features are strongly correlated. The correlation of data will be explored later
+    in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you understand the practice of feature engineering time columns, let's
+    feature engineer categorical columns.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature engineering categorical columns
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Previously, we used `pd.get_dummies` to convert categorical columns into numerical
+    columns. Scikit-learn's `OneHotEncoder` feature is another option designed to
+    transform categorical data into 0s and 1s using sparse matrices, a technique that
+    you will apply in [*Chapter 10*](B15551_10_Final_NM_ePUB.xhtml#_idTextAnchor230),
+    *XGBoost Model Deployment*. While converting categorical data into numerical data
+    using either of these options is standard, alternatives exist.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although 0s and 1s make sense as numerical values for categorical columns, since
+    0 indicates absence and 1 indicates presence, it's possible that other values
+    may deliver better results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: One strategy would be to convert categorical columns into their frequencies,
+    which equates to the percentage of times each category appears within the given
+    column. So, instead of a column of categories, each category is converted into
+    its percentage within the column.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's view the steps to convert categorical values into numerical values next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Engineering frequency columns
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'To engineer a categorical column, such as `''cab_type''`, first view the number
+    of values for each category:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Use the `.value_counts()` method to see the frequency of types:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The result is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Use `groupby` to place the counts in a new column. `df.groupby(column_name)`
+    is `groupby`, while `[column_name].transform` specifies the column to be transformed
+    followed by the aggregate in parentheses:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Divide the new column by the total number of rows to obtain the frequency:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Verify that changes have been made as expected:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is an excerpt from the output showing the new columns:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.7 – The cab rides dataset after engineering the frequency of cabs](img/B15551_09_07.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.7 – The cab rides dataset after engineering the frequency of cabs
+  prefs: []
+  type: TYPE_NORMAL
+- en: The cab frequency now displays the expected output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Kaggle tip – mean encoding
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: We will conclude this section with a competition-tested approach to feature
+    engineering called **mean encoding** or **target encoding**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mean encoding transforms categorical columns into numerical columns based on
+    the mean target variable. For instance, if the color orange led to seven target
+    values of 1 and three target values of 0, the mean encoded column would be 7/10
+    = 0.7\. Since there is data leakage while using the target values, additional
+    regularization techniques are required.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Data leakage** occurs when information between training and test sets, or
+    predictor and target columns, are shared. The risk here is that the target column
+    is being directly used to influence the predictor columns, which is generally
+    a bad idea in machine learning. Nevertheless, mean encoding has been shown to
+    produce outstanding results. It can work when datasets are deep, and the distribution
+    of mean values are approximately the same for incoming data. Regularization is
+    an extra precaution taken to reduce the possibility of overfitting.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Fortunately, scikit-learn provides `TargetEncoder` to handle mean conversions
+    for you:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, import `TargetEndoder` from `category_encoders`. If this does not work,
+    install `category_encoders` using the following code:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Next, initialize `encoder`, as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Finally, introduce a new column and apply mean encoding using the `fit_transform`
+    method on the encoder. Include the column that is being changed and the target
+    column as parameters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, verify that the changes are as expected:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is an excerpt of the output with the new column in view:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.8 – The cab rides dataset after mean encoding](img/B15551_09_08.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.8 – The cab rides dataset after mean encoding
+  prefs: []
+  type: TYPE_NORMAL
+- en: The far-right column, `cab_type_mean`, is as expected.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For more information on mean encoding, refer to this Kaggle study: [https://www.kaggle.com/vprokopev/mean-likelihood-encodings-a-comprehensive-study](https://www.kaggle.com/vprokopev/mean-likelihood-encodings-a-comprehensive-study).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The idea here is not to say that mean encoding is better than one-hot encoding,
+    but rather that mean encoding is a proven technique that has done well in Kaggle
+    competitions and may be worth implementing to try and improve scores.
+  prefs: []
+  type: TYPE_NORMAL
+- en: More feature engineering
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: There is no reason to stop here. More feature engineering may include statistical
+    measures on other columns using `groupby` and additional encoders. Other categorical
+    columns, such as the destination and arrival columns, may be converted to latitude
+    and longitude and then to new measures of distance, such as the taxicab distance
+    or the **Vincenty** distance, which takes spherical geometry into account.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In Kaggle competitions, participants may engineer thousands of new columns hoping
+    to gain a few extra decimal places of accuracy. If you have a high number of engineered
+    columns, you can select the most significant ones using `.feature_importances_`,
+    as outlined in [*Chapter 2*](B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047),
+    *Decision Trees in Depth*. You can also eliminate highly correlated columns (explained
+    in the next section, *Building non-correlated ensembles*).
+  prefs: []
+  type: TYPE_NORMAL
+- en: For this particular cab rides dataset, there is an additional CSV file that
+    includes the weather. But what if there wasn't a weather file? You could always
+    research the weather data from the provided dates and include the weather data
+    on your own.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Feature engineering is an essential skill for any data scientist to build robust
+    models. The strategies covered here are only a fraction of the options that exist.
+    Feature engineering involves research, experimentation, domain expertise, standardizing
+    columns, feedback on the machine learning performance of new columns, and narrowing
+    down the final columns at the end.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you understand the various strategies for feature engineering, let's
+    move on to building non-correlated ensembles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building non-correlated ensembles
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"In our final model, we had XGBoost as an ensemble model, which included 20
+    XGBoost models, 5 random forests, 6 randomized decision tree models, 3 regularized
+    greedy forests, 3 logistic regression models, 5 ANN models, 3 elastic net models
+    and 1 SVM model."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – *Song, Kaggle Winner*
+  prefs: []
+  type: TYPE_NORMAL
+- en: ([https://hunch243.rssing.com/chan-68612493/all_p1.html](https://hunch243.rssing.com/chan-68612493/all_p1.html))
+  prefs: []
+  type: TYPE_NORMAL
+- en: The winning models of Kaggle competitions are rarely individual models; they
+    are almost always ensembles. By ensembles, I do not mean boosting or bagging models,
+    such as random forests or XGBoost, but pure ensembles that include any distinct
+    models, including XGBoost, random forests, and others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this section, we will combine machine learning models into non-correlated
+    ensembles to gain accuracy and reduce overfitting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Range of models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The Wisconsin Breast Cancer dataset, used to predict whether a patient has breast
+    cancer, has 569 rows and 30 columns, and can be viewed at [https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html?highlight=load_breast_cancer](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html?highlight=load_breast_cancer).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the steps to prepare and score the dataset using several classifiers:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import the `load_breast_cancer` dataset from scikit-learn so that we can quickly
+    start building models:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Assign the predictor columns to `X` and the target column to `y` by setting
+    the `return_X_y=True` parameter:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Prepare 5-fold cross-validation using `StratifiedKFold` for consistency:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, build a simple classification function that takes a model as input and
+    returns the mean cross-validation score as output:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Get the scores of several default classifiers, including XGBoost, along with
+    its alternative base learners, a random forest, and logistic regression:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'a) Score with XGBoost:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'b) Score with `gblinear`:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'c) Score with `dart`:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Note that for the dart booster, we set `one_drop=True` to ensure that trees
+    are actually dropped.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'd) Score with `RandomForestClassifier`:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'e) Score with `LogisticRegression`:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Most models perform respectably, with the XGBoost classifier obtaining the highest
+    score. The `gblinear` base learner did not perform particularly well, however,
+    so we will not use it going forward.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In practice, each of these models should be tuned. Since we have already covered
+    hyperparameter tuning in multiple chapters, that option is not pursued here. Nevertheless,
+    knowledge of hyperparameters can give confidence in trying a quick model with
+    some adjusted values. For instance, as done in the following code, lowering `max_depth`
+    to `2`, increasing `n_estimators` to `500`, and making sure that `learning_rate`
+    is set to `0.1` may be attempted on XGBoost:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is a very good score. Although it's not the highest, it may be of value
+    in our ensemble.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have a variety of models, let's learn about the correlations between
+    them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Correlation
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The purpose of this section is not to select all models for the ensemble, but
+    rather to select the non-correlated models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, let's understand what **correlation** represents.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Correlation is a statistical measure between `-1` and `1` that indicates the
+    strength of the linear relationship between two sets of points. A correlation
+    of `1` is a perfectly straight line, while a correlation of `0` shows no linear
+    relationship whatsoever.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some visuals on correlation should make things clear. The following visuals
+    are taken from Wikipedia''s *Correlation and Dependence* page at [https://en.wikipedia.org/wiki/Correlation_and_dependence](https://en.wikipedia.org/wiki/Correlation_and_dependence):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Scatter plots with listed correlations look as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 9.9 – Listed Correlations](img/B15551_09_09.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.9 – Listed Correlations
+  prefs: []
+  type: TYPE_NORMAL
+- en: License information
+  prefs: []
+  type: TYPE_NORMAL
+- en: By DenisBoigelot, the original uploader was Imagecreator – own work, CC0, [https://commons.wikimedia.org/w/index.php?curid=15165296](https://commons.wikimedia.org/w/index.php?curid=15165296).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Anscombe''s quartet – four scatter plots with a correlation of **0.816** –
+    looks as follows:'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![Figure 9.10 – Correlation of 0.816](img/B15551_09_10.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.10 – Correlation of 0.816
+  prefs: []
+  type: TYPE_NORMAL
+- en: License information
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'By Anscombe.svg: Schutz (label using subscripts): Avenue – Anscombe.svg, CC
+    BY-SA 3.0, [https://commons.wikimedia.org/w/index.php?curid=9838454](https://commons.wikimedia.org/w/index.php?curid=9838454)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first example shows that the higher the correlation, the closer the dots
+    generally are to a straight line. The second example shows that data points of
+    the same correlation can differ widely. In other words, correlation provides valuable
+    information, but it doesn't tell the whole story.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you understand what correlation means, let's apply correlation to building
+    machine learning ensembles.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Correlation in machine learning ensembles
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Now we choose which models to include in our ensemble.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A high correlation between machine learning models is undesirable in an ensemble.But
+    why?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consider the case of two classifiers with 1,000 predictions each. If these classifiers
+    all make the same predictions, no new information is gained from the second classifier,
+    making it superfluous.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using a *majority rules* implementation, a prediction is only wrong if the majority
+    of classifiers get it wrong. It's desirable, therefore, to have a diversity of
+    models that score well but give different predictions. If most models give the
+    same predictions, the correlation is high, and there is little value in adding
+    the new model to the ensemble. Finding differences in predictions where a strong
+    model may be wrong gives the ensemble the chance to produce better results. Predictions
+    will be different when the models are non-correlated.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To compute correlations between machine learning models, we first need data
+    points to compare. The different data points that machine learning models produce
+    are their predictions. After obtaining predictions, we concatenate them into a
+    DataFrame, and then apply the `.corr` method to obtain all correlations at once.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the steps to find correlations between machine learning models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Define a function that returns predictions for each machine learning model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Prepare the data for one-fold predictions using `train_test_split`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Obtain the predictions of all classifier candidates using the previously defined
+    function:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'a) `XGBClassifier` uses the following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The accuracy score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'b) `XGBClassifier` with `dart` uses the following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The accuracy score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'c) `RandomForestClassifier` uses the following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The accuracy score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'd) `LogisticRegression` uses the following:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The accuracy score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The accuracy score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Concatenate the predictions into a new DataFrame using `np.c` (the `c` is short
+    for concatenation):'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Run correlations on the DataFrame using the `.corr()` method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'You should see the following output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 9.11 – Correlations between various machine learning models](img/B15551_09_11.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 9.11 – Correlations between various machine learning models
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, all correlations on the diagonal are `1.0` because the correlation
+    between the model and itself must be perfectly linear. All other values are reasonably
+    high.
+  prefs: []
+  type: TYPE_NORMAL
+- en: There is no clear cut-off to obtain a non-correlated threshold. It ultimately
+    depends on the values of correlation and the number of models to choose from.
+    For this example, we could pick the next two least correlated models with our
+    best model, `xgb`, which are the random forest and logistic regression.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that we have chosen our models, we will combine them into a single ensemble
+    using the `VotingClassifier` ensemble, introduced next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The VotingClassifier ensemble
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Scikit-learn's `VotingClassifier` ensemble is designed to combine multiple classification
+    models and select the output for each prediction using majority rules. Note that
+    scikit-learn also comes with `VotingRegressor`, which combines multiple regression
+    models by taking the average of each one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the steps to create an ensemble in scikit-learn:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Initialize an empty list:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Initialize the first model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Append the model to the list as a tuple in the form `(model_name, model)`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Repeat *steps 2* and *3* as many times as desired:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Initialize `VotingClassifier` (or `VotingRegressor`) using the list of models
+    as input:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Score the classifier using `cross_val_score`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: As you can see, the score has improved.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you understand the purpose and technique of building non-correlated
+    machine learning ensembles, let's move on to a similar but potentially advantageous
+    technique called stacking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stacking models
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"For stacking and boosting I use xgboost, again primarily due to familiarity
+    and its proven results."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – *David Austin, Kaggle Winner*
+  prefs: []
+  type: TYPE_NORMAL
+- en: ([https://www.pyimagesearch.com/2018/03/26/interview-david-austin-1st-place-25000-kaggles-popular-competition/](https://www.pyimagesearch.com/2018/03/26/interview-david-austin-1st-place-25000-kaggles-popular-competition/))
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this final section, we will examine one of the most powerful tricks frequently
+    used by Kaggle winners, called stacking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: What is stacking?
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Stacking combines machine learning models at two different levels: the base
+    level, whose models make predictions on all the data, and the meta level, which
+    takes the predictions of the base models as input and uses them to generate final
+    predictions.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In other words, the final model in stacking does not take the original data
+    as input, but rather takes the predictions of the base machine learning models
+    as input.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stacked models have found huge success in Kaggle competitions. Most Kaggle competitions
+    have merger deadlines, where individuals and teams can join together. These mergers
+    can lead to greater success as teams rather than individuals because competitors
+    can build larger ensembles and stack their models together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note that stacking is distinct from a standard ensemble on account of the meta-model
+    that combines predictions at the end. Since the meta-model takes predictive values
+    as the input, it's generally advised to use a simple meta-model, such as linear
+    regression for regression and logistic regression for classification.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now that you have an idea of what stacking is, let's apply stacking with scikit-learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Stacking in scikit-learn
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Fortunately, scikit-learn comes with a stacking regressor and classifier that
+    makes the process fairly straightforward. The general idea is very similar to
+    the ensemble model in the last section. A variety of base models are chosen, and
+    then linear regression or logistic regression is chosen for the meta-model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the steps to use stacking with scikit-learn:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Create an empty list of base models:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Append all base models to the base model list as tuples using the syntax `(name,
+    model)`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: More models may be chosen when stacking since there are no majority rules limitations
+    and linear weights adjust more easily to new data. An optimal approach is to use
+    non-correlation as loose a guideline and to experiment with different combinations.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Choose a meta model, preferably linear regression for regression and logistic
+    regression for classification:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Initialize `StackingClassifier` (or `StackingRegressor`) using `base_models`
+    for `estimators` and `meta_model` for `final_estimator`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Validate the stacked model using `cross_val_score` or any other scoring method:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This is the strongest result yet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, stacking is an incredibly powerful method and outperformed the
+    non-correlated ensemble from the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you learned some of the well-tested tips and tricks from the
+    winners of Kaggle competitions. In addition to exploring Kaggle competitions and
+    understanding the importance of a hold-out set, you gained essential practice
+    in feature engineering time columns, feature engineering categorical columns,
+    mean encoding, building non-correlated ensembles, and stacking. These advanced
+    techniques are widespread among elite Kagglers, and they can give you an edge
+    when developing machine learning models for research, competition, and industry.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next and final chapter, we will shift gears from the competitive world
+    to the tech world, where we will build an XGBoost model from beginning to end
+    using transformers and pipelines to complete a model ready for industry deployment.
+  prefs: []
+  type: TYPE_NORMAL

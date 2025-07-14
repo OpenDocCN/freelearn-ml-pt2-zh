@@ -1,0 +1,1790 @@
+- en: '*Chapter 7*: Discovering Exoplanets with XGBoost'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you will journey through the stars in an attempt to discover
+    exoplanets with `XGBClassifier` as your guide.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The reason for this chapter is twofold. The first is that it's important to
+    gain practice in a top-to-bottom study using XGBoost since for all practical purposes,
+    that is what you will normally do with XGBoost. Although you may not discover
+    exoplanets with XGBoost on your own, the strategies that you implement here, which
+    include choosing the correct scoring metric and carefully fine-tuning hyperparameters
+    with that scoring metric in mind, apply to any practical use of XGBoost. The second
+    reason for this particular case study is that it's essential for all machine learning
+    practitioners to be proficient at competently handling imbalanced datasets, which
+    is the key theme of this particular chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Specifically, you will gain new skills in using the `scale_pos_weight`, and
+    more. Getting the best results from `XGBClassifier` will require careful analysis
+    of the imbalanced data and clear expectations of the goal at hand. In this chapter,
+    `XGBClassifier` is the centerpiece of a top-to-bottom study analyzing light data
+    to predict exoplanets in the universe.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we cover the following main topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Searching for exoplanets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Analyzing the confusion matrix
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Resampling imbalanced data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Tuning and scaling XGBClassifier
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The code for this chapter may be found at [https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter07](https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter07).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Searching for exoplanets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we'll begin the search for exoplanets by analyzing the Exoplanets
+    dataset. We'll provide historical context for the discovery of exoplanets before
+    attempting to detect them via plotting and observing light graphs. Plotting time
+    series is a valuable machine learning skill that may be used to gain insights
+    into any time series datasets. Finally, we'll make initial predictions using machine
+    learning before revealing a glaring shortcoming.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Historical background
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Astronomers have been gathering information from light since antiquity. With
+    the advent of the telescope, astronomical knowledge surged in the 17th century.
+    The combination of telescopes and mathematical models empowered 18th-century astronomers
+    to predict planetary locations and eclipses within our own solar system with great
+    precision.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the 20th century, astronomical research continued with more advanced technology
+    and more complex mathematics. Planets revolving around other stars, called exoplanets,
+    were discovered in the habitable zone. A planet in the habitable zone means that
+    the exoplanet's location and size are comparable to Earth, and therefore it's
+    a candidate for harboring liquid water and life.
+  prefs: []
+  type: TYPE_NORMAL
+- en: These exoplanets are not viewed directly via telescopes, rather they are inferred
+    through periodic changes in starlight. An object that periodically revolves around
+    a star that is large enough to block a detectable fraction of starlight is by
+    definition a planet. Discovering exoplanets from starlight requires measuring
+    light fluctuations over extended intervals of time. Since the change in light
+    is often very minute, it's not easy to determine whether an exoplanet is actually
+    present.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we are going to predict whether stars have exoplanets with
+    XGBoost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Exoplanet dataset
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: You previewed the Exoplanet dataset in [*Chapter 4*](B15551_04_Final_NM_ePUB.xhtml#_idTextAnchor093),
+    *From Gradient Boosting to XGBoost*, to uncover the time advantage that XGBoost
+    has over comparable ensemble methods for large datasets. In this chapter, we will
+    take a deeper look at the Exoplanet dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This Exoplanet dataset is taken from *NASA Kepler Space Telescope*, *Campaign
+    3*, *Summer 2016*. Information about the data source is available on Kaggle at
+    [https://www.kaggle.com/keplersmachines/kepler-labelled-time-series-data](https://www.kaggle.com/keplersmachines/kepler-labelled-time-series-data).
+    Of all the stars in the dataset, 5,050 do not have exoplanets, while 37 have exoplanets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The 300+ columns and 5,000+ rows equal 1.5 million plus entries. When multiplied
+    by 100 XGBoost trees, this is 150 million plus data points. To expedite matters,
+    we start with a subset of the data. Starting with a subset is a common practice
+    when dealing with large datasets, to save time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`pd.read_csv` contains an `nrows` parameter, used to limit the number of rows.
+    Note that `nrows=n` selects the first *n* rows of the dataset. Depending on the
+    data structure, additional code may be required to ensure that the subset is representative
+    of the whole. Let''s get started.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `pandas`, then load `exoplanets.csv` with `nrows=400`. Then view the
+    data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output should appear as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 7.1 – Exoplanet DataFrame](img/B15551_07_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.1 – Exoplanet DataFrame
+  prefs: []
+  type: TYPE_NORMAL
+- en: The large number of columns (**3198**) listed underneath the DataFrame makes
+    sense. When looking for periodic changes in light, you need enough data points
+    to find periodicity. The revolutions of planets within our own solar system range
+    from 88 days (Mercury) to 165 years (Neptune). If exoplanets are to be detected,
+    data points must be examined frequently enough so as not to miss the transit of
+    the planet when the planet orbits in front of the star.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since there are only 37 exoplanet stars, it's important to know how many exoplanet
+    stars are contained in the subset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `.value_counts()` method determines the number of each value in a particular
+    column. Since we are interested in the `LABEL` column, the number of exoplanet
+    stars may be found using the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: All exoplanet stars are included in our subset. As `.head()` reveals, the exoplanet
+    stars are at the beginning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Graphing the data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The expectation is that when an exoplanet blocks light from a star, the light
+    flux goes down. If drops in flux occur periodically, an exoplanet is likely the
+    reason since, by definition, a planet is a large object orbiting a star.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s visualize the data by graphing:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `matplotlib`, `numpy`, and `seaborn`, then set `seaborn` to the dark
+    grid as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: When plotting light fluctuations, the `LABEL` column is not of interest. The
+    `LABEL` column will be our target column for machine learning.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '`seaborn` is recommended to improve your `matplotlib` graphs. The `sns.set()`
+    default provides a nice light-gray background with a white grid. Furthermore,
+    many standard graphs, such as `plt.hist()`, look more aesthetically pleasing with
+    this Seaborn default in place. For more information on Seaborn, check out [https://seaborn.pydata.org/](https://seaborn.pydata.org/).'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Now, let''s split the data into `X`, the predictor columns (which we will graph),
+    and `y`, the target column. Note that for the Exoplanet dataset, the target column
+    is the first column, not the last:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now write a function called `light_plot`, which takes as input the index of
+    the data (the row) that plots all data points as *y* coordinates (the light flux),
+    and the number of observations as *x* coordinates. Use appropriate labels for
+    the graph as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Now, call the function to plot the first index. This star has been classified
+    as an exoplanet star:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the expected graph for our first light plot:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.2 – Light plot 0\. Periodic drops in light are present](img/B15551_07_02.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 7.2 – Light plot 0\. Periodic drops in light are present
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: There are clear drops in the data that occur periodically. However, concluding
+    that an exoplanet is present is not obvious from this graph alone.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'By comparison, contrast this plot with the 37th index, the first non-exoplanet
+    star in the dataset:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the expected graph for the 37th index:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.3 – Light plot 37](img/B15551_07_03.jpg)'
+  prefs:
+  - PREF_IND
+  type: TYPE_IMG
+- en: Figure 7.3 – Light plot 37
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: Increases and decreases in light are present, but not over the entire range.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: There are clear drops in the data, but they are not periodic throughout the
+    graph. The frequency of the drops does not recur consistently. Based on this evidence
+    alone, it's not enough to determine the presence of an exoplanet.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Here is the second light plot of an exoplanet star:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the expected graph for the first index:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '![Figure 7.4 – Clear periodic drops indicate the presence of an exoplanet](img/B15551_07_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Figure 7.4 – Clear periodic drops indicate the presence of an exoplanet
+  prefs: []
+  type: TYPE_NORMAL
+- en: The plot shows clear periodicity with large drops in light flux making an exoplanet
+    extremely likely! If all the plots were this clear, machine learning would be
+    unnecessary. As the other plots reveal, concluding that an exoplanet is present
+    is usually not this clear.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The purpose here is to highlight the data and the difficulty of classifying
+    exoplanets based on visual graphs alone. Astronomers use different methods to
+    classify exoplanets, and machine learning is one such method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although this dataset is a time series, the goal is not to predict light flux
+    for the next unit of time, but rather to classify the star based on all the data.
+    In this respect, machine learning classifiers may be used to predict whether a
+    given star hosts an exoplanet. The idea is to train the classifier on the provided
+    data, which may in turn be used to predict exoplanets on new data. In this chapter,
+    we attempt to classify the exoplanets within the data using `XGBClassifier`. Before
+    we move on to classify the data, we must first prepare the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing data
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We witnessed in the previous section that not all graphs are clear enough to
+    determine the existence of an exoplanet. This is where machine learning may be
+    of great benefit. To begin, let''s prepare the data for machine learning:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'First, we need the dataset to be numerical with no null values. Check the data
+    types and null values using `df.info()`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the expected output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The subset contains 3,197 floats, and 1 int, so all columns are numerical. No
+    information is provided about null values due to the large number of columns.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'We can use the `.sum()` method twice on `.null()` to sum all null values, once
+    to sum the null values in each column, and the second time to sum all columns:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The expected output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Since there are no null values and the data is numerical, we will proceed with
+    machine learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Initial XGBClassifier
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'To start building an initial XGBClassifier, take the following steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `XGBClassifier` and `accuracy_score`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Split the model into a training and test set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Build and score the model using `booster=''gbtree''`, `objective=''binary:logistic''`,
+    and `random_state=2` as parameters:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Correctly classifying 89% of stars seems like a good starting point, but there
+    is one glaring issue.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Can you figure it out?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Imagine that you present your model to your astronomy professor. Assuming your
+    professor is well-trained in data analysis, your professor would respond, "I see
+    that you obtained 89% accuracy, but exoplanets represent 10% of the data, so how
+    do you know your results aren't better than a model that predicts no exoplanets
+    100% of the time?"
+  prefs: []
+  type: TYPE_NORMAL
+- en: Therein lies the issue. If the model determines that no stars contain exoplanets,
+    its accuracy will be approximately 90% since 9 out of 10 stars do not contain
+    exoplanets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*With imbalanced data, accuracy isn''t enough.*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Analyzing the confusion matrix
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A confusion matrix is a table that summarizes the correct and incorrect predictions
+    of a classification model. The confusion matrix is ideal for analyzing imbalanced
+    data because it provides more information on which predictions are correct, and
+    which predictions are wrong.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For the Exoplanet subset, here is the expected output for a perfect confusion
+    matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: When all positive entries are on the left diagonal, the model has 100% accuracy.
+    A perfect confusion matrix here predicts 88 non-exoplanet stars and 12 exoplanet
+    stars. Notice that the confusion matrix does not provide labels, but in this case,
+    labels may be inferred based on the size.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before getting into further detail, let's see the actual confusion matrix using
+    scikit-learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: confusion_matrix
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Import `confusion_matrix` from `sklearn.metrics` as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Run `confusion_matrix` with `y_test` and `y_pred` as inputs (variables obtained
+    in the previous section), making sure to put `y_test` first:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: The numbers on the diagonals of the confusion matrix reveal `86` correct non-exoplanet-star
+    predictions and only `3` correct exoplanet star predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the upper-right corner of the matrix, the number `2` reveals that two non-exoplanet-stars
+    were misclassified as exoplanet stars. Similarly, in the bottom-left corner of
+    the matrix, the number `9` reveals that `9` exoplanet stars were misclassified
+    as non-exoplanet-stars.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When analyzed horizontally, 86 of 88 non-exoplanet stars were correctly classified,
+    while only 3 of 12 exoplanet stars were correctly classified.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As you can see, the confusion matrix reveals important details of the model's
+    predictions that an accuracy score is unable to pick up on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: classification_report
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'The various percentages from the numbers revealed in the confusion matrix in
+    the previous section are contained within a classification report. Let''s view
+    the classification report:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `classification_report` from `sklearn.metrics`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Place `y_test` and `y_pred` inside `clasification_report`, making sure to put
+    `y_test` first. Then place `classification_report` inside the global print function
+    to keep the output aligned and easy to read:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the expected output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: It's important to understand what the preceding scores mean, so let's review
+    them one at a time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Precision
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Precision gives the predictions of the positive cases (2s) that are actually
+    correct. It's technically defined in terms of true positives and false positives.
+  prefs: []
+  type: TYPE_NORMAL
+- en: True positives
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Here are a definition and example of true positives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Definition – Number of labels correctly predicted as positive.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Example – 2s are correctly predicted as 2s.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: False positives
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Here are a definition and example of false positives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Definition – Number of positive labels incorrectly predicted as negative.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Example – For exoplanet stars, 2s are incorrectly predicted as 1s.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The definition of precision is most often referred to in its mathematical form
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_07_001.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here TP stands for true positive and FP stands for false positive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the Exoplanet dataset, we have the following two mathematical forms:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_07_002.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: and
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_07_003.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Precision gives the percentage of correct predictions for each target class.
+    Now let's review other key scoring metrics that the classification report reveals.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Recall
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Recall gives you the percentage of positive cases that your predictions uncovered.
+    Recall is the number of true positives divided by the true positives plus false
+    negatives.
+  prefs: []
+  type: TYPE_NORMAL
+- en: False negatives
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'Here are a definition and example of false negatives:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Definition – Number of labels incorrectly predicted as negative.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Example – For exoplanet star predictions, 2s are incorrectly predicted as 1s.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In mathematical form, this looks as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_07_004.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Here TP stands for true positive and FN stands for false negative.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the Exoplanet dataset, we have the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_07_005.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: and
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/Formula_07_006.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Recall tells you how many of the positive cases were found. In the exoplanet
+    case, only 25% of exoplanets have been found.
+  prefs: []
+  type: TYPE_NORMAL
+- en: F1 score
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The F1 score is the harmonic mean between precision and recall. The harmonic
+    mean is used because precision and recall are based on different denominators
+    and the harmonic mean evens them out. When precision and recall are equally important,
+    the F1 score is best. Note that the F1 score ranges from 0 to 1 with 1 being the
+    highest.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Alternative scoring methods
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Precision, recall, and the F1 score are alternative scoring methods provided
+    by scikit-learn. A list of standard scoring methods may be found in the official
+    documentation at [https://scikit-learn.org/stable/modules/model_evaluation.html](https://scikit-learn.org/stable/modules/model_evaluation.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: Accuracy is often not the best choice for classification datasets. Another popular
+    scoring method is `roc_auc_score`, the area under the curve of the receiving operator
+    characteristic. As with most classification scoring methods, the closer to 1,
+    the better the results. See [https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html#sklearn.metrics.roc_auc_score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_auc_score.html#sklearn.metrics.roc_auc_score)
+    for more information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When choosing a scoring method, it's critical to understand the goal. The goal
+    in the Exoplanet dataset is to find exoplanets. This is obvious. What is not obvious
+    is how to select the best scoring method to achieve the desired results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Imagine two different scenarios:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Scenario 1: Of the 4 exoplanet stars the machine learning model predicts, 3
+    are actually exoplanet stars: 3/4 = 75% precision.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Scenario 2: Of the 12 exoplanet stars, the model correctly predicts 8 exoplanet
+    stars (8/12 = 66% recall).'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Which is more desirable?
+  prefs: []
+  type: TYPE_NORMAL
+- en: The answer is that it depends. Recall is ideal for flagging potential positive
+    cases (exoplanets) with the goal of finding them all. Precision is ideal for ensuring
+    that the predictions (exoplanets) are indeed positive.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Astronomers are unlikely to announce that an exoplanet has been discovered just
+    because a machine learning model says so. They are more likely to carefully examine
+    potential exoplanet stars before confirming or refuting the claim based on additional
+    evidence.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Assuming that the goal of the machine learning model is to find as many exoplanets
+    as possible, recall is an excellent choice. Why? Recall tells us how many of the
+    12 exoplanet stars have been found (2/12, 5/12, 12/12). Let's try to find them
+    all.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Precision note
+  prefs: []
+  type: TYPE_NORMAL
+- en: A higher percentage of precision does not indicate more exoplanet stars. For
+    instance, a recall of 1/1 is 100%, but it only finds one exoplanet.
+  prefs: []
+  type: TYPE_NORMAL
+- en: recall_score
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'As indicated in the previous section, we will proceed with recall as the scoring
+    method for the Exoplanet dataset to find as many exoplanets as possible. Let''s
+    begin:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `recall_score` from `sklearn.metrics`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: By default, `recall_score` reports the recall score of the positive class, typically
+    labeled `1`. It is unusual for the positive class to be labeled `2` and for the
+    negative class to be labeled `1` as is the case with the Exoplanet dataset.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'To obtain the `recall_score` value of exoplanet stars, input `y_test` and `y_pred`
+    as parameters for `recall_score` along with `pos_label=2`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score of exoplanet stars is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This is the same percentage given by the classification report under the recall
+    score of `2`, which is the exoplanet stars. Going forward, instead of using `accuracy_score`,
+    we will use `recall_score` with the preceding parameters as our scoring metric.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, let's learn about resampling, an important strategy for improving the
+    scores of imbalanced datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Resampling imbalanced data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Now that we have an appropriate scoring method to discover exoplanets, it's
+    time to explore strategies such as resampling, undersampling, and oversampling
+    for correcting the imbalanced data causing the low recall score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Resampling
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One strategy to counteract imbalanced data is to resample the data. It's possible
+    to undersample the data by reducing rows of the majority class and to oversample
+    the data by repeating rows of the minority class.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Undersampling
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Our exploration began by selecting 400 rows from 5,087\. This is an example
+    of undersampling since the subset contains fewer rows than the original.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's write a function that allows us to undersample the data by any number
+    of rows. This function should return the recall score so that we can see how undersampling
+    changes the results. We will begin with the scoring function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The scoring function
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The following function takes XGBClassifier and the number of rows as input and
+    produces the confusion matrix, classification report, and recall score of exoplanet
+    stars as output.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here are the steps:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Define a function, `xgb_clf`, that takes `model`, the machine learning model,
+    and `nrows`, the number of rows, as input:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Load the DataFrame with `nrows`, then split the data into `X` and `y` and training
+    and test sets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Initialize the model, fit the model to the training set, and score it with
+    the test set using `y_test`, `y_pred`, and `pos_label=2` for `recall_score` as
+    input:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Print the confusion matrix and classification report, and return the score:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Now, we can undersample the number of rows and see how the scores change.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Undersampling nrows
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s start by doubling `nrows` to `800`. This is still undersampling since
+    the original dataset has `5087` rows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the expected output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: Despite the near-perfect recall for non-exoplanet stars, the confusion matrix
+    reveals that only 1 of 10 exoplanet stars have been recalled.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Next, decrease `nrows` from `400` to `200`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE33]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the expected output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE34]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is a little better. By decreasing `n_rows` the recall has gone up.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's see what happens if we balance the classes precisely. Since there are
+    37 exoplanet-stars, 37 non-exoplanet stars balance the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Run the `xgb_clf` function with `nrows=74`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE35]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the expected output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE36]'
+  prefs: []
+  type: TYPE_PRE
+- en: These results are respectable, even though the subset is much smaller.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, let's see what happens when we apply the strategy of oversampling.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Oversampling
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Another resampling technique is oversampling. Instead of eliminating rows, oversampling
+    adds rows by copying and redistributing the positive cases.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although the original dataset has over 5,000 rows, we continue to use `nrows=400`
+    as our starting point to expedite the process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When `nrows=400`, the ratio of positive to negative cases is 10 to 1\. We need
+    10 times as many positive cases to obtain a balance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Our strategy is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Create a new DataFrame that copies the positive cases nine times.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Concatenate a new DataFrame with the original to obtain a 10-10 ratio.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Before proceeding, a warning is in order. If the data is resampled before splitting
+    it into training and test sets, the recall score will be inflated. Can you see
+    why?
+  prefs: []
+  type: TYPE_NORMAL
+- en: When resampling, nine copies will be made of the positive cases. After splitting
+    this data into training and test sets, copies are likely contained in both sets.
+    So, the test set will contain most of the same data points as the training set.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The appropriate strategy is to split the data into a training and test set
+    first and then to resample the data. As done previously, we can use `X_train`,
+    `X_test`, `y_train`, and `y_test`. Let''s start:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Merge `X_train` and `y_train` on the left and right index with `pd.merge` as
+    follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE37]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Create a DataFrame, `new_df`, using `np.repeat` that includes the following:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'a) The values of the positive cases: `df_train[df_train[''LABEL'']==2.values`.'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: b) The number of copies – in this case, `9`
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'c) The `axis=0` parameter to specify that we are working with columns:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE38]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Copy the column names:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE39]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Concatenate the DataFrames:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE40]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Verify that `value_counts` is as expected:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE41]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The expected output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE42]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Split `X` and `y` using the resampled DataFrame:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE43]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Fit the model on the resampled training set:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE44]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Score the model with `X_test` and `y_test`. Include the confusion matrix and
+    classification report in your result:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE45]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE46]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: By appropriately holding out a test set to begin with, oversampling achieves
+    33.3% recall, a score that is twice as strong as the 17% obtained earlier, although
+    still much too low.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`imblearn`, which must be downloaded to use. I achieved the same results as
+    SMOTE using the preceding resampling code.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since resampling has produced modest gains at best, it's time to adjust the
+    hyperparameters of XGBoost.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tuning and scaling XGBClassifier
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this section, we will fine-tune and scale XGBClassifier to obtain the best
+    possible `recall_score` value for the Exoplanets dataset. First, you will adjust
+    weights using `scale_pos_weight`, then you will run grid searches to find the
+    best combination of hyperparameters. In addition, you will score models for different
+    subsets of the data before consolidating and analyzing the results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Adjusting weights
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In [*Chapter 5*](B15551_05_Final_NM_ePUB.xhtml#_idTextAnchor117), *XGBoost Unveiled*,
+    you used the `scale_pos_weight` hyperparameter to counteract imbalances in the
+    Higgs boson dataset. `Scale_pos_weight` is a hyperparameter used to scale the
+    *positive* weight. The emphasis here on *positive* is important because XGBoost
+    assumes that a target value of `1` is *positive* and a target value of `0` is
+    *negative*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the Exoplanet dataset, we have been using the default `1` as negative and
+    `2` as positive as provided by the dataset. We will now switch to `0` as negative
+    and `1` as positive using the `.replace()` method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: replace
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The `.replace()` method may be used to reassign values. The following code
+    replaces `1` with `0` and `2` with `1` in the `LABEL` column:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE47]'
+  prefs: []
+  type: TYPE_PRE
+- en: If the two lines of code were reversed, all column values would end up as 0
+    since all 2s would become 1s, and then all 1s would become 0s. In programming,
+    order matters!
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Verify the counts using the `value_counts` method:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE48]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here is the expected output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE49]'
+  prefs: []
+  type: TYPE_PRE
+- en: The positive cases are now labeled `1` and the negative cases are labeled `0`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: scale_pos_weight
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'It''s time to build a new `XGBClassifier` with `scale_pos_weight=10` to account
+    for the imbalance in the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Split the new DataFrame into `X`, the predictor columns, and `y`, the target
+    columns:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE50]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Split the data into training and test sets:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE51]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Build, fit, predict, and score `XGBClassifier` with `scale_pos_weight=10`.
+    Print out the confusion matrix and the classification report to view the complete
+    results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE52]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Here is the expected output:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE53]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The results are the same as our resampling method from the previous section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The oversampling method that we implemented from scratch gives the same predictions
+    as `XGBClassifier` with `scale_pos_weight`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tuning XGBClassifier
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: It's time to see whether hyperparameter fine-tuning can increase precision.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's standard to use `GridSearchCV` and `RandomizedSearchCV` when fine-tuning
+    hyperparameters. Both require cross-validation of two or more folds. We have yet
+    to implement cross-validation since our initial models did not perform well and
+    it's computationally expensive to test multiple folds on large datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A balanced approach is to use `GridSearchCV` and `RandomizedSearchCV` with two
+    folds to save time. To ensure consistent results, `StratifiedKFold` ([*Chapter
+    6*](B15551_06_Final_NM_ePUB.xhtml#_idTextAnchor136), *XGBoost Hyperparameters*)
+    is recommended. We will begin with the baseline model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The baseline model
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Here are the steps to build a baseline model that implements the same k-fold
+    cross-validation as grid searches:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Import `GridSearchCV`, `RandomizedSearchCV`, `StratifiedKFold`, and `cross_val_score`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE54]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Intialize `StratifiedKFold` as `kfold` with `n_splits=2` and `shuffle=True`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE55]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Initialize `XGBClassifier` with `scale_pos_weight=10` since there are 10 times
+    as many negative cases as positive cases:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE56]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Score the model using `cross_val_score` with `cv=kfold` and `score=''recall''`
+    as parameters, then display the scores:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE57]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The scores are as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE58]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: The scores are a little worse with cross-validation. When there are very few
+    positive cases, it makes a difference which rows end up in the training and test
+    sets. Different implementations of `StratifiedKFold` and `train_test_split` may
+    lead to different results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: grid_search
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'We''ll now implement a variation of the `grid_search` function from [*Chapter
+    6*](B15551_06_Final_NM_ePUB.xhtml#_idTextAnchor136), *XGBoost Hyperparameters*,
+    to fine-tune hyperparameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The new function takes the same dictionary of parameters as input, along with
+    a random option that uses `RandomizedSearchCV`. In addition, `X` and `y` are provided
+    as default parameters for use with other subsets and the scoring method is recall
+    as follows:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE59]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Let''s run the grid searches excluding defaults to try and improve scores.
+    Here are some initial grid searches along with their results:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'a) Grid search 1:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE60]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Results:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE61]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'b) Grid search 2:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE62]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Results:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE63]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'c) Grid search 3:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE64]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Results:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE65]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'd) Grid search 4:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE66]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Results:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE67]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'e) Grid search 5:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE68]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Results:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE69]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Changing `learning_rate` , `max_depth`, and `gamma` has resulted in gains.
+    Let''s try to combine them by narrowing the range:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE70]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE71]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'It''s also worth trying `max_delta_step`, which XGBoost only recommends for
+    imbalanced datasets. The default is 0 and increasing the steps results in a more
+    conservative model:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE72]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE73]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'As a final strategy, we combine `subsample` with all the column samples in
+    a random search:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE74]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE75]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: Instead of continuing with this subset of data that contains `400` rows, let's
+    switch to the balanced subset (undersampled) that contains `74` rows to compare
+    results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The balanced subset
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The balanced subset of `74` rows has the least amount of data points. It's also
+    the fastest to test.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`X` and `y` need to be explicitly defined since they were last used for the
+    balanced subset inside a function. The new definitions for `X_short` and `y_short`
+    are given as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE76]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After a few grid searches, combining `max_depth` and `colsample_bynode` gave
+    the following results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE77]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE78]'
+  prefs: []
+  type: TYPE_PRE
+- en: This is an improvement.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's time to try hyperparameter fine-tuning on all the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Fine-tuning all the data
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The issue with implementing the `grid_search` function on all the data is time.
+    Now that we are at the end, it''s time to run the code and take breaks as the
+    computer sweats:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Read all the data into a new DataFrame, `df_all`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE79]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Replace the 1s with 0s and the 2s with 1s:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE80]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Split the data into `X` and `y`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE81]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Verify `value_counts` of the `''LABEL''` column:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE82]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE83]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Scale the weights by dividing the negative class by the positive class:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE84]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'Score a baseline model for all the data with `XGBClassifier` and `scale_pos_weight=weight`:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE85]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE86]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This score is awful. Presumably, the classifier is scoring a high percentage
+    of accuracy, despite the low recall.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Let''s try optimizing hyperparameters based on the most successful results
+    thus far:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE87]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE88]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This is much better than the initial score with all the data.
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: 'Let''s try combining hyperparameters:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE89]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: 'The score is as follows:'
+  prefs:
+  - PREF_IND
+  type: TYPE_NORMAL
+- en: '[PRE90]'
+  prefs:
+  - PREF_IND
+  type: TYPE_PRE
+- en: This is better, though not as strong as the undersampled dataset scored earlier.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With the score on all the data starting lower and taking more time, a question
+    naturally arises. Are the machine learning models better on the smaller subsets
+    for the Exoplanet dataset?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's find out.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Consolidating results
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'It''s tricky to consolidate results with different datasets. We have been working
+    with the following subsets:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5,050 rows – approx. 54% recall
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 400 rows – approx. 54% recall
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 74 rows – approx. 68% recall
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The best results obtained have included `learning_rate=0.001`, `max_depth=2`,
+    and `colsample_bynode=0.5`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's train a model on *all 37 exoplanet stars*. This means the test results
+    will come from data points that the model has already trained on. Normally, this
+    is not a good idea. In this case, however, the positive cases are very few and
+    it may be instructive to see how the smaller subsets test on the positive cases
+    it has not seen before.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following function takes `X`, `y`, and the machine learning model as input.
+    The model is fit on the data provided, then predictions are made on the entire
+    dataset. Finally, `recall_score`, `confusion matrix`, and `classification report`
+    are all printed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE91]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let's run the function for each of our three subsets. Of the three strongest
+    hyperparameters, it turns out that `colsample_bynode` and `max_depth` give the
+    best results.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's start with the smallest number of rows, where the number of exoplanet
+    stars and non-exoplanet stars match.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 74 rows
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Let''s begin with 74 rows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE92]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE93]'
+  prefs: []
+  type: TYPE_PRE
+- en: All 37 exoplanet stars were correctly identified, but 1,462 non-exoplanet stars
+    were misclassified! Despite 100% recall, the precision is 2%, and the F1 score
+    is 5%. Low precision and a low F1 score are a risk when tuning for recall only.
+    In practice, an astronomer would have to sort through 1,462 potential exoplanet
+    stars to find 37\. This is unacceptable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now let's see what happens when we train on 400 rows.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 400 rows
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the case of 400 rows, we use the `scale_pos_weight=10` hyperparameter to
+    balance the data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE94]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE95]'
+  prefs: []
+  type: TYPE_PRE
+- en: Again, all 37 exoplanet stars were correctly classified for 100% recall, but
+    149 non-exoplanet stars were incorrectly classified, for a precision of 20%. In
+    this case, an astronomer would need to sort through 186 stars to find the 37 exoplanet
+    stars.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, let's train on all the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 5,050 rows
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'In the case of all the data, set `scale_pos_weight` equal to the `weight` variable,
+    as previously defined:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE96]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The output is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE97]'
+  prefs: []
+  type: TYPE_PRE
+- en: Amazing. All predictions, recall and precision, are 100% perfect. In this highly
+    desirable case, an astronomer would find all of the exoplanet stars without having
+    to sift through any bad data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Keep in mind, however, that these scores are based on the training data, not
+    on unseen test data, which is mandatory to build a strong model. In other words,
+    although the model fits the training data perfectly, it's unlikely to generalize
+    this well to new data. These numbers, however, are valuable.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Based on this result, since the machine learning model performs impressively
+    on the training set and modestly at best on the test set, the variance is likely
+    too high. Additionally, more trees and more rounds of fine-tuning may be required
+    to pick up on nuanced patterns within the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Analyzing results
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When scored on the training set, the tuned models delivered perfect recall
+    but varied considerably on the precision. Here are the takeaways:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using precision without recall or the F1 score can result in suboptimal models.
+    By using the classification report, more details are revealed.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Over-emphasizing high scores from small subsets is not advised.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When test scores are low, but training scores are high on imbalanced datasets,
+    deeper models with extensive hyperparameter fine-tuning is advised.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'A survey of kernels, publicly displayed notebooks put forward by Kaggle users,
+    at [https://www.kaggle.com/keplersmachines/kepler-labelled-time-series-data/kernels](https://www.kaggle.com/keplersmachines/kepler-labelled-time-series-data/kernels)
+    for the Exoplanet dataset reveals the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many users fail to understand that a high accuracy score is easy to obtain and
+    virtually meaningless with highly imbalanced data.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Users posting precision are generally posting from 50 to 70 percent, and users
+    posting recall are posting 60 to 100 percent (a user with 100% recall has 55%
+    precision), indicating the challenges and limitations of this dataset.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: When you present your results to your astronomy professor, wiser to the limitations
+    of imbalanced data, you conclude that your model performs with 70% recall at best,
+    and that 37 exoplanet stars are not enough to build a robust machine learning
+    model to find life on other planets. Your XGBClassifier, however, will allow astronomers
+    and others trained in data analysis to use machine learning to decide which stars
+    to focus on in the universe to discover the next exoplanets in orbit.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In this chapter, you surveyed the universe with the Exoplanet dataset to discover
+    new planets, and potentially new life. You built multiple XGBClassifiers to predict
+    when exoplanet stars are the result of periodic changes in light. With only 37
+    exoplanet stars and 5,050 non-exoplanet stars, you corrected the imbalanced data
+    by undersampling, oversampling, and tuning XGBoost hyperparameters including `scale_pos_weight`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You analyzed results using the confusion matrix and the classification report.
+    You learned key differences between various classification scoring metrics, and
+    why for the Exoplanet dataset accuracy is virtually worthless, while a high recall
+    is ideal, especially when combined with high precision for a good F1 score. Finally,
+    you realized the limitations of machine learning models when the data is extremely
+    varied and imbalanced.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After this case study, you have the necessary background and skills to fully
+    analyze imbalanced datasets with XGBoost using `scale_pos_weight`, hyperparameter
+    fine-tuning, and alternative classification scoring metrics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, you will greatly expand your range of XGBoost by applying
+    alternative XGBoost base learners beyond gradient boosted trees. Although gradient
+    boosted trees are often the best option, XGBoost comes equipped with linear base
+    learners, dart base learners, and even random forests, all coming next!
+  prefs: []
+  type: TYPE_NORMAL

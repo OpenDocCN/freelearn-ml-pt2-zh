@@ -1,0 +1,1097 @@
+- en: Chapter 7
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Mixture Models
+  prefs: []
+  type: TYPE_NORMAL
+- en: '...the father has the form of a lion, the mother of an ant; the father eats
+    flesh and the mother herbs. And these breed the ant-lion... –The Book of Imaginary
+    Beings'
+  prefs:
+  - PREF_BQ
+  type: TYPE_NORMAL
+- en: The River Plate (also known as La Plata River or Río de la Plata) is the widest
+    river on Earth and a natural border between Argentina and Uruguay. During the
+    late 19^(th) century, the port area along this river was a place where indigenous
+    people mixed with Africans (most of them slaves) and European immigrants. One
+    consequence of this encounter was the mix of European music, such as the waltz
+    and mazurka, with the African candombe and Argentinian milonga (which, in turn,
+    is a mix of Afro-American rhythms), giving origin to the dance and music we now
+    call the tango.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Mixing previously existing elements is a great way to create new things, not
+    only in the context of music. In statistics, mixture models are one common approach
+    to model building. These models are built by mixing simpler distributions to obtain
+    more complex ones. For example, we can combine two Gaussians to describe a bimodal
+    distribution or many Gaussians to describe arbitrary distributions. While using
+    Gaussians is very common, in principle we can mix any family of distributions
+    we want. Mixture models are used for different purposes, such as directly modeling
+    sub-populations or as a useful trick for handling complicated distributions that
+    cannot be described with simpler distributions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finite mixture models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Zero-inflated and hurdle models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Infinite mixture models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Continuous mixture models
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 7.1 Understanding mixture models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Mixture models naturally arise when the overall population is a combination
+    of distinct sub-populations. A familiar example is the distribution of heights
+    in a given adult human population, which can be described as a mixture of female
+    and male sub-populations. Another classical example is the clustering of handwritten
+    digits. In this case, it is very reasonable to expect 10 sub-populations, at least
+    in a base 10 system! If we know to which sub-population each observation belongs,
+    it is generally a good idea to use that information to model each sub-population
+    as a separate group. However, when we do not have direct access to this information,
+    mixture models come in handy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Blends of Distributions
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many datasets cannot be properly described using a single probability distribution,
+    but they can be described as a mixture of such distributions. Models that assume
+    data comes from a mixture of distributions are known as mixture models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: When building a mixture model, it is not necessary to believe we are describing
+    true sub-populations in the data. Mixture models can also be used as a statistical
+    trick to add flexibility to our toolbox. Take, for example, the Gaussian distribution.
+    We can use it as a reasonable approximation for many unimodal and approximately
+    symmetrical distributions. But what about multimodal or skewed distributions?
+    Can we use Gaussian distributions to model them? Yes, we can, if we use a mixture
+    of Gaussians.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a Gaussian mixture model, each component will be a Gaussian with a different
+    mean and, generally (but not necessarily), a different standard deviation. By
+    combining Gaussians, we can add flexibility to our models and fit complex data
+    distributions. In fact, we can approximate practically any distribution we want
+    by using a proper combination of Gaussians. The exact number of distributions
+    will depend on the accuracy of the approximation and the details of the data.
+    Actually, we have been using this idea in many of the plots throughout this book.
+    The Kernel Density Estimation (KDE) technique is a non-Bayesian implementation
+    of this idea. Conceptually, when we call `az.plot_kde`, the function places a
+    Gaussian, with a fixed variance, on top of each data point and then sums all the
+    individual Gaussians to approximate the empirical distribution of the data. *Figure
+    [7.1](#x1-138002r1)* shows an example of how we can mix 8 Gaussians to represent
+    a complex distribution, like a boa constrictor digesting an elephant, or a hat,
+    depending on your perspective.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In *Figure [7.1](#x1-138002r1)*, all Gaussians have the same variance and they
+    are centered at the gray dots, which represent sample points from a possible unknown
+    population. If you look carefully, you may notice that two of the Gaussians are
+    on top of each other.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file196.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.1**: Example of a KDE as a Gaussian mixture model'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Whether we believe in sub-populations or use them for mathematical convenience
+    (or even something in the middle), mixture models are a useful way of adding flexibility
+    to our models by using a mixture of distributions to describe the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.2 Finite mixture models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'One way to build mixture models is to consider a finite weighted mixture of
+    two or more distributions. Then the probability density of the observed data is
+    a weighted sum of the probability density of *K* subgroups:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ∑K p(y) = wip (y | θi) i=1 ](img/file197.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can interpret *w*[*i*] as the probability of the component *i*, and thus
+    its values are restricted to the interval [0, 1] and they need to sum up to 1\.
+    The components *p*(*y*|*θ*[*i*]) are usually simple distributions, such as a Gaussian
+    or a Poisson. If *K* is finite, we have a finite mixture model. To fit such a
+    model, we need to provide a value of *K*, either because we know the correct value
+    beforehand or because we can make an educated guess.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Conceptually, to solve a mixture model, all we need to do is properly assign
+    each data point to one of the components. In a probabilistic model, we can do
+    this by introducing a random variable, whose function is to specify to which component
+    a particular observation is assigned. This variable is generally referred to as
+    a **latent variable** because we cannot directly observe it.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For a mixture of only two components (*K* = 2), we can use the coin-flipping
+    problem model as a building block. For that model, we have two possible outcomes
+    and we use the Bernoulli distribution to describe them. Since we do not know the
+    probability of getting heads or tails, we use a Beta distribution as a prior distribution.
+    If instead of head or tails, we think of any two groups (or components or classes),
+    we can assign the observation to one group if we get 0 and to the other if we
+    get 1\. This is all very nice, but in a mixture model, we can have two or more
+    groups, so we need to make this idea more general. We can do it by noticing that
+    the generalization of the Bernoulli distribution to *K* outcomes is the Categorical
+    distribution and the generalization of the Beta distribution to higher dimensions
+    is the Dirichlet distribution. If the components we are assigning are Gaussians,
+    like in *Figure [7.1](#x1-138002r1)*, then *Figure [7.2](#x1-139003r2)* shows
+    a Kruschke-style diagram of such a model. The rounded-corner box indicates that
+    we have *K* components and the Categorical variables decide which of them we use
+    to describe a given data point. Notice that only *μ*[*k*] depends on the different
+    components, while *σ*[*μ*] and *σ*[*σ*] are shared for all of them. This is just
+    a modeling choice; if necessary, we can change it and allow other parameters to
+    be conditioned on each component.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file198.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.2**: Kruschke-style diagram of a mixture model with Gaussian components'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We are going to implement this model in PyMC, but before doing that, let me
+    introduce the Categorical and Dirichlet distributions. If you are already familiar
+    with these distributions, you can skip the next two sections and jump to the example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.2.1 The Categorical distribution
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The Categorical distribution is the most general discrete distribution and
+    is parameterized by a vector where each element specifies the probabilities of
+    each possible outcome. *Figure [7.3](#x1-140003r3)* represents two possible instances
+    of the Categorical distribution. The dots represent the values of the Categorical
+    distribution, while the continuous dashed lines are a visual aid to help us easily
+    grasp the *shape* of the distribution:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file199.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.3**: Two members of the Categorical distribution family. The dashed
+    lines are just a visual aid.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.2.2 The Dirichlet distribution
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The Dirichlet distribution lives in the simplex, which you can think of as
+    an n-dimensional triangle; a 1-simplex is a line, a 2-simplex is a triangle, a
+    3-simplex is a tetrahedron, and so on. Why a simplex? Intuitively, because the
+    output of this distribution is a *K*-length vector, whose elements are restricted
+    to be on the interval [0*,*1] and sum up to 1\. As we said, the Dirichlet distribution
+    is the generalization of the Beta distribution. Thus, a good way to understand
+    the former is to compare it to the latter. We use the Beta for problems with two
+    outcomes: one with probability *p* and the other 1 − *p*. As we can see, *p* +
+    (1 − *p*) = 1\. The Beta returns a two-element vector, (*p,q* = 1 − *p*), but
+    in practice, we omit *q* as the outcome is entirely determined once we know the
+    value of *p*. If we want to extend the Beta distribution to three outcomes, we
+    need a three-element vector (*p,q,r*), where each element is in the interval [0*,*1]
+    and their values sum up to 1\. Similar to the Beta distribution, we could use
+    three scalars to parameterize such a distribution, and we may call them *α*, *β*,
+    and *γ*; however, we could easily run out of Greek letters as there are only 24
+    of them. Instead, we can just use a vector named *α* of length *K*. Note that
+    we can think of the Beta and Dirichlet as distributions over proportions. *Figure
+    [7.4](#x1-141003r4)* shows 4 members of the Dirichlet distribution when *k* =
+    3\. On the top, we have the pdf and on the bottom, we have samples from the distribution.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file200.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.4**: Four members of the Dirichlet distribution family'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Okay, now we have all the *components* to implement our first mixture model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.2.3 Chemical mixture
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To keep things very concrete, let’s work on an example. We are going to use
+    the chemical shifts data we already saw in *Chapter [2](CH02.xhtml#x1-440002)*.
+    *Figure [7.5](#x1-142002r5)* shows a histogram of this data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file201.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.5**: Histogram for the chemical shifts data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that this data cannot be properly described using a single distribution
+    like a Gaussian, but we can do it if we use many as we already showed in *Figure
+    [7.1](#x1-138002r1)*; maybe three or four would do the trick. There are good theoretical
+    reasons, which we will ignore and not discuss here, indicating this chemical shifts
+    data comes from a mixture of 40 sub-populations. But just by looking at the data,
+    it seems impossible to recover the true groups as there is a lot of overlap between
+    them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following code block shows the implementation of a Gaussian mixture model
+    of two components in PyMC:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 7.1**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you run this code, you will find that it is very slow and the trace looks
+    very bad (refer to *Chapter [10](CH10.xhtml#x1-18900010)* to learn more about
+    diagnostics). Can we make this model run faster? Yes, let’s see how.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In `model_kg`, we have explicitly included the latent variable *z* in the model.
+    Sampling this discrete variable usually leads to poor posterior sampling. One
+    way to solve this issue is to reparametrize the model so *z* is no longer explicitly
+    a part of the model. This type of reparametrization is called marginalization
+    . Marginalizing out discrete variables usually provides speed-up and better sampling.
+    Unfortunately, it requires some mathematical skills that not everyone has. Luckily
+    for us, we don’t need to do this ourselves as PyMC includes a `NormalMixture`
+    distribution. So, we can write the mixture model as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 7.2**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let’s check the results with a forest plot. *Figure [7.6](#x1-142023r6)* shows
+    something really funny going on. Before moving on to the next section, take some
+    time to think about it. Can you spot it? We will discuss it in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file202.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.6**: Forest plot of the means from `model_mg`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.3 The non-identifiability of mixture models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The `means` parameter has shape 2, and from *Figure [7.6](#x1-142023r6)* we
+    can see that one of its values is around 47 and the other is close to 57.5\. The
+    funny thing is that we have one chain saying that `means[0]` is 47 and the other
+    3 saying it is 57.5, and the opposite for `mmeans[1]`. Thus, if we compute the
+    mean of `mmeans[0]`, we will get some value close to 55 (57*.*5 × 3 + 47 × 1),
+    which is not the correct value. What we are seeing is an example of a phenomenon
+    known as parameter non-identifiability. This happens because, from the perspective
+    of the model, there is no difference if component 1 has a mean of 47 and component
+    2 has a mean of 57.5 or vice versa; both scenarios are equivalent. In the context
+    of mixture models, this is also known as the label-switching problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Non-Identifiability
+  prefs: []
+  type: TYPE_NORMAL
+- en: A statistical model is non-identifiable if one or more of its parameters cannot
+    be uniquely determined. Parameters in a model are not identified if the same likelihood
+    function is obtained for more than one choice of the model parameters. It could
+    happen that the data does not contain enough information to estimate the parameters.
+    In other cases, parameters may not be identifiable because the model is not structurally
+    identifiable, meaning that the parameters cannot be uniquely determined even if
+    all the necessary data is available.
+  prefs: []
+  type: TYPE_NORMAL
+- en: With mixture models, there are at least two ways of parameterizing a model to
+    remove the non-identifiability issue. We can force the components to be ordered;
+    for example, arrange the means of the components in strictly increasing order
+    and/or use informative priors.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using PyMC, we can implement the first option with a transformation as in the
+    next code block. Notice that we also provide initial values for the means; anything
+    to ensure that the first mean is smaller than the second one will work.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 7.3**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let’s check the new results with a forest plot. *Figure [7.7](#x1-143014r7)*
+    confirms that we have removed the non-identifiability issue:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file203.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.7**: Forest plot of the means from `model_mgo`'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.4 How to choose K
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One of the main concerns with finite mixture models is how to decide on the
+    number of components. A rule of thumb is to begin with a relatively small number
+    of components and then increase it to improve the model-fit evaluation. As we
+    already know from *Chapter [5](CH05.xhtml#x1-950005)*, model fit can be evaluated
+    using posterior-predictive checks, metrics such as the ELPD, and the expertise
+    of the modeler(s).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let us compare the model for *K* = {2*,*3*,*4*,*5}. To do this, we are going
+    to fit the model four times and then save the data and model objects for later
+    use:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 7.4**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: '*Figure [7.8](#x1-144023r8)* shows the mixture models for *K* number of Gaussians.
+    The black solid lines are the posterior means, and the gray lines are samples
+    from the posterior. The mean-Gaussian components are represented using a black
+    dashed line.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file204.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.8**: Gaussian mixture models for different numbers of Gaussians
+    (*K*)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Visually, it seems *K* = 2 is too low, but how do we choose a better value?
+    As we have already discussed in *Chapter [5](CH05.xhtml#x1-950005)*, we can use
+    posterior predictive checks of test quantities of interest and compute Bayesian
+    p-values. *Figure [7.9](#x1-144024r9)* shows an example of such a calculation
+    and visualization. *K* = 5 is the best solution and *K* = 4 comes closes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file205.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.9**: Posterior predictive check to choose *K*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To complement posterior predictive checks, we can compute the ELPD as approximated
+    with the LOO method. This is shown in *Figure [7.10](#x1-144025r10)*. We are comparing
+    the same model but with different values of *K*. We can see that *K* = 5 is the
+    best solution and *K* = 4 comes close. This is in agreement with the Bayesian
+    p-values shown in *Figure [7.9](#x1-144024r9)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file206.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.10**: Model selection with LOO to choose *K*'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The chemical shifts example, while simple, shows the main ideas about finite
+    mixture models. For this example, we used Gaussians as they provide a good approximation
+    to model the data. However, we are free to use non-Gaussian components if needed.
+    For example, we could use a:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Poisson mixture model**: Suppose you are monitoring the number of customers
+    entering a store every hour. A Poisson mixture model can help to identify different
+    patterns of customer traffic, such as peak hours or days, by assuming that the
+    data follows a mixture of Poisson distributions.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Exponential mixture model**: Imagine you are studying the lifetimes of a
+    certain type of light bulb. An Exponential mixture model can assist in identifying
+    different groups of light bulbs with varying lifetimes, suggesting potential differences
+    in manufacturing quality or environmental factors.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'In the next section, we will explore a very particular type of mixture model,
+    one that involves two processes: one generating zeros and the other generating
+    zeros or non-zeros.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.5 Zero-Inflated and hurdle models
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'When counting things, like cars on a road, stars in the sky, moles on your
+    skin, or virtually anything else, one option is to not count a thing, that is,
+    to get zero. The number zero can generally occur for many reasons; we get a zero
+    because we were counting red cars and a red car did not go down the street or
+    because we missed it. If we use a Poisson or NegativeBinomial distribution to
+    model such data, we will notice that the model generates fewer zeros compared
+    to the data. How do we fix that? We may try to address the exact cause of our
+    model predicting fewer zeros than the observed and include that factor in the
+    model. But, as is often the case, it may be enough, and simpler, to assume that
+    we have a mixture of two processes:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: One modeled by a discrete distribution with probability ![](img/Phi_01.png)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: One giving extra zeros with probability 1 − ![](img/Phi_01.png)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In some texts, you will find that ![](img/Phi_01.png) represents the extra zeros
+    instead of 1 − ![](img/Phi_01.png). This is not a big deal; just pay attention
+    to which is which for a concrete example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The family of distributions allowing for ”extra” zeros is known as a Zero-Inflated
+    distribution. The most common members of that family are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Zero-Inflated Poisson
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Zero-Inflated NegativeBinomial
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Zero-Inflated Binomial
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the next section, we are going to use Zero-Inflated Poisson to solve a regression
+    problem. Once you understand how to work with this distribution, working with
+    the Zero-Inflated NegativeBinomial or Zero-Inflated Binomial will become very
+    easy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.5.1 Zero-Inflated Poisson regression
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'To exemplify a Zero-Inflated Poisson regression model, we are going to work
+    with a dataset taken from the Institute for Digital Research and Education ( [http://www.ats.ucla.edu/stat/data](http://www.ats.ucla.edu/stat/data)).
+    We have 250 groups of visitors to a park. Here are some parts of the data per
+    group: the number of fish they caught (`count`), how many children were in the
+    group (`child`), and whether they brought a camper to the park (`camper`). Using
+    this data, we are going to build a model that predicts the number of caught fish
+    as a function of the child and camper variables.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Using PyMC we can write a model for this data like:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 7.5**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`camper` is a binary variable with 0 for not-camper and 1 for camper. A variable
+    indicating the absence/presence of an attribute is usually denoted as a dummy
+    variable or indicator variable. Note that when `camper` takes the value of 0,
+    the term involving *β*[1] will also be 0 and the model reduces to a regression
+    with a single independent variable. We already discussed this in *Chapter [6](CH06.xhtml#x1-1200006)*
+    when talking about Categorical predictors.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The results are shown in *Figure [7.11](#x1-146011r11)*. We can see that the
+    higher the number of children, the lower the number of fish caught. Also, people
+    who travel with a camper generally catch more fish. If you check the coefficients
+    for `child` and `camper`, you will see that we can say the following:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For each additional child, the expected count of the fish caught decreases by
+    ≈ 0*.*4
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Camping with a camper increases the expected count of the fish caught by ≈ 2
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![PIC](img/file207.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.11**: Fish caught as a function of the number of children and use
+    of a camper'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Zero-Inflated models are closely associated with hurdle models, making it beneficial
+    to learn about hurdle models while the concept of Zero-Inflated models is still
+    fresh in our minds.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.5.2 Hurdle models
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: In hurdle models, the Bernoulli probability determines whether a count variable
+    has a value of zero or something greater. If it’s greater than zero, we consider
+    the *hurdle* crossed, and the distribution of these positive values is determined
+    using a distribution truncated at zero.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In terms of mixture models, we can think of a Zero-Inflated model as a mixture
+    of zeros and something else, which can be zero or non-zero. Instead, a hurdle
+    model is a mixture of zeros and non-zeros. As a consequence, a Zero-Inflated model
+    can only increase the probability of *P*(*x* = 0), but for hurdle models, the
+    probability can be smaller or larger.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The available distributions in PyMC and Bambi for hurdle models are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Hurdle Poisson
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hurdle NegativeBinomial
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hurdle Gamma
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Hurdle LogNormal
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: To illustrate hurdle models, we are going to use the horseshoe crab dataset
+    [[Brockmann](Bibliography.xhtml#XBrockmann_1996), [1996](Bibliography.xhtml#XBrockmann_1996)].
+    Horseshoe crabs arrive at the beach in pairs for their spawning ritual. Additionally,
+    solitary males also make their way to the shoreline, gathering around the nesting
+    couples and vying for the opportunity to fertilize the eggs. These individuals,
+    known as satellite males, often congregate in sizable groups near certain nesting
+    pairs while disregarding others. We want to model the number of male `satellites`.
+    We suspect this number is related to the properties of the female crabs. As predictors,
+    we are going to use the carapace `width` and `color`. The carapace is the hard
+    upper shell of crabs. The color is encoded using the integers 1 to 4, from lighter
+    to darker tones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We are going to use Bambi to encode and fit four models. The main difference
+    between the four models is that we are going to use four different likelihoods,
+    or families, namely Poisson, Hurdle Poisson, NegativeBinomial, and Hurdle NegativeBinomial.
+    The models are shown in the next code block:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 7.6**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Notice that we have encoded color as `C(color)` to indicate to Bambi that it
+    should treat it as a Categorical variable, and not a numeric one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [7.12](#x1-147012r12)* shows a posterior predictive check for the four
+    models we fitted to the horseshoe data. The gray bars represent the frequency
+    of the observed data. The dots are the expected values, according to the model.
+    The dashed line is just a visual aid. We can see that the NegativeBinomial is
+    an improvement on the Poisson and the hurdle model is an improvement on the non-inflated
+    models.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file208.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.12**: Posterior predictive check for 4 models for the horseshoe
+    data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [7.13](#x1-147013r13)* shows a model comparison in terms of the ELPD
+    as computed with LOO. The Hurdle NegativeBinomial is the best model and the Poisson
+    one is the worst.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file209.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.13**: Model comparison using LOO for 4 models for the horseshoe
+    data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [7.12](#x1-147012r12)* is nice, but there is an alternative representation
+    called hanging rootograms [[Kleiber and Zeileis](Bibliography.xhtml#Xkleiber_2016), [2016](Bibliography.xhtml#Xkleiber_2016)],
+    which is particularly useful for diagnosing and treating issues such as overdispersion
+    and/or excess zeros in count data models. See *Figure [7.14](#x1-147014r14)* for
+    an example of the horseshoe data and our four models.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file210.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.14**: Posterior predictive check, with rootograms, for 4 models
+    for the horseshoe data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In hanging rootograms, we plot the square roots of the observed and predicted
+    values. This is a quick way of approximately adjusting for the scale differences
+    across the different counts. In other words, it makes it easier to compare observed
+    and expected frequencies even for low frequencies. Second, the bars for the observed
+    data are *hanging* from the expected values, instead of *growing* from zero, as
+    in *Figure [7.12](#x1-147012r12)*. Because the bars are hanging, if a bar doesn’t
+    reach zero (dashed gray line), then the model is overpredicting a count, and if
+    the bar goes below zero, then the model is underpredicting that count.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let’s summarize each of the subplots from *Figure [7.12](#x1-147012r12)*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Poisson: The zeros are underpredicted, and counts 1 to 4 are overpredicted.
+    Most counts from 6 onward are also underpredicted. This pattern is an indication
+    of overdispersion in the data, and the huge difference for 0 indicates an excess
+    of zeros.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'NegativeBinomial: We see that overdispersion is much better handled compared
+    to the Poisson model. We still see that the zeros are underpredicted and counts
+    1 and 2 are overpredicted, probably indicating an excess of zeros.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Hurdle Poisson: As expected for a hurdle model, we get a perfect fit for the
+    zeros. For the positive values, we still get some deviations.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Hurdle NegativeBinomial: We see that the model can fit the data very well,
+    with the deviations being very small for most of the counts.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 7.6 Mixture models and clustering
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Clustering or cluster analysis is the data analysis task of grouping objects
+    in such a way that objects in a given group are closer to each other than to those
+    in the other groups. The groups are called clusters and the degree of closeness
+    can be computed in many different ways, for example, by using metrics, such as
+    the Euclidean distance. If instead we take the probabilistic route, then a mixture
+    model arises as a natural candidate to solve clustering tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Performing clustering using probabilistic models is usually known as model-based
+    clustering. Using a probabilistic model allows us to compute the probability of
+    each data point belonging to each one of the clusters. This is known as soft clustering
+    instead of hard clustering, where each data point belongs to a cluster with a
+    probability of 0 or 1\. We can turn soft clustering into hard clustering by introducing
+    some rule or boundary. In fact, you may remember that this is exactly what we
+    do to turn logistic regression into a classification method, where we use as the
+    default boundary the value of 0.5\. For clustering, a reasonable choice is to
+    assign a data point to the cluster with the highest probability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In summary, when people talk about clustering, they are generally talking about
+    grouping objects, and when people talk about mixture models, they are talking
+    about using a mix of simple distributions to model a more complex distribution,
+    either to identify subgroups or just to have a more flexible model to describe
+    the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.7 Non-finite mixture model
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: For some problems, such as trying to cluster handwritten digits, it is easy
+    to justify the number of groups we expect to find in the data. For other problems,
+    we can have good guesses; for example, we may know that our sample of Iris flowers
+    was taken from a region where only three species of Iris grow, thus using three
+    components is a reasonable starting point. When we are not that sure about the
+    number of components, we can use model selection to help us choose the number
+    of groups. Nevertheless, for other problems, choosing the number of groups a priori
+    can be a shortcoming, or we may instead be interested in estimating this number
+    directly from the data. A Bayesian solution for this type of problem is related
+    to the Dirichlet process.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.7.1 Dirichlet process
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'All the models that we have seen so far have been parametric models, meaning
+    models with a fixed number of parameters that we are interested in estimating,
+    like a fixed number of clusters. We can also have non-parametric models. A better
+    name for these models would probably be non-fixed-parametric models or models
+    with a variable number of parameters, but someone already decided the name for
+    us. We can think of non-parametric models as models with a theoretically infinite
+    number of parameters. In practice, we somehow let the data reduce the theoretically
+    infinite number of parameters to some finite number. As the data *decides* on
+    the actual number of parameters, non-parametric models are very flexible and potentially
+    robust against underfitting and overfitting. In this book, we are going to see
+    three examples of such models: the Gaussian process (GP), Bayesian Additive Regression
+    Trees (BART), and the Dirichlet process (DPs). While the upcoming chapters will
+    focus on GPs and BART individually, our immediate attention will be directed toward
+    exploring DPs.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As the Dirichlet distribution is the n-dimensional generalization of the beta
+    distribution, the Dirichlet process is the infinite-dimensional generalization
+    of the Dirichlet distribution. I know this can be puzzling at first, so let’s
+    take the time to re-read the previous sentence before continuing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The Dirichlet distribution is a probability distribution on the space of probabilities,
+    while the DP is a probability distribution on the space of distributions. This
+    means that a single draw from a DP is actually a distribution. For finite mixture
+    models, we used the Dirichlet distribution to assign a prior for the fixed number
+    of clusters or groups. A DP is a way to assign a prior distribution to a non-fixed
+    number of clusters. We can think of a DP as a way to sample from a prior distribution
+    of distributions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before we move on to the actual non-parametric mixture model, let us take a
+    moment to discuss some of the details of the DP. The formal definition of a DP
+    is somewhat obscure unless you know probability theory very well, so instead let
+    me describe some of the properties of a DP that are relevant to understanding
+    its role in non-finite mixture models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: A DP is a distribution whose realizations are probability distributions. For
+    instance, from a Gaussian distribution, you sample numbers, while from a DP, you
+    sample distributions.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: A DP is specified by a base distribution ![](img/H.PNG) and *α*, a positive
+    real number, called the concentration parameter. *α* is analog to the concentration
+    parameter in the Dirichlet distribution.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '![](img/H.PNG) is the expected value of the DP. This means that a DP will generate
+    distributions around the base distribution. This is somehow equivalent to the
+    mean of a Gaussian distribution.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As *α* increases, the realizations become less and less concentrated.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In practice, a DP always generates discrete distributions.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: In the limit *α* →∞, the realizations from a DP will be equal to the base distribution,
+    thus if the base distribution is continuous, the DP will generate a continuous
+    distribution. For this reason, mathematicians say that the distributions generated
+    from a DP are almost surely discrete. In practice, *alpha* is a finite number,
+    thus we always work with discrete distributions.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Priors Over Distributions
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can think of a DP as the prior on a random distribution *f*, where the base
+    distribution ![](img/H_gray.PNG) is what we expected *f* to be and the concentration
+    parameter *α* represents how confident we are about our prior guess.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make these properties more concrete, let us take a look again at the Categorical
+    distribution in *Figure [7.3](#x1-140003r3)*. We can completely specify this distribution
+    by indicating the position on the x-axis and the height on the y-axis. For the
+    Categorical distribution, the positions on the x-axis are restricted to be integers
+    and the sum of the heights has to be 1\. Let’s keep the last restriction but relax
+    the former one. To generate the positions on the x-axis, we are going to sample
+    from a base distribution ![](img/H.PNG). In principle, it can be any distribution
+    we want; thus if we choose a Gaussian, the locations would be any value from the
+    real line. Instead, if we choose a Beta, the locations will be restricted to the
+    interval [0, 1], and if we choose a Poisson as the base distribution, the locations
+    will be restricted to be non-negative integers 0, 1, 2, ....
+  prefs: []
+  type: TYPE_NORMAL
+- en: So far so good, but how do we choose the values on the y-axis? We follow a *Gedanken
+    experiment* known as the stick-breaking process. Imagine we have a stick of length
+    1, then we break it into two parts (not necessarily equal). We set one part aside
+    and break the other part into two, and then we just keep doing this forever and
+    ever. In practice, as we cannot really repeat the process infinitely, we truncate
+    it at some predefined value *K*, but the general idea holds, at least in practice.
+    To control the stick-breaking process, we use a parameter *α*. As we increase
+    the value of *α*, we will break the stick into smaller and smaller portions. Thus,
+    for *α* = 0, we don’t break the stick, and for *α* = ∞, we break it into infinite
+    pieces. *Figure [7.15](#x1-150003r15)* shows four draws from a DP, for four different
+    values of *α*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file211.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.15**: Stick-breaking process with a Gaussian as the base distribution'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see from *Figure [7.15](#x1-150003r15)* that the DP is a discrete distribution.
+    When *α* increases, we obtain smaller pieces from the initial unit-length stick;
+    notice the change on the scale of the y-axis. The base distribution, a Normal(0,
+    1) in this figure, controls the locations. With increasing *α*, the sticks progressively
+    resemble the base distribution more. In the accompanying notebook for this chapter,
+    you will find the code to generate *Figure [7.15](#x1-150003r15)*. I highly recommend
+    you play with this code to gain a better intuition of DPs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [7.1](#x1-138002r1)* shows that if you place a Gaussian on top of each
+    data point and then sum all the Gaussians, you can approximate the distribution
+    of the data. We can use a DP to do something similar, but instead of placing a
+    Gaussian on top of each data point, we can place a Gaussian at the location of
+    each piece of the original unit-length stick. We then weigh each Gaussian by the
+    length of each piece. This procedure provides a general recipe for a non-finite
+    Gaussian-mixture model.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Alternatively, we can replace the Gaussian for any other distribution and we
+    will have a general recipe for a non-finite mixture model. *Figure [7.16](#x1-150004r16)*
+    shows an example of such a model. I used a mixture of Laplace distributions, just
+    to reinforce the idea that you are by no means restricted to just using Gaussian
+    mixture models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file212.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.16**: Laplace mixture model using a DP'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now we are more than ready to try to implement a DP in PyMC. Let’s first define
+    a `stick_breaking` function that works with PyMC:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 7.7**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Instead of fixing the value of *α*, the concentration parameter, we are going
+    to define a prior for it. A common choice for this is a Gamma distribution, as
+    shown in the following code block:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Code 7.8**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Because we are approximating the infinite DP with a truncated stick-breaking
+    procedure, it is important to check that the truncation value (*K* = 10 in this
+    example) is not introducing any bias. A simple way to do this is to compute the
+    average weight of each component, sort them, and then plot their cumulative sum.
+    To be on the safe side, we should have at least a few components with negligible
+    weight; otherwise, we must increase the truncation value. An example of this type
+    of plot is *Figure [7.17](#x1-150027r17)*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file213.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.17**: Ordered cumulative distribution of average weights of the
+    DP components'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see that only the first 7 components are somewhat important. The first
+    7 components represent more than 99.9% of the total weight (gray dashed line in
+    *Figure [7.17](#x1-150027r17)*) and thus we can be confident that the chosen upper
+    value (*K* = 10) is large enough for this data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*Figure [7.18](#x1-150028r18)* shows the mean density estimated using the DP
+    model (black line) together with samples from the posterior (gray lines) to reflect
+    the uncertainty in the estimation.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file214.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '**Figure 7.18**: DP mixture model for the chemical shifts data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.8 Continuous mixtures
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: The focus of this chapter was on discrete mixture models, but we can also have
+    continuous mixture models. And indeed we already know some of them. For instance,
+    hierarchical models can also be interpreted as continuous mixture models where
+    the parameters in each group come from a continuous distribution in the upper
+    level. To make it more concrete, think about performing linear regression for
+    several groups. We can assume that each group has its own slope or that all the
+    groups share the same slope. Alternatively, instead of framing our problem as
+    two extreme discrete options, a hierarchical model allows us to effectively model
+    a continuous mixture of these two options.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.8.1 Some common distributions are mixtures
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'The BetaBinomial is a discrete distribution generally used to describe the
+    number of successes *y* for *n* Bernoulli trials when the probability of success
+    *p* at each trial is unknown and assumed to follow a beta distribution with parameters
+    *α* and *β*:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ ∫ 1 BetaBinomial(y | n,𝛼,𝛽 ) = Bin(y | p,n ) Beta(p | 𝛼,𝛽)dp 0 ](img/file215.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: That is, to find the probability of observing the outcome *y*, we average over
+    all the possible (and continuous) values of *p*. Thus, the BetaBinomial can be
+    considered as a continuous mixture model. If the BetaBinomial model sounds familiar
+    to you, it is because you were paying attention in the first two chapters of the
+    book! This is the model we used for the coin-flipping problem, although we explicitly
+    used a Beta and Binomial distribution, instead of using the already *mixed* Beta-Binomial
+    distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In a similar fashion, we have the NegativeBinomial distribution, which can be
+    understood as a Gamma-Poisson mixture. That is, a mixture of Poisson distributions
+    where the rate parameter is Gamma distributed. The Negative-Binomial distribution
+    is often used to circumvent a common problem encountered when dealing with count
+    data. This problem is known as over-dispersion. Suppose you are using a Poisson
+    distribution to model count data, and then you realize that the variance in your
+    data exceeds that of the model; the problem with using a Poisson distribution
+    is that mean and variance are described by the same parameter. One way to account
+    for over-dispersion is to model the data as a (continuous) mixture of Poisson
+    distributions. By considering a mixture of distributions, our model has more flexibility
+    and can better accommodate the mean and variance of the data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another example of a mixture of distributions is the Student’s t-distribution.
+    We introduced this distribution as a robust alternative to the Gaussian distribution.
+    In this case, the t-distribution results from a mixture of Gaussian distributions
+    with mean *μ* and unknown variance distributed as an InverseGamma distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.9 Summary
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Many problems can be described as an overall population composed of distinct
+    sub-populations. When we know to which sub-population each observation belongs,
+    we can specifically model each sub-population as a separate group. However, many
+    times we do not have direct access to this information, thus it may be appropriate
+    to model that data using mixture models. We can use mixture models to try to capture
+    true sub-populations in the data or as a general statistical trick to model complex
+    distributions by combining simpler distributions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we divided mixture models into three classes: finite mixture
+    models, non-finite mixture models, and continuous mixture models. A finite mixture
+    model is a finite weighted mixture of two or more distributions, each distribution
+    or component representing a subgroup of the data. In principle, the components
+    can be virtually anything we may consider useful from simple distributions, such
+    as a Gaussian or a Poisson, to more complex objects, such as hierarchical models
+    or neural networks. Conceptually, to solve a mixture model, all we need to do
+    is to properly assign each data point to one of the components. We can do this
+    by introducing a latent variable *z*. We use a Categorical distribution for *z*,
+    which is the most general discrete distribution, with a Dirichlet prior, which
+    is the n-dimensional generalization of the Beta distribution. Sampling the discrete
+    variable *z* can be problematic, thus it may be convenient to marginalize it.
+    PyMC includes a normal mixture distribution and a mixture distribution that performs
+    this marginalization for us, making it easier to build mixture models with PyMC.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: One common problem we looked at in this chapter when working with mixture models
+    is that this model can lead to the label-switching problem, a form of non-identifiability.
+    One way to remove non-identifiability is to force the components to be ordered.
+    One challenge with finite mixture models is how to decide on the number of components.
+    One solution is to perform a model comparison for a set of models around an estimated
+    number of components. That estimation should be guided, when possible, by our
+    knowledge of the problem at hand. Another option is to try to automatically estimate
+    the number of components from the data. For this reason, we introduced the concept
+    of the Dirichlet process as an infinite-dimensional version of the Dirichlet distribution
+    that we can use to build a non-parametric mixture model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, to close the chapter, we briefly discussed how many models, such as
+    the BetaBinomial (the one used for the coin-flipping problem), the NegativeBinomial,
+    the Student’s t-distribution, and even hierarchical models, can be interpreted
+    as continuous mixture models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 7.10 Exercises
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Generate synthetic data from a mixture of 3 Gaussians. Check the accompanying
+    Jupyter notebook for this chapter for an example of how to do this. Fit a finite
+    Gaussian mixture model with 2, 3, or 4 components.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Use LOO to compare the results from exercise 1.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Read and run through the following examples about mixture models from the PyMC
+    documentation:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Marginalized Gaussian mixture model: [https://www.pymc.io/projects/examples/en/latest/mixture_models/marginalized_gaussian_mixture_model.html](https://www.pymc.io/projects/examples/en/latest/mixture_models/marginalized_gaussian_mixture_model.html)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Dependent density regression: [https://www.pymc.io/projects/examples/en/latest/mixture_models/dependent_density_regression.html](https://www.pymc.io/projects/examples/en/latest/mixture_models/dependent_density_regression.html)'
+  prefs:
+  - PREF_IND
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Refit `fish_data` using a NegativeBinomial and a Hurdle NegativeBinomial model.
+    Use rootograms to compare these two models with the Zero-Inflated Poisson model
+    shown in this chapter.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Repeat exercise 1 using a Dirichlet process.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Assuming for a moment that you do not know the correct species/labels for the
+    iris dataset, use a mixture model to cluster the three Iris species, using one
+    feature of your choice (like the length of the sepal).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Repeat exercise 6 but this time use two features.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Join our community Discord space
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'Join our Discord community to meet like-minded people and learn alongside more
+    than 5000 members at: [https://packt.link/bayesian](https://packt.link/bayesian)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![PIC](img/file1.png)'
+  prefs: []
+  type: TYPE_IMG

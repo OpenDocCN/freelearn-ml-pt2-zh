@@ -1,0 +1,962 @@
+- en: '6'
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Unsupervised Methods for Time-Series
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We've discussed forecasting in the previous chapter, and we'll talk about predictions
+    from time-series in the next chapter. The performance of these predictive models
+    is easily undermined by major changes in the data. Recognizing these changes is
+    the domain of unsupervised learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''ll describe the specific challenges of unsupervised learning
+    with time-series data. At the core of unsupervised learning is the extraction
+    of structure from time-series, most importantly recognizing similarities between
+    subsequences. This is the essence of anomaly detection (also: outlier detection),
+    where we want to identify sequences that are notably different from the rest of
+    the series.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Time-series data is usually non-stationary, non-linear, and dynamically evolving.
+    An important challenge of working with time-series is recognizing the changes
+    in the underlying processes. This is called change point detection (CPD) or drift
+    detection. Data changes over time, and it is crucial to recognize how much it
+    changes. This is worth diving into, because the existence of change points and
+    anomalous points are common problems with real-world applications.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this chapter, we'll concentrate on anomaly detection and CPD, while in *Chapter
+    8*, *Online Learning for Time-Series*, we'll look at drift detection in more detail.
+    We'll start with an overview and definitions, before looking at industry practices
+    at big tech companies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''re going to cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unsupervised methods for time-series
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Anomaly detection
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Change detection
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Clustering
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Python practice
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We'll start with a general introduction to unsupervised learning with time-series.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unsupervised methods for time-series
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The main difference between time-series and other types of data is the dependence
+    on the temporal axis; a correlation structure at one point *t*[1] could have very
+    different information to the same structure at point *t*[2]. Time-series often
+    contain lots of noise and have high dimensionality.
+  prefs: []
+  type: TYPE_NORMAL
+- en: To reduce the noise and decrease the dimensionality, dimensionality reduction,
+    wavelet analysis, or signal processing techniques such as filtering, for example,
+    Fourier decomposition, can be applied. This is often at the basis of anomaly detection
+    or CPD, the techniques we are discussing in this chapter. We'll discuss drift
+    detection in *Chapter 8*, *Online Methods for Time-Series*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll be talking in detail about anomalies and change points, and it might
+    be helpful to see an illustration of how anomalies and change points can look
+    like. In the article "*Social tipping dynamics for stabilizing Earth''s climate
+    by 2050*" by Ilona Otto and others, they analyzed whether and how a change in
+    greenhouse gas emissions based on social dynamics could transform countries into
+    carbon-neutral societies. They project global warming according to different scenarios
+    in the following plot with a tipping point (another word for change point) around
+    2010 and the early 2020s (chart adapted from their article):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_06_01.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.1: Possible change points based on greenhouse gas emissions'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Global temperatures have cycled between periods of glaciations and warm periods,
+    each cycle taking somewhere in the order of tens of thousands of years. For the
+    last few thousand years, the climate was cooling leading to widespread speculations
+    as late as the 1970s around a cooling trend that could lead to another ice age.
+    However, data indicates that since the beginning of industrialization, largely
+    driven by the burning of fossil fuels, global temperature has increased about
+    a full 1°C.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Therefore, the beginning of the industrial period could be considered a change
+    point for global temperatures as the following graph illustrates (source: Wikimedia
+    Commons):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ile:Temperature reconstruction last two millennia.svg](img/B17577_06_02.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.2: Change point in global temperatures: the beginning of the industrial
+    age'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the graph above, the change point at the onset of the industrial revolution
+    precedes the anomaly of modern temperature rises.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For a human, it's relatively easy to point out change points or anomalies, especially
+    in hindsight when the full historical data is available. For automatic detection,
+    there are lots of different ways to find salient points. In a practical context,
+    it's important to carefully balance detection rates and false positives.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Anomaly detection
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In anomaly detection, we want to identify sequences that are notably different
+    from the rest of the series. Anomalies or outliers can sometimes be the result
+    of measurement error or noise, but they could indicate changes to behavior or
+    aberrant behavior in the system under observation, which could require urgent
+    action.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An important application of anomaly detection is automatic real-time monitoring
+    of potentially complex, high-dimensional datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It''s time for an attempt at a definition (after D.M. Hawkins, 1980, "*Identification
+    of Outliers*"):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Definition**: An outlier is a data point that deviates so significantly from
+    other observations that it could have been generated by a different mechanism.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's start with a plot, so we can see how an anomaly might look graphically.
+    This will also provide us context for our discussion.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Anomaly detection methods can be distinguished between univariate and multivariate
+    methods. Parametric anomaly detection methods, by the choice of their distribution
+    parameters (for example, the arithmetic mean), place an assumption on the underlying
+    distribution – often the Gaussian distribution. These methods flag outliers, points
+    that deviate from the model's assumptions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the simplest case, we can define an outlier as follows as the z-score of
+    the observation *x*[i] with respect to the distribution parameters:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_06_001.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The z-score measures the distance of each point from the moving average or sample
+    mean, ![](img/B17577_06_002.png), in units of the moving or sample standard deviation
+    ![](img/B17577_06_003.png). It is positive for values that lie above the mean,
+    and negative for those that lie below the mean.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In this formula, ![](img/B17577_06_004.png) and ![](img/B17577_06_005.png) are
+    the estimated mean and standard deviation of the time-series and *x* is the point
+    that we want to test. Finally, ![](img/B17577_06_006.png) is a threshold dependent
+    on the confidence interval that we are interested in – often, 2 or 1.96 are chosen
+    for this, corresponding to a confidence interval of 95%. In this way, outliers
+    are points that occur 5% or less of the time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The z-score makes an assumption of normal-distributed data; however, the mean
+    and standard deviation used in the outlier formula above can be replaced by other
+    measures that do away with this assumption. Measures such as the median or the
+    interquartile range (as discussed in *Chapter 2*, *Time-Series Analysis with Python*)
+    are more robust to the distribution.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The Hampel filter (also: Hampel identifier) is a special case for this, where
+    the median and the **median absolute deviation** (**MAD**) are employed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_06_007.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In this equation, the sample mean is replaced by the (sample) median and the
+    standard deviation by the MAD, which is defined as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_06_008.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The median, in turn, is the middle number in a sorted list of numbers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the Hampel filter, each observation, x, will be compared to the median. In
+    the case of the normal distribution, the Hampel filter is equivalent to the z-score,
+    and epsilon can be chosen the same way as for the z-score.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the multivariate case, the outlier function can be expressed as the distance
+    (or, inversely: similarity) to a point in the model distribution such as the center
+    of gravity, the mean. For example, we could take the covariance of the new observation
+    to the mean.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: While these former methods are restricted to low-dimensional or univariate time-series,
+    distance-based methods can handle much larger spaces. Distance-based anomaly detection
+    methods effectively cluster points into different groups, where small groups will
+    be labeled outliers. In these methods, the choice of distance measure is crucial.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Some of the challenges to detect anomalies in time-series are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Lack of a definition of outliers
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Noise within the input data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Complexity of time-series
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: High imbalance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We often don't really know what outliers look like. In practical settings, we
+    often don't have labels for the outliers – rendering benchmarking against real
+    cases impossible. As for the complexity, time-series change over time, they are
+    often non-stationary and the dependence between variables can be non-linear. Finally,
+    we typically have a lot more normal observations than outliers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A requirement for deploying anomaly detection models as services at scale is
+    that they should be able to detect anomalies in real time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Applications for anomaly detection encompass the ones in this diagram:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![anomaly_detection_application.png](img/B17577_06_03.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.3: Applications for anomaly detection'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some examples could be fraud detection with payments, network security (cyber
+    intrusion), medical monitoring, or sensor networks. In medical monitoring, we
+    want to work with real-time monitoring of physiological variables including heart
+    rate, electroencephalogram, and electrocardiogram for alerting in case of acute
+    emergencies. Anomaly alerts in sensor networks can help prevent cases of industrial
+    damage, for example.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This diagram illustrates the main types of anomaly detection methods depending
+    on the available knowledge of the dataset:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Anomaly_Detection.png](img/B17577_06_04.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.4: Anomaly detection methods depending on available knowledge'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The earliest examples for anomaly detection consist of rule-based systems. This
+    works when the patterns can be clearly defined. When we have an annotated set
+    of anomalies, we can apply supervised or semi-supervised methods such as classifiers
+    or regression models. The most common use case, however, is when anomalies are
+    not annotated and we need unsupervised approaches to detect anomalous points or
+    sections based on densities or distributions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It's instructive to see what the big technology companies, Alphabet (Google),
+    Amazon, Facebook, Apple, and Microsoft (GAFAM), do for anomaly detection. Let's go
+    over each in turn and see how they handle anomaly detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Microsoft
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the paper "*Time-Series Anomaly Detection Service at Microsoft*" (Hansheng
+    Ren and others, 2019) a time-series service is presented that's deployed for anomaly
+    detection for production data at Microsoft. Its core is a **Spectral Residual**
+    (**SR**) and Convolutional Neural Network (CNN) that's applied to unsupervised
+    online anomaly detection in univariate time-series.
+  prefs: []
+  type: TYPE_NORMAL
+- en: They borrowed the SR method from the concept of the saliency map in vision.
+    Saliency maps highlight the points in images, which stand out to human observers.
+    The algorithm performs the Fourier Transform of the data, then it applies the
+    SR of the log amplitude of the transformed signal, and finally projects the spectral
+    data back to the temporal domain with the Inverse Fourier Transform.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As an extension, they train a CNN based on artificial data using the SR method.
+    They show benchmarks on publicly available data that support their claim that
+    their method is the state of the art for anomaly detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: They further claim that their detection accuracy (F1-score) is improved by more
+    than 20% on Microsoft production data. You can find the basic implementation in
+    the alibi-detect library (the "*Spectral Residual*" method).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Google
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In their frequently asked questions on Google Analytics ([https://support.google.com/analytics/answer/7507748?hl=en](https://support.google.com/analytics/answer/7507748?hl=en)),
+    Google refer to a Bayesian state space-time-series model ("*Predicting the Present
+    with Bayesian Structural Time-Series*" by Steven L. Scott and Hal Varian, 2013)
+    for change point and anomaly detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Google released an R package with more specific time-series functionality –
+    CausalImpact. A paper describing the research behind the package was published
+    in 2015 ("*Inferring causal impact using Bayesian structural time-series models*"
+    by Kay H. Brodersen, Fabian Gallusser, Jim Koehler, Nicolas Remy, Steven L. Scott).
+    CausalImpact estimates the causal effect of interventions based on a structural
+    Bayesian time-series model. This has been ported to Python (the pycausalimpact
+    library).We are going to experiment with causal impact analysis using Bayesian
+    Structural Time-Series (BSTS) in *Chapter 9*, *Probabilistic Models for Time-Series*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Amazon
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Amazon, providing machine learning solutions at scale through their **Amazon
+    Web Services** (**AWS**) platform, have anomaly detection as part of their resource
+    and application monitoring solution, CloudWatch. It's unclear how their solution
+    works, but Corey Quinn, an economist, theorized in a tweet that their solution
+    is exponential smoothing. As part of that it is likely that they apply seasonal
+    decomposition as a first step of their algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'They also have a second service for anomaly detection: Amazon Lookout for Metrics.
+    It''s also unclear how this works under the hood. The service is geared toward
+    monitoring business indicators, and – according to the documentation – is used
+    internally within Amazon for large-scale monitoring. In the service, users can
+    select fields from data sources with different breakdowns, for example, by selecting
+    database columns `page_views` and `device_type`, users could look for abnormal
+    changes in page views for every device type separately.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: As for Amazon research in anomaly detection, they clinched the top three spots,
+    out of 117 submissions in a challenge at the Workshop on the **Detection and Classification
+    of Acoustic Scenes and Events** (**DCASE** 2020). This is a challenge comparable
+    to time-series anomaly detection. They won the best paper award with "*Group Masked
+    Autoencoder Based Density Estimator for Audio Anomaly Detection*" (Ritwik Giri
+    and others, 2020).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Facebook
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Facebook's Core Data Science team open-sourced their implementation for time-series
+    forecasting and anomaly detection on GitHub. Their library is called Prophet.
+    In their blog post announcing the library in 2017, they state that Prophet had
+    been a key piece in Facebook's ability to create forecasts at scale and trusted
+    as an important piece of information in decision-making.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The paper "*Forecasting at scale*" by Sean J Taylor and Benjamin Letham (2017)
+    describes their setup at Facebook that includes an analyst in the loop and can
+    automatically flag forecasts for manual review and adjustment. The anomaly detection
+    builds on the uncertainty around the forecast from a Generalized Additive Model
+    (GAM).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Prophet has been compared in benchmarks to other probabilistic and non-probabilistic
+    models, and has rarely shown outstanding success. The Elo ratings at microprediction.com
+    indicate that Prophet performs worse at univariate forecasts than exponential
+    moving averages and many other standard methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Twitter
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Twitter released an R package as well, called AnomalyDetection. Their method
+    is based on the Generalized Extreme Studentized Deviate (ESD) test for detecting
+    anomalies in univariate approximately normally distributed time-series. Their
+    method was published in 2017 ("*Automatic Anomaly Detection in the Cloud Via Statistical
+    Learning*", Jordan Hochenbaum, Owen Vallis, Arun Kejariwal).
+  prefs: []
+  type: TYPE_NORMAL
+- en: For their adaption of the ESD test, the Seasonal Hybrid ESD, they included a
+    Seasonal-Trend decomposition using LOESS (STL) before applying a threshold on
+    the z-score (as mentioned above) or – for datasets with a high number of anomalies
+    – thresholding based on the median and MAD. The Twitter model has been ported
+    to Python (the sesd library).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Implementations
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We'll end with an overview of readily available implementations for anomaly
+    detection in Python. Lots of implementations are available. Their use cases are
+    very similar, however, the implementations and the user bases are widely different.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s a list ordered by the number of stars on GitHub (as per May 2021):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Library | Implementations | Maintainer | Stars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Prophet | Uncertainty interval around the estimated trend component from
+    the forecast | Facebook Core Research | 12.7k |'
+  prefs: []
+  type: TYPE_TB
+- en: '| PyOD | 30 detection algorithms for multivariate time-series—from classical
+    LOF (SIGMOD 2000) to COPOD (ICDM 2020) | Yue Zhao and others | 4.5k |'
+  prefs: []
+  type: TYPE_TB
+- en: '| alibi-detect | Many anomaly detection algorithms—specific to time-series
+    there are Likelihood Ratios, Prophet, Spectral Residual, Seq2Seq, Model distillation
+    | Seldon Technologies Ltd | 683 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Scikit-Lego | Reconstruction through PCA/UMAP | Vincent D. Warmerdam and
+    others | 499 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Luminaire | Luminaire Window Density Model | Zillow | 371 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Donut | Variational Auto-Encoder for Seasonal KPIs | Tsinghua Netman Lab
+    | 327 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| rrcf | Robust Random Cut Forest algorithm for anomaly detection on streams
+    | Real-time water systems lab, University of Michigan | 302 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| banpei | Hotelling''s theory | Hirofumi Tsuruta | 245 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| STUMPY | Matrix Profile algorithms for uni- and multivariate time-series
+    such as STUMP, FLUSS, and FLOSS (also compare matrixprofile-ts) | TD Ameritrade
+    | 169 |'
+  prefs: []
+  type: TYPE_TB
+- en: '| PySAD | More than a dozen algorithms for streaming outlier anomaly detection
+    | Selim Yilmaz, Selim and Suleyman Kozat | 98 |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Figure 6.5: Anomaly detection methods in Python'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each of these methods has their own background and formal underpinning; however,
+    it's out of scope in this chapter to describe all of them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This chart shows the star history (from star-history.t9t.io) of the top three
+    repositories:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![anomaly_detection-star_history.png](img/B17577_06_05.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.6: Star history of Prophet, PyOD, and alibi-detect'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both Prophet and PyOD have been seeing a continuous rise in popularity (GitHub
+    stars).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Many deep learning algorithms have been applied more recently to anomaly detection,
+    both with univariate and multivariate time-series.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'What''s particularly interesting about deep learning models is that the applications
+    can be much broader: anomaly detection in video surveillance in closed-circuit
+    television. We''ll go more into detail of deep learning architectures in *Chapter
+    10*, *Deep Learning for Time-Series*.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Change point detection
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: A common problem with time-series is changes in the behavior of the observed
+    system. Generally speaking, a change point signals an abrupt and significant transition
+    between states in the process generating the series. For example, the trend can
+    suddenly change, and a change point can signal where the trend of the series changes.
+    This is well known under the guise of technical chart pattern analysis in trading.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This list captures some applications for **Change point detection** (**CPD**):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Speech recognition: Detection of word and sentence boundaries'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Image analysis: Surveillance on video footage of closed-circuit television'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Fitness: Segmenting human activities over time based on data from motion sensors
+    from smart devices such as watches or phones'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'Finance: Identifying changes to trend patterns that could indicate changes
+    from bear to bull markets, or the other way around'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: As an example for the importance of CPD, consider the stock market. Time-series
+    data that describes the evolution of a market, such as stock prices, follows trends
+    – it either rises, falls, or doesn't change significantly (stagnation).
+  prefs: []
+  type: TYPE_NORMAL
+- en: When a stock rises, the investor wants to buy the stock. Otherwise, when the
+    stock is falling, the investors doesn't want to keep the stock, but rather to
+    sell it. Not changing the position will cause a loss of book value – in the best
+    case, this will cause a problem with liquidity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For investors, it is therefore key to know, when the market changes from rising
+    to falling or the other way around. Recognizing these changes can make the difference
+    between winning or losing.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In forecasting, special events like Black Friday, Christmas, an election, a
+    press release, or changes in regulation can cause short-term (perhaps then classed
+    as an anomaly) or long-term change to the trend or to the level of the series.
+    This will inevitably lead to strange predictions from traditional models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A particularly interesting challenge with CPD algorithms is detecting these
+    inflection points in real time. This means detecting a change point as soon as
+    it arrives (or, at the very least, before the next change point occurs).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can distinguish online and offline methods for CPD, where online refers to
+    processing on the fly, dealing with each new data point as it becomes available.
+    On the other hand, offline algorithms can work on the whole time-series at once.
+    We'll deal more with online processing in *Chapter 8*, *Online Learning for Time-Series*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: CPD is related to segmentation, edge detection, event detection, and anomaly
+    detection, and similar techniques can be applied to all these applications. CPD
+    can be viewed as very much like anomaly detection, since one way to identify change
+    points is by anomaly scores from an anomaly detection algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: From this perspective, change points are identical to highly anomalous points,
+    and anything above a certain threshold corresponds to a change. In the same way
+    as anomaly detection, CPD can be defined as the problem of hypothesis testing
+    between two alternatives, the null hypothesis being "*no change occurs*," and
+    the alternative hypothesis of "*a change occurs*."
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'CPD algorithms are composed of three components: cost functions, search methods,
+    and constraints. We''ll go through these in turn. Cost functions are distance
+    functions that can be applied to a subsection of the time-series (multivariate
+    or univariate).'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'An example for a cost function is **least absolute deviation** (**LAD**), which
+    is an estimator of a shift in the central point (mean, median, and mode) of a
+    distribution defined as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_06_009.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In this definition *l* is an index to a subsection in the time-series *x*, and
+    ![](img/B17577_06_010.png) is the central point of *x*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The search function then iterates over the time-series to detect change points.
+    This can be done approximately, such as in window-based detection, bottom-up methods,
+    or binary segmentation, or it can be exhaustive as in the case of dynamic programming
+    or **Pruned Exact Linear Time** (**Pelt**).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Pelt (Gachomo Dorcas Wambui and others, 2015) relies on pruning heuristics,
+    and has a computational cost that is linear to the number of points of the time-series,
+    ![](img/B17577_06_011.png). Dynamic programming methods have a much higher computational
+    cost of ![](img/B17577_06_012.png), where n is the maximum number of expected
+    change points.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Finally, the constraint can come into play as a penalty in the search algorithm.
+    This penalty term can encode a cost budget or knowledge of the number of change
+    points that we would expect to find.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is notoriously difficult to evaluate the performance of CPD algorithms, because
+    of the lack of benchmark datasets. Only very recently (2020) Gerrit van den Burg
+    and Christopher Williams from the Alan Turing Institute and the University of
+    Edinburgh published a benchmark consisting of 37 time-series from sources such
+    as the World Bank, EuroStat, U.S. Census Bureau, GapMinder, and Wikipedia. Their
+    benchmark is available on GitHub, and they mention change point annotations for
+    datasets centered around the financial crisis of 2007-08, legislation on seat
+    belts in the U.K., the Montreal Protocol regulating chlorofluorocarbon emissions,
+    or the regulation of automated phone calls in the U.S.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the same paper ("*An Evaluation of Change Point Detection Algorithm*"), the
+    authors evaluated a whole range of methods for CPD. They note that their "zero"
+    baseline method, which assumes no change points all, outperforms many of the other
+    methods, according to F1-measure and a cluster overlap measure based on the Jaccard
+    index. This is because of the small proportion of change points in the dataset,
+    and the high number of false positives the methods return. They concluded that
+    binary segmentation and Bayesian online CPD are among the best methods across
+    the time-series.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Binary segmentation ("*On Tests for Detecting Change in Mean*" by Ashish Sen
+    and Muni S. Srivastava, 1975) falls into the category of window-based CPD. Binary
+    segmentation is a greedy algorithm that minimizes the sum of costs the most as
+    defined like this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/B17577_06_013.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '![](img/B17577_06_014.png) is the found change point and *c()* is a cost function
+    similar to LAD, which we saw earlier in this section. The general idea is that
+    when two subsequences are highly dissimilar, this indicates a change point.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Binary segmentation is sequential in the sense that the change point is detected
+    first on the complete time-series, then again on the two sub-sequences before
+    and after the change point. This explains its low complexity of ![](img/B17577_06_015.png),
+    where T is the length of the time-series. This computational cost makes it scalable
+    to larger datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This table presents an overview of methods for CPD:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Library | Implementations | Maintainer |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Greykite | CPD via adaptive lasso | LinkedIn |'
+  prefs: []
+  type: TYPE_TB
+- en: '| ruptures | Offline CPD: binary segmentation, dynamic programming, Pelt, window-based
+    | Charles Truong |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Bayesian Changepoint Detection | Bayesian CPD | Johannes Kulick |'
+  prefs: []
+  type: TYPE_TB
+- en: '| banpei | Singular spectrum transformation | Hirofumi Tsuruta |'
+  prefs: []
+  type: TYPE_TB
+- en: '| changepy | Pelt algorithm | Rui Gil |'
+  prefs: []
+  type: TYPE_TB
+- en: '| onlineRPCA | Online Moving Window Robust Principal Component Analysis | Wei
+    Xiao |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Figure 6.7: CPD methods in Python'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've omitted Facebook's Prophet library since it's not a dedicated CPD package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The chart below illustrates the popularity of CPD methods over time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![change_point_detection-star_history.png](img/B17577_06_06.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.8: Star history of CPD methods'
+  prefs: []
+  type: TYPE_NORMAL
+- en: LinkedIn's Greykite has been seeing a meteoric rise in GitHub stars since its
+    release. Also ruptures has seen a huge increase in popularity.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clustering
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Cluster analysis or clustering is the process of finding meaningful groups (clusters)
+    of points or objects in a dataset based on their similarity. As the result of
+    this unsupervised data mining technique, we want points in each cluster to be
+    similar to each other, while being different to points in other clusters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Clustering of time-series is challenging because each data point is a period
+    of time (an ordered sequence). It has found application in diverse areas to discover
+    patterns that empower time-series analysis, extracting insights from complex datasets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We are not going to get into details on time-series clustering, but the following
+    table gives an overview of Python libraries for time-series clustering:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Library | Implementations | Maintainer | Stars |'
+  prefs: []
+  type: TYPE_TB
+- en: '| tslearn | Time-Series K-Means, K-Shape clustering, KernelKMeans | Romain
+    Tavenard | 1.7k |'
+  prefs: []
+  type: TYPE_TB
+- en: '| river | DBStream, Time-Series K-Means, CluStream, DenStream, STREAMKMeans
+    | Albert Bifet and others | 1.7k |'
+  prefs: []
+  type: TYPE_TB
+- en: 'Figure 6.9: Clustering methods for time-series in Python'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'You can see the GitHub stars for the top implementation over history here:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![clustering-star_history.png](img/B17577_06_07.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.10: Star history of tslearn and river'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Both libraries are going strong. We'll revisit river in *Chapter 8*, *Online
+    Learning for Time-Series*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Python practice
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Let's do first an example of anomaly detection, then another for CPD. Let's
+    first look at the needed libraries in the next section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Requirements
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'In this chapter, we''ll use several libraries, which we can quickly install
+    from the terminal (or similarly from the anaconda navigator):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: We'll execute the commands from the Python (or IPython) terminal, but equally
+    we could execute them from a Jupyter notebook (or a different environment).
+  prefs: []
+  type: TYPE_NORMAL
+- en: We should be ready now to get into the woods with implementing unsupervised
+    time-series algorithms in Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Anomaly detection
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'alibi-detect comes with several benchmark datasets for time-series anomaly
+    detection:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: fetch_ecg—ECG dataset from the BIDMC Congestive Heart Failure Database
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: fetch_nab—Numenta Anomaly Benchmark
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: fetch_kdd—KDD Cup '99 dataset of computer network intrusions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The last of these is loaded through scikit-learn.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s load the time-series of computer network intrusions (KDD99):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: '`intrusions` is a dictionary, where the `data` key returns a matrix of 494021x18\.
+    The 18 dimensions of the time-series are the continuous features of the dataset,
+    mostly error rates and counts:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: Another key, `target` contains the annotations of anomalies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Since we have the annotations ready we could train a classifier, however, we'll
+    stick to unsupervised methods. Further, since the Spectral Method that we'll use
+    is for univariate data and we'll only take a single dimension out of our multivariate
+    dataset, we'll completely ignore the annotations.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here''s a quick plot of our time-series (we''ll choose – arbitrarily – the
+    first dimension of our dataset):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This is the plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![intrusions_dim1.png](img/B17577_06_08.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.11: Time-series chart'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We''ll load and run the SpectralResidual model that implements the method proposed
+    by Microsoft:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can then get the anomaly scores for each point in our time-series:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Let's plot the scores imposed on top of our time-series!
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We are using a dual y-axis for plotting the scores and the data within the
+    same plot. Here it is:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![intrusions_scores.png](img/B17577_06_09.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.12: Time-series with anomalies'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some points are not recognized as outliers since the periodic nature of the
+    signal is removed by the Fourier filter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Change point detection
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: 'We''ll first create a synthetic multivariate time-series with the ruptures
+    library. We''ll set the number of dimensions to 3 and the length of the time-series
+    to 500, and our time-series will have 3 change points and a Gaussian noise of
+    standard deviation 5.0 will be over imposed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: Signal is a NumPy array of 500x3\. `bkps` is the array of the change points
+    (123, 251, and 378).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can plot this time-series with a utility function that highlights the subsections
+    separated by changepoints:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here''s the plot of our time-series with three change points:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![ruptures_time_series.png](img/B17577_06_10.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.13: Time-series with change points'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can apply Binary Segmentation to this time-series. ruptures follows the
+    scikit-learn conventions, so if you have used scikit-learn before, the usage should
+    be very intuitive:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: We have several options for the Binary Segmentation constraint – we have the
+    choice between `l1`, `l2`, `rbf`, `linear`, `normal`, and `ar`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can plot the predictions of the Binary Segmentation with another utility
+    function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here''s the plot of our change point predictions from the Binary Segmentation
+    model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![rupture_bs_predictions.png](img/B17577_06_11.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Figure 6.14: Time-series with detected change points (Binary Segmentation)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Let's summarize some of the information in this chapter!
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'In this chapter, we have concentrated on two aspects of unsupervised methods
+    for time-series:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Anomaly detection
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Change point detection
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The essence of anomaly detection (also: outlier detection) is to identify sequences
+    that are notably different from the rest of the series. We''ve investigated different
+    anomaly detection methods, and how several major companies are dealing with it
+    at scale.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: When working with time-series, it's important to be aware of changes in the
+    data over time that makes models useless (model staleness). This is called change
+    point detection and drift detection.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We've looked at change point detection in this chapter. In *Chapter 8*, *Online
+    Learning for Time-Series*, we'll look at drift detection in more detail.
+  prefs: []
+  type: TYPE_NORMAL

@@ -1,0 +1,820 @@
+- en: Building Content-Based Recommenders
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we built an IMDB Top 250 clone (a type of simple recommender)
+    and a knowledge-based recommender that suggested movies based on timeline, genre,
+    and duration. However, these systems were extremely primitive. The simple recommender
+    did not take into consideration an individual user's preferences. The knowledge-based recommender
+    did take account of the user's preference for genres, timelines, and duration,
+    but the model and its recommendations still remained very generic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Imagine that Alice likes the movies *The Dark Knight, **Iron Man*,and *Man of
+    Steel. *It is pretty evident that Alice has a taste for superhero movies. However,
+    our models from the previous chapter would not be able to capture this detail.
+    The best it could do is suggest *action *movies (by making Alice input *action *as
+    the preferred genre), which is a superset of superhero movies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is also possible that two movies have the same genre, timeline, and duration
+    characteristics, but differ hugely in their audience. Consider *The* *Hangover *and *Forgetting
+    Sarah Marshall, *for example. Both these movies were released in the first decade
+    of the 21st century, both lasted around two hours, and both were comedies. However,
+    the kind of audience that enjoyed these movies was very different.
+  prefs: []
+  type: TYPE_NORMAL
+- en: An obvious fix to this problem is to ask the user for more metadata as input.
+    For instance, if we introduced a *sub-genre *input, the user would be able to
+    input values such as *superhero, black comedy,* and *romantic comedy, *and obtain
+    more appropriate results, but this solution suffers heavily from the perspective
+    of usability.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first problem is that we do not possess data on *sub-genres.* Secondly,
+    even if we did, our users are extremely unlikely to possess knowledge of their
+    favorite movies' metadata. Finally, even if they did, they would certainly not
+    have the patience to input it into a long form. Instead, what they would be more
+    willing to do is tell you the movies they like/dislike and expect recommendations
+    that match their tastes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As we discussed in the first chapter, this is exactly what sites like Netflix
+    do. When you sign up on Netflix for the first time, it doesn't have any information
+    about your tastes for it to build a profile, leverage the power of its community,
+    and give you recommendations with (a concept we'll explore in later chapters).
+    Instead, what it does is ask you for a few movies you like and show you results
+    that are most similar to those movies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we are going to build two types of content-based recommender:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Plot description-based recommender: **This model compares the descriptions
+    and taglines of different movies, and provides recommendations that have the most
+    similar plot descriptions.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Metadata-based recommender: **This model takes a host of features, such as
+    genres, keywords, cast, and crew, into consideration and provides recommendations
+    that are the most similar with respect to the aforementioned features.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Technical requirements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: You will be required to have Python installed on a system. Finally, to use the
+    Git repository of this book, the user needs to install Git.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code files of this chapter can be found on GitHub:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[https://github.com/PacktPublishing/Hands-On-Recommendation-Systems-with-Python](https://github.com/PacktPublishing/Hands-On-Recommendation-Systems-with-Python)[.](https://github.com/PacktPublishing/Hands-On-Recommendation-Systems-with-Python)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Check out the following video to see the code in action:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[http://bit.ly/2LOcac2](http://bit.ly/2LOcac2)[.](http://bit.ly/2LOcac2)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Exporting the clean DataFrame
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the previous chapter, we performed a series of data wrangling and cleaning
+    processes on our metadata in order to convert it into a form that was more usable.
+    To avoid having to perform these steps again, let's save this cleaned DataFrame
+    into a CSV file. As always, doing this with pandas happens to be extremely easy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In the knowledge recommendernotebook from Chapter 4*, *enter the following
+    code in the last cell:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: Your `data`folder should now contain a new file, `metadata_clean.csv`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create a new folder, `Chapter 4`*, *and open a new Jupyter Notebook
+    within this folder. Let''s now import our new file into this Notebook:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: The cell should output a DataFrame that is already clean and in the desired
+    form.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Document vectors
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Essentially, the models we are building compute the pairwise similarity between
+    bodies of text. But how do we numerically quantify the similarity between two
+    bodies of text?
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To put it another way, consider three movies: A, B, and C. How can we mathematically
+    prove that the plot of A is more similar to the plot of B than to that of C (or
+    vice versa)?'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The first step toward answering these questions is to represent the bodies of
+    text (henceforth referred to as documents)as mathematical quantities. This is
+    done by representing these documents as vectors*. *In other words, every document
+    is depicted as a series of *n *numbers, where each number represents a dimension
+    and *n *is the size of the vocabulary of all the documents put together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But what are the values of these vectors? The answer to that question depends
+    on the *vectorizer *we are using to convert our documents into vectors. The two
+    most popular vectorizers are CountVectorizer and TF-IDFVectorizer*.*
+  prefs: []
+  type: TYPE_NORMAL
+- en: CountVectorizer
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'CountVectorizer is the simplest type of vectorizer and is best explained with
+    the help of an example. Imagine that we have three documents, A, B, and C, which
+    are as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**A**: The sun is a star.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**B**: My love is like a red, red rose'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**C**: Mary had a little lamb'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: We now have to convert these documents into their vector forms using CountVectorizer.
+    The first step is to compute the size of the vocabulary. The vocabulary is the
+    number of unique words present across all documents. Therefore, the vocabulary
+    for this set of three documents is as follows: the, sun, is, a, star, my, love,
+    like, red, rose, mary, had, little, lamb. Consequently, the size of the vocabulary
+    is 14.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It is common practice to not include extremely common words such as a, the,
+    is, had, my, and so on (also known as stop words) in the vocabulary. Therefore,
+    eliminating the stop words, our vocabulary, *V,* is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**V**: like, little, lamb, love, mary, red, rose, sun, star'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The size of our vocabulary is now nine. Therefore, our documents will be represented
+    as nine-dimensional vectors, and each dimension here will represent the number
+    of times a particular word occurs in a document. In other words, the first dimension
+    will represent the number of times likeoccurs, the second will represent the number
+    of times little occurs, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Therefore, using the CountVectorizer approach, A, B, and C will now be represented
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**A**: (0, 0, 0, 0, 0, 0, 0, 1, 1)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**B**: (1, 0, 0, 1, 0, 2, 1, 0, 0)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**C**: (0, 1, 1, 0, 1, 0, 0, 0, 0)'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: TF-IDFVectorizer
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Not all words in a document carry equal weight. We already observed this when
+    we eliminated the stop words from our vocabulary altogether. But the words that
+    were in the vocabulary were all given equal weighting.
+  prefs: []
+  type: TYPE_NORMAL
+- en: But should this always be the case?
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, consider a corpus of documents on dogs. Now, it is obvious that
+    all these documents will frequently contain the word dog. Therefore, the appearance
+    of the word *dog *isn't as important as another word that only appears in a few
+    documents.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**TF-IDF****Vectorizer** (**Term Frequency-Inverse Document Frequency**)takes
+    the aforementioned point into consideration and assigns weights to each word according
+    to the following formula. For every word *i *in document *j*, the following applies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/3d0955be-dfd1-488a-9288-d0a0c83922e3.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'In this formula, the following is true:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '*w*[*i, j* ]is the weight of word *i *in document *j*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*df[i] *is the number of documents that contain the term *i*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '*N *is the total number of documents'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'We won''t go too much into the formula and the associated calculations. Just
+    keep in mind that the weight of a word in a document is greater if it occurs more
+    frequently in that document and is present in fewer documents. The weight *w*[*i,j* ]takes
+    values between `0` and `1`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/b02a313f-7888-4ddd-8398-411cfa8e712f.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We will be using TF-IDFVectorizer because some words (pictured in the preceding
+    word cloud) occur much more frequently in plot descriptions than others. It is
+    therefore a good idea to assign weights to each word in a document according to
+    the TF-IDF formula.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Another reason to use TF-IDF is that it speeds up the calculation of the cosine
+    similarity score between a pair of documents. We will discuss this point in greater
+    detail when we implement this in code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The cosine similarity score
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will discuss similarity scores in detail in [Chapter 5](cde5090f-2e41-4e6f-ab11-f5179f1ee2a6.xhtml),
+    *Getting Started with Data Mining Techniques*. Presently, we will make use of
+    the *cosine similarity *metric to build our models. The cosine score is extremely
+    robust and easy to calculate (especially when used in conjunction with TF-IDFVectorizer).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The cosine similarity score between two documents, *x *and *y, *is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/848e2bba-80ee-4352-94ed-ddbc3997b56a.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The cosine score can take any value between -1 and 1\. The higher the cosine
+    score, the more similar the documents are to each other. We now have a good theoretical
+    base to proceed to build the content-based recommenders using Python.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Plot description-based recommender
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Our plot description-based recommender will take in a movie title as an argument
+    and output a list of movies that are most similar based on their plots. These
+    are the steps we are going to perform in building this model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Obtain the data required to build the model
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Create TF-IDF vectors for the plot description (or overview) of every movie
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Compute the pairwise cosine similarity score of every movie
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Write the recommender function that takes in a movie title as an argument and
+    outputs movies most similar to it based on the plot
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Preparing the data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In its present form, the DataFrame, although clean, does not contain the features
+    that are required to build the plot description-based recommender. Fortunately,
+    these requisite features are available in the original metadata file.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'All we have to do is import them and add them to our DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: The DataFrame should now contain two new features: `overview` and `id`.We will
+    use `overview`in building this model and `id`for building the next.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `overview`feature consists of strings and, ideally, we should clean them
+    up by removing all punctuation and converting all the words to lowercase. However,
+    as we will see shortly, all this will be done for us automatically by `scikit-learn`*, *the
+    library we're going to use heavily in building the models in this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating the TF-IDF matrix
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The next step is to create a DataFrame where each row represents the TF-IDF
+    vector of the `overview` feature of the corresponding movie in our main DataFrame.
+    To do this, we will use the `scikit-learn`library, which gives us access to a
+    TfidfVectorizer object to perform this process effortlessly:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: We see that the vectorizer has created a 75,827-dimensional vector for the overview
+    of every movie.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Computing the cosine similarity score
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The next step is to calculate the pairwise cosine similarity score of every
+    movie. In other words, we are going to create a 45,466 × 45,466 matrix, where
+    the cell in the *i^(th )*row and *j^(th) *column represents the similarity score
+    between movies *i *and *j. *We can easily see that this matrix is symmetric in
+    nature and every element in the diagonal is 1, since it is the similarity score
+    of the movie with itself.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Like TF-IDFVectorizer, `scikit-learn`also has functionality for computing the
+    aforementioned similarity matrix. Calculating the cosine similarity is, however,
+    a computationally expensive process. Fortunately, since our movie plots are represented
+    as TF-IDF vectors, their magnitude is always 1\. Hence, we do not need to calculate
+    the denominator in the cosine similarity formula as it will always be 1\. Our
+    work is now reduced to computing the much simpler and computationally cheaper
+    dot product (a functionality that is also provided by `scikit-learn`):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: Although we're computing the cheaper dot product, the process will still take
+    a few minutes to complete. With the similarity scores of every movie with every
+    other movie, we are now in a very good position to write our final recommender
+    function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building the recommender function
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The final step is to create our recommender function. However, before we do
+    that, let''s create a reverse mapping of movie titles and their respective indices.
+    In other words, let''s create a pandas series with the index as the movie title
+    and the value as the corresponding index in the main DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will perform the following steps in building the recommender function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Declare the title of the movie as an argument.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Obtain the index of the movie from the `indices`reverse mapping.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Get the list of cosine similarity scores for that particular movie with all
+    movies using `cosine_sim`. Convert this into a list of tuples where the first
+    element is the position and the second is the similarity score.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Sort this list of tuples on the basis of the cosine similarity scores.
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: Get the top 10 elements of this list. Ignore the first element as it refers
+    to the similarity score with itself (the movie most similar to a particular movie
+    is obviously the movie itself).
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'Return the titles corresponding to the indices of the top 10 elements, excluding
+    the first:'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: Congratulations! You've built your very first content-based recommender. Now
+    it is time to see our recommender in action! Let's ask it for recommendations
+    of movies similar to `The Lion King`*:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![](img/b4947e84-7420-41ae-be55-37bfda306563.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We see that our recommender has suggested all of *The Lion King's* sequels in
+    its top-10 list. We also notice that most of the movies in the list have to do
+    with lions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It goes without saying that a person who loves *The Lion King* is very likely
+    to have a thing for Disney movies. They may also prefer to watch animated movies.
+    Unfortunately, our plot description recommender isn't able to capture all this
+    information.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Therefore, in the next section, we will build a recommender that uses more advanced
+    metadata, such as genres, cast, crew, and keywords (or sub-genres). This recommender
+    will be able to do a much better job of identifying an individual's taste for
+    a particular director, actor, sub-genre, and so on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Metadata-based recommender
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We will largely follow the same steps as the plot description-based recommender
+    to build our metadata-based model. The main difference, of course, is in the type
+    of data we use to build the model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Preparing the data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'To build this model, we will be using the following metdata:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The genre of the movie.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The director of the movie. This person is part of the crew.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The movie's three major stars. They are part of the cast.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Sub-genres or keywords.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: With the exception of genres, our DataFrames (both original and cleaned) do
+    not contain the data that we require. Therefore, for this exercise, we will need
+    to download two additional files: `credits.csv`*, *which contains information
+    on the cast and crew of the movies, and `keywords.csv`*, *which contains information
+    on the sub-genres.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can download the necessary files from the following URL: [https://www.kaggle.com/rounakbanik/the-movies-dataset/data](https://www.kaggle.com/rounakbanik/the-movies-dataset/data).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Place both files in your `data`folder. We need to perform a good amount of wrangling
+    before the data is converted into a form that is usable. Let's begin!
+  prefs: []
+  type: TYPE_NORMAL
+- en: The keywords and credits datasets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Let''s start by loading our new data into the existing Jupyter Notebook:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![](img/16fbcd9d-f350-4369-ace4-7cfb2161c48e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![](img/095b3e0a-e471-4a7c-b5d6-d5704da38a9e.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: We can see that the cast, crew, and the keywords are in the familiar `list of
+    dictionaries`form. Just like `genres`*, *we have to reduce them to a string or
+    a list of strings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Before we do this, however, we will jointhe three DataFrames so that all our
+    features are in a single DataFrame. Joining pandas DataFrames is identical to
+    joining tables in SQL. The key we're going to use to join the DataFrames is the `id`feature.
+    However, in order to use this, we first need to explicitly convert is listed as
+    an ID. This is clearly bad data. Therefore, we should fin
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'into an integer. We already know how to do this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Running the preceding code results in a `ValueError`. On closer inspection,
+    we see that *1997-08-20* is listed as an ID. This is clearly bad data. Therefore,
+    we should find all the rows with bad IDs and remove them in order for the code
+    execution to be successful:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We are now in a good position to convert the IDs of all three DataFrames into
+    integers and merge them into a single DataFrame:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![](img/ce2ccf31-5289-4d31-91e7-d9404323db07.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Wrangling keywords, cast, and crew
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'Now that we have all the desired features in a single DataFrame, let''s  convert
+    them into a form that is more usable. More specifically, these are the transformations
+    we will be looking to perform:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Convert `keywords`into a list of strings where each string is a keyword (similar
+    to genres). We will include only the top three keywords. Therefore, this list
+    can have a maximum of three elements.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Convert `cast`into a list of strings where each string is a star. Like `keywords`*,*
+    we will only include the top three stars in our cast.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Convert `crew`into `director`*. *In other words, we will extract only the director
+    of the movie and ignore all other crew members.
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The first step is to convert these stringified objects into native Python objects:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, let''s extract the director from our `crew` list. To do this, we will
+    first examine the structure of the dictionary in the `crew`list:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We see that this dictionary consists of `job`and `name`keys. Since we''re only
+    interested in the director, we will loop through all the crew members in a particular
+    list and extract the `name`when the `job`is `Director`. Let''s write a function
+    that does this:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now that we have the `get_director`function, we can define the new `director`feature:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Both `keywords`and `cast`are dictionary lists as well. And, in both cases,
+    we need to extract the top three `name` attributes of each list. Therefore, we
+    can write a single function to wrangle both these features. Also, just like `keywords`and `cast`*, *we
+    will only consider the top three genres for every movie:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We will use this function to wrangle our `cast`and `keywords`features. We will
+    also only consider the first three `genres`listed:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s now take a look at a sample of our wrangled data:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![](img/2e13c055-03c2-4dfe-a215-c10fe68ce6a6.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In the subsequent steps, we are going to use a vectorizer to build document
+    vectors. If two actors had the same first name (say, Ryan Reynolds and Ryan Gosling),
+    the vectorizer will treat both Ryans as the same, although they are clearly different
+    entities. This will impact the quality of the recommendations we receive. If a
+    person likes Ryan Reynolds' movies, it doesn't imply that they like movies by
+    all Ryans.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Therefore, the last step is to strip the spaces between keywords, and actor
+    and director names, and convert them all into lowercase. Therefore, the two Ryans
+    in the preceding example will become *ryangosling* and *ryanreynolds*, and our
+    vectorizer will now be able to distinguish between them:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: Creating the metadata soup
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the plot description-based recommender, we worked with a single *overview *feature,
+    which was a body of text. Therefore, we were able to apply our vectorizer directly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'However, this is not the case with our metadata-based recommender. We have
+    four features to work with, of which three are lists and one is a string. What
+    we need to do is create a `soup`that contains the actors, director, keywords,
+    and genres. This way, we can feed this soup into our vectorizer and perform similar
+    follow-up steps to before:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'With this function in hand, we create the `soup`feature:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Let''s now take a look at one of the `soup`values. It should be a string containing
+    words that represent genres, cast, and keywords:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: With the `soup`created, we are now in a good position to create our document
+    vectors, compute similarity scores, and build the metadata-based recommender function.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Generating the recommendations
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: The next steps are almost identical to the corresponding steps from the previous
+    section.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Instead of using TF-IDFVectorizer, we will be using CountVectorizer. This is
+    because using TF-IDFVectorizer will accord less weight to actors and directors
+    who have acted and directed in a relatively larger number of movies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'This is not desirable, as we do not want to penalize artists for directing
+    or appearing in more movies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Unfortunately, using CountVectorizer means that we are forced to use the more
+    computationally expensive `cosine_similarity`function to compute our scores:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since we dropped a few movies with bad indices, we need to construct our reverse
+    mapping again. Let''s do that as the next step:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: With the new reverse mapping constructed and the similarity scores computed,
+    we can reuse the `content_recommender`function defined in the previous section
+    by passing in `cosine_sim2`as an argument. Let's now try out our new model by
+    asking recommendations for the same movie, `The Lion King`*:*
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![](img/5097b401-71d0-4e11-86f2-cd9e5613cd87.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: The recommendations given in this case are vastly different to the ones that
+    our plot description-based recommender gave. We see that it has been able to capture
+    more information than just lions. Most of the movies in the list are animated
+    and feature anthropomorphic characters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Personally, I found the *Pokemon: Arceus and the Jewel of Life *recommendation
+    especially interesting. Both this movie and *The Lion King* feature cartoon anthropomorphic
+    characters who return after a few years to exact revenge on those who had wronged
+    them.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Suggestions for improvements
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'The content-based recommenders we''ve built in this chapter are, of course,
+    nowhere near the powerful models used in the industry. There is still plenty of
+    scope for improvement. In this section, I will suggest a few ideas for upgrading
+    the recommenders that you''ve already built:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Experiment with the number of keywords, genres, and cast**:In the model that
+    we built, we considered at most three keywords, genres, and actors for our movies.
+    This was, however, an arbitrary decision. It is a good idea to experiment with
+    the number of these features in order to be considered for the metadata soup.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Come up with more well-defined sub-genres**:Our model only considered the
+    first three keywords that appeared in the keywords list. There was, however, no
+    justification for doing so. In fact, it is entirely possible that certain keywords
+    appeared in only one movie (thus rendering them useless). A much more potent technique
+    would be to define, as with the genres, a definite number of sub-genres and assign
+    only these sub-genres to the movies.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Give more weight to the director**:Our model gave as much importance to the
+    director as to the actors. However, you can argue that the character of a movie
+    is determined more by the former. We can give more emphasis to the director by
+    mentioning this individual multiple times in our soup instead of just once. Experiment
+    with the number of repetitions of the director in the soup.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Consider other members of the crew**:The director isn''t the only person
+    that gives the movie its character. You can also consider adding other crew members,
+    such as producers and screenwriters, to your soup.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Experiment with other metadata**:We only considered genres, keywords, and
+    credits while building our metadata model. However, our dataset contains plenty
+    of other features, such as production companies, countries, and languages. You
+    may consider these data points, too, as they may be able to capture important
+    information (such as if two movies are produced by *Pixar).*'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Introduce a popularity filter**:It is entirely possible that two movies have
+    the same genres and sub-genres, but differ wildly in quality and popularity. In
+    such cases, you may want to introduce a popularity filter that considers the *n *most
+    similar movies, computes a weighted rating, and displays the top five results.
+    You have already learned how to do this in the previous chapter.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: We have come a long way in this chapter. We first learned about document vectors
+    and gained a brief introduction to the cosine similarity score. Next, we built
+    a recommender that identified movies with similar plot descriptions. We then proceeded
+    to build a more advanced model that leveraged the power of other metadata, such
+    as genres, keywords, and credits. Finally, we discussed a few methods by which
+    we could improve our existing system.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'With this, we formally come to an end of our tour of content-based recommendation
+    system. In the next chapters, we will cover what is arguably the most popular
+    recommendation model in the industry today: collaborative filtering.'
+  prefs: []
+  type: TYPE_NORMAL

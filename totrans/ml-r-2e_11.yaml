@@ -1,0 +1,1280 @@
+- en: Chapter 11. Improving Model Performance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When a sports team falls short of meeting its goal—whether the goal is to obtain
+    an Olympic gold medal, a league championship, or a world record time—it must search
+    for possible improvements. Imagine that you're the team's coach. How would you
+    spend your practice sessions? Perhaps you'd direct the athletes to train harder
+    or train differently in order to maximize every bit of their potential. Or, you
+    might emphasize better teamwork, utilizing the athletes' strengths and weaknesses
+    more smartly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Now imagine that you're training a world champion machine learning algorithm.
+    Perhaps you hope to compete in data mining competitions such as those posted on
+    Kaggle ([http://www.kaggle.com/competitions](http://www.kaggle.com/competitions)).
+    Maybe you simply need to improve business results. Where do you begin? Although
+    the context differs, the strategies one uses to improve sports team performance
+    can also be used to improve the performance of statistical learners.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'As the coach, it is your job to find the combination of training techniques
+    and teamwork skills that allow you to meet your performance goals. This chapter
+    builds upon the material covered throughout this book to introduce a set of techniques
+    for improving the predictive performance of machine learners. You will learn:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How to automate model performance tuning by systematically searching for the
+    optimal set of training conditions
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: The methods for combining models into groups that use teamwork to tackle tough
+    learning tasks
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How to apply a variant of decision trees, which has quickly become popular due
+    to its impressive performance
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: None of these methods will be successful for every problem. Yet, looking at
+    the winning entries to machine learning competitions, you'll likely find that
+    at least one of them has been employed. To be competitive, you too will need to
+    add these skills to your repertoire.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tuning stock models for better performance
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: Some learning problems are well-suited to the stock models presented in the
+    previous chapters. In such cases, it may not be necessary to spend much time iterating
+    and refining the model; it may perform well enough as it is. On the other hand,
+    some problems are inherently more difficult. The underlying concepts to be learned
+    may be extremely complex, requiring an understanding of many subtle relationships,
+    or it may be affected by random variation, making it difficult to define the signal
+    within the noise.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Developing models that perform extremely well on difficult problems is every
+    bit an art as it is a science. Sometimes a bit of intuition is helpful when trying
+    to identify areas where performance can be improved. In other cases, finding improvements
+    will require a brute-force, trial and error approach. Of course, the process of
+    searching numerous possible improvements can be aided by the use of automated
+    programs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In [Chapter 5](ch05.html "Chapter 5. Divide and Conquer – Classification Using
+    Decision Trees and Rules"), *Divide and Conquer – Classification Using Decision
+    Trees and Rules*, we attempted a difficult problem: identifying loans that were
+    likely to enter into default. Although we were able to use performance tuning
+    methods to obtain a respectable classification accuracy of about 82 percent, upon
+    a more careful examination in [Chapter 10](ch10.html "Chapter 10. Evaluating Model
+    Performance"), *Evaluating Model Performance*, we realized that the high accuracy
+    was a bit misleading. In spite of the reasonable accuracy, the kappa statistic
+    was only about 0.28, which suggested that the model was actually performing somewhat
+    poorly. In this section, we''ll revisit the credit scoring model to see whether
+    we can improve the results.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To follow along with the examples, download the `credit.csv` file from the Packt
+    Publishing website and save it to your R working directory. Load the file into
+    R using the command `credit <- read.csv("credit.csv")`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You will recall that we first used a stock C5.0 decision tree to build the classifier
+    for the credit data. We then attempted to improve its performance by adjusting
+    the `trials` parameter to increase the number of boosting iterations. By increasing
+    the number of iterations from the default of 1 up to the value of 10, we were
+    able to increase the model's accuracy. This process of adjusting the model options
+    to identify the best fit is called **parameter** **tuning**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Parameter tuning is not limited to decision trees. For instance, we tuned k-NN
+    models when we searched for the best value of *k*. We also tuned neural networks
+    and support vector machines as we adjusted the number of nodes or hidden layers,
+    or chose different kernel functions. Most machine learning algorithms allow the
+    adjustment of at least one parameter, and the most sophisticated models offer
+    a large number of ways to tweak the model fit. Although this allows the model
+    to be tailored closely to the learning task, the complexity of all the possible
+    options can be daunting. A more systematic approach is warranted.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using caret for automated parameter tuning
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Rather than choosing arbitrary values for each of the model's parameters—a task
+    that is not only tedious, but also somewhat unscientific—it is better to conduct
+    a search through many possible parameter values to find the best combination.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `caret` package, which we used extensively in [Chapter 10](ch10.html "Chapter 10. Evaluating
+    Model Performance"), *Evaluating Model Performance*, provides tools to assist
+    with automated parameter tuning. The core functionality is provided by a `train()`
+    function that serves as a standardized interface for over 175 different machine
+    learning models for both classification and regression tasks. By using this function,
+    it is possible to automate the search for optimal models using a choice of evaluation
+    methods and metrics.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Do not feel overwhelmed by the large number of models—we've already covered
+    many of them in the earlier chapters. Others are simple variants or extensions
+    of the base concepts. Given what you've learned so far, you should be confident
+    that you have the ability to understand all of the available methods.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Automated parameter tuning requires you to consider three questions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: What type of machine learning model (and specific implementation) should be
+    trained on the data?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Which model parameters can be adjusted, and how extensively should they be tuned
+    to find the optimal settings?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: What criteria should be used to evaluate the models to find the best candidate?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Answering the first question involves finding a well-suited match between the
+    machine learning task and one of the 175 models. Obviously, this requires an understanding
+    of the breadth and depth of machine learning models. It can also help to work
+    through a process of elimination. Nearly half of the models can be eliminated
+    depending on whether the task is classification or numeric prediction; others
+    can be excluded based on the format of the data or the need to avoid black box
+    models, and so on. In any case, there's also no reason you can't try several approaches
+    and compare the best results of each.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Addressing the second question is a matter largely dictated by the choice of
+    model, since each algorithm utilizes a unique set of parameters. The available
+    tuning parameters for the predictive models covered in this book are listed in
+    the following table. Keep in mind that although some models have additional options
+    not shown, only those listed in the table are supported by `caret` for automatic
+    tuning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Model | Learning Task | Method name | Parameters |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| k-Nearest Neighbors | Classification | `knn` | `k` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Naive Bayes | Classification | `nb` | `fL`, `usekernel` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Decision Trees | Classification | `C5.0` | `model`, `trials`, `winnow` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| OneR Rule Learner | Classification | `OneR` | None |'
+  prefs: []
+  type: TYPE_TB
+- en: '| RIPPER Rule Learner | Classification | `JRip` | `NumOpt` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Linear Regression | Regression | `lm` | None |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Regression Trees | Regression | `rpart` | `cp` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Model Trees | Regression | `M5` | `pruned`, `smoothed`, `rules` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Neural Networks | Dual use | `nnet` | `size`, `decay` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Support Vector Machines (Linear Kernel) | Dual use | `svmLinear` | `C` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Support Vector Machines (Radial Basis Kernel) | Dual use | `svmRadial` |
+    `C, sigma` |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Random Forests | Dual use | `rf` | `mtry` |'
+  prefs: []
+  type: TYPE_TB
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For a complete list of the models and corresponding tuning parameters covered
+    by `caret`, refer to the table provided by package author Max Kuhn at [http://topepo.github.io/caret/modelList.html](http://topepo.github.io/caret/modelList.html).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'If you ever forget the tuning parameters for a particular model, the `modelLookup()`
+    function can be used to find them. Simply supply the method name, as illustrated
+    here for the C5.0 model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The goal of automatic tuning is to search a set of candidate models comprising
+    a matrix, or **grid**, of parameter combinations. Because it is impractical to
+    search every conceivable combination, only a subset of possibilities is used to
+    construct the grid. By default, `caret` searches at most three values for each
+    of the *p* parameters. This means that at most *3^p* candidate models will be
+    tested. For example, by default, the automatic tuning of k-Nearest Neighbors will
+    compare *3^1 = 3* candidate models with `k=5`, `k=7`, and `k=9`. Similarly, tuning
+    a decision tree will result in a comparison of up to 27 different candidate models,
+    comprising the grid of *3^3 = 27* combinations of `model`, `trials`, and `winnow`
+    settings. In practice, however, only 12 models are actually tested. This is because
+    the `model` and `winnow` parameters can only take two values (`tree` versus `rules`
+    and `TRUE` versus `FALSE`, respectively), which makes the grid size *3 * 2 * 2
+    = 12*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Since the default search grid may not be ideal for your learning problem, `caret`
+    allows you to provide a custom search grid defined by a simple command, which
+    we will cover later.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The third and final step in automatic model tuning involves identifying the
+    best model among the candidates. This uses the methods discussed in [Chapter 10](ch10.html
+    "Chapter 10. Evaluating Model Performance"), *Evaluating Model Performance*, such
+    as the choice of resampling strategy for creating training and test datasets and
+    the use of model performance statistics to measure the predictive accuracy.
+  prefs: []
+  type: TYPE_NORMAL
+- en: All of the resampling strategies and many of the performance statistics we've
+    learned are supported by `caret`. These include statistics such as accuracy and
+    kappa (for classifiers) and R-squared or RMSE (for numeric models). Cost-sensitive
+    measures such as sensitivity, specificity, and area under the ROC curve (AUC)
+    can also be used, if desired.
+  prefs: []
+  type: TYPE_NORMAL
+- en: By default, `caret` will select the candidate model with the largest value of
+    the desired performance measure. As this practice sometimes results in the selection
+    of models that achieve marginal performance improvements via large increases in
+    model complexity, alternative model selection functions are provided.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Given the wide variety of options, it is helpful that many of the defaults are
+    reasonable. For instance, `caret` will use prediction accuracy on a bootstrap
+    sample to choose the best performer for classification models. Beginning with
+    these default values, we can then tweak the `train()` function to design a wide
+    variety of experiments.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Creating a simple tuned model
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: To illustrate the process of tuning a model, let's begin by observing what happens
+    when we attempt to tune the credit scoring model using the `caret` package's default
+    settings. From there, we will adjust the options to our liking.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The simplest way to tune a learner requires you to only specify a model type
+    via the `method` parameter. Since we used C5.0 decision trees previously with
+    the credit model, we''ll continue our work by optimizing this learner. The basic
+    `train()` command for tuning a C5.0 decision tree using the default settings is
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: First, the `set.seed()` function is used to initialize R's random number generator
+    to a set starting position. You may recall that we used this function in several
+    prior chapters. By setting the `seed` parameter (in this case to the arbitrary
+    number 300), the random numbers will follow a predefined sequence. This allows
+    simulations that use random sampling to be repeated with identical results—a very
+    helpful feature if you are sharing code or attempting to replicate a prior result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Next, we define a tree as `default ~ .` using the R formula interface. This
+    models loan default status (`yes` or `no`) using all of the other features in
+    the `credit` data frame. The parameter `method = "C5.0"` tells `caret` to use
+    the C5.0 decision tree algorithm.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After you've entered the preceding command, there may be a significant delay
+    (dependent upon your computer's capabilities) as the tuning process occurs. Even
+    though this is a fairly small dataset, a substantial amount of calculation must
+    occur. R must repeatedly generate random samples of data, build decision trees,
+    compute performance statistics, and evaluate the result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The result of the experiment is saved in an object named `m`. If you would
+    like to examine the object''s contents, the `str(m)` command will list all the
+    associated data, but this can be quite overwhelming. Instead, simply type the
+    name of the object for a condensed summary of the results. For instance, typing
+    `m` yields the following output (note that labels have been added for clarity):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Creating a simple tuned model](img/B03905_11_01.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'The labels highlight four main components in the output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**A brief description of the input dataset**: If you are familiar with your
+    data and have applied the `train()` function correctly, this information should
+    not be surprising.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**A report of the preprocessing and resampling methods applied**: Here, we
+    see that 25 bootstrap samples, each including 1,000 examples, were used to train
+    the models.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**A list of the candidate models evaluated**: In this section, we can confirm
+    that 12 different models were tested, based on the combinations of three C5.0
+    tuning parameters—`model`, `trials`, and `winnow`. The average and standard deviation
+    of the accuracy and kappa statistics for each candidate model are also shown.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: '**The choice of the best model**: As the footnote describes, the model with
+    the largest accuracy was selected. This was the model that used a decision tree
+    with 20 trials and the setting `winnow = FALSE`.'
+  prefs:
+  - PREF_OL
+  type: TYPE_NORMAL
+- en: 'After identifying the best model, the `train()` function uses its tuning parameters
+    to build a model on the full input dataset, which is stored in the `m` list object
+    as `m$finalModel`. In most cases, you will not need to work directly with the
+    `finalModel` sub-object. Instead, simply use the `predict()` function with the
+    `m` object as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting vector of predictions works as expected, allowing us to create
+    a confusion matrix that compares the predicted and actual values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: Of the 1,000 examples used for training the final model, only two were misclassified.
+    However, it is very important to note that since the model was built on both the
+    training and test data, this accuracy is optimistic and thus, should not be viewed
+    as indicative of performance on unseen data. The bootstrap estimate of 73 percent
+    (shown in the summary output) is a more realistic estimate of future performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Using the `train()` and `predict()` functions also offers a couple of benefits
+    in addition to the automatic parameter tuning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: First, any data preparation steps applied by the `train()` function will be
+    similarly applied to the data used for generating predictions. This includes transformations
+    such as centering and scaling as well as imputation of missing values. Allowing
+    `caret` to handle the data preparation will ensure that the steps that contributed
+    to the best model's performance will remain in place when the model is deployed.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Second, the `predict()` function provides a standardized interface for obtaining
+    predicted class values and class probabilities, even for model types that ordinarily
+    would require additional steps to obtain this information. The predicted classes
+    are provided by default:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To obtain the estimated probabilities for each class, use the `type = "prob"`
+    parameter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: Even in cases where the underlying model refers to the prediction probabilities
+    using a different string (for example, `"raw"` for a `naiveBayes` model), the
+    `predict()` function will translate `type = "prob"` to the appropriate string
+    behind the scenes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Customizing the tuning process
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The decision tree we created previously demonstrates the `caret` package's ability
+    to produce an optimized model with minimal intervention. The default settings
+    allow optimized models to be created easily. However, it is also possible to change
+    the default settings to something more specific to a learning task, which may
+    assist with unlocking the upper echelon of performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Each step in the model selection process can be customized. To illustrate this
+    flexibility, let's modify our work on the credit decision tree to mirror the process
+    we had used in [Chapter 10](ch10.html "Chapter 10. Evaluating Model Performance"),
+    *Evaluating Model Performance*. If you remember, we had estimated the kappa statistic
+    using 10-fold cross-validation. We'll do the same here, using kappa to optimize
+    the boosting parameter of the decision tree. Note that decision tree boosting
+    was previously covered in [Chapter 5](ch05.html "Chapter 5. Divide and Conquer
+    – Classification Using Decision Trees and Rules"), *Divide and Conquer – Classification
+    Using Decision Trees and Rules*, and will also be covered in greater detail later
+    this chapter.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The `trainControl()` function is used to create a set of configuration options
+    known as a **control object**, which guides the `train()` function. These options
+    allow for the management of model evaluation criteria such as the resampling strategy
+    and the measure used for choosing the best model. Although this function can be
+    used to modify nearly every aspect of a tuning experiment, we''ll focus on the
+    two important parameters: `method` and `selectionFunction`.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: If you're eager for more details, you can use the `?trainControl` command for
+    a list of all the parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the `trainControl()` function, the `method` parameter is used to set the
+    resampling method, such as holdout sampling or k-fold cross-validation. The following
+    table lists the possible method types as well as any additional parameters for
+    adjusting the sample size and number of iterations. Although the default options
+    for these resampling methods follow popular convention, you may choose to adjust
+    these depending upon the size of your dataset and the complexity of your model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Resampling method | Method name | Additional options and default values |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Holdout sampling | `LGOCV` | `p = 0.75` (training data proportion) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| k-fold cross-validation | `cv` | `number = 10` (number of folds) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Repeated k-fold cross-validation | `repeatedcv` | `number = 10` (number of
+    folds)`repeats = 10` (number of iterations) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Bootstrap sampling | `boot` | `number = 25` (resampling iterations) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| 0.632 bootstrap | `boot632` | `number = 25` (resampling iterations) |'
+  prefs: []
+  type: TYPE_TB
+- en: '| Leave-one-out cross-validation | `LOOCV` | None |'
+  prefs: []
+  type: TYPE_TB
+- en: The `selectionFunction` parameter is used to specify the function that will
+    choose the optimal model among the various candidates. Three such functions are
+    included. The `best` function simply chooses the candidate with the best value
+    on the specified performance measure. This is used by default. The other two functions
+    are used to choose the most parsimonious, or simplest, model that is within a
+    certain threshold of the best model's performance. The `oneSE` function chooses
+    the simplest candidate within one standard error of the best performance, and
+    `tolerance` uses the simplest candidate within a user-specified percentage.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Some subjectivity is involved with the `caret` package's ranking of models by
+    simplicity. For information on how models are ranked, see the help page for the
+    selection functions by typing `?best` at the R command prompt.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To create a control object named `ctrl` that uses 10-fold cross-validation
+    and the `oneSE` selection function, use the following command (note that `number
+    = 10` is included only for clarity; since this is the default value for `method
+    = "cv"`, it could have been omitted):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: We'll use the result of this function shortly.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the meantime, the next step in defining our experiment is to create the grid
+    of parameters to optimize. The grid must include a column named for each parameter
+    in the desired model, prefixed by a period. It must also include a row for each
+    desired combination of parameter values. Since we are using a C5.0 decision tree,
+    this means we'll need columns named `.model`, `.trials`, and `.winnow`. For other
+    machine learning models, refer to the table presented earlier in this chapter
+    or use the `modelLookup()` function to lookup the parameters as described previously.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Rather than filling this data frame cell by cell—a tedious task if there are
+    many possible combinations of parameter values—we can use the `expand.grid()`
+    function, which creates data frames from the combinations of all the values supplied.
+    For example, suppose we would like to hold constant `model = "tree"` and `winnow
+    = "FALSE"` while searching eight different values of trials. This can be created
+    as:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting grid data frame contains *1 * 8 * 1 = 8* rows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `train()` function will build a candidate model for evaluation using each
+    row's combination of model parameters.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Given this search grid and the control list created previously, we are ready
+    to run a thoroughly customized `train()` experiment. As we did earlier, we''ll
+    set the random seed to the arbitrary number `300` in order to ensure repeatable
+    results. But this time, we''ll pass our control object and tuning grid while adding
+    a parameter `metric = "Kappa"`, indicating the statistic to be used by the model
+    evaluation function—in this case, `"oneSE"`. The full command is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'This results in an object that we can view by typing its name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: '![Customizing the tuning process](img/B03905_11_02.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: Although much of the output is similar to the automatically tuned model, there
+    are a few differences of note. As 10-fold cross-validation was used, the sample
+    size to build each candidate model was reduced to 900 rather than the 1,000 used
+    in the bootstrap. As we requested, eight candidate models were tested. Additionally,
+    because `model` and `winnow` were held constant, their values are no longer shown
+    in the results; instead, they are listed as a footnote.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The best model here differs quite significantly from the prior trial. Before,
+    the best model used `trials = 20`, whereas here, it used `trials = 1`. This seemingly
+    odd finding is due to the fact that we used the `oneSE` rule rather the `best`
+    rule to select the optimal model. Even though the 35-trial model offers the best
+    raw performance according to kappa, the 1-trial model offers nearly the same performance
+    with a much simpler form. Not only are simple models more computationally efficient,
+    but they also reduce the chance of overfitting the training data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Improving model performance with meta-learning
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: As an alternative to increasing the performance of a single model, it is possible
+    to combine several models to form a powerful team. Just as the best sports teams
+    have players with complementary rather than overlapping skillsets, some of the
+    best machine learning algorithms utilize teams of complementary models. Since
+    a model brings a unique bias to a learning task, it may readily learn one subset
+    of examples, but have trouble with another. Therefore, by intelligently using
+    the talents of several diverse team members, it is possible to create a strong
+    team of multiple weak learners.
+  prefs: []
+  type: TYPE_NORMAL
+- en: This technique of combining and managing the predictions of multiple models
+    falls into a wider set of **meta-learning** methods defining techniques that involve
+    learning how to learn. This includes anything from simple algorithms that gradually
+    improve performance by iterating over design decisions—for instance, the automated
+    parameter tuning used earlier in this chapter—to highly complex algorithms that
+    use concepts borrowed from evolutionary biology and genetics for self-modifying
+    and adapting to learning tasks.
+  prefs: []
+  type: TYPE_NORMAL
+- en: For the remainder of this chapter, we'll focus on meta-learning only as it pertains
+    to modeling a relationship between the predictions of several models and the desired
+    outcome. The teamwork-based techniques covered here are quite powerful, and are
+    used quite often to build more effective classifiers.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Understanding ensembles
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Suppose you were a contestant on a television trivia show that allowed you to
+    choose a panel of five friends to assist you with answering the final question
+    for the million-dollar prize. Most people would try to stack the panel with a
+    diverse set of subject matter experts. A panel containing professors of literature,
+    science, history, and art, along with a current pop-culture expert would be a
+    safely well-rounded group. Given their breadth of knowledge, it would be unlikely
+    to find a question that stumps the group.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The meta-learning approach that utilizes a similar principle of creating a
+    varied team of experts is known as an **ensemble**. All the ensemble methods are
+    based on the idea that by combining multiple weaker learners, a stronger learner
+    is created. The various ensemble methods can be distinguished, in large part,
+    by the answers to these two questions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: How are the weak learning models chosen and/or constructed?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: How are the weak learners' predictions combined to make a single final prediction?
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'When answering these questions, it can be helpful to imagine the ensemble in
+    terms of the following process diagram; nearly all ensemble approaches follow
+    this pattern:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Understanding ensembles](img/B03905_11_03.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: First, input training data is used to build a number of models. The **allocation
+    function** dictates how much of the training data each model receives. Do they
+    each receive the full training dataset or merely a sample? Do they each receive
+    every feature or a subset?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although the ideal ensemble includes a diverse set of models, the allocation
+    function can increase diversity by artificially varying the input data to bias
+    the resulting learners, even if they are the same type. For instance, it might
+    use bootstrap sampling to construct unique training datasets or pass on a different
+    subset of features or examples to each model. On the other hand, if the ensemble
+    already includes a diverse set of algorithms—such as a neural network, a decision
+    tree, and a k-NN classifier—the allocation function might pass the data on to
+    each algorithm relatively unchanged.
+  prefs: []
+  type: TYPE_NORMAL
+- en: After the models are constructed, they can be used to generate a set of predictions,
+    which must be managed in some way. The **combination function** governs how disagreements
+    among the predictions are reconciled. For example, the ensemble might use a majority
+    vote to determine the final prediction, or it could use a more complex strategy
+    such as weighting each model's votes based on its prior performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Some ensembles even utilize another model to learn a combination function from
+    various combinations of predictions. For example, suppose that when *M1* and *M2*
+    both vote yes, the actual class value is usually no. In this case, the ensemble
+    could learn to ignore the vote of *M1* and *M2* when they agree. This process
+    of using the predictions of several models to train a final arbiter model is known
+    as **stacking**.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Understanding ensembles](img/B03905_11_04.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'One of the benefits of using ensembles is that they may allow you to spend
+    less time in pursuit of a single best model. Instead, you can train a number of
+    reasonably strong candidates and combine them. Yet, convenience isn''t the only
+    reason why ensemble-based methods continue to rack up wins in machine learning
+    competitions; ensembles also offer a number of performance advantages over single
+    models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Better generalizability to future problems**: As the opinions of several
+    learners are incorporated into a single final prediction, no single bias is able
+    to dominate. This reduces the chance of overfitting to a learning task.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**Improved performance on massive or miniscule datasets**: Many models run
+    into memory or complexity limits when an extremely large set of features or examples
+    are used, making it more efficient to train several small models than a single
+    full model. Conversely, ensembles also do well on the smallest datasets because
+    resampling methods such as bootstrapping are inherently a part of many ensemble
+    designs. Perhaps most importantly, it is often possible to train an ensemble in
+    parallel using distributed computing methods.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**The ability to synthesize data from distinct domains**: Since there is no
+    one-size-fits-all learning algorithm, the ensemble''s ability to incorporate evidence
+    from multiple types of learners is increasingly important as complex phenomena
+    rely on data drawn from diverse domains.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '**A more nuanced understanding of difficult learning tasks**: Real-world phenomena
+    are often extremely complex with many interacting intricacies. Models that divide
+    the task into smaller portions are likely to more accurately capture subtle patterns
+    that a single global model might miss.'
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: None of these benefits would be very helpful if you weren't able to easily apply
+    ensemble methods in R, and there are many packages available to do just that.
+    Let's take a look at several of the most popular ensemble methods and how they
+    can be used to improve the performance of the credit model we've been working
+    on.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Bagging
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: One of the first ensemble methods to gain widespread acceptance used a technique
+    called **bootstrap aggregating** or **bagging** for short. As described by Leo
+    Breiman in 1994, bagging generates a number of training datasets by bootstrap
+    sampling the original training data. These datasets are then used to generate
+    a set of models using a single learning algorithm. The models' predictions are
+    combined using voting (for classification) or averaging (for numeric prediction).
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For additional information on bagging, refer to Breiman L. *Bagging predictors*.
+    Machine Learning. 1996; 24:123-140.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although bagging is a relatively simple ensemble, it can perform quite well
+    as long as it is used with relatively **unstable** learners, that is, those generating
+    models that tend to change substantially when the input data changes only slightly.
+    Unstable models are essential in order to ensure the ensemble's diversity in spite
+    of only minor variations between the bootstrap training datasets. For this reason,
+    bagging is often used with decision trees, which have the tendency to vary dramatically
+    given minor changes in the input data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The `ipred` package offers a classic implementation of bagged decision trees.
+    To train the model, the `bagging()` function works similar to many of the models
+    used previously. The `nbagg` parameter is used to control the number of decision
+    trees voting in the ensemble (with a default value of `25`). Depending on the
+    difficulty of the learning task and the amount of training data, increasing this
+    number may improve the model's performance up to a limit. The downside is that
+    this comes at the expense of additional computational expense because a large
+    number of trees may take some time to train.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'After installing the `ipred` package, we can create the ensemble as follows.
+    We''ll stick to the default value of 25 decision trees:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The resulting model works as expected with the `predict()` function:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Given the preceding results, the model seems to have fit the training data
+    extremely well. To see how this translates into future performance, we can use
+    the bagged trees with 10-fold CV using the `train()` function in the `caret` package.
+    Note that the method name for the `ipred` bagged trees function is `treebag`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: The kappa statistic of 0.33 for this model suggests that the bagged tree model
+    performs at least as well as the best C5.0 decision tree we tuned earlier in this
+    chapter. This illustrates the power of ensemble methods; a set of simple learners
+    working together can outperform very sophisticated models.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To get beyond bags of decision trees, the `caret` package also provides a more
+    general `bag()` function. It includes native support for a handful of models,
+    though it can be adapted to other types with a bit of additional effort. The `bag()`
+    function uses a control object to configure the bagging process. It requires the
+    specification of three functions: one for fitting the model, one for making predictions,
+    and one for aggregating the votes.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: For example, suppose we wanted to create a bagged support vector machine model,
+    using the `ksvm()` function in the `kernlab` package we used in [Chapter 7](ch07.html
+    "Chapter 7. Black Box Methods – Neural Networks and Support Vector Machines"),
+    *Black Box Methods – Neural Networks and Support Vector Machines*. The `bag()`
+    function requires us to provide functionality for training the SVMs, making predictions,
+    and counting votes.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Rather than writing these ourselves, the `caret` package''s built-in `svmBag`
+    list object supplies three functions we can use for this purpose:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By looking at the `svmBag$fit` function, we see that it simply calls the `ksvm()`
+    function from the `kernlab` package and returns the result:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The `pred` and `aggregate` functions for `svmBag` are also similarly straightforward.
+    By studying these functions and creating your own in the same format, it is possible
+    to use bagging with any machine learning algorithm you would like.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The `caret` package also includes example objects for bags of naive Bayes models
+    (`nbBag`), decision trees (`ctreeBag`), and neural networks (`nnetBag`).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Applying the three functions in the `svmBag` list, we can create a bagging
+    control object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'By using this with the `train()` function and the training control object (`ctrl`),
+    defined earlier, we can evaluate the bagged SVM model as follows (note that the
+    `kernlab` package is required for this to work; you will need to install it if
+    you have not done so previously):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: Given that the kappa statistic is below 0.30, it seems that the bagged SVM model
+    performs worse than the bagged decision tree model. It's worth pointing out that
+    the standard deviation of the kappa statistic is fairly large compared to the
+    bagged decision tree model. This suggests that the performance varies substantially
+    among the folds in the cross-validation. Such variation may imply that the performance
+    might be improved further by upping the number of models in the ensemble.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Boosting
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Another common ensemble-based method is called **boosting** because it boosts
+    the performance of weak learners to attain the performance of stronger learners.
+    This method is based largely on the work of Robert Schapire and Yoav Freund, who
+    have published extensively on the topic.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'For additional information on boosting, refer to Schapire RE, Freund Y. *Boosting:
+    Foundations and Algorithms*. Cambridge, MA, The MIT Press; 2012.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Similar to bagging, boosting uses ensembles of models trained on resampled data
+    and a vote to determine the final prediction. There are two key distinctions.
+    First, the resampled datasets in boosting are constructed specifically to generate
+    complementary learners. Second, rather than giving each learner an equal vote,
+    boosting gives each learner's vote a weight based on its past performance. Models
+    that perform better have greater influence over the ensemble's final prediction.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Boosting will result in performance that is often quite better and certainly
+    no worse than the best of the models in the ensemble. Since the models in the
+    ensemble are built to be complementary, it is possible to increase ensemble performance
+    to an arbitrary threshold simply by adding additional classifiers to the group,
+    assuming that each classifier performs better than random chance. Given the obvious
+    utility of this finding, boosting is thought to be one of the most significant
+    discoveries in machine learning.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Although boosting can create a model that meets an arbitrarily low error rate,
+    this may not always be reasonable in practice. For one, the performance gains
+    are incrementally smaller as additional learners are added, making some thresholds
+    practically infeasible. Additionally, the pursuit of pure accuracy may result
+    in the model being overfitted to the training data and not generalizable to unseen
+    data.
+  prefs: []
+  type: TYPE_NORMAL
+- en: A boosting algorithm called **AdaBoost** or **adaptive boosting** was proposed
+    by Freund and Schapire in 1997\. The algorithm is based on the idea of generating
+    weak learners that iteratively learn a larger portion of the difficult-to-classify
+    examples by paying more attention (that is, giving more weight) to frequently
+    misclassified examples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Beginning from an unweighted dataset, the first classifier attempts to model
+    the outcome. Examples that the classifier predicted correctly will be less likely
+    to appear in the training dataset for the following classifier, and conversely,
+    the difficult-to-classify examples will appear more frequently. As additional
+    rounds of weak learners are added, they are trained on data with successively
+    more difficult examples. The process continues until the desired overall error
+    rate is reached or performance no longer improves. At that point, each classifier's
+    vote is weighted according to its accuracy on the training data on which it was
+    built.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Though boosting principles can be applied to nearly any type of model, the principles
+    are most commonly used with decision trees. We already used boosting in this way
+    in [Chapter 5](ch05.html "Chapter 5. Divide and Conquer – Classification Using
+    Decision Trees and Rules"), *Divide and Conquer – Classification Using Decision
+    Trees and Rules*, as a method to improve the performance of a C5.0 decision tree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The **AdaBoost.M1** algorithm provides another tree-based implementation of
+    AdaBoost for classification. The AdaBoost.M1 algorithm can be found in the `adabag`
+    package.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For more information about the `adabag` package, refer to Alfaro E, Gamez M,
+    Garcia N. *adabag – an R package for classification with boosting and bagging*.
+    Journal of Statistical Software. 2013; 54:1-35.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create an `AdaBoost.M1` classifier for the credit data. The general
+    syntax for this algorithm is similar to other modeling techniques:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'As usual, the `predict()` function is applied to the resulting object to make
+    predictions:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Departing from convention, rather than returning a vector of predictions, this
+    returns an object with information about the model. The predictions are stored
+    in a sub-object called `class`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'A confusion matrix can be found in the `confusion` sub-object:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: Did you notice that the AdaBoost model made no mistakes? Before you get your
+    hopes up, remember that the preceding confusion matrix is based on the model's
+    performance on the training data. Since boosting allows the error rate to be reduced
+    to an arbitrarily low level, the learner simply continued until it made no more
+    errors. This likely resulted in overfitting on the training dataset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'For a more accurate assessment of performance on unseen data, we need to use
+    another evaluation method. The `adabag` package provides a simple function to
+    use 10-fold CV:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Depending on your computer''s capabilities, this may take some time to run,
+    during which it will log each iteration to screen. After it completes, we can
+    view a more reasonable confusion matrix:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: We can find the kappa statistic using the `vcd` package as described in [Chapter
+    10](ch10.html "Chapter 10. Evaluating Model Performance"), *Evaluating Model Performance*.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: With a kappa of about 0.36, this is our best-performing credit scoring model
+    yet. Let's see how it compares to one last ensemble method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: The AdaBoost.M1 algorithm can be tuned in `caret` by specifying `method = "AdaBoost.M1"`.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Random forests
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Another ensemble-based method called **random forests** (or **decision** **tree
+    forests**) focuses only on ensembles of decision trees. This method was championed
+    by Leo Breiman and Adele Cutler, and combines the base principles of bagging with
+    random feature selection to add additional diversity to the decision tree models.
+    After the ensemble of trees (the forest) is generated, the model uses a vote to
+    combine the trees' predictions.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: For more detail on how random forests are constructed, refer to Breiman L. *Random
+    Forests*. Machine Learning. 2001; 45:5-32.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Random forests combine versatility and power into a single machine learning
+    approach. As the ensemble uses only a small, random portion of the full feature
+    set, random forests can handle extremely large datasets, where the so-called "curse
+    of dimensionality" might cause other models to fail. At the same time, its error
+    rates for most learning tasks are on par with nearly any other method.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: Although the term "Random Forests" is trademarked by Breiman and Cutler, the
+    term is sometimes used colloquially to refer to any type of decision tree ensemble.
+    A pedant would use the more general term "decision tree forests" except when referring
+    to the specific implementation by Breiman and Cutler.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'It''s worth noting that relative to other ensemble-based methods, random forests
+    are quite competitive and offer key advantages relative to the competition. For
+    instance, random forests tend to be easier to use and less prone to overfitting.
+    The following table lists the general strengths and weaknesses of random forest
+    models:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '| Strengths | Weaknesses |'
+  prefs: []
+  type: TYPE_TB
+- en: '| --- | --- |'
+  prefs: []
+  type: TYPE_TB
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: An all-purpose model that performs well on most problems
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Can handle noisy or missing data as well as categorical or continuous features
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Selects only the most important features
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Can be used on data with an extremely large number of features or examples
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Unlike a decision tree, the model is not easily interpretable
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: May require some work to tune the model to the data
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: '|'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Due to their power, versatility, and ease of use, random forests are quickly
+    becoming one of the most popular machine learning methods. Later on in this chapter,
+    we'll compare a random forest model head-to-head against the boosted C5.0 tree.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Training random forests
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: 'Though there are several packages to create random forests in R, the `randomForest`
+    package is perhaps the implementation that is most faithful to the specification
+    by Breiman and Cutler, and is also supported by `caret` for automated tuning.
+    The syntax for training this model is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Training random forests](img/B03905_11_05.jpg)'
+  prefs: []
+  type: TYPE_IMG
+- en: By default, the `randomForest()` function creates an ensemble of 500 trees that
+    consider `sqrt(p)` random features at each split, where `p` is the number of features
+    in the training dataset and `sqrt()` refers to R's square root function. Whether
+    or not these default parameters are appropriate depends on the nature of the learning
+    task and training data. Generally, more complex learning problems and larger datasets
+    (either more features or more examples) work better with a larger number of trees,
+    though this needs to be balanced with the computational expense of training more
+    trees.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The goal of using a large number of trees is to train enough so that each feature
+    has a chance to appear in several models. This is the basis of the `sqrt(p)` default
+    value for the `mtry` parameter; using this value limits the features sufficiently
+    so that substantial random variation occurs from tree-to-tree. For example, since
+    the credit data has 16 features, each tree would be limited to splitting on four
+    features at any time.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s see how the default `randomForest()` parameters work with the credit
+    data. We''ll train the model just as we did with other learners. Again, the `set.seed()`
+    function ensures that the result can be replicated:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'To look at a summary of the model''s performance, we can simply type the resulting
+    object''s name:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: The output notes that the random forest included 500 trees and tried four variables
+    at each split, just as we expected. At first glance, you might be alarmed at the
+    seemingly poor performance according to the confusion matrix—the error rate of
+    23.8 percent is far worse than the resubstitution error of any of the other ensemble
+    methods so far. However, this confusion matrix does not show resubstitution error.
+    Instead, it reflects the **out-of-bag error rate** (listed in the output as `OOB
+    estimate of error rate`), which unlike resubstitution error, is an unbiased estimate
+    of the test set error. This means that it should be a fairly reasonable estimate
+    of future performance.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The out-of-bag estimate is computed during the construction of the random forest.
+    Essentially, any example not selected for a single tree's bootstrap sample can
+    be used to test the model's performance on unseen data. At the end of the forest
+    construction, the predictions for each example each time it was held out are tallied,
+    and a vote is taken to determine the final prediction for the example. The total
+    error rate of such predictions becomes the out-of-bag error rate.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Evaluating random forest performance
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: As mentioned previously, the `randomForest()` function is supported by `caret`,
+    which allows us to optimize the model while, at the same time, calculating performance
+    measures beyond the out-of-bag error rate. To make things interesting, let's compare
+    an auto-tuned random forest to the best auto-tuned boosted C5.0 model we've developed.
+    We'll treat this experiment as if we were hoping to identify a candidate model
+    for submission to a machine learning competition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: We must first load `caret` and set our training control options. For the most
+    accurate comparison of model performance, we'll use repeated 10-fold cross-validation,
+    or 10-fold CV repeated 10 times. This means that the models will take a much longer
+    time to build and will be more computationally intensive to evaluate, but since
+    this is our final comparison we should be *very* sure that we're making the right
+    choice; the winner of this showdown will be our only entry into the machine learning
+    competition.
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE27]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Next, we''ll set up the tuning grid for the random forest. The only tuning
+    parameter for this model is `mtry`, which defines how many features are randomly
+    selected at each split. By default, we know that the random forest will use `sqrt(16)`,
+    or four features per tree. To be thorough, we''ll also test values half of that,
+    twice that, as well as the full set of 16 features. Thus, we need to create a
+    grid with values of `2`, `4`, `8`, and `16` as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE28]'
+  prefs: []
+  type: TYPE_PRE
+- en: Tip
+  prefs:
+  - PREF_H3
+  type: TYPE_NORMAL
+- en: A random forest that considers the full set of features at each split is essentially
+    the same as a bagged decision tree model.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can supply the resulting grid to the `train()` function with the `ctrl`
+    object as follows. We''ll use the kappa metric to select the best model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE29]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The preceding command may take some time to complete as it has quite a bit
+    of work to do! When it finishes, we''ll compare that to a boosted tree using `10`,
+    `20`, `30`, and `40` iterations:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE30]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'When the C5.0 decision tree finally completes, we can compare the two approaches
+    side-by-side. For the random forest model, the results are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE31]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'For the boosted C5.0 model, the results are:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE32]'
+  prefs: []
+  type: TYPE_PRE
+- en: With a kappa of about 0.361, the random forest model with `mtry = 16` was the
+    winner among these eight models. It was higher than the best C5.0 decision tree,
+    which had a kappa of about 0.334, and slightly higher than the `AdaBoost.M1` model
+    with a kappa of about 0.360\. Based on these results, we would submit the random
+    forest as our final model. Without actually evaluating the model on the competition
+    data, we have no way of knowing for sure whether it will end up winning, but given
+    our performance estimates, it's the safer bet. With a bit of luck, perhaps we'll
+    come away with the prize.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: After reading this chapter, you should now know the base techniques that are
+    used to win data mining and machine learning competitions. Automated tuning methods
+    can assist with squeezing every bit of performance out of a single model. On the
+    other hand, performance gains are also possible by creating groups of machine
+    learning models that work together.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Although this chapter was designed to help you prepare competition-ready models,
+    note that your fellow competitors have access to the same techniques. You won't
+    be able to get away with stagnancy; therefore, continue to add proprietary methods
+    to your bag of tricks. Perhaps you can bring unique subject-matter expertise to
+    the table, or perhaps your strengths include an eye for detail in data preparation.
+    In any case, practice makes perfect, so take advantage of open competitions to
+    test, evaluate, and improve your own machine learning skillset.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter—the last in this book—we'll take a bird's eye look at ways
+    to apply machine learning to some highly specialized and difficult domains using
+    R. You'll gain the knowledge needed to apply machine learning to tasks at the
+    cutting edge of the field.
+  prefs: []
+  type: TYPE_NORMAL

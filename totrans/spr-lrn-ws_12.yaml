@@ -1,0 +1,602 @@
+- en: 4\. Autoregression
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Activity 4.01: Autoregression Model Based on Periodic Data'
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: Import the necessary packages, classes, and libraries.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: 'This activity will work on an earlier version of pandas, ensure that you downgrade
+    the version of pandas using the command:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: pip install pandas==0.24.2
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The code is as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: import pandas as pd
+  prefs: []
+  type: TYPE_NORMAL
+- en: import numpy as np
+  prefs: []
+  type: TYPE_NORMAL
+- en: from statsmodels.tsa.ar_model import AR
+  prefs: []
+  type: TYPE_NORMAL
+- en: from statsmodels.graphics.tsaplots import plot_acf
+  prefs: []
+  type: TYPE_NORMAL
+- en: import matplotlib.pyplot as plt
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Load the data and convert the Date column to datetime:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: df = pd.read_csv('../Datasets/austin_weather.csv')
+  prefs: []
+  type: TYPE_NORMAL
+- en: df.Date = pd.to_datetime(df.Date)
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(df.head())
+  prefs: []
+  type: TYPE_NORMAL
+- en: print(df.tail())
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output for df.head() should look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.22: Output for df.head()'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-6NRIUD3J.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 4.22: Output for df.head()'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output for df.tail() should look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.23: Output for df.tail()'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-79U4JNOU.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 4.23: Output for df.tail()'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Plot the complete set of average temperature values (df.TempAvgF) with Date
+    on the x axis:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: fig, ax = plt.subplots(figsize = (10, 7))
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.scatter(df.Date, df.TempAvgF)
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.show()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.24: Plot of Austin temperature data over several years'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-MN96GL2H.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 4.24: Plot of Austin temperature data over several years'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note the periodic behavior of the data. It's sensible given that temperature
+    varies over an annual weather cycle.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Construct an autocorrelation plot (using statsmodels) to see whether the average
+    temperature can be used with an autoregression model. Where is the lag acceptable
+    and where is it not for an autoregression model? Check the following code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: max_lag = 730
+  prefs: []
+  type: TYPE_NORMAL
+- en: fig, ax = plt.subplots(figsize = (10, 7))
+  prefs: []
+  type: TYPE_NORMAL
+- en: acf_plot = plot_acf(x = df.TempAvgF, ax = ax, lags = max_lag, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: use_vlines = False, alpha = 0.9, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: title = 'Autocorrelation of Austin Temperature '\
+  prefs: []
+  type: TYPE_NORMAL
+- en: '''vs. lag'')'
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.grid(True)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.text(280, -0.01, '90% confidence interval', fontsize = 9)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.set_xlabel('Lag', fontsize = 14)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.tick_params(axis = 'both', labelsize = 12)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The plot should look as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.25: Autocorrelation versus lag (days)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-S6EAOA1L.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 4.25: Autocorrelation versus lag (days)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: The lag is acceptable only when the autocorrelation line lies outside the 90%
+    confidence bounds, as represented by the shaded area. Note that, in this case,
+    instead of a steadily decreasing ACF value, we see peaks and valleys. This should
+    match your intuition because the original data shows a periodic pattern. Also,
+    note that there are very strong positive and negative correlations. It is possible
+    to leverage the strong negative correlation at around 180 days (half a year),
+    but that is a more advanced time series topic beyond our scope here. The main
+    takeaway from Figure 4.25 is that there is a very steep drop in the ACF after
+    short lag times. Now, use the same methods as before to look at the lag plots
+    versus the ACF.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Get the actual ACF values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'corr0 = np.correlate(df.TempAvgF[0: ] - df.TempAvgF.mean(), \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'df.TempAvgF[0: ] - df.TempAvgF.mean(), mode = ''valid'')'
+  prefs: []
+  type: TYPE_NORMAL
+- en: corrs = [np.correlate(df.TempAvgF[:(df.TempAvgF.shape[0] - i)] \
+  prefs: []
+  type: TYPE_NORMAL
+- en: '- df.TempAvgF.mean(), df.TempAvgF[i: ] \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '- df.TempAvgF.mean(), mode = ''valid'')'
+  prefs: []
+  type: TYPE_NORMAL
+- en: for i in range(max_lag)] / corr0
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We need the same utility grid plotting function we developed in Exercise 4.01,
+    Creating an Autoregression Model:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"""'
+  prefs: []
+  type: TYPE_NORMAL
+- en: utility function to plot out a range of
+  prefs: []
+  type: TYPE_NORMAL
+- en: plots depicting self-correlation
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"""'
+  prefs: []
+  type: TYPE_NORMAL
+- en: def plot_lag_grid(series, corrs, axis_min, axis_max, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'num_plots, total_lag, n_rows, n_cols):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: lag_step = int(total_lag / num_plots)
+  prefs: []
+  type: TYPE_NORMAL
+- en: fig = plt.figure(figsize = (18, 16))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'for i, var_name in enumerate(range(num_plots)):'
+  prefs: []
+  type: TYPE_NORMAL
+- en: corr = corrs[lag_step * i]
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax = fig.add_subplot(n_rows, n_cols, i + 1)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.scatter(series, series.shift(lag_step * i))
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.set_xlim(axis_min, axis_max)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.set_ylim(axis_min, axis_max)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.set_title('lag = ' + str(lag_step * i))
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.text(axis_min + 0.05 * (axis_max - axis_min), \
+  prefs: []
+  type: TYPE_NORMAL
+- en: axis_max - 0.05 * (axis_max - axis_min), \
+  prefs: []
+  type: TYPE_NORMAL
+- en: '''correlation = '' + str(round(corr[0], 3)))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: fig.tight_layout()
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.show()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, given that we have an indication that we are interested in short lags,
+    but also that there are strong correlations around a half year and a full year,
+    let''s look at two timescales:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: plot_lag_grid(df.TempAvgF, corrs, df.TempAvgF.min(), \
+  prefs: []
+  type: TYPE_NORMAL
+- en: df.TempAvgF.max(), 9, 45, 3, 3)
+  prefs: []
+  type: TYPE_NORMAL
+- en: plot_lag_grid(df.TempAvgF, corrs, df.TempAvgF.min(), \
+  prefs: []
+  type: TYPE_NORMAL
+- en: df.TempAvgF.max(), 9, 405, 3, 3)
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output for short lags will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.26: Lag plots with short lags'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-I4WY2ZXG.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 4.26: Lag plots with short lags'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output for longer lags will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.27: Lag plots with longer lags'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-QG5SLXLX.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 4.27: Lag plots with longer lags'
+  prefs: []
+  type: TYPE_NORMAL
+- en: We can see from Figure 4.26 that the correlation degrades consistently from
+    lag 5 to 40\. Over a longer timescale, Figure 4.27 shows that the correlation
+    degrades rapidly and then improves as we near a lag of one year. This matches
+    the intuition from the plot of the raw data (side note—this should reinforce the
+    importance of EDA).
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We would expect from our initial analysis that the autoregression model would
+    focus on fairly short lags. Let''s use the statsmodelsAR function to build a model
+    and see the results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"""'
+  prefs: []
+  type: TYPE_NORMAL
+- en: statsmodels AR function builds an autoregression model
+  prefs: []
+  type: TYPE_NORMAL
+- en: using all the defaults, it will determine the max lag
+  prefs: []
+  type: TYPE_NORMAL
+- en: and provide all the model coefficients
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"""'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model = AR(df.TempAvgF)
+  prefs: []
+  type: TYPE_NORMAL
+- en: model_fit = model.fit()
+  prefs: []
+  type: TYPE_NORMAL
+- en: model fit now contains all the model information
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: max_lag = model_fit.k_ar
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"""'
+  prefs: []
+  type: TYPE_NORMAL
+- en: note that by using defaults, the maximum lag is
+  prefs: []
+  type: TYPE_NORMAL
+- en: computed as round(12*(nobs/100.)**(1/4.))
+  prefs: []
+  type: TYPE_NORMAL
+- en: see https://www.statsmodels.org/devel/generated/statsmodels.tsa.ar_model.AR.fit.html#statsmodels.tsa.ar_model.AR.fit
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"""'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'print(''Max Lag: '' + str(max_lag))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'print(''Coefficients: \n'' + str(model_fit.params))'
+  prefs: []
+  type: TYPE_NORMAL
+- en: how far into the future we want to predict
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: max_forecast = 365
+  prefs: []
+  type: TYPE_NORMAL
+- en: generate predictions from the model
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'pred_temp = pd.DataFrame({''pred_temp'': \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: model_fit.predict(start = max_lag, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: end = df.shape[0] \
+  prefs: []
+  type: TYPE_NORMAL
+- en: + max_forecast - 1)})
+  prefs: []
+  type: TYPE_NORMAL
+- en: attach the dates for visualization
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: pred_temp['Date'] = df.loc[pred_temp.index, 'Date'].reindex()
+  prefs: []
+  type: TYPE_NORMAL
+- en: pred_temp.loc[(max(df.index) + 1):, 'Date'] = \
+  prefs: []
+  type: TYPE_NORMAL
+- en: pd.to_datetime([max(df.Date) \
+  prefs: []
+  type: TYPE_NORMAL
+- en: + pd.Timedelta(days = i)
+  prefs: []
+  type: TYPE_NORMAL
+- en: for i in range(1, max_forecast + 1)])
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The result is a model with lags of up to 23 days:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.28: AR model of Austin temperature data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-0SLEXDL5.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 4.28: AR model of Austin temperature data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Plot the predictions, forecast, and raw data on the same plot:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"""'
+  prefs: []
+  type: TYPE_NORMAL
+- en: visualize the predictions overlaid on the real data
+  prefs: []
+  type: TYPE_NORMAL
+- en: as well as the extrapolation to the future
+  prefs: []
+  type: TYPE_NORMAL
+- en: '"""'
+  prefs: []
+  type: TYPE_NORMAL
+- en: fig, ax = plt.subplots(figsize = (10, 7))
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.plot(df.Date, df.TempAvgF, c = "blue", \
+  prefs: []
+  type: TYPE_NORMAL
+- en: linewidth = 4, label = 'Actual Average Temperature')
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'ax.plot(pred_temp.loc[0 : len(df.TempAvgF), ''Date''], \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'pred_temp.loc[0 : len(df.TempAvgF), ''pred_temp''], \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: c = "yellow", linewidth = 0.5, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: label = 'Predicted Temperature')
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.plot(pred_temp.loc[len(df.TempAvgF):, 'Date'], \
+  prefs: []
+  type: TYPE_NORMAL
+- en: pred_temp.loc[len(df.TempAvgF):, 'pred_temp'], \
+  prefs: []
+  type: TYPE_NORMAL
+- en: c = "red", linewidth = 2, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: label = 'Forecast Temperature')
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.set_xlabel('Date', fontsize = 14)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.tick_params(axis = 'both', labelsize = 12)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.set_title('Austin Texas Average Daily Temperature')
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.tick_params(axis = 'both', labelsize = 12)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.legend()
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.show()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The output will be as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.29: Austin temperature predictions and forecast'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-62BMHFHF.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 4.29: Austin temperature predictions and forecast'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s zoom in on the end of the data, on the last 30 days of the data and
+    on the first 30 forecast values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: zoom in on a window near the end of the raw data
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: window = 30
+  prefs: []
+  type: TYPE_NORMAL
+- en: fig, ax = plt.subplots(figsize = (10, 7))
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'ax.plot(df.Date[(len(df.TempAvgF) - window) : len(df.TempAvgF)], \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'df.TempAvgF[(len(df.TempAvgF) - window) : \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: len(df.TempAvgF)], \
+  prefs: []
+  type: TYPE_NORMAL
+- en: c = "blue", linewidth = 4, \
+  prefs: []
+  type: TYPE_NORMAL
+- en: label = 'Actual Average Temperature')
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.plot(pred_temp.Date.iloc[(-max_forecast \
+  prefs: []
+  type: TYPE_NORMAL
+- en: '- window):(-max_forecast)], \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: pred_temp.pred_temp.iloc[(-max_forecast \
+  prefs: []
+  type: TYPE_NORMAL
+- en: '- window):(-max_forecast)], \'
+  prefs: []
+  type: TYPE_NORMAL
+- en: c = "red", linewidth = 2, label = 'Predicted Temperature')
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.plot(pred_temp.loc[len(df.TempAvgF):\
+  prefs: []
+  type: TYPE_NORMAL
+- en: (len(df.TempAvgF) + window), 'Date'], \
+  prefs: []
+  type: TYPE_NORMAL
+- en: pred_temp.loc[len(df.TempAvgF):\
+  prefs: []
+  type: TYPE_NORMAL
+- en: (len(df.TempAvgF) + window), 'pred_temp'], \
+  prefs: []
+  type: TYPE_NORMAL
+- en: c = "green", linewidth = 2, label = 'Forecast Temperature')
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.set_xlabel('Date', fontsize = 14)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.tick_params(axis = 'both', labelsize = 12)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.set_title('Austin Texas Average Daily Temperature')
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.tick_params(axis = 'both', labelsize = 12)
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.set_xticks(pd.date_range(df.Date[len(df.TempAvgF) - window], \
+  prefs: []
+  type: TYPE_NORMAL
+- en: df.Date[len(df.TempAvgF) - 1] \
+  prefs: []
+  type: TYPE_NORMAL
+- en: + pd.Timedelta(days = window), 5))
+  prefs: []
+  type: TYPE_NORMAL
+- en: ax.legend()
+  prefs: []
+  type: TYPE_NORMAL
+- en: plt.show()
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We will get the following output:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![Figure 4.30: Detail of predictions near the end of the data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '](img/image-55LKGBXK.jpg)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Figure 4.30: Detail of predictions near the end of the data'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Note
+  prefs:
+  - PREF_H4
+  type: TYPE_NORMAL
+- en: To access the source code for this specific section, please refer to https://packt.live/3hOXUQL.
+  prefs: []
+  type: TYPE_NORMAL
+- en: You can also run this example online at https://packt.live/313Vmbl. You must
+    execute the entire Notebook in order to get the desired result.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now that the activity is successfully completed, upgrade the version of pandas
+    to continue to smoothly run the exercises and activities present in the rest of
+    the book. To upgrade pandas, run:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: pip install pandas==1.0.3
+  prefs: []
+  type: TYPE_NORMAL

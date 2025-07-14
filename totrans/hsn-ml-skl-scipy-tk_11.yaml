@@ -1,0 +1,648 @@
+- en: The Y is as Important as the X
+  prefs: []
+  type: TYPE_NORMAL
+- en: A lot of attention is given to the input features, that is, our x's. We have
+    used algorithms to scale them, select from them, and engineer new features to
+    add to them. Nonetheless, we should also give as much attention to the targets,
+    the y's. Sometimes, scaling your targets can help you use a simpler model. Some
+    other times, you may need to predict multiple targets at once. It is, then, essential
+    to know the distribution of your targets and their interdependencies. In this
+    chapter, we are going to focus on the targets and how to deal with them.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'In this chapter, we will cover the following topics:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Scaling your regression targets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Estimating multiple regression targets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Dealing with compound classification targets
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Calibrating a classifier's probabilities
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Calculating the precision at K
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Scaling your regression targets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In regression problems, sometimes scaling the targets can save time and allow
+    us to use simpler models for the problems at hand. In this section, we are going
+    to see how to make our estimator's life easier by changing the scale of our targets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the following example, the relation between the target and the input is non-linear.
+    Therefore, a linear model would not give the best results. We can either use a
+    non-linear algorithm, transform our features, or transform our targets. Out of
+    the three options, transforming the targets can be the easiest sometimes. Notice
+    that we only have one feature here, but when dealing with a number of features,
+    it makes sense to think of transforming your targets first.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The following plot shows the relation between a single feature, `x`, and a
+    dependent variable, `y`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/22d34bc7-9b36-46fb-a3df-2eb30c6767d4.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Between you and me, the following code was used to generate data, but for the
+    sake of learning, we can pretend that we do not know the relation between the
+    y''s and the x''s for now:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE0]'
+  prefs: []
+  type: TYPE_PRE
+- en: The one-dimensional input (`x`) is uniformly distributed between *5* and *20*.
+    The relation between *y* and *x* is cubical, with some normally distributed noise
+    added to the *x*'s.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Before splitting out data, we need to transform the *x*''s from a vector into
+    a matrix, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE1]'
+  prefs: []
+  type: TYPE_PRE
+- en: Now, if we split our data into training and test sets, and run a ridge regression,
+    we will get a **Mean Absolute Error** (**MAE**) of `559`. Your mileage may vary
+    due to the randomly generated data. Can we do better than this?
+  prefs: []
+  type: TYPE_NORMAL
+- en: Please keep in mind that in most of the examples mentioned in this chapter,
+    the final results you will get may differ from mine. I preferred not to use random
+    states when generating and splitting the data as my main goal here is to explain
+    the concepts, regardless of the final results and the accuracy scores we get when
+    running the code.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create a simple transformer to convert the target based on a given `power`.
+    When `power` is set to `1`, no transformation is done to the target; otherwise,
+    the target is raised to the given power. Our transformer has a complementary `inverse_transform()`
+    method to retransform the targets back to their original scale:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE2]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, we can try different settings for the power and loop over the different
+    transformations until we find the one that gives the best results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE3]'
+  prefs: []
+  type: TYPE_PRE
+- en: It is essential that we convert the predicted values to their original. Otherwise,
+    the calculated error metrics will not be comparable given the different data scales
+    achieved by the different power settings.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Ergo, the`inverse_transform()` method is used here after the prediction step.
+    Running the code on my randomly generated data gave me the following results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE4]'
+  prefs: []
+  type: TYPE_PRE
+- en: As expected, the lowest error and the highest `R²` are achieved when the right
+    transformation was used, which is when the power is set to ![](img/01bbc660-8e6f-4a20-8edb-4b814412761f.png).
+  prefs: []
+  type: TYPE_NORMAL
+- en: The logarithmic, exponential, and square root transformations are the ones most
+    commonly used by statisticians. It makes sense to use them when performing a prediction
+    task, especially when a linear model is used.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The logarithmic transformation is only useful for positive values. `Log(0)`
+    is undefined, and the logarithm of a negative number gives us imaginary values.
+    Thus, the logarithmic transformation is usually applied when dealing with non-negative
+    targets. One other trick to make sure that we do not encounter `log(0)` is to
+    add 1 to all your target values before transforming them, then subtract 1 after
+    transforming your predictions back. Similarly, for the square root transformation,
+    we have to make sure not to have negative targets in the first place.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Rather than dealing with one target at a time, we may sometimes want to predict
+    multiple targets at once. Combining multiple regression tasks into a single model
+    can simplify your code when they all use the same features. It's also recommended
+    when your targets are interdependent. In the next section, we are going to see
+    how to estimate multiple regression targets at once.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Estimating multiple regression targets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In your online business, you may want to estimate the lifetime value of your
+    users in the next month, the next quarter, and the next year. You could build
+    three different regressors for each one of these three separate estimations. However,
+    when the three estimations use the exact same features, it becomes more practical
+    to build one regressor with three outputs. In the next section, we are going to
+    see how to build a multi-output regressor, then we will learn how to inject interdependencies
+    between those estimations using regression chains.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Building a multi-output regressor
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: Some regressors allow us to predict multiple targets at once. For example, the
+    ridge regressor allows for a two-dimensional target to be given. In other words,
+    rather than having `y` as a single-dimensional array, it can be given as a matrix,
+    where each column represents a different target. For the other regressors where
+    only single targets are allowed, we may need to use the multi-output regressor
+    meta-estimator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'To demonstrate this meta-estimator, I am going to use the `make_regression`
+    helper to create a dataset that we can fiddle with:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE5]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Here, we create `500` samples, with 8 features and 3 targets; that is, the
+    shapes of the returned `x` and `y` are (`500`, `8`) and (`500`, `3`) respectively.
+    We can also give the features and the targets different names, and then split
+    the data into training and test sets as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE6]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Since `SGDRegressor` does not support multiple targets, the following code
+    will throw a value error complaining about the shape of the inputs:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE7]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Therefore, we have to wrap `MultiOutputRegressor` around `SGDRegressor` for
+    it to work:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE8]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We can now output predictions into a dataframe:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE9]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Also, check the first few predictions for each one of the three targets. Here
+    is an example of the predictions I got here. Keep in mind that you may get different
+    results:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/ca98a341-b016-44b6-99b7-bb18471acae7.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'We can also print the model''s performance for each target separately:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE10]'
+  prefs: []
+  type: TYPE_PRE
+- en: In some scenarios, knowing one target may serve as a stepping stone in knowing
+    the others. In the aforementioned lifetime value estimation example, the predictions
+    for the next month are helpful for the quarterly and yearly predictions. To use
+    the predictions for one target as inputs in the consecutive regressors, we need
+    to use the regressor chain meta-estimator.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Chaining multiple regressors
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: In the dataset from the previous section, we do not know whether the generated
+    targets are interdependent or not. For now, let's assume the second target is
+    dependent on the first one, and the third target is dependent on the first two.
+    We are going to validate these assumptions later. To inject these interdependencies,
+    we are going to use `RegressorChain` and specify the order of the assumed interdependencies.
+    The order of the IDs in the `order` list specify that each ID in the list depends
+    on the previous IDs. It makes sense to use a regularized regressor. The regularization
+    is needed to ignore any assumed dependencies that do not exist between the targets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here is the code for creating the regressor chain:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE11]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The test set performance is almost identical to the one achieved with the `MultiOutputRegressor`.
+    It looks like chaining did not help with the dataset at hand. We can display the
+    coefficients each of the three `Ridge` regressors had after training. The first
+    estimator only uses the input feature, while the later ones assign coefficients
+    to the input features as well as the previous targets. Here is how to display
+    the coefficients for the third estimator in the chain:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE12]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'From the calculated coefficients, we can see that the first two targets were
+    almost ignored by the third estimator in the chain. Since the targets are independent,
+    each estimator in the chain used the input features only. Although the coefficients
+    you will get when running the code may vary, the coefficients given to the first
+    two targets will still be negligible due to the targets'' independence:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/5c2f9e5a-8c98-4842-9b78-71b672431718.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: In cases where the targets are dependent, we expect to see bigger coefficients
+    assigned to the targets. In practice, we may try different permutations for the
+    `order` hyperparameter until the best performance is found.
+  prefs: []
+  type: TYPE_NORMAL
+- en: As in the regression problems, the classifiers can also deal with multiple targets.
+    Nonetheless, one target can either be binary or have more than two values. This
+    adds more nuance to the classification cases. In the next section, we are going
+    to learn how to build classifiers to meet the needs of compound targets.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Dealing with compound classification targets
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: 'As with regressors, classifiers can also have multiple targets. Additionally,
+    due to their discrete targets, a single target can have two or more values. To
+    be able to differentiate between the different cases, machine learning practitioners
+    came up with the following terminologies:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Multi-class
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: Multi-label (and multi-output)
+  prefs:
+  - PREF_UL
+  type: TYPE_NORMAL
+- en: 'The following matrix summarizes the aforementioned terminologies. I will follow
+    up with an example to clarify more, and will also shed some light on the subtle
+    difference between the multi-label and multi-output terms later in this chapter:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/355c77a8-3fba-4834-8392-835c859e8b53.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: Imagine a scenario where you are given a picture and you need to classify it
+    based on whether it contains a cat or not. In this case, a binary classifier is
+    needed, that is, where the targets are either zeroes or ones. When the problem
+    involves figuring out whether the picture contains a cat, a dog, or a human being,
+    then the cardinality of our target is beyond two, and the problem is then formulated
+    as a multi-class classification problem.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'The pictures can also contain more than one object. One picture can only have
+    a cat in it, while the other has a human being and a cat together. In a multi-label
+    setting, we would build a set of binary classifiers: one to tell whether the picture
+    has a cat or not, another one for dogs, and one for human beings. To inject interdependency
+    between the different targets, you may want to predict all the simultaneous labels
+    at once. In such a scenario, the term multi-output is usually used.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: Furthermore, you can solve a multi-class problem using a set of binary-classifiers.
+    Rather than telling whether the picture has a cat, a dog, or a human being, you
+    can have a classifier telling whether it has a cat or not, one for whether a dog
+    exists, and a third for whether there is a human being or not. This can be useful
+    for model interpretability since the coefficients of each of the three classifiers
+    can be mapped to a single class. In the next section, we are going to use the*One-vs-Rest*
+    strategy to convert a multi-class problem into a set of binary ones.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Converting a multi-class problem into a set of binary classifiers
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: We do not have to stick to the multi-class problems. We can simply convert the
+    multi-class problem at hand into a set of binary classification problems.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Here, we build a dataset with 5,000 samples, 15 features, and 1 label with
+    4 possible values:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE13]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After splitting the data as we usually do, and keeping 25% of it for testing,
+    we can apply the *One-vs-Rest*strategy on top of`LogisticRegression`. As the name
+    suggests, it is a meta-estimator that builds multiple classifiers to tell whether
+    each sample belongs to one class or not, and finally combines all the decisions
+    made:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE14]'
+  prefs: []
+  type: TYPE_PRE
+- en: I used the saga solver as it converges more quickly for larger datasets. The
+    *One-vs-Rest*strategy gave me an accuracy score of `0.43`. We can access theunderlying
+    binary classifiers used by the meta-estimator via its `estimators`**method, then
+    we can reveal the coefficients learned for each feature by each one of the underlying
+    binary classifiers.**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Another strategy is *One-vs-One*. It builds separate classifiers for each
+    pair of classes, and can be used as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE15]'
+  prefs: []
+  type: TYPE_PRE
+- en: The *One-vs-One***strategy gave me a comparable accuracy of `0.44`. We can see
+    how, when dealing with a large number of classes, the previous two strategies
+    may not scale well. `OutputCodeClassifier` is a more scalable solution. It can
+    encode the labels into a denser representation by setting its `code_size` hyperparameter
+    to a value less than one. A lower `code_size` will increase its computational
+    performance at the expense of its accuracy and interpretability.**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**In general, *One-vs-Rest*is the most commonly used strategy, and it is a
+    good starting point if your aim is to separate the coefficients for each class.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: To make sure the retuned probabilities for all the classes add up to one, the
+    *One-vs-Rest* strategy normalizes the probabilities by dividing them by their
+    total. One other approach to probability normalization is the`Softmax()` function.
+    It instead divides the exponent of each probability by the sum of the exponents
+    of all the probabilities. The `Softmax()` function is also used in multinomial
+    logistic regression instead of the`Logistic()` function for it to function as
+    a multi-class classifier without the need for the*One-vs-Rest*or*One-vs-One*strategies.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Estimating multiple classification targets
+  prefs:
+  - PREF_H2
+  type: TYPE_NORMAL
+- en: As with `MultiOutputRegressor`, `MultiOutputClassifier` is a meta-estimator
+    that allows the underlying estimators to deal with multiple outputs.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Let''s create a new dataset to see how we can use `MultiOutputClassifier`:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE16]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'The first thing to notice here is that the terms `n_classes` and `n_labels`
+    are misleading in the `make_multilabel_classification` helper. The previous setting
+    creates 500 samples with 3 binary targets. We can confirm this by printing the
+    shapes of the returned `x` and `y`, as well as the cardinality of the y''s:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE17]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We then force the third label to be perfectly dependent on the first one. We
+    will make use of this fact in a moment:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE18]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'After we split our dataset as we usually do, and dedicate 25% for testing,
+    wewill notice that`GradientBoostingClassifier`is not able to deal with the three
+    targets we have. Some classifiers are able to deal with multiple targets without
+    any external help. Nonetheless, the `MultiOutputClassifier` estimator is required
+    for the classifier we decided to use this time:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE19]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'We already know that the first and third targets are dependent. Thus, a `ClassifierChain`
+    may be a good alternative to try instead of an `MultiOutputClassifier` estimator.
+    We can then dictate the target''s dependencies using its `order` hyperparameter
+    as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE20]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Now, if we display the coefficients of the third estimator as we did earlier
+    with the `RegressorChain`, we can see that it just copied the predictions it made
+    for the first target and used them as they are. Hence, all the coefficients were
+    set to zero except for the coefficient assigned to the first target, as follows:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/94202336-1625-477a-ad3d-8994ebdd6e19.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: As you can see, we are covered whenever the estimators we want to use do not
+    support multiple targets. We are also able to tell our estimators which targets
+    to use when predicting the next one.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In many real-life scenarios, we care about the classifier's predicted probabilities
+    more than its binary decisions. A well-calibrated classifier produces reliable
+    probabilities, which are paramount in risk calculations and in achieving higher
+    precision.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we will see how to calibrate our classifiers if their estimated
+    probabilities are not reliable by default.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calibrating a classifier's probabilities
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: '"Every business and every product has risks. You can''t get around it."'
+  prefs: []
+  type: TYPE_NORMAL
+- en: – Lee Iacocca
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Say we want to predict whether someone will catch a viral disease. We can then
+    build a classifier to predict whether they will catch the viral infection or not.
+    Nevertheless, when the percentage of those who may catch the infection is too
+    low, the classifier''s binary predictions may not be precise enough. Thus, with
+    such uncertainty and limited resources, we may want to only put in quarantine
+    those with more than a 90% chance of catching the infection. The classifier''s
+    predicted probability sounds like a good source for such estimation. Nevertheless,
+    we can only call this probability reliable if 9 out of 10 of the samples we predict
+    to be in a certain class with probabilities above 90% are actually in this class.
+    Similarly, 80% of the samples with probabilities above 80% should also end up
+    being in that class. In other words, for a perfectly calibrated model, we should
+    get the following 45^o line whenever we plot the % of samples in the target class
+    versus the classifier''s predicted probabilities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/a7569ea0-34e5-4a49-b662-30e8a783cacb.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'Some models are usually well calibrated, such as the logistic regression classifier.
+    Some other models require us to calibrate their probabilities before using them.
+    To demonstrate this, we are going to create the following binary-classification
+    dataset, with 50,000 samples and `15` features. I used a lower value for `class_sep`
+    to ensure that the two classes aren''t easily separable:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE21]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Then I trained a Gaussian Naive Bayes classifier and stored the predicted probabilities
+    of the positive class. Naive Bayes classifiers tend to return unreliable probabilities
+    due to their naive assumption, as we discussed in[Chapter 6](0bad86d8-cebe-4da0-a28e-611d9d7b0a65.xhtml),
+    *Classifying Text using Naive Bayes*. The `GaussianNB` classifier is used here
+    since we are dealing with continuous features:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE22]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'Scikit-learn has tools for plotting the calibration curves for our classifiers.
+    It splits the estimated probabilities into bins and calculates the fraction of
+    the sample that falls in the positive class for each bin. In the following code
+    snippet, we set the number of bins to `10`, and use the calculated probabilities
+    to create a calibration curve:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE23]'
+  prefs: []
+  type: TYPE_PRE
+- en: 'I skipped the parts of the code responsible for the graph''s formatting for
+    brevity. Running the code gives me the following curve:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '![](img/0f59b05a-027b-462c-b7ee-a5f6c680de9c.png)'
+  prefs: []
+  type: TYPE_IMG
+- en: 'As you can tell, the model is far from being calibrated. Hence, we can use
+    `CalibratedClassifierCV` to adjust its probabilities:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE24]'
+  prefs: []
+  type: TYPE_PRE
+- en: In the next graph, we can see the effect of `CalibratedClassifierCV`**on the
+    model, where the new probability estimates are more reliable:**
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**![](img/f98678b8-ec51-45e4-bd52-051d2ea40076.png)'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '`CalibratedClassifierCV`uses two calibration methods: the**`sigmoid()`and`isotonic()`methods.
+    The `sigmoid()` method is recommended for small datasets since the `isotonic()`
+    method tends to overfit. Furthermore, the calibration should be done on separate
+    data from that used for fitting the model.`CalibratedClassifierCV`allows us to
+    cross-validate to separate the data used for fitting the underlying estimator
+    from the data used for calibration. A three-fold cross-validation was used in
+    the previous code.**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**If linear regression aims to minimize the squared errors while assuming the
+    relation between the targets, *y*, and the features, *x*, to be a linear equation
+    expressed by *y = f(x)*, then isotonic regression aims to minimize the squared
+    errors with a different assumption. It assumes *f(x)*to be a non-linear yet monotonic
+    function. In other words, it either continues to increase or decrease with the
+    increase of *x*. This monotonicity attribute of isotonic regression**makes it
+    suitable for probability calibration.**'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '**Besides calibration graphs, the **Brier score** is a good way to check whether
+    a model is calibrated or not. It basically calculates the **Mean Squared Error
+    (MSE)**between the predicted probabilities and the actual targets. Thus, a lower
+    Brier score reflects more reliable probabilities.'
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next section, we are going to learn how to use a classifier to order
+    a list of predictions and then how to evaluate this order.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Calculating the precision at k
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: In the example of the viral infection from the previous section, your quarantine
+    capacity may be limited to, say, 500 patients. In such a case, you would want
+    as many positive cases to be in the top 500 patients according to their predicted
+    probabilities. In other words, we do not care much about the model's overall precision,
+    since we only care about its precision for the top `k` samples.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'We can calculate the precision for the top `k` samples using the following
+    code:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE25]'
+  prefs: []
+  type: TYPE_PRE
+- en: If you are not a big fan of the functional programming paradigm, then let me
+    explain the code to you in detail. The `zip()` method combines the two lists and
+    returns a list of tuples. The first tuple in the list will contain the first item
+    of `y_true` along with the first item of `y_pred_proba`. The second tuple will
+    hold the second item of each of them, and so on. Then, I sorted the list of tuples
+    in descending order (`reverse=True`) based on the second items of the tuples,
+    that is, `y_pred_proba`.Then, I took the top `k` items of the sorted list of tuples
+    and compared the `y_true` part of them to the `pos_label` parameter. The `pos_label`
+    parameter allows me to decide which label to base my precision calculations on.
+    Finally, I calculated the ratio of items in `topk`where an actual member of the
+    class specified by`pos_label` is captured.
+  prefs: []
+  type: TYPE_NORMAL
+- en: 'Now, we can calculate the precision for the top 500 predictions made by the
+    uncalibrated `GaussianNB` classifier:'
+  prefs: []
+  type: TYPE_NORMAL
+- en: '[PRE26]'
+  prefs: []
+  type: TYPE_PRE
+- en: This gives us a precision of `82%` for the top `500` samples, compared to the
+    overall precision of `62%` for all the positively classified samples. Once more,
+    your results may differ from mine.
+  prefs: []
+  type: TYPE_NORMAL
+- en: The precision at the `k` metric is a very useful tool when dealing with imbalanced
+    data or classes that aren't easy to separate, and you only care about the model's
+    accuracy for the top few predictions. It allows you to tune your model to capture
+    the samples that matter the most. I bet Google cares about the search results
+    you see on the first page way more than the results on the 80^(th) page. And if
+    I only have money to buy 20 stocks in the stock exchange, I would like a model
+    that gets the top 20 stocks right, and I wouldn't care much about its accuracy
+    for the 100^(th) stock.
+  prefs: []
+  type: TYPE_NORMAL
+- en: Summary
+  prefs:
+  - PREF_H1
+  type: TYPE_NORMAL
+- en: When dealing with a classification or a regression problem, we tend to start
+    by thinking about the features we should include in our models. Nonetheless, it
+    is often that the key to the solution lies in the target values. As we have seen
+    in this chapter, rescaling our regression target can help us use a simpler model.
+    Furthermore, calibrating the probabilities given by our classifiers may quickly
+    give a boost to our accuracy scores and help us quantify our uncertainties. We
+    also learned how to deal with multiple targets by writing a single estimator to
+    predict multiple outputs at once. This helps to simplify our code and allows the
+    estimator to use the knowledge it learns from one label to predict the others.
+  prefs: []
+  type: TYPE_NORMAL
+- en: It is common in real-life classification problems that classes are imbalanced.
+    When detecting fraudulent incidents, the majority of your data is usually comprised
+    of non-fraudulent cases. Similarly, for problems such as who would click on your
+    advertisement, and who would subscribe to your newsletter, it is always the minority
+    class that is more interesting for you to detect.
+  prefs: []
+  type: TYPE_NORMAL
+- en: In the next chapter, we are going to see how to make it easier for a classifier
+    to deal with an imbalanced dataset by altering its training data.**********
+  prefs: []
+  type: TYPE_NORMAL
