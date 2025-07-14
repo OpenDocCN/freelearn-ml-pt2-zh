@@ -978,10 +978,12 @@
   id: totrans-119
   prefs: []
   type: TYPE_NORMAL
+  zh: 许多为克服这个多重极小值问题而开发的方法基于温度化的思想。这个思想再次借鉴了统计力学的概念。一个物理系统可以占据的状态数取决于系统的温度；在0开尔文（最低可能温度）下，所有系统都陷入一个单一状态。而在另一极端，对于无限温度，所有可能的状态都是等概率的。通常，我们关注的是处于某个中间温度的系统。对于贝叶斯模型，通过对贝叶斯定理进行某种变化，可以直观地应用这个温度化思想。
 - en: '![ β p(θ | y)β = p(y | θ) p(θ) ](img/file257.jpg)'
   id: totrans-120
   prefs: []
   type: TYPE_IMG
+  zh: '![ β p(θ | y)β = p(y | θ) p(θ) ](img/file257.jpg)'
 - en: The parameter *β* is known as the inverse temperature or tempering parameter.
     Notice that for *β* = 0 we get *p*(*y*|*θ*)^(*β*) = 1 and thus the tempered posterior
     *p*(*θ*|*y*)[*β*] is just the prior *p*(*θ*), and when *β* = 1 the *tempered*
@@ -992,62 +994,75 @@
   id: totrans-121
   prefs: []
   type: TYPE_NORMAL
+  zh: 参数*β*被称为逆温度或温度化参数。注意，当*β* = 0时，我们得到*p*(*y*|*θ*)^(*β*) = 1，因此温度化后验*p*(*θ*|*y*)[*β*]仅仅是先验*p*(*θ*)，而当*β*
+    = 1时，*温度化*后验就是实际的完整后验。由于从先验分布进行采样通常比从后验分布采样更容易（通过增加*β*的值），我们从一个较容易的分布开始采样，并逐渐将其转变为我们真正关心的更复杂的分布。
 - en: 'There are many methods that exploit this idea; one of them is known as **Sequential
     Monte Carlo** (**SMC**). The SMC method, as implemented in PyMC, can be summarized
     as follows (also see *Figure [10.6](#x1-198018r6)*):'
   id: totrans-122
   prefs: []
   type: TYPE_NORMAL
+  zh: 有许多方法利用了这个思想，其中之一被称为**顺序蒙特卡罗**（**SMC**）。PyMC中实现的SMC方法可以总结如下（也见*图 [10.6](#x1-198018r6)*）：
 - en: Initialize *β* at 0.
   id: totrans-123
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 将*β*初始化为0。
 - en: Generate *N* samples *S*[*β*] from the tempered posterior.
   id: totrans-124
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 从温度化后验中生成*N*个样本*S*[*β*]。
 - en: Increase *β* a *little bit*.
   id: totrans-125
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 将*β*稍微增加一点。
 - en: Compute a set of *N* weights *W*. The weights are computed according to the
     new tempered posterior.
   id: totrans-126
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 计算一组*N*的权重*W*。这些权重是根据新的温度化后验计算得出的。
 - en: Obtain *S*[*w*] by resampling *S*[*b*] according to *W*.
   id: totrans-127
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 通过根据*W*对*S*[*b*]进行重采样，获得*S*[*w*]。
 - en: Run *N* Metropolis chains, starting each one from a different sample in *S*[*w*].
   id: totrans-128
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 运行*N*个Metropolis链，每个链都从*S*[*w*]中的不同样本开始。
 - en: Repeat from step 3 until *β* ≥ 1.
   id: totrans-129
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 从步骤3开始重复，直到*β* ≥ 1。
 - en: '![PIC](img/file258.png)'
   id: totrans-130
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file258.png)'
 - en: '**Figure 10.6**: Schematic representation of SMC'
   id: totrans-131
   prefs: []
   type: TYPE_NORMAL
+  zh: '**图 10.6**：SMC的示意图'
 - en: The resampling step works by removing samples with a low probability and replacing
     them with samples with a higher probability. The Metropolis step perturbs these
     samples, helping to explore the parameter space.
   id: totrans-132
   prefs: []
   type: TYPE_NORMAL
+  zh: 重采样步骤通过移除概率较低的样本并用概率较高的样本替换它们来工作。Metropolis步骤扰动这些样本，帮助探索参数空间。
 - en: The efficiency of the tempered method depends heavily on the intermediate values
     of *β*, which is usually referred to as the cooling schedule. The smaller the
     difference between two successive values of *β*, the closer the two successive
@@ -1058,12 +1073,14 @@
   id: totrans-133
   prefs: []
   type: TYPE_NORMAL
+  zh: 温度化方法的效率很大程度上取决于*β*的中间值，这通常被称为降温计划。*β*的两个连续值之间的差异越小，两个连续的温度化后验就会越接近，因此从一个阶段到下一个阶段的过渡就会更容易。但如果步长太小，我们将需要许多中间阶段，超过某个点，这将导致浪费大量计算资源，而并未真正提高结果的准确性。
 - en: Fortunately, SMC can automatically compute the intermediate values of *β*. The
     exact cooling schedule will be adapted to the difficulty of the problem; distributions
     that are more difficult to sample will require more stages than simpler ones.
   id: totrans-134
   prefs: []
   type: TYPE_NORMAL
+  zh: 幸运的是，SMC可以自动计算*β*的中间值。具体的降温计划将根据问题的难度进行调整；较难采样的分布将需要比简单分布更多的阶段。
 - en: At the top of *Figure [10.6](#x1-198018r6)*, we have nine samples or particles
     (gray dots) that we obtained from the prior, represented as the very wide distribution
     on top of everything (stage 0). For the rest of the stages, we re-weight the samples
@@ -1162,6 +1179,8 @@
   id: totrans-146
   prefs: []
   type: TYPE_NORMAL
+  zh: 理论上，MCMC 方法在我们采集无限样本时是可以保证收敛的。实际上，我们需要检查所采样本是否合理且有限。通常，当我们收集到证据表明样本在某种意义上是*稳定*的时，我们就认为采样器已收敛。一个简单的测试方法是多次运行相同的
+    MCMC 模拟，并检查每次是否得到相同的结果。这也是为什么 PyMC 默认运行更多链条的原因。对于现代计算机来说，这是几乎没有成本的，因为我们有多个核心。而且，它们不会浪费资源，因为我们可以将不同链条的样本合并来计算摘要、绘图等。
 - en: There are many ways to check that different chains are practically equivalent,
     both visually and with formal tests. We are not going to get too technical here;
     we are just going to show a few examples and hope they are enough for you to develop
@@ -1169,11 +1188,13 @@
   id: totrans-147
   prefs: []
   type: TYPE_NORMAL
+  zh: 有许多方法可以检查不同链条在实际应用中的等效性，无论是通过视觉方式还是正式测试。我们在这里不会深入探讨技术细节；我们只会展示一些例子，希望它们足以让你培养出解读诊断结果的直觉。
 - en: 10.7.1 Trace plot
   id: totrans-148
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 10.7.1 轨迹图
 - en: One way to check for convergence is to visually check whether chains look similar.
     For instance, we can use ArviZ’s `plot_trace` function. To better understand what
     we should look for when inspecting these plots, let’s compare the results for
@@ -1181,6 +1202,7 @@
   id: totrans-149
   prefs: []
   type: TYPE_NORMAL
+  zh: 检查收敛性的一种方法是通过视觉检查链条是否相似。例如，我们可以使用 ArviZ 的 `plot_trace` 函数。为了更好地理解在检查这些图表时应该注意什么，我们将比较之前定义的两个模型的结果。
 - en: The variable `b` is 10-dimensional. For clarity and brevity we are only going
     to show one of its dimensions. Feel free to visualize all of them on your own
     computer. *Figure [10.7](#x1-201003r7)* shows many issues. In the left column,
@@ -1193,6 +1215,9 @@
   id: totrans-150
   prefs: []
   type: TYPE_NORMAL
+  zh: 变量 `b` 是 10 维的。为了清晰和简洁，我们只展示其中一个维度。你可以随时在自己的计算机上将所有维度可视化。*图 [10.7](#x1-201003r7)*
+    显示了许多问题。在左列中，我们有四个 KDE，每个链条一个。我们可以看到它们看起来不同。这表明每条链条采样的后验区域略有不同。在右列中，我们有轨迹本身。我们也有四条线，每条链条一条，虽然它们有些凌乱，但我们仍然可以看到，有一条链条从第一步就卡在
+    0 附近，直到几乎第 400 步才有所变化。我们在第 800 步左右也看到类似的情况。
 - en: The issues become even more clear when we compare *Figure [10.7](#x1-201003r7)*
     with *Figure [10.8](#x1-201004r8)*. For the latter, we see that the KDEs for the
     four chains look much more similar to each other, and the trace looks much more
@@ -1206,33 +1231,42 @@
   id: totrans-151
   prefs: []
   type: TYPE_NORMAL
+  zh: 当我们将*图 [10.7](#x1-201003r7)*与*图 [10.8](#x1-201004r8)*进行比较时，问题变得更加明显。对于后者，我们看到四条链的
+    KDE 看起来相互之间更为相似，而轨迹图看起来模糊得多，更像是*噪声*，很难看到明显的模式。我们希望曲线能够自由地漫游。当这种情况发生时，我们说我们有**良好的**
+    **混合**。我们这么表达是因为很难区分一条链与另一条链；它们是混合的。这是好事，因为这意味着即使我们从不同的起点启动四条（或更多）独立链条，它们也都描述了相同的分布。这并不是收敛的证明，但至少我们没有看到非收敛或糟糕混合的证据。
 - en: '![PIC](img/file259.png)'
   id: totrans-152
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file259.png)'
 - en: '**Figure 10.7**: Trace plot for `model_c`'
   id: totrans-153
   prefs: []
   type: TYPE_NORMAL
+  zh: '**图 10.7**：`model_c` 的轨迹图'
 - en: '*Figure [10.7](#x1-201003r7)* also has a few black vertical bars at the top
     that are absent from *Figure [10.8](#x1-201004r8)*. These are divergences; there
     is a section dedicated to them later in this chapter.'
   id: totrans-154
   prefs: []
   type: TYPE_NORMAL
+  zh: '*图 [10.7](#x1-201003r7)* 还有一些黑色垂直线条出现在顶部，而*图 [10.8](#x1-201004r8)* 中没有这些线条。这些是发散点；本章稍后有专门的部分讨论这些问题。'
 - en: '![PIC](img/file260.png)'
   id: totrans-155
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file260.png)'
 - en: '**Figure 10.8**: Trace plot for `model_nc`'
   id: totrans-156
   prefs: []
   type: TYPE_NORMAL
+  zh: '**图 10.8**：`model_nc` 的轨迹图'
 - en: 10.7.2 Rank plot
   id: totrans-157
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 10.7.2 排名图
 - en: 'Trace plots can be difficult to read, especially when we have multiple chains
     as it is easy to miss some details. An alternative is rank plots [[Vehtari et al.](Bibliography.xhtml#Xvehtari_2021), [2021](Bibliography.xhtml#Xvehtari_2021)].
     To build a rank plot for a given parameter we first take all the samples from
@@ -1245,28 +1279,37 @@
   id: totrans-158
   prefs: []
   type: TYPE_NORMAL
+  zh: 轨迹图可能很难解读，特别是当我们有多个链时，因为容易忽略一些细节。一个替代方案是使用排名图 [[Vehtari et al.](Bibliography.xhtml#Xvehtari_2021),
+    [2021](Bibliography.xhtml#Xvehtari_2021)]。为了构建某一参数的排名图，我们首先将所有链中的所有样本进行排序，并分配一个整数：这是第
+    0 个样本，这是第 1 个样本，这是第 2 个样本，依此类推。然后，我们将所有排名根据原始链进行分组。最后，我们绘制与链数相等的直方图。如果所有链都来自相同的分布，我们可以预期所有链都有相同数量的低排名、高排名、中等排名等。换句话说，排名的直方图应该是均匀的。
 - en: To get a rank plot we can call ArviZ’s `plot_trace` with the `kind="rank_bars"`
     argument. Figures [10.9](#x1-202003r9) and [10.10](#x1-202004r10) are examples
     of such plots.
   id: totrans-159
   prefs: []
   type: TYPE_NORMAL
+  zh: 要获取排名图，我们可以调用 ArviZ 的 `plot_trace` 函数，并使用 `kind="rank_bars"` 参数。图 [10.9](#x1-202003r9)
+    和图 [10.10](#x1-202004r10) 是这类图的示例。
 - en: '![PIC](img/file261.png)'
   id: totrans-160
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file261.png)'
 - en: '**Figure 10.9**: Rank plot for `model_c`'
   id: totrans-161
   prefs: []
   type: TYPE_NORMAL
+  zh: '**图 10.9**：`model_c` 的排名图'
 - en: '![PIC](img/file262.png)'
   id: totrans-162
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file262.png)'
 - en: '**Figure 10.10**: Rank plot for `model_nc`'
   id: totrans-163
   prefs: []
   type: TYPE_NORMAL
+  zh: '**图 10.10**：`model_nc` 的排名图'
 - en: On the left, we have the same KDEs we have already shown. On the right, we have
     the rank plots. Again the result for `model_nc` looks much better; the deviations
     from uniformity are very small. On the other hand, we can see a few issues from
@@ -1276,11 +1319,15 @@
   id: totrans-164
   prefs: []
   type: TYPE_NORMAL
+  zh: 左边是我们之前展示过的相同的 KDE 图。右边是排名图。再次强调，`model_nc` 的结果看起来好多了；与均匀分布的偏差非常小。另一方面，我们可以从
+    *图 [10.9](#x1-202003r9)* 中看到一些问题；例如，参数 `a` 的排名在 500 或更低的地方看起来非常差，参数 `b` 在排名大约为
+    2000 处也很糟糕。其他区域也存在问题。
 - en: 10.7.3 ![](img/hat_R.png) (R hat)
   id: totrans-165
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 10.7.3 ![](img/hat_R.png) (R hat)
 - en: A quantitative way of comparing independent chains is by using the ![](img/hat_R.png)
     statistic. The idea of this test is to compute the variance between chains with
     the variance within chains. Ideally, we should expect a value of 1\. As an empirical
@@ -1291,25 +1338,35 @@
   id: totrans-166
   prefs: []
   type: TYPE_NORMAL
+  zh: 比较独立链的一种定量方法是使用 ![](img/hat_R.png) 统计量。此测试的思路是计算链之间的方差与链内部的方差之比。理想情况下，我们应该期望值为
+    1。作为经验法则，值小于 1.01 也是可以接受的；较高的值则表示缺乏收敛性。我们可以使用 `az.r_hat` 函数计算该值（参见 *表 [10.1](#x1-203003r1)*）。![](img/hat_R.png)
+    诊断量也可以通过默认的 `az.summary` 函数计算，或者通过 `az.plot_forest`（使用 `r_hat=True` 参数）来选择性计算。
 - en: '|  | *a* | *b*[0] | *b*[1] | *b*[2] | *b*[3] | *b*[4] | *b*[5] | *b*[6] | *b*[7]
     | *b*[8] | *b*[9] |'
   id: totrans-167
   prefs: []
   type: TYPE_TB
+  zh: '|  | *a* | *b*[0] | *b*[1] | *b*[2] | *b*[3] | *b*[4] | *b*[5] | *b*[6] | *b*[7]
+    | *b*[8] | *b*[9] |'
 - en: '| model_c | 1.2 | 1.17 | 1.05 | 1.17 | 1.17 | 1.15 | 1.11 | 1.09 | 1.17 | 1.18
     | 1.17 |'
   id: totrans-168
   prefs: []
   type: TYPE_TB
+  zh: '| model_c | 1.2 | 1.17 | 1.05 | 1.17 | 1.17 | 1.15 | 1.11 | 1.09 | 1.17 | 1.18
+    | 1.17 |'
 - en: '| model_nc | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0
     |'
   id: totrans-169
   prefs: []
   type: TYPE_TB
+  zh: '| model_nc | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0 | 1.0
+    |'
 - en: '**Table 10.1**: ![](img/hat_R.png) values for models `model_c` and `model_ncm`'
   id: totrans-170
   prefs: []
   type: TYPE_NORMAL
+  zh: '**表 10.1**：`model_c` 和 `model_ncm` 模型的 ![](img/hat_R.png) 值'
 - en: Values around 1.1 could be OK, at the initial phase of modeling, when you are
     just checking whether a likelihood makes sense, or just trying to find out which
     model you really want to build. Also, the threshold 1.01 could be too tight for
@@ -1325,6 +1382,10 @@
   id: totrans-171
   prefs: []
   type: TYPE_NORMAL
+  zh: 大约 1.1 的值在建模初期可能是可以接受的，特别是当你只是检查一个似然是否合理，或仅仅是尝试找出你真正想要构建的模型时。此外，对于参数较多的模型来说，1.01
+    的阈值可能过于严格。原因是即使你确实已经达到了收敛，你仍然可能偶然得到一些超过这个阈值的 ![](img/hat_R.png) 值。例如，PyMC-BART
+    包括 `plot_convergence` 函数。该函数旨在检查 BART 随机变量的收敛性。使用 BART 模型时，每个观察值都会得到一个 ![](img/hat_R.png)，而且这个数量可能很多。因此，`plot_convergence`
+    显示了 ![](img/hat_R.png) 值的累积分布以及一个阈值，这个阈值会自动计算并考虑到观察值的数量，从而进行多重比较的校正。
 - en: '*Figure [10.11](#x1-203005r11)* shows an example of such a plot. On the right,
     we have a cumulative distribution of ![](img/hat_R.png)s and a gray dashed line
     showing the adjusted threshold. Ideally, the entire cumulative curve should be
@@ -1334,19 +1395,24 @@
   id: totrans-172
   prefs: []
   type: TYPE_NORMAL
+  zh: '*图 [10.11](#x1-203005r11)* 显示了此类图的示例。在右侧，我们展示了 ![](img/hat_R.png) 的累积分布，并有一条灰色虚线表示调整后的阈值。理想情况下，整个累积曲线应位于虚线的左侧。在
+    *图 [10.11](#x1-203005r11)* 的左侧子图中，我们展示了 **有效样本量**（**ESS**）。我们将在下一节解释 ESS。'
 - en: '![PIC](img/file263.png)'
   id: totrans-173
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file263.png)'
 - en: '**Figure 10.11**: Diagnostic plot computed with `pmb.plot_convergence(.)`'
   id: totrans-174
   prefs: []
   type: TYPE_NORMAL
+  zh: '**图 10.11**：使用 `pmb.plot_convergence(.)` 计算的诊断图'
 - en: 10.8 Effective Sample Size (ESS)
   id: totrans-175
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 10.8 有效样本量（ESS）
 - en: MCMC samples can be correlated. The reason is that we use the current position
     to generate a new position and we accept or reject the next position taking into
     account the old position. This dependency is usually lower for well-tuned modern
@@ -1361,25 +1427,36 @@
   id: totrans-176
   prefs: []
   type: TYPE_NORMAL
+  zh: MCMC 样本可能是相关的。原因是我们使用当前的位置生成一个新位置，并在考虑旧位置的基础上接受或拒绝下一个位置。这种依赖性对于调优良好的现代方法（如哈密顿蒙特卡洛）通常较低，但有时也可能较高。我们可以使用
+    `az.plot_autocorrelation` 计算并绘制自相关图。但通常，更有用的度量是计算 **有效样本量**（**ESS**）。我们可以将这个数字看作是样本中有用的抽样次数。由于自相关，这个数字通常会低于实际的样本数。我们可以使用
+    `az.ess` 函数来计算它（见 *表 [10.2](#x1-204002r2)*）。ESS 诊断也可以通过 `az.summary` 函数默认计算，或者通过
+    `az.plot_forest` 函数（使用 `ess=True` 参数）来选择性计算。
 - en: '|  | *a* | *b*[0] | *b*[1] | *b*[2] | *b*[3] | *b*[4] | *b*[5] | *b*[6] | *b*[7]
     | *b*[8] | *b*[9] |'
   id: totrans-177
   prefs: []
   type: TYPE_TB
+  zh: '|  | *a* | *b*[0] | *b*[1] | *b*[2] | *b*[3] | *b*[4] | *b*[5] | *b*[6] | *b*[7]
+    | *b*[8] | *b*[9] |'
 - en: '| model_cm | 14 | 339 | 3893 | 5187 | 4025 | 5588 | 4448 | 4576 | 4025 | 4249
     | 4973 |'
   id: totrans-178
   prefs: []
   type: TYPE_TB
+  zh: '| model_cm | 14 | 339 | 3893 | 5187 | 4025 | 5588 | 4448 | 4576 | 4025 | 4249
+    | 4973 |'
 - en: '| model_ncm | 2918 | 4100 | 4089 | 3942 | 3806 | 4171 | 3632 | 4653 | 3975
     | 4092 | 3647 |'
   id: totrans-179
   prefs: []
   type: TYPE_TB
+  zh: '| model_ncm | 2918 | 4100 | 4089 | 3942 | 3806 | 4171 | 3632 | 4653 | 3975
+    | 4092 | 3647 |'
 - en: '**Table 10.2**: ESS values for models `model_c` and `model_ncm`'
   id: totrans-180
   prefs: []
   type: TYPE_NORMAL
+  zh: '**表 10.2**：`model_c` 和 `model_ncm` 模型的 ESS 值'
 - en: The rule of thumb is that we need, at least, an effective sample size of 400
     (100 ESS per chain). If we get values lower than this, not only could our estimates
     be excessively noisy, but even diagnostics such as ![](img/hat_R.png) might become
@@ -1387,6 +1464,8 @@
   id: totrans-181
   prefs: []
   type: TYPE_NORMAL
+  zh: 一般规则是我们至少需要一个有效样本量为 400（每条链 100 ESS）。如果得到的值低于这个数值，我们的估计不仅可能过于嘈杂，甚至像 ![](img/hat_R.png)
+    这样的诊断图也可能变得不可靠。
 - en: The quality of the MCMC samples can be different from different regions of the
     posterior. For instance, at least for some problems, it could be easier to sample
     the bulk of the distribution than its tails. Thus, we may want to compute ESS
@@ -1403,14 +1482,19 @@
   id: totrans-182
   prefs: []
   type: TYPE_NORMAL
+  zh: MCMC样本的质量可能会因后验分布的不同区域而异。例如，至少对于某些问题，采样分布的中心部分可能比尾部部分更容易。因此，我们可能希望计算后验分布不同区域的ESS值。`az.ess()`返回的默认值是中心区域的ESS，它估计分布中心的解析精度。如果你对某个参数的均值或中位数感兴趣，应该检查这个ESS值。如果你想报告后验区间或关注稀有事件，应检查尾部ESS值，它是在5%和95%分位数处计算的最小ESS值。如果你对特定分位数感兴趣，可以使用`az.ess(.,
+    method='quantile')`来请求这些具体的值。我们甚至可以使用`az.plot_ess(., kind="quantiles")`函数同时绘制多个分位数的ESS，如*图
+    [10.12](#x1-204004r12)*所示，针对参数`a`。
 - en: '![PIC](img/file264.png)'
   id: totrans-183
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file264.png)'
 - en: '**Figure 10.12**: ESS for quantiles of parameter `a`'
   id: totrans-184
   prefs: []
   type: TYPE_NORMAL
+  zh: '**图 10.12**：参数`a`的ESS分位数'
 - en: Finally, when we are running a model and find out that we have a very low ESS,
     the first reaction may be to increase the number of samples. Sometimes this is
     enough. But sometimes even a 10-fold increase is not enough. Instead of trial
@@ -1424,19 +1508,25 @@
   id: totrans-185
   prefs: []
   type: TYPE_NORMAL
+  zh: 最后，当我们运行模型并发现ESS值非常低时，第一反应可能是增加样本数。有时候这就足够了。但有时即使增加10倍样本也不够。我们可以使用`az.plot_ess(.,
+    kind="evolution")`，而不是通过反复试验。这将为我们提供一个样本与ESS的图，如*图 [10.13](#x1-204005r13)*所示。我们可以利用这些信息来估计需要多少样本才能达到给定的ESS值。例如，在*图
+    [10.13](#x1-204005r13)*中，我们可以看到仅通过增加样本数，`model_c`中参数`a`的ESS值没有太大希望变得理想。与此相比，`model_nc`的ESS值对于大部分样本接近实际样本数。
 - en: '![PIC](img/file265.png)'
   id: totrans-186
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file265.png)'
 - en: '**Figure 10.13**: Evolution of the ESS for parameter `a`'
   id: totrans-187
   prefs: []
   type: TYPE_NORMAL
+  zh: '**图 10.13**：参数`a`的ESS演变'
 - en: 10.9 Monte Carlo standard error
   id: totrans-188
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 10.9 蒙特卡罗标准误差
 - en: Even if we have a very low ![](img/hat_R.png) and a very high value of ESS.
     The samples from MCMC are still finite, and thus we are introducing an error in
     the estimation of the posterior parameters. Fortunately, we can estimate the error,
@@ -1453,6 +1543,7 @@
   id: totrans-189
   prefs: []
   type: TYPE_NORMAL
+  zh: 即使我们有一个非常低的![](img/hat_R.png)和一个非常高的ESS值，MCMC的样本仍然是有限的，因此我们在估计后验参数时会引入误差。幸运的是，我们可以估算这个误差，它被称为**蒙特卡罗标准误差**（**MCSE**）。MCSE的估算考虑到样本之间并非真正独立。我们希望得到的结果精度受限于这个值。如果某个参数的MCSE为0.2，那么报告该参数为2.54是没有意义的。相反，如果我们重复模拟（使用不同的随机种子），我们应该预期68%的结果会落在2.54±0.2的范围内。同样，对于95%的结果，它们应该落在2.54±0.4的范围内。在这里，我假设MCSE服从正态分布，并利用高斯分布的性质：大约68%的值位于一个标准差以内，约95%的值位于两个标准差以内。
 - en: The ![](img/hat_R.png), ESS, and MCSE are related. In practice, we should use
     the ESS as a scale-free diagnostic to ensure we have enough useful samples. It
     is scale-free because it does not matter if one parameter goes from 0 to 1 and
@@ -1466,10 +1557,15 @@
   id: totrans-190
   prefs: []
   type: TYPE_NORMAL
+  zh: '![](img/hat_R.png)、ESS 和 MCSE 是相关的。实际上，我们应该使用 ESS 作为无量纲诊断，以确保我们拥有足够的有效样本。它是无量纲的，因为无论一个参数从
+    0 到 1，另一个从 0 到 100，都不影响 ESS 的比较。我们可以比较它们的 ESS 值。对于 ESS，值越大越好，最低值至少为 400。如果达到最低值，我们检查是否有足够低的
+    ![](img/hat_R.png)。我们还可以通过可视化的排名图或轨迹图来检查（我们还应检查发散，因为稍后我们将进行解释）。如果一切正常，我们再检查 MCSE
+    是否足够低，适用于我们希望报告的参数和精度。希望对于大多数问题，MCSE 都会远低于我们所需的精度。'
 - en: Too Many Digits can Hurt
   id: totrans-191
   prefs: []
   type: TYPE_NORMAL
+  zh: 过多的数字可能会有害
 - en: When reporting results in text, tables, or plots, it is important to be aware
     that excessive digits can make the numbers difficult to read and comprehend. It
     is easier to read a number like 0.9 than 0.909297, and it is also easier to retain
@@ -1483,11 +1579,13 @@
   id: totrans-192
   prefs: []
   type: TYPE_NORMAL
+  zh: 在报告文本、表格或图表时，重要的是要意识到过多的数字会让数字难以读取和理解。数字如 0.9 比 0.909297 更容易阅读，也更容易记住。此外，当报告的数字位数超过实际需要时，技术受众可能会认为你暗示着比实际存在的更高的显著性。因此，你会误导这些受众，让他们试图从本无意义的差异中寻找含义。最后，过多的数字会让你的图表、表格和图形看起来凌乱且视觉上令人不堪重负。所以，请时刻记住要考虑你的受众的数据兴趣和上下文。
 - en: 10.10 Divergences
   id: totrans-193
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 10.10 发散
 - en: We will now explore divergences, a diagnostic that is exclusive to NUTS, as
     it is based on the inner workings of the method and not a property of the generated
     samples. Divergences are a powerful and sensitive method that indicate the sampler
@@ -1498,23 +1596,28 @@
   id: totrans-194
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们现在将探讨发散（divergences），这是一种 NUTS 特有的诊断方法，因为它基于方法的内部机制，而不是生成样本的属性。发散是一种强大且敏感的诊断方法，它表明采样器很可能已经发现了后验分布中的一个高曲率区域，该区域无法被正确探索。发散的一个优点是，它们通常出现在问题参数空间区域附近，因此我们可以利用它们来识别问题可能所在的位置。
 - en: 'Let’s discuss divergences with a visual aid:'
   id: totrans-195
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们通过视觉辅助工具讨论发散：
 - en: '![PIC](img/file266.png)'
   id: totrans-196
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file266.png)'
 - en: '**Figure 10.14**: Pair plot for selected parameters from models `model_c` and
     `model_nc`'
   id: totrans-197
   prefs: []
   type: TYPE_NORMAL
+  zh: '**图 10.14**：`model_c` 和 `model_nc` 模型中选定参数的配对图'
 - en: 'As you can see, *Figure [10.14](#x1-206002r14)* shows the following three subplots:'
   id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 如你所见，*图 [10.14](#x1-206002r14)* 显示了以下三个子图：
 - en: 'The left subplot: We have a scatter plot for two parameters of model `model_c`;
     namely, one dimension of the parameter `b` (we just picked one at random – feel
     free to pick a different one), and the logarithm of the parameter `a`. We take
@@ -1535,6 +1638,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 左侧子图：我们展示的是`model_c`模型的两个参数的散点图；即，`b`参数的一个维度（我们随便挑了一个 – 你可以选择不同的维度），以及`a`参数的对数值。我们取对数是因为`a`被限制为正值（它是一个尺度参数）。在采样之前，PyMC会将所有有界的参数转换为无界的参数。对于像`a`这样的参数，转换方法是取对数。我们在这里也做同样的处理，因为我们想理解采样器究竟在“看到”什么。好了，我们有一个散点图，其中灰色点表示样本。看看这个参数的形状，这种形状被称为Neal的漏斗形状，在层次模型中很常见。黑色点表示发散，它们散布在各处，但我们可以看到，许多黑点集中在漏斗的尖端附近。这个几何形状对大多数MCMC方法来说是有问题的，因为很难调整采样器，使其既能在漏斗尖端和顶部获取良好的样本，又能适应这种几何形状。一种是更“球形”的区域，采样器可以上下左右自由移动，另一种是“更窄”的区域，采样器必须主要沿上下方向移动，左右方向的移动则非常有限。
 - en: 'The middle subplot: We basically have the same as before but for model `model_nc`,
     now the funnel shape is even more accentuated. But we don’t have divergences.
     And we already know from previous sections that samples from this model are actually
@@ -1546,6 +1650,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 中间的子图：我们基本上与之前的情况相同，但对于`model_nc`模型，现在漏斗形状更加明显。但我们没有出现发散。而且我们从前面的章节已经知道，这个模型的样本实际上更好。到底发生了什么？理解这一点的关键在于模型的定义。你会注意到，对于这个模型，`b`并没有被采样：`b`是一个确定性变量，是`b_offset`和`a`的组合，这两个参数在最后一个子图中被绘制出来。
 - en: 'The right subplot: We have `b_offset` versus `a`, and we can see that the geometry
     is more ”spherical”. It is this and not the middle subplot that the sampler is
     ”seeing.” Because this geometry is easier to sample, we do not get divergences
@@ -1554,6 +1659,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 右侧子图：我们有`b_offset`与`a`的关系，可以看到几何形状更“球形”。正是这一点，而不是中间的子图，才是采样器“看到”的内容。因为这种几何形状更容易采样，所以我们没有出现发散，整体的诊断结果也更好。
 - en: Changing the parametrization of a model is a way to remove divergences, but
     unless you are already aware of an alternative parametrization of your model,
     it can be very time-consuming to find one. An alternative that is often easy to
@@ -1569,11 +1675,13 @@
   id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: 改变模型的参数化是去除发散的一种方法，但除非你已经知道模型的另一种参数化方法，否则找到合适的参数化可能非常耗时。一个常见且容易尝试的替代方案是改变`target_accept`的值，这是`pm.sample`的一个参数。有时候，你可能需要同时更换参数化方法和`target_accept`的值。那么，什么是`target_accept`呢？它是控制PyMC中NUTS采样器调优的一个参数。它控制提议样本的接受率，默认值为0.8。也就是说，接受80%的提议样本。NUTS采样器通过自适应调整哈密顿动力学仿真中的步长来实现目标接受率。80%是一个不错的默认值，但对于某些模型，你可能想尝试更大的值，如0.90、0.95、0.99，甚至是0.999，如果你不想完全失去希望的话。
 - en: 10.11 Keep calm and keep trying
   id: totrans-203
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 10.11 保持冷静，继续尝试
 - en: 'What should we do when diagnostics show problems? We should try to fix them.
     Sometimes, PyMC will provide suggestions on what to change. Pay attention to those
     suggestions, and you will save a lot of debugging time. Here, I have listed a
@@ -1581,6 +1689,7 @@
   id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: 当诊断显示问题时，我们应该怎么做？我们应该尝试修复它们。有时候，PyMC会提供一些关于如何修改的建议。注意这些建议，你可以节省大量的调试时间。在这里，我列出了几个常见的操作，你可以采取：
 - en: Check for typos or other silly mistakes. It is super common even for experts
     to make ”silly” mistakes. If you misspell the name of a variable, it is highly
     likely that the model will not even run. But sometimes the mistake is more subtle,
@@ -1589,6 +1698,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 检查拼写错误或其他低级错误。即使是专家，也很常犯这种“低级”错误。如果你拼错了一个变量名，很可能模型根本无法运行。但有时候，错误更加微妙，你仍然得到一个语法上有效的模型，它能运行，但语义却是错误的。
 - en: Increase the number of samples. This might help for very mild problems, like
     when you’re close to the target ESS (or MCSE), or when ^*R* is slightly higher
     than 1.01 but not too much.
@@ -1596,6 +1706,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 增加样本数量。这可能对一些轻微的问题有所帮助，比如当你接近目标ESS（或MCSE）时，或者当^*R*略高于1.01但差距不大时。
 - en: Remove some samples from the beginning of the trace. When checking a trace plot,
     you may observe that a few samples from the first few steps have overall higher
     or lower values compared to the rest of the trace, which otherwise looks OK. If
@@ -1607,12 +1718,14 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 从轨迹的开始部分移除一些样本。当检查轨迹图时，你可能会观察到，前几步的部分样本相比于其余部分具有明显较高或较低的值，而其他部分看起来正常。如果是这种情况，简单地移除这些前几步的样本可能就足够了。这被称为预热，这在过去是非常常见的做法。现代的采样器已经减少了对它的需求。此外，PyMC已经会丢弃调优阶段的样本，所以这个建议现在不再像以前那样有用。
 - en: Modify sampler parameters, such as increasing the length of the tuning phase,
     or increasing the `target_accept` parameter for the NUTS sampler.
   id: totrans-208
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 修改采样器参数，例如增加调优阶段的长度，或者增加NUTS采样器的`target_accept`参数。
 - en: Transform the data. For example, for linear regression models, centering the
     covariates (subtracting their means) usually speeds up the sampler and also reduces
     sampling issues.
@@ -1620,6 +1733,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 转换数据。例如，对于线性回归模型，居中协变量（减去其均值）通常能加速采样器，并且减少采样问题。
 - en: Spend some time thinking about your priors. You should not tweak the priors
     to speed up the sampler or get rid of bad diagnostics. You should use your priors
     to encode prior knowledge. But it is often the case that when you do that, you
@@ -1629,6 +1743,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 花些时间思考你的先验分布。你不应该为了加速采样器或者去除不良诊断而调整先验。你应该用先验来编码已有的知识。但通常情况下，当你这么做时，也会让采样器的工作变得更加容易。使用像PreliZ和先验预测检查这样的工具，帮助你编码更好的先验分布。
 - en: Re-parametrize the model, that is, express the model in a different but equivalent
     way. This is not always easy to do, but for some common models such as hierarchical
     models, you already know of alternative parametrizations.
@@ -1636,11 +1751,13 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 重新参数化模型，即用一种不同但等效的方式表达模型。这并不总是容易的，但对于一些常见模型，如层级模型，你已经知道一些替代的参数化方法。
 - en: 10.12 Summary
   id: totrans-212
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 10.12 总结
 - en: In this chapter, we have taken a conceptual walk through some of the most common
     methods used to compute the posterior distribution. We have put special emphasis
     on MCMC methods, which are designed to work on any given model (or at least a
@@ -1651,6 +1768,7 @@
   id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们对一些最常用的计算后验分布的方法进行了概念性的讲解。我们特别强调了MCMC方法，这些方法旨在适用于任何给定的模型（或者至少广泛的模型范围），因此有时被称为通用推断引擎。这些方法是任何概率编程语言的核心，因为它们允许自动推断，从而让用户专注于迭代的模型设计和结果的解释。
 - en: We also discussed numerical and visual tests for diagnosing samples. Without
     good approximations of the posterior distribution, all the advantages and flexibility
     of the Bayesian framework vanish. Thus, evaluating the quality of the samples
@@ -1658,11 +1776,13 @@
   id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们还讨论了用于诊断样本的数值和视觉测试。没有良好的后验分布近似，贝叶斯框架的所有优势和灵活性都会消失。因此，在进行任何其他类型的分析之前，评估样本的质量是一个至关重要的步骤。
 - en: 10.13 Exercises
   id: totrans-215
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 10.13 练习
 - en: Use the grid method with other priors; for example, try with `prior = (grid
     <= 0.5).astype(int)` or `prior = abs(grid - 0.5)`, or try defining your own crazy
     priors. Experiment with other data, such as increasing the total amount of data
@@ -1671,6 +1791,8 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 使用网格方法与其他先验；例如，尝试 `prior = (grid <= 0.5).astype(int)` 或 `prior = abs(grid -
+    0.5)`，或者尝试定义你自己的奇特先验。还可以尝试使用其他数据，例如增加数据的总量，或使数据在正反面次数上更加均匀或不均匀。
 - en: In the code we use to estimate *π*, keep `N` fixed and re-run the code a couple
     of times. Notice that the results are different because we are using random numbers,
     but also check that the errors are more or less in the same order. Try changing
@@ -1685,6 +1807,10 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在估计 *π* 的代码中，保持 `N` 固定并重新运行几次。注意到结果有所不同，因为我们使用的是随机数，但也要检查误差大致相同的顺序。尝试改变 `N`
+    点的数量，并重新运行代码。你能估算出 `N` 点的数量和误差之间的关系吗？为了更好的估算，你可能想修改代码，将误差作为 `N` 的函数进行计算。你还可以用相同的
+    `N` 运行几次代码，计算平均误差和误差的标准差。你可以使用 Matplotlib 的 `plt.errorbar()` 函数绘制这些结果。尝试使用一组 `N`
+    值，如 100、1000 和 10000；也就是一个数量级的差异。
 - en: Modify the `dist` argument you pass to the metropolis function; try using the
     values of the prior from *Chapter [1](CH01.xhtml#x1-160001)*. Compare this code
     to the grid method; which part should be modified to be able to use it to solve
@@ -1693,35 +1819,42 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 修改你传递给 metropolis 函数的 `dist` 参数；尝试使用 *第 [1 章](CH01.xhtml#x1-160001)* 中的先验值。将此代码与网格方法进行比较；哪一部分需要修改，才能使用它来解决贝叶斯推断问题？
 - en: 'Compare your answer from the previous exercise to this code by Thomas Wiecki:
     [http://twiecki.github.io/blog/2015/11/10/mcmc-sampling/](http://twiecki.github.io/blog/2015/11/10/mcmc-sampling/)'
   id: totrans-219
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 将你在之前练习中的答案与 Thomas Wiecki 的代码进行比较：[http://twiecki.github.io/blog/2015/11/10/mcmc-sampling/](http://twiecki.github.io/blog/2015/11/10/mcmc-sampling/)
 - en: Revisit at least a few of the models from previous chapters and run all the
     diagnostic tools we saw in this chapter.
   id: totrans-220
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 重温至少几个前面章节中的模型，并运行我们在本章中看到的所有诊断工具。
 - en: Revisit the code from all previous chapters, find those with divergences, and
     try to reduce the number of them.
   id: totrans-221
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 重温所有前几章的代码，找出那些存在偏差的地方，并尽量减少这些偏差。
 - en: Join our community Discord space
   id: totrans-222
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 加入我们的社区 Discord 空间
 - en: 'Join our Discord community to meet like-minded people and learn alongside more
     than 5000 members at: [https://packt.link/bayesian](https://packt.link/bayesian)'
   id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 加入我们的 Discord 社区，与志同道合的人一起学习，超过 5000 名成员在此一起成长： [https://packt.link/bayesian](https://packt.link/bayesian)
 - en: '![PIC](img/file1.png)'
   id: totrans-224
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file1.png)'
