@@ -1,4 +1,4 @@
-# 异常检测 – 找出数据中的异常值
+# 第十二章：异常检测 – 找出数据中的异常值
 
 检测数据中的异常是机器学习中的一个重复性主题。在[第十章](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=32&action=edit)[,](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=32&action=edit)*Imbalanced Learning – Not Even 1% Win the Lottery*，我们学习了如何在数据中发现这些有趣的少数群体。那时，数据是有标签的，并且之前章节中的分类算法适用于该问题。除了**有标签异常检测**问题外，还有一些情况下数据是无标签的。
 
