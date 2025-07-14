@@ -1416,6 +1416,7 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`m` 是我们用来逼近 GP 的基本函数数量。`m` 值越大，逼近效果越好，但计算成本也越高。'
 - en: '`c` is a boundary factor. For a fixed and sufficiently large value of `m`,
     `c` affects the approximation of the mean function mainly near the boundaries.
     It should not be smaller than 1.2 (PyMC will give you a warning if you use a value
@@ -1425,6 +1426,8 @@
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: '`c` 是一个边界因子。对于一个固定且足够大的 `m` 值，`c` 主要影响均值函数在边界附近的逼近。它不应小于 1.2（如果使用较小的值，PyMC
+    会给出警告），通常 1.5 是一个不错的选择。改变此参数不会影响计算速度。'
 - en: We set `m=10` partially because we are fans of the decimal system and partially
     based on the recommendations in the paper *Practical Hilbert space approximate
     Bayesian Gaussian processes for probabilistic programming* written by [Riutort-Mayol
@@ -1436,6 +1439,11 @@
   id: totrans-198
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们设置 `m=10`，部分原因是我们喜欢十进制系统，部分原因是基于 [Riutort-Mayol et al.](Bibliography.xhtml#Xriutortmayol_2022)
+    发表的论文《Practical Hilbert space approximate Bayesian Gaussian processes for probabilistic
+    programming》中的建议 [[2022](Bibliography.xhtml#Xriutortmayol_2022)]。实际上，只要 `m` 和
+    `c` 的值在某个范围内，与长度尺度的先验一致，结果对它们的精确值是稳健的。关于 HSGP 如何工作以及如何在实践中使用它的一些建议，可以参考 [Riutort-Mayol
+    et al.](Bibliography.xhtml#Xriutortmayol_2022) [[2022](Bibliography.xhtml#Xriutortmayol_2022)]。
 - en: Now let’s see the results. *Figure [8.17](#x1-171015r17)* shows the mean posterior
     GP in black and 100 samples (realizations) from the GP posterior (gray lines).
     You can compare these results to the ones obtained using splines (see *Figure
@@ -1443,33 +1451,41 @@
   id: totrans-199
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在让我们看看结果。*图 [8.17](#x1-171015r17)* 显示了黑色的均值后验 GP 和来自 GP 后验的 100 个样本（灰色线）。你可以将这些结果与使用样条得到的结果进行比较（见*图
+    [6.8](CH06.xhtml#x1-124013r8)*）。
 - en: '![PIC](img/file238.png)'
   id: totrans-200
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file238.png)'
 - en: '**Figure 8.17**: Posterior mean for the HSGP model for rented bikes as a function
     of the time of the day'
   id: totrans-201
   prefs: []
   type: TYPE_NORMAL
+  zh: '**图 8.17**：HSGP 模型对租赁自行车的后验均值，作为一天中时间的函数'
 - en: The HSGP approximation is also implemented in Bambi. Let’s see how we can use
     it.
   id: totrans-202
   prefs: []
   type: TYPE_NORMAL
+  zh: HSGP 近似也已在 Bambi 中实现。让我们看看如何使用它。
 - en: 8.10.1 HSGP with Bambi
   id: totrans-203
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 8.10.1 HSGP 与 Bambi
 - en: 'To fit the previous model with Bambi, we need to write the following:'
   id: totrans-204
   prefs: []
   type: TYPE_NORMAL
+  zh: 要使用 Bambi 拟合之前的模型，我们需要编写以下代码：
 - en: '**Code 8.17**'
   id: totrans-205
   prefs: []
   type: TYPE_NORMAL
+  zh: '**代码 8.17**'
 - en: '[PRE16]'
   id: totrans-206
   prefs: []
@@ -1480,6 +1496,7 @@
   id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: 这样是可行的，但我们将为 Bambi 提供先验，就像我们在 PyMC 中做的那样。这将导致更快的采样和更可靠的样本。
 - en: 'As we saw in *Chapter [6](CH06.xhtml#x1-1200006)*, to define priors in Bambi,
     we just need to pass a dictionary to the `priors` argument of `bmb.Model`. But
     we must be aware that HSGP terms do not receive priors. Instead, we need to define
@@ -1490,10 +1507,15 @@
   id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如我们在*第 [6](CH06.xhtml#x1-1200006)* 章中看到的那样，要在 Bambi 中定义先验，我们只需将字典传递给 `bmb.Model`
+    的 `priors` 参数。但我们必须注意，HSGP 项不会接收先验。相反，我们需要为 *ℓ*（在 Bambi 中称为 `ell`）和 *η*（在 Bambi
+    中称为 `sigma`）定义先验，并将这些先验传递给 HSGP 项。还有一件事：和之前的模型一样，我们没有使用 *η*，但由于 Bambi 需要它，我们使用了一个小技巧来定义一个基本上是
+    1 的先验。
 - en: '**Code 8.18**'
   id: totrans-209
   prefs: []
   type: TYPE_NORMAL
+  zh: '**代码 8.18**'
 - en: '[PRE17]'
   id: totrans-210
   prefs: []
@@ -1505,15 +1527,19 @@
   id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: 我邀请你检查 Bambi 计算的参数，它们与我们通过 PyMC 得到的非常相似。*图 [8.18](#x1-172023r18)* 显示了黑色的均值后验
+    GP 和 94% HDI 的带状区域。该图是通过 `bmb.interpret.plot_predictions` 生成的。
 - en: '![PIC](img/file239.png)'
   id: totrans-212
   prefs: []
   type: TYPE_IMG
+  zh: '![PIC](img/file239.png)'
 - en: '**Figure 8.18**: Posterior mean for the HSGP model for rented bikes as a function
     of the time of the day, using Bambi'
   id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: '**图 8.18**：HSGP 模型对租赁自行车的后验均值，作为一天中时间的函数，使用 Bambi'
 - en: In this section, we have explored the concept of HSGP as a powerful approximation
     to scale Gaussian processes to large datasets. By combining the flexibility of
     PyMC and Bambi with the scalability offered by HSGPs, researchers and practitioners
@@ -1522,11 +1548,13 @@
   id: totrans-214
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本节中，我们探讨了HSGP的概念，作为一种强大的近似方法，可以将高斯过程扩展到大数据集。通过将PyMC和Bambi的灵活性与HSGP提供的可扩展性相结合，研究人员和实践者可以更有效地解决复杂的建模任务，为在日益庞大和复杂的数据集上应用高斯过程铺平道路。
 - en: 8.11 Summary
   id: totrans-215
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 8.11 总结
 - en: A Gaussian process is a generalization of the multivariate Gaussian distribution
     to infinitely many dimensions and is fully specified by a mean function and a
     covariance function. Since we can conceptually think of functions as infinitely
@@ -1538,6 +1566,7 @@
   id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: 高斯过程是多元高斯分布的一种推广，适用于无限多个维度，完全由均值函数和协方差函数指定。由于我们可以概念上将函数视为无限长的向量，因此可以将高斯过程作为函数的先验。在实践中，我们并不处理无限对象，而是处理与数据点数量相等维度的多元高斯分布。为了定义其相应的协方差函数，我们使用了适当参数化的核；通过学习这些超参数，我们最终学会了关于任意复杂函数的知识。
 - en: In this chapter, we have given a short introduction to GPs. We have covered
     regression, semi-parametric models (the islands example), combining two or more
     kernels to better describe the unknown function, and how a GP can be used for
@@ -1547,11 +1576,13 @@
   id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们简要介绍了高斯过程（GP）。我们涵盖了回归、半参数模型（岛屿示例）、将两个或多个核组合以更好地描述未知函数，以及高斯过程如何用于分类任务。还有许多其他主题我们可以讨论。然而，我希望这段高斯过程的介绍足以激励你继续使用、阅读和学习高斯过程及贝叶斯非参数模型。
 - en: 8.12 Exercises
   id: totrans-218
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 8.12 练习
 - en: For the example in the *Covariance functions and kernels* section, make sure
     you understand the relationship between the input data and the generated covariance
     matrix. Try using other input such as `data = np.random.normal(size=4)`.
@@ -1559,6 +1590,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 对于*协方差函数和核*部分中的示例，确保理解输入数据与生成的协方差矩阵之间的关系。尝试使用其他输入，如`data = np.random.normal(size=4)`。
 - en: Rerun the code generating *Figure [8.3](#x1-160010r3)* and increase the number
     of samples obtained from the GP prior to around 200\. In the original figure,
     the number of samples is 2\. What is the range of the generated values?
@@ -1566,24 +1598,28 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 重新运行生成*图 8.3*的代码，并将从高斯过程（GP）先验中获得的样本数量增加到约200。原始图中的样本数量为2。生成值的范围是什么？
 - en: 'For the generated plot in the previous exercise, compute the standard deviation
     for the values at each point. Do this in the following form:'
   id: totrans-221
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 对于前一个练习中生成的图表，计算每个点的标准差。按照以下形式进行操作：
 - en: Visually, just observing the plots
   id: totrans-222
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 从视觉上看，仅仅观察图表
 - en: Directly from the values generated from `pz.MVNormal(.).rvs`
   id: totrans-223
   prefs:
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 直接来自于`pz.MVNormal(.).rvs`生成的值
 - en: By inspecting the covariance matrix (if you have doubts go back to exercise
     1)
   id: totrans-224
@@ -1591,11 +1627,13 @@
   - PREF_IND
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 通过检查协方差矩阵（如果有疑问，请回到练习1）
 - en: Did the values you get from these three methods match?
   id: totrans-225
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 从这三种方法中得到的值是否匹配？
 - en: Use test points `np.linspace(np.floor(x.min()), 20, 100)[:,None]` and re-run
     `model_reg`. Plot the results. What did you observe? How is this related to the
     specification of the GP prior?
@@ -1603,24 +1641,28 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 使用测试点`np.linspace(np.floor(x.min()), 20, 100)[:,None]`并重新运行`model_reg`。绘制结果。你观察到了什么？这与GP先验的规范有何关系？
 - en: Repeat exercise 1, but this time use a linear kernel (see the accompanying code
     for a linear kernel).
   id: totrans-227
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 重复练习1，但这次使用线性核（参见附带的线性核代码）。
 - en: Check out [https://www.pymc.io/projects/examples/en/latest/gaussian_processes/GP-MeansAndCovs.html](https://www.pymc.io/projects/examples/en/latest/gaussian_processes/GP-MeansAndCovs.html)
     in PyMC’s documentation.
   id: totrans-228
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 请查看PyMC文档中的[https://www.pymc.io/projects/examples/en/latest/gaussian_processes/GP-MeansAndCovs.html](https://www.pymc.io/projects/examples/en/latest/gaussian_processes/GP-MeansAndCovs.html)。
 - en: Run a logistic regression model for the `space_flu` data. What do you see? Can
     you explain the result?
   id: totrans-229
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 对`space_flu`数据运行逻辑回归模型。你看到了什么？你能解释结果吗？
 - en: 'Change the logistic regression model in order to fit the data. Tip: Use an
     order 2 polynomial.'
   id: totrans-230
