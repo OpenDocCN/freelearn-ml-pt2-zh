@@ -1407,6 +1407,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 超参数怎么样（[https://docs.aws.amazon.com/sagemaker/latest/dg/IC-Hyperparameter.html](https://docs.aws.amazon.com/sagemaker/latest/dg/IC-Hyperparameter.html)）？我们设置类别数（2）和训练样本数（22,500）。由于我们使用图像格式，我们需要显式调整图像大小，将最小尺寸设置为224像素。由于数据充足，我们决定从头开始训练。为了保持训练时间短，我们选择一个18层的**ResNet**模型，只训练10个epochs：
 - en: '[PRE39]'
   id: totrans-222
   prefs:
@@ -1418,6 +1419,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们定义四个通道，设置它们的内容类型为`application/x-image`：
 - en: '[PRE40]'
   id: totrans-224
   prefs:
@@ -1429,6 +1431,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们按以下方式启动训练作业：
 - en: '[PRE41]'
   id: totrans-226
   prefs:
@@ -1442,6 +1445,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在训练日志中，我们看到数据下载大约需要3分钟。令人惊讶的是，我们还看到算法在训练之前构建RecordIO文件。这一步骤大约持续1分钟：
 - en: '[PRE42]'
   id: totrans-228
   prefs:
@@ -1453,6 +1457,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 训练开始时，我们看到一个epoch大约需要22秒：
 - en: '[PRE43]'
   id: totrans-230
   prefs:
@@ -1467,11 +1472,13 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 该作业总共持续了506秒（约8分钟），花费了我们（506/3600）*$4.131=$0.58。它达到了**91.2%**的验证准确率（希望您看到类似的结果）。考虑到我们甚至还没有调整超参数，这是相当不错的结果。
 - en: 'We then deploy the model on a small CPU instance as follows:'
   id: totrans-232
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，我们在小型CPU实例上部署模型如下：
 - en: '[PRE44]'
   id: totrans-233
   prefs:
@@ -1484,11 +1491,13 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们下载以下测试图像，并以`application/x-image`格式发送进行预测。![图5.6 – 测试图片
 - en: '](img/B17705_05_6.jpg)'
   id: totrans-235
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](img/B17705_05_6.jpg)'
 - en: '[PRE45]'
   id: totrans-236
   prefs:
@@ -1501,6 +1510,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 打印出概率和类别后，我们的模型指示这是一只狗，置信度为99.997%，并且图像属于类别1：
 - en: '[PRE46]'
   id: totrans-238
   prefs:
@@ -1512,6 +1522,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 完成后，我们按以下方式删除端点：
 - en: '[PRE47]'
   id: totrans-240
   prefs:
@@ -1522,17 +1533,20 @@
   id: totrans-241
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在让我们使用RecordIO格式的数据集运行相同的训练作业。
 - en: Training in RecordIO format
   id: totrans-242
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 训练RecordIO格式
 - en: 'The only difference is how we define the input channels. We only need two channels
     this time in order to serve the RecordIO files we uploaded to S3\. Accordingly,
     the content type is set to `application/x-recordio`:'
   id: totrans-243
   prefs: []
   type: TYPE_NORMAL
+  zh: 唯一的区别在于我们如何定义输入通道。这次我们只需要两个通道，以便提供我们上传到S3的RecordIO文件。因此，内容类型设置为`application/x-recordio`：
 - en: '[PRE48]'
   id: totrans-244
   prefs: []
@@ -1545,16 +1559,19 @@
   id: totrans-245
   prefs: []
   type: TYPE_NORMAL
+  zh: 再次训练时，我们看到数据下载需要1分钟，文件生成步骤已消失。虽然从单次运行中很难得出任何结论，但使用RecordIO数据集通常会节省您时间和金钱，即使在单个实例上进行训练。
 - en: The Dogs vs. Cats dataset has over 10,000 samples per class, which is more than
     enough to train from scratch. Now, let's try a dataset where that's not the case.
   id: totrans-246
   prefs: []
   type: TYPE_NORMAL
+  zh: 狗与猫数据集每类样本超过10,000个，足以从头开始训练。现在，让我们尝试一个数据集，情况不同。
 - en: Fine-tuning an image classification model
   id: totrans-247
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 微调图像分类模型
 - en: 'Please consider the **Caltech-256** dataset, a popular public dataset of 15,240
     images in 256 classes, plus a clutter class ([http://www.vision.caltech.edu/Image_Datasets/Caltech256/](http://www.vision.caltech.edu/Image_Datasets/Caltech256/)).
     Browsing image categories, we see that all classes have a small number of samples.
@@ -1564,6 +1581,7 @@
   id: totrans-248
   prefs: []
   type: TYPE_NORMAL
+  zh: 请考虑**Caltech-256**数据集，这是一个受欢迎的公共数据集，包含256类共15,240张图像，还有一个混乱的类别（[http://www.vision.caltech.edu/Image_Datasets/Caltech256/](http://www.vision.caltech.edu/Image_Datasets/Caltech256/)）。浏览图像类别，我们发现所有类别都只有少量样本。例如，“鸭子”类仅有60张图像：用这么少的数据，无论多么复杂的深度学习算法都很难提取出鸭子的独特视觉特征。
 - en: In such cases, training from scratch is simply not an option. Instead, we will
     use a technique called **transfer learning**, where we start from a network that
     has already been trained on a very large and diverse image dataset. **ImageNet**
@@ -1774,21 +1792,25 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 在**SageMaker组件与注册表** | **实验与试验**中选择我们的任务，我们可以看到接近实时的指标和图表。下一张图显示了验证集的**平均精度指标（mAP）**，这是目标检测模型的一个关键指标。
 - en: '![Figure 5.7 – Validation mAP'
   id: totrans-281
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 5.7 – 验证集 mAP'
 - en: '](img/B17705_05_7.jpg)'
   id: totrans-282
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](img/B17705_05_7.jpg)'
 - en: Figure 5.7 – Validation mAP
   id: totrans-283
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 5.7 – 验证集 mAP
 - en: Please explore the other tabs (**Metrics**, **Parameters**, **Artifacts**, and
     so on). They contain everything you need to know about a particular job. Please
     note the **Stop training job** button in the top-right corner, which you can use
@@ -1797,6 +1819,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 请浏览其他标签页（**指标**、**参数**、**工件**等）。它们包含了关于特定任务的所有信息。请注意右上角的**停止训练任务**按钮，您可以随时使用它来终止任务。
 - en: Training lasts for 1 hour and 40 minutes. This is a pretty heavy model! We get
     a **mean average precision metric** (**mAP**) of 0.5151\. Production use would
     require more training, but we should be able to test the model already.
@@ -1804,11 +1827,13 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 训练持续了1小时40分钟。这个模型相当庞大！我们得到了**平均精度指标**（**mAP**）为0.5151。生产环境中使用需要更多的训练，但我们现在应该可以测试模型了。
 - en: 'Given its complexity, we deploy the model to a larger CPU instance:'
   id: totrans-286
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 由于模型的复杂性，我们将其部署到一个更大的CPU实例上：
 - en: '[PRE58]'
   id: totrans-287
   prefs:
@@ -1820,6 +1845,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们从维基百科下载一张测试图像，并用我们的模型进行预测：
 - en: '[PRE59]'
   id: totrans-289
   prefs:
@@ -1833,6 +1859,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 响应包含一个预测列表。每个单独的预测包含一个类别标识符、置信度得分以及边界框的相对坐标。以下是响应中的前几个预测：
 - en: '[PRE60]'
   id: totrans-291
   prefs:
@@ -1846,26 +1873,31 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 利用这些信息，我们可以在源图像上绘制边界框。为了简洁起见，我不会在此处包含代码，但您可以在本书的GitHub仓库中找到。以下输出展示了结果：
 - en: '![Figure 5.8 – Test image'
   id: totrans-293
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 5.8 – 测试图像'
 - en: '](img/B17705_05_8.jpg)'
   id: totrans-294
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](img/B17705_05_8.jpg)'
 - en: Figure 5.8 – Test image
   id: totrans-295
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 5.8 – 测试图像
 - en: 'When we''re done, we delete the endpoint as follows:'
   id: totrans-296
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 当我们完成后，我们删除端点，如下所示：
 - en: '[PRE61]'
   id: totrans-297
   prefs:
@@ -1877,21 +1909,25 @@
   id: totrans-298
   prefs: []
   type: TYPE_NORMAL
+  zh: 这就结束了我们的目标检测探索。我们还有一个算法要介绍：**语义分割**。
 - en: Training a semantic segmentation model
   id: totrans-299
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 训练语义分割模型
 - en: 'In this example, we''ll use the semantic segmentation algorithm to build a
     model on the Pascal VOC dataset that we prepared in a previous section:'
   id: totrans-300
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个示例中，我们将使用语义分割算法，在之前章节中准备的Pascal VOC数据集上构建模型：
 - en: 'As usual, we define the data paths, as follows:'
   id: totrans-301
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 如常，我们定义数据路径，如下所示：
 - en: '[PRE62]'
   id: totrans-302
   prefs:
@@ -1904,6 +1940,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们选择语义分割算法，并配置`Estimator`函数：
 - en: '[PRE63]'
   id: totrans-304
   prefs:
@@ -1918,6 +1955,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们定义了所需的超参数。我们选择了一个预训练的ResNet-50网络作为基础网络，并选择一个预训练的**FCN**进行检测。我们设置了类别数和训练样本数。再次，我们选择了30个训练周期，这应该足以开始看到结果：
 - en: '[PRE64]'
   id: totrans-306
   prefs:
@@ -1930,6 +1968,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们配置四个通道，设置源图像的内容类型为`image/jpeg`，掩膜图像的内容类型为`image/png`。然后，我们启动训练任务：
 - en: '[PRE65]'
   id: totrans-308
   prefs:
@@ -1943,21 +1982,25 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 训练大约持续了32分钟。我们得到了**平均交并比指标**（**mIOU**）为0.4874，如下图所示：![图 5.9 – 验证集 mIOU
 - en: '](img/B17705_05_9.jpg)'
   id: totrans-310
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](img/B17705_05_9.jpg)'
 - en: Figure 5.9 – Validation mIOU
   id: totrans-311
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 5.9 – 验证集 mIOU
 - en: 'We deploy the model to a CPU instance:'
   id: totrans-312
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们将模型部署到一个CPU实例上：
 - en: '[PRE66]'
   id: totrans-313
   prefs:
@@ -1970,6 +2013,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 一旦端点开始服务，我们获取一张测试图像，并将其作为字节数组发送进行预测，附上正确的内容类型：
 - en: '[PRE67]'
   id: totrans-315
   prefs:
@@ -1982,6 +2026,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 使用**Python图像库**（**PIL**），我们处理响应掩膜并显示它：
 - en: '[PRE68]'
   id: totrans-317
   prefs:
