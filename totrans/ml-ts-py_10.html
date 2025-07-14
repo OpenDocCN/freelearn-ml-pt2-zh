@@ -1,0 +1,330 @@
+<html><head></head><body>
+  <div id="_idContainer421">
+    <h1 class="chapterNumber">11</h1>
+    <h1 id="_idParaDest-165" class="chapterTitle">Reinforcement Learning for Time-Series</h1>
+    <p class="normal">Reinforcement learning is a widely successful paradigm for control problems and function optimization that doesn't require labeled data. It's a powerful framework for experience-driven autonomous learning, where an agent interacts directly with the environment by taking actions and improves its efficiency by trial and error. Reinforcement learning has been especially popular since the breakthrough of the London-based Google-owned company DeepMind in complex games. </p>
+    <p class="normal">In this chapter, we'll discuss a classification of <strong class="keyword">reinforcement learning </strong>(<strong class="keyword">RL</strong>) approaches in time-series specifically economics, and we'll deal with the accuracy and applicability of RL-based time-series models.</p>
+    <p class="normal">We'll start with core concepts and algorithms in RL relevant to time-series and we'll talk about open issues and challenges in current deep RL models.</p>
+    <p class="normal">I am going to cover the following topics:</p>
+    <ul>
+      <li class="bullet">Introduction to Reinforcement Learning</li>
+      <li class="bullet">Reinforcement Learning for Time-Series</li>
+      <li class="bullet">Bandit algorithms</li>
+      <li class="bullet">Deep Q-Learning</li>
+      <li class="bullet">Python Practice</li>
+    </ul>
+    <p class="normal">Let's start with an introduction to reinforcement learning and the main concepts.</p>
+    <h1 id="_idParaDest-166" class="title">Introduction to reinforcement learning</h1>
+    <p class="normal">Reinforcement learning is one of the main paradigms in machine learning alongside supervised and unsupervised methods. A major distinction is that supervised or unsupervised <a id="_idIndexMarker849"/>methods are passive, responding to changes, whereas RL is actively changing the environment and seeking out new data. In fact, from a machine learning perspective, reinforcement learning algorithms can be viewed as alternating between finding good data and doing supervised learning on that data. </p>
+    <p class="normal">Computer programs based on reinforcement learning have been breaking through barriers. In a watershed moment for artificial intelligence, in March 2016, DeepMind's AlphaGo defeated the professional Go board game player Lee Sedol. Previously, the game of Go was considered to be a hallmark of human creativity and intelligence, too complex to be learned by a machine.</p>
+    <p class="normal">It has been <a id="_idIndexMarker850"/>argued that it is edging us closer toward <strong class="keyword">Artificial General Intelligence</strong> (<strong class="keyword">AGI</strong>). For example, in their paper "<em class="italic">Reward is enough</em>" (2021), David Silver, Satinder Singh, Doina Precup, and Richard S. Sutton argue that reward-orientated learning is enough to acquire knowledge, learn, perceive, socialize, understand and produce language, generalize, and imitate. More emphatically, they state that reinforcement learning agents could constitute a solution to AGI.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-"><strong class="keyword">Artificial General Intelligence </strong>(<strong class="keyword">AGI</strong>) is the hypothetical ability of an intelligent agent to understand or learn any intellectual task that would require intelligence. What is <strong class="keyword">intelligence</strong> though? Often this is defined as anything humans can do or would consider hard. According to Turing Award winning computer scientist John McCarthy ("<em class="italic">What Is AI?</em>" 1998), "<em class="italic">intelligence is the computational part of the ability to achieve goals in the world.</em>"</p>
+    </div>
+    <p class="normal">In reinforcement learning, an agent interacts with the environment through actions and gets feedback in the shape of rewards. Contrary to the situation in supervised learning, no labeled data is available, but rather the environment is explored and exploited on the basis of the expectation of cumulative rewards. This feedback cycle of action and reward is illustrated in this diagram:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_01.png" alt=""/></figure>
+    <p class="packt_figref">Figure 11.1: Feedback loop in reinforcement learning</p>
+    <p class="normal">Reinforcement learning is concerned with the objective of reward maximization. By interacting <a id="_idIndexMarker851"/>with the environment, the agent gets feedback and learns to take better actions. By optimizing the cumulative reward, the agent develops goal-directed behavior.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-"><strong class="keyword">Reinforcement learning</strong> (<strong class="keyword">RL</strong>) is an approach where an agent interacts directly with the environment by taking actions. The agent learns through trial and error to maximize the reward.</p>
+    </div>
+    <p class="normal">If you've read <em class="chapterRef">Chapter 8</em>, <em class="italic">Online Learning for Time-Series</em>, you might be confused about the difference between reinforcement learning and online learning, and it might be worthwhile to <a id="_idIndexMarker852"/>consider the two approaches in comparison. Some of the most prominent algorithms for reinforcement learning, Q-learning and Temporal Difference (TD) learning, to just name a couple of examples, are online algorithms, the way they update the value function. </p>
+    <p class="normal">However, reinforcement learning doesn't focus on predictions, but on the interaction with the environment. In <strong class="keyword">online learning</strong>, information is processed continuously, and the problem is clearly defined in terms of what's correct and what's incorrect. In reinforcement learning, the goal is the optimization of a delayed reward over a number of steps interacting with the environment. This is the main difference between the two approaches, although there are many particular details proponents of each technique would claim as theirs. Some of these we'll discuss later in this chapter, such as exploration versus exploitation and experience replay.</p>
+    <p class="normal">A reinforcement problem is defined by three main components: the environment ε, the agent <em class="italic">A</em>, and the cumulative objective. The agent is a decision-making entity that can observe the current state of the environment and takes an action. By performing an action <img src="../Images/B17577_11_001.png" alt="" style="height: 0.8em;"/>, the agent transitions from state to state, <img src="../Images/B17577_11_002.png" alt="" style="height: 0.8em;"/>. Executing an action in a specific state provides the agent with a reward, which is a numerical score. The reward is an instantaneous measurement of progress towards a goal.</p>
+    <p class="normal">The environment is in a certain state that depends on some combination of the current state and the action taken, although some of the changes could be random. It's the agent's objective to maximize a cumulative reward function. This cumulative reward objective can be the sum of rewards over a number of steps, a discounted sum, or the average reward over time.</p>
+    <p class="normal">More formally, an agent in the context of RL is a system (or program) that receives an observation <em class="italic">O</em><sub class="" style="font-style: italic;">t</sub> of the environment at time <em class="italic">t</em> and outputs an action <img src="../Images/B17577_11_003.png" alt="" style="height: 1em;"/> given its history of experiences <img src="../Images/B17577_11_004.png" alt="" style="height: 1em;"/>.</p>
+    <p class="normal">Meanwhile, an environment is another system. It receives an action <em class="italic">A</em><sub class="" style="font-style: italic;">t</sub> at time <em class="italic">t</em> and changes its state in accordance with the history of actions and past states and a random process <img src="../Images/B17577_11_005.png" alt="" style="height: 1em;"/>. The state is accessible to the agent to a certain degree, and to simplify we can state: <img src="../Images/B17577_11_006.png" alt="" style="height: 1em;"/>.</p>
+    <p class="normal">Finally, a reward is a scalar observation that is emitted at every time step <em class="italic">t</em> by the environment that provides momentaneous feedback to the agent on how well it is doing.</p>
+    <p class="normal">At the core of the reinforcement learning agent is a model that estimates the value of an environmental state or suggests the next action in the environment. These are the two main categories of reinforcement learning: in <strong class="keyword">value-based</strong> learning, a model approximates <a id="_idIndexMarker853"/>the outcomes of actions or the value of environmental states with a value function (a model) and the action selection reduces to take the <a id="_idIndexMarker854"/>action with the best expected outcome. In <strong class="keyword">policy-based</strong> learning, we focus on the more direct goal of choosing the action by predicting an action from the environmental state.</p>
+    <p class="normal">There's another <a id="_idIndexMarker855"/>twist to reinforcement learning: the <strong class="keyword">exploration versus exploitation dilemma</strong>. You can decide to keep doing what you know works <a id="_idIndexMarker856"/>best (exploitation) or try out new avenues (exploration). Trying out new things will probably lead to worse results in the short run but might teach you important lessons that you can draw from in the future.</p>
+    <p class="normal">A simple <a id="_idIndexMarker857"/>approach to balance the two against each other is <strong class="keyword">epsilon-greedy</strong>. This is a simple method to balance exploration and exploitation by choosing between exploration and exploitation randomly: either we follow our model's advice, or we don't. Epsilon is the parameter for the probability that we do an action that's not recognized as the best by the model; the higher epsilon, the more random the model's actions.</p>
+    <p class="normal"><strong class="keyword">Deep reinforcement learning</strong> (<strong class="keyword">DRL</strong>) techniques are a subset of reinforcement learning methods, where <a id="_idIndexMarker858"/>the model is a deep neural network (or, in a looser sense, a multilayer-perceptron).</p>
+    <p class="normal">In the next section, we'll look into how RL can be applied to time-series!</p>
+    <h1 id="_idParaDest-167" class="title">Reinforcement Learning for Time-Series</h1>
+    <p class="normal">Reinforcement Learning (RL) can and has been applied to time-series, however, the problem <a id="_idIndexMarker859"/>has to be framed in a certain way. For reinforcement learning, we need to have significant feedback between predictions and ongoing (actions) of the system. </p>
+    <p class="normal">In order to <a id="_idIndexMarker860"/>apply RL to time-series forecasting or predictions, the prediction has to condition an action, therefore the state evolution depends on the current state and the agent's action (and randomness). Hypothetically, rewards could be a performance metric about the accuracy of predictions. However, the consequences of good or bad predictions do not affect the original environment. Essentially this corresponds to a supervised learning problem.</p>
+    <p class="normal">More meaningfully, if we want to frame our situation as an RL problem, the state of the systems should be affected by the agents' decisions. For instance, in the case of interacting with the stock market, we would buy or sell based on predictions of the movements and include something that we influence such as our portfolio and funds in the state, or (only really if we are a market maker) the influence we have over the stock movements.</p>
+    <p class="normal">In summary, RL is very apt for dealing with processes that change over time, although RL deals with those that can be controlled or influenced. A core application for time-series is in industrial processes and control – this was in fact already pointed out by Box and Jenkins in their classic book "<em class="italic">Time-Series Analysis: Forecasting and Control</em>").</p>
+    <p class="normal">There are lots of applications that we could think of for reinforcement learning. Trading on the stock market is a major driver of business growth, and the presence of uncertainty and risk recommends it as a reinforcement learning use case. In pricing, for example in insurance or retail, reinforcement learning can help explore the space of value proposition for customers that would yield high sales, while optimizing the margin. Finally auction mechanisms, for example online bidding for advertisements, are another domain. In auctions, reinforcement agents have to develop responses in the presence of other players.</p>
+    <p class="normal">Let's go more into detail about a few algorithms – first, bandits.</p>
+    <h1 id="_idParaDest-168" class="title">Bandit algorithms</h1>
+    <p class="normal">A <strong class="keyword">Multi-Armed Bandit</strong> (<strong class="keyword">MAB</strong>) is a classic reinforcement learning problem, in which a player is faced <a id="_idIndexMarker861"/>with a slot machine (bandit) that has <em class="italic">k</em> levers (arms), each with a different reward distribution. The agent's goal is to maximize its cumulative <a id="_idIndexMarker862"/>reward on a trial-by-trial basis. Since MABs are a simple but powerful framework for algorithms that make decisions over time under uncertainty, a large number of research articles have been dedicated to them.</p>
+    <p class="normal">Bandit learning refers to algorithms that aim to optimize a single unknown stationary objective function. An agent chooses an action from a set of actions <img src="../Images/B17577_11_007.png" alt="" style="height: 0.8em;"/>. The environment reveals reward <img src="../Images/B17577_11_008.png" alt="" style="height: 1em;"/> of the chosen action at time <em class="italic">t</em>. As information is accumulated over multiple rounds, the agent can build a good representation of the value (or reward) distribution for each arm, <img src="../Images/B17577_11_009.png" alt="" style="height: 1em;"/>.</p>
+    <p class="normal">Therefore, a good policy might converge so that the choice of arm becomes optimal. According to one policy, <strong class="keyword">UCB1</strong> (published by Peter Auer, Nicolò Cesa-Bianchi, and Paul Fischer, "<em class="italic">Finite-Time Analysis of the Multi-Armed Bandit Problem</em>", 2002), given the expected values for each action, the action is chosen that maximizes this criterion:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_010.png" alt="" style="height: 3.3em;"/></figure>
+    <p class="normal">The second term refers to the upper confidence bound of the reward values based on the information we have accumulated. Here, <em class="italic">t</em> refers to the number of iterations so far, the time step, and <img src="../Images/B17577_11_011.png" alt="" style="height: 1em;"/> to the number of times action <em class="italic">a</em> has been executed so far. This means that the nominator in the equation increases logarithmically with time and the denominator increases each time we receive reward information from the action.</p>
+    <p class="normal">When the <a id="_idIndexMarker863"/>available rewards are binary (win or lose, yes or no, charge or no charge) then this can be described by a Beta distribution. The Beta distribution takes two parameters, <img src="../Images/B17577_05_038.png" alt="" style="height: 0.7em;"/> and <img src="../Images/B17577_11_013.png" alt="" style="height: 1em;"/>, for wins and losses, respectively. The mean value is <img src="../Images/B17577_11_014.png" alt="" style="height: 2.3em;"/>. </p>
+    <p class="normal">In <strong class="keyword">Thompson sampling</strong>, we sample <a id="_idIndexMarker864"/>from the Beta distribution of each action (arm) and choose the action with the highest estimated return. The Beta distribution narrows with the number of tries, therefore actions that have been tried infrequently have wide distributions. Therefore, Beta sampling models the estimated mean reward and the level of confidence in the estimate. In <strong class="keyword">Dirichlet sampling</strong>, instead of <a id="_idIndexMarker865"/>sampling from a Beta distribution, we are sampling from a Dirichlet distribution (also called multivariate Beta distribution).</p>
+    <p class="normal"><strong class="keyword">Contextual bandits</strong> incorporate <a id="_idIndexMarker866"/>information about the environment for updating the reward expectation. If you think about ads, this contextual information could be if the ad is about traveling. The advantage of contextual bandits is agents can encode much richer information about the environment. </p>
+    <p class="normal">In contextual bandits, an agent chooses an arm, the reward <img src="../Images/B17577_11_015.png" alt="" style="height: 1em;"/> is revealed, and the agent's expectation of the reward is updated, but with context features: <img src="../Images/B17577_11_016.png" alt="" style="height: 1em;"/>, where <em class="italic">x</em> is a set of features encoding the environment. In many implementations, the context is often restricted to discrete values, however, at least in theory, they could be either categorical or numerical. The value function could be any machine learning algorithm such as a neural network (NeuralBandit) or a random forest (BanditForest).</p>
+    <p class="normal">Bandits find <a id="_idIndexMarker867"/>applications, among other fields, in information retrieval models such as recommender and ranking systems, which are employed in search engines <a id="_idIndexMarker868"/>or on consumer websites. The <strong class="keyword">probability ranking principle</strong> (PRP; from S.E. Robertson's article "<em class="italic">The probability ranking principle in IR</em>", 1977) forms the theoretical basis for probabilistic models, which have been dominating IR. The PRP states that articles should be ranked in decreasing order of relevance probability. This is what we'll go through in an exercise in the practice section.</p>
+    <p class="normal">Let's delve into Q-learning and deep Q-learning now.</p>
+    <h1 id="_idParaDest-169" class="title">Deep Q-Learning</h1>
+    <p class="normal">Q-learning, introduced by Chris Watkins in 1989, is an algorithm to learn the value of an action in a <a id="_idIndexMarker869"/>particular state. Q-learning revolves around representing the expected rewards for an action taken in a given state.</p>
+    <p class="normal">The expected reward of the state-action combination <img src="../Images/B17577_11_017.png" alt="" style="height: 1em;"/> is approximated by the Q function:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_018.png" alt="" style="height: 1.5em;"/></figure>
+    <p class="normal"><em class="italic">Q</em> is initialized to a fixed value, usually at random. At each time step <em class="italic">t</em>, the agent selects an action <img src="../Images/B17577_11_019.png" alt="" style="height: 1em;"/> and sees a new state of the environment <img src="../Images/B17577_11_020.png" alt="" style="height: 1em;"/> as a consequence and receives a reward.</p>
+    <p class="normal">The value function <em class="italic">Q</em> can then be updated according to the Bellman equation as the weighted average of the old value and the new information:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_021.png" alt="" style="height: 1.7em;"/></figure>
+    <p class="normal">The weight is by <img src="../Images/B17577_05_038.png" alt="" style="height: 0.7em;"/>, the learning rate – the higher the learning rate, the more adaptive the Q-function. The discount factor <img src="../Images/B17577_11_023.png" alt="" style="height: 1em;"/> is weighting the rewards by their immediacy – the higher <img src="../Images/B17577_11_024.png" alt="" style="height: 1em;"/>, the more impatient (myopic) the agent becomes. </p>
+    <p class="normal"><img src="../Images/B17577_11_025.png" alt="" style="height: 1em;"/> represents the <a id="_idIndexMarker870"/>current reward. <img src="../Images/B17577_11_026.png" alt="" style="height: 1em;"/> is the reward obtained by <img src="../Images/B17577_11_027.png" alt="" style="height: 1em;"/> weighted by learning rate <img src="../Images/B17577_11_028.png" alt="" style="height: 0.7em;"/>, and <img src="../Images/B17577_11_029.png" alt="" style="height: 1em;"/> is the weighted maximum reward that can be obtained from state <img src="../Images/B17577_11_030.png" alt="" style="height: 1em;"/>.</p>
+    <p class="normal">This last part can be recursively broken down into simpler sub-problems like this:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_031.png" alt="" style="height: 1.8em;"/></figure>
+    <p class="normal">In the simplest case, <em class="italic">Q</em> can be a lookup table, called a Q-table. </p>
+    <p class="normal">In 2014, Google DeepMind patented an algorithm called <strong class="keyword">deep Q-learning</strong>. This algorithm was introduced in the Nature paper "<em class="italic">Human-level control through deep reinforcement learning</em>" with an application in Atari 2600 games.</p>
+    <p class="normal">In Deep Q-learning, a neural <a id="_idIndexMarker871"/>network is used for the Q-function as a nonlinear function approximator. They used a convolutional neural network to learn <a id="_idIndexMarker872"/>expected rewards from pixel values. They introduced a technique called <strong class="keyword">experience replay</strong> to update Q over a randomly drawn sample of prior actions. This is done to reduce the learning instability of the Q updates.</p>
+    <div class="note">
+      <p class="Information-Box--PACKT-">Q-learning can be shown in pseudocode roughly like this:</p>
+      <pre class="programlisting code"><code class="hljs-code">import numpy as np
+memory = []
+for episode in range(N):
+  for ts in range(T):
+    if eps np.random.random() &gt; epsilon:
+      a = A[np.argmax([Q(a) for a in A])]
+    else:
+      a = np.random.choice(A)
+    r, s_next = env.execute(a)
+    memory.append((s, a, r, s_next))
+    learn(np.random.choice(memory, L)
+</code></pre>
+    </div>
+    <p class="normal">This implements an epsilon-greedy policy by which a random (exploratory) choice is made according to the probability <code class="Code-In-Text--PACKT-">epsilon</code>. A few more variables are assumed given. The handle for the environment, <code class="Code-In-Text--PACKT-">env</code>, allows us to execute an action. We have a learning function, which applies gradient descent on the Q-function to learn better values according to the Bellman equation. The parameter <code class="Code-In-Text--PACKT-">L</code> is the number of previous values that are used for learning. </p>
+    <p class="normal">The memory replay part is obviously simplified. In actuality, we would have a maximum size of the memory, and, once the memory capacity is reached, we would replace old associations <a id="_idIndexMarker873"/>of states, actions, and rewards with new ones.</p>
+    <p class="normal">We'll put some of this into practice now.</p>
+    <h1 id="_idParaDest-170" class="title">Python Practice</h1>
+    <p class="normal">Let's get into <a id="_idIndexMarker874"/>modeling. We'll start by giving some recommendations for users using MABs.</p>
+    <h2 id="_idParaDest-171" class="title">Recommendations</h2>
+    <p class="normal">For this example, we'll take joke preferences by users, and we'll use them to simulate feedback on <a id="_idIndexMarker875"/>recommended jokes on our website. We'll use this feedback to tune our recommendations. We want to select the 10 best jokes to present to people visiting our site. The recommendations are going to be produced by 10 MABs that each have as many arms as there are jokes. </p>
+    <p class="normal">This is adapted from an example from the <code class="Code-In-Text--PACKT-">mab-ranking</code> library on GitHub by Kenza-AI. </p>
+    <p class="normal">It's a handy library that comes with implementations of different bandits. I've simplified the installation of this library in my fork of the library, so we'll be using my fork here:</p>
+    <pre class="programlisting con"><code class="hljs-con">pip install git+https://github.com/benman1/mab-ranking
+</code></pre>
+    <p class="normal">After this is finished, we can get right to it!</p>
+    <p class="normal">We'll download the <code class="Code-In-Text--PACKT-">jester</code> dataset with joke preferences from S3. Here's the location:</p>
+    <pre class="programlisting code"><code class="hljs-code">URL = <span class="hljs-string">'https://raw.githubusercontent.com/PacktPublishing/Machine-Learning-for-Time-Series-with-Python/main/chapter11/jesterfinal151cols.csv'</span>
+</code></pre>
+    <p class="normal">We'll download them using pandas:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">import</span> pandas <span class="hljs-keyword">as</span> pd
+jester_data = pd.read_csv(URL, header=<span class="hljs-literal">None</span>)
+</code></pre>
+    <p class="normal">We'll make some cosmetic adjustments. The rows refer to users, the columns to jokes. We can make this clearer:</p>
+    <pre class="programlisting code"><code class="hljs-code">jester_data.index.name = <span class="hljs-string">"users"</span>
+</code></pre>
+    <p class="normal">The encoding of choices is a bit weird, so we'll fix this as well:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">for</span> col <span class="hljs-keyword">in</span> jester_data.columns:
+    jester_data[col] = jester_data[col].apply(<span class="hljs-keyword">lambda</span> x: <span class="hljs-number">0.0</span> <span class="hljs-keyword">if</span> x&gt;=<span class="hljs-number">99</span> <span class="hljs-keyword">or</span> x&lt;<span class="hljs-number">7.0</span> <span class="hljs-keyword">else</span> <span class="hljs-number">1.0</span>)
+</code></pre>
+    <p class="normal">So either <a id="_idIndexMarker876"/>people chose the joke or they didn't. We'll get rid of people who didn't choose any joke at all:</p>
+    <pre class="programlisting code"><code class="hljs-code">jester_data = jester_data[jester_data.<span class="hljs-built_in">sum</span>(axis=<span class="hljs-number">1</span>) &gt; <span class="hljs-number">0</span>]
+</code></pre>
+    <p class="normal">Our dataset looks like this now:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_02.png" alt="/var/folders/80/g9sqgdws2rn0yc3rd5y3nd340000gp/T/TemporaryItems/NSIRD_screencaptureui_oTdq4A/Screenshot 2021-09-04 at 16.41.24.png"/></figure>
+    <p class="packt_figref">Figure 11.2: Jester dataset</p>
+    <p class="normal">We'll set up our bandits as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> mab_ranking.bandits.rank_bandits <span class="hljs-keyword">import</span> IndependentBandits
+<span class="hljs-keyword">from</span> mab_ranking.bandits.bandits <span class="hljs-keyword">import</span> DirichletThompsonSampling
+independent_bandits = IndependentBandits(
+    num_arms=jester_data.shape[<span class="hljs-number">1</span>],
+    num_ranks=<span class="hljs-number">10</span>,
+    bandit_class=DirichletThompsonSampling
+)
+</code></pre>
+    <p class="normal">We choose independent bandits with Thompson sampling from the Beta distribution. We recommend the best 10 jokes. </p>
+    <p class="normal">We can then <a id="_idIndexMarker877"/>start our simulation. Our hypothetical website has lots of visits, and we'll get feedback on the 10 jokes that we'll display as chosen by our independent bandits:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> tqdm <span class="hljs-keyword">import</span> trange
+num_steps = <span class="hljs-number">7000</span>
+hit_rates = []
+<span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> trange(<span class="hljs-number">1</span>, num_steps + <span class="hljs-number">1</span>):
+    selected_items = <span class="hljs-built_in">set</span>(independent_bandits.choose())
+    <span class="hljs-comment"># Pick a users choices at random</span>
+    random_user = jester_data.sample().iloc[<span class="hljs-number">0</span>, :]
+    ground_truth = <span class="hljs-built_in">set</span>(random_user[random_user == <span class="hljs-number">1</span>].index)
+    hit_rate = <span class="hljs-built_in">len</span>(ground_truth.intersection(selected_items)) / <span class="hljs-built_in">len</span>(ground_truth)
+    feedback_list = [<span class="hljs-number">1.0</span> <span class="hljs-keyword">if</span> item <span class="hljs-keyword">in</span> ground_truth <span class="hljs-keyword">else</span> <span class="hljs-number">0.0</span> <span class="hljs-keyword">for</span> item <span class="hljs-keyword">in</span> selected_items]
+    independent_bandits.update(selected_items, feedback_list)
+    hit_rates.append(hit_rate)
+</code></pre>
+    <p class="normal">We are simulating 7,000 iterations (visits). At each visit, we'll change our choices according to the updated reward expectations.</p>
+    <p class="normal">We can plot the hit rate, the jokes that users are selecting, as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">import</span> matplotlib.pyplot <span class="hljs-keyword">as</span> plt
+stats = pd.Series(hit_rates)
+plt.figure(figsize=(<span class="hljs-number">12</span>, <span class="hljs-number">6</span>))
+plt.plot(stats.index, stats.rolling(<span class="hljs-number">200</span>).mean(), <span class="hljs-string">"--"</span>)
+plt.xlabel(<span class="hljs-string">'Iteration'</span>)
+plt.ylabel(<span class="hljs-string">'Hit rate'</span>)
+</code></pre>
+    <p class="normal">I've introduced <a id="_idIndexMarker878"/>a rolling average (over 200 iterations) to get a smoother graph:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_03.png" alt=""/></figure>
+    <p class="packt_figref">Figure 11.3: Hit rate over time (Dirichlet sampling)</p>
+    <p class="normal">The mab-ranking library supports contextual information, so we can try out giving additional information. Let's imagine this information as different user groups (cohorts). We could think of users who use different search or filter functionality on our imaginary website, say "newest jokes" or "most popular." Alternatively, they could be from different regions. Or it could be a timestamp category that corresponds to the time of the day of visits of users to our website.</p>
+    <p class="normal">Let's supply the <a id="_idIndexMarker879"/>categorical user group information, the context. We'll cluster users by their preferences, and we'll use the clusters as context:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">from</span> sklearn.cluster <span class="hljs-keyword">import</span> KMeans
+<span class="hljs-keyword">from</span> sklearn.preprocessing <span class="hljs-keyword">import</span> StandardScaler
+scaler = StandardScaler().fit(jester_data)
+kmeans = KMeans(n_clusters=<span class="hljs-number">5</span>, random_state=<span class="hljs-number">0</span>).fit(scaler.transform(jester_data))
+contexts = pd.Series(kmeans.labels_, index=jester_data.index)
+</code></pre>
+    <p class="normal">This creates 5 user groups.</p>
+    <p class="normal">We'll have to reset our bandits:</p>
+    <pre class="programlisting code"><code class="hljs-code">independent_bandits = IndependentBandits(
+    num_arms=jester_data.shape[<span class="hljs-number">1</span>],
+    num_ranks=<span class="hljs-number">10</span>,
+    bandit_class=DirichletThompsonSampling
+)
+</code></pre>
+    <p class="normal">Then, we can redo our simulation. Only now, we'll supply the user context:</p>
+    <pre class="programlisting code"><code class="hljs-code">hit_rates = []
+<span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> trange(<span class="hljs-number">1</span>, num_steps + <span class="hljs-number">1</span>):
+    <span class="hljs-comment"># Pick a users choices at random</span>
+    random_user = jester_data.sample().iloc[<span class="hljs-number">0</span>, :]
+    context = {<span class="hljs-string">"previous_action"</span>: contexts.loc[random_user.name]}
+    selected_items = <span class="hljs-built_in">set</span>(independent_bandits.choose(
+        context=context
+    ))
+    ground_truth = <span class="hljs-built_in">set</span>(random_user[random_user == <span class="hljs-number">1</span>].index)
+    hit_rate = <span class="hljs-built_in">len</span>(ground_truth.intersection(selected_items)) / <span class="hljs-built_in">len</span>(ground_truth)
+    feedback_list = [<span class="hljs-number">1.0</span> <span class="hljs-keyword">if</span> item <span class="hljs-keyword">in</span> ground_truth <span class="hljs-keyword">else</span> <span class="hljs-number">0.0</span> <span class="hljs-keyword">for</span> item <span class="hljs-keyword">in</span> selected_items]
+    independent_bandits.update(selected_items, feedback_list, context=context)
+    hit_rates.append(hit_rate)
+</code></pre>
+    <p class="normal">We can <a id="_idIndexMarker880"/>visualize the hit rate over time again:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_04.png" alt="recommendations_dirichlet_context.png"/></figure>
+    <p class="packt_figref">Figure 11.4: Hit rate over time (Dirichlet sampling with context)</p>
+    <p class="normal">We can see that the hit rate is a bit higher than before.</p>
+    <p class="normal">This model ignores the order of the recommended jokes on our hypothetical website. There are other bandit implementations that model the ranks.</p>
+    <p class="normal">I'll leave it to the reader to play around with this more. A fun exercise is to create a probabilistic model of reward expectations.</p>
+    <p class="normal">In the next <a id="_idIndexMarker881"/>section, we'll be playing around with a deep Q-learning trading bot. This is a more intricate model and will require more attention. We'll apply this to cryptocurrency trading.</p>
+    <h2 id="_idParaDest-172" class="title">Trading with DQN</h2>
+    <p class="normal">This is based on a tutorial of the TensorTrade library, which we'll use in this example. TensorTrade is <a id="_idIndexMarker882"/>a framework for building, training, evaluating, and deploying robust trading algorithms using reinforcement learning. </p>
+    <p class="normal">TensorTrade relies on existing tools such as OpenAI Gym, Keras, and TensorFlow to enable fast experimentation with algorithmic trading strategies. We'll install it with pip as usual. We'll make sure we install the latest version from GitHub:</p>
+    <pre class="programlisting con"><code class="hljs-con">pip install git+https://github.com/tensortrade-org/tensortrade.git
+</code></pre>
+    <p class="normal">We could also install the <code class="Code-In-Text--PACKT-">ta</code> library, which can provide additional signals useful for trading, but we'll leave this out here.</p>
+    <p class="normal">Let's get a few imports out of the way:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">import</span> pandas <span class="hljs-keyword">as</span> pd
+<span class="hljs-keyword">import</span> tensortrade.env.default <span class="hljs-keyword">as</span> default
+<span class="hljs-keyword">from</span> tensortrade.data.cdd <span class="hljs-keyword">import</span> CryptoDataDownload
+<span class="hljs-keyword">from</span> tensortrade.feed.core <span class="hljs-keyword">import</span> Stream, DataFeed
+<span class="hljs-keyword">from</span> tensortrade.oms.exchanges <span class="hljs-keyword">import</span> Exchange
+<span class="hljs-keyword">from</span> tensortrade.oms.services.execution.simulated <span class="hljs-keyword">import</span> execute_order
+<span class="hljs-keyword">from</span> tensortrade.oms.instruments <span class="hljs-keyword">import</span> USD, BTC, ETH
+<span class="hljs-keyword">from</span> tensortrade.oms.wallets <span class="hljs-keyword">import</span> Wallet, Portfolio
+<span class="hljs-keyword">from</span> tensortrade.agents <span class="hljs-keyword">import</span> DQNAgent
+%matplotlib inline
+</code></pre>
+    <p class="normal">These imports concern utilities for the (simulated) exchange, the portfolio, and the environment. Further, there are utilities for data loading and feeding it into the simulation, constants for currency conversion, and finally, there's a deep Q-agent, which consists of a Deep Q-Network (DQN).</p>
+    <p class="normal">Please <a id="_idIndexMarker883"/>note that the matplotlib magic command <code class="Code-In-Text--PACKT-">(%matplotlib inline</code>) is needed for the Plotly charts to show up as expected.</p>
+    <p class="normal">As a first <a id="_idIndexMarker884"/>step, let's load a dataset of historical cryptocurrency prices:</p>
+    <pre class="programlisting code"><code class="hljs-code">cdd = CryptoDataDownload()
+data = cdd.fetch(<span class="hljs-string">"Bitstamp"</span>, <span class="hljs-string">"USD"</span>, <span class="hljs-string">"BTC"</span>, <span class="hljs-string">"1h"</span>)
+data.head()
+</code></pre>
+    <p class="normal">This dataset consists of hourly Bitcoin prices in US dollars. It looks like this:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_05.png" alt="/var/folders/80/g9sqgdws2rn0yc3rd5y3nd340000gp/T/TemporaryItems/NSIRD_screencaptureui_uXbUvY/Screenshot 2021-09-05 at 10.57.42.png"/></figure>
+    <p class="packt_figref">Figure 11.5: Crypto dataset</p>
+    <p class="normal">We'll add a relative strength indicator signal, a technical indicator for the financial markets. It measures the strength or weakness of a market by comparing the closing prices of a recent trading period. We'll also add a <strong class="keyword">moving average convergence/divergence</strong> (<strong class="keyword">MACD</strong>) indicator, which is designed to reveal changes in the strength, direction, momentum, and duration of a trend.</p>
+    <p class="normal">These two are defined as follows:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">rsi</span><span class="hljs-function">(</span><span class="hljs-params">price: Stream[</span><span class="hljs-built_in">float</span><span class="hljs-params">], period: </span><span class="hljs-built_in">float</span><span class="hljs-function">) -&gt; Stream[float]:</span>
+    r = price.diff()
+    upside = r.clamp_min(<span class="hljs-number">0</span>).<span class="hljs-built_in">abs</span>()
+    downside = r.clamp_max(<span class="hljs-number">0</span>).<span class="hljs-built_in">abs</span>()
+    rs = upside.ewm(alpha=<span class="hljs-number">1</span> / period).mean() / downside.ewm(alpha=<span class="hljs-number">1</span> / period).mean()
+    <span class="hljs-keyword">return</span> <span class="hljs-number">100</span>*(<span class="hljs-number">1</span> - (<span class="hljs-number">1</span> + rs) ** -<span class="hljs-number">1</span>)
+<span class="hljs-keyword">def</span><span class="hljs-function"> </span><span class="hljs-title">macd</span><span class="hljs-function">(</span><span class="hljs-params">price: Stream[</span><span class="hljs-built_in">float</span><span class="hljs-params">], fast: </span><span class="hljs-built_in">float</span><span class="hljs-params">, slow: </span><span class="hljs-built_in">float</span><span class="hljs-params">, signal: </span><span class="hljs-built_in">float</span><span class="hljs-function">) -&gt; Stream[float]:</span>
+    fm = price.ewm(span=fast, adjust=<span class="hljs-literal">False</span>).mean()
+    sm = price.ewm(span=slow, adjust=<span class="hljs-literal">False</span>).mean()
+    md = fm - sm
+    signal = md - md.ewm(span=signal, adjust=<span class="hljs-literal">False</span>).mean()
+    <span class="hljs-keyword">return</span> signal
+</code></pre>
+    <p class="normal">Alternatively, here <a id="_idIndexMarker885"/>we could be using trading signals from the <code class="Code-In-Text--PACKT-">ta</code> library.</p>
+    <p class="normal">We'll now set up the feed that goes into our decision making:</p>
+    <pre class="programlisting code"><code class="hljs-code">features = []
+<span class="hljs-keyword">for</span> c <span class="hljs-keyword">in</span> data.columns[<span class="hljs-number">1</span>:]:
+    s = Stream.source(<span class="hljs-built_in">list</span>(data[c]), dtype=<span class="hljs-string">"float"</span>).rename(data[c].name)
+    features += [s]
+cp = Stream.select(features, <span class="hljs-keyword">lambda</span> s: s.name == <span class="hljs-string">"close"</span>)
+</code></pre>
+    <p class="normal">We are selecting the closing price as a feature.</p>
+    <p class="normal">Now, we'll add our indicators as additional features:</p>
+    <pre class="programlisting code"><code class="hljs-code">features = [
+    cp.log().diff().rename(<span class="hljs-string">"lr"</span>),
+    rsi(cp, period=<span class="hljs-number">20</span>).rename(<span class="hljs-string">"rsi"</span>),
+    macd(cp, fast=<span class="hljs-number">10</span>, slow=<span class="hljs-number">50</span>, signal=<span class="hljs-number">5</span>).rename(<span class="hljs-string">"macd"</span>)
+]
+feed = DataFeed(features)
+feed.<span class="hljs-built_in">compile</span>()
+</code></pre>
+    <p class="normal">Aside from RSI and MACD, we are also adding a trend indicator (LR).</p>
+    <p class="normal">We can have a look at the first five lines from the data feed:</p>
+    <pre class="programlisting code"><code class="hljs-code"><span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">5</span>):
+    print(feed.<span class="hljs-built_in">next</span>())
+</code></pre>
+    <p class="normal">Here is <a id="_idIndexMarker886"/>what our trading signal features look like:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_06.png" alt="/var/folders/80/g9sqgdws2rn0yc3rd5y3nd340000gp/T/TemporaryItems/NSIRD_screencaptureui_y5gWwn/Screenshot 2021-09-05 at 11.11.53.png"/></figure>
+    <p class="packt_figref">Figure 11.6: Data feed for trading</p>
+    <p class="normal">Let's set up the broker:</p>
+    <pre class="programlisting code"><code class="hljs-code">bitstamp = Exchange(<span class="hljs-string">"bitstamp"</span>, service=execute_order)(
+    Stream.source(<span class="hljs-built_in">list</span>(data[<span class="hljs-string">"close"</span>]), dtype=<span class="hljs-string">"float"</span>).rename(<span class="hljs-string">"USD-BTC"</span>)
+)
+</code></pre>
+    <p class="normal">The exchange is the interface that will let us execute orders. An exchange needs a name, an execution service, and streams of price data. Currently, TensorTrade supports a simulated execution service using simulated or stochastic data.</p>
+    <p class="normal">Now we need a portfolio:</p>
+    <pre class="programlisting code"><code class="hljs-code">portfolio = Portfolio(USD, [
+    Wallet(bitstamp, <span class="hljs-number">10000</span> * USD),
+    Wallet(bitstamp, <span class="hljs-number">10</span> * BTC)
+])
+</code></pre>
+    <p class="normal">A portfolio can be any combination of exchanges and instruments that the exchange supports.</p>
+    <p class="normal">TensorTrade <a id="_idIndexMarker887"/>includes lots of monitoring tools, called renderers, which can be attached to the environment. They can draw a chart (<code class="Code-In-Text--PACKT-">PlotlyTradingChart</code>) or log to a file (<code class="Code-In-Text--PACKT-">FileLogger</code>), for example. Here's our setup:</p>
+    <pre class="programlisting code"><code class="hljs-code">renderer_feed = DataFeed([
+    Stream.source(<span class="hljs-built_in">list</span>(data[<span class="hljs-string">"date"</span>])).rename(<span class="hljs-string">"date"</span>),
+    Stream.source(<span class="hljs-built_in">list</span>(data[<span class="hljs-string">"open"</span>]), dtype=<span class="hljs-string">"float"</span>).rename(<span class="hljs-string">"open"</span>),
+    Stream.source(<span class="hljs-built_in">list</span>(data[<span class="hljs-string">"high"</span>]), dtype=<span class="hljs-string">"float"</span>).rename(<span class="hljs-string">"high"</span>),
+    Stream.source(<span class="hljs-built_in">list</span>(data[<span class="hljs-string">"low"</span>]), dtype=<span class="hljs-string">"float"</span>).rename(<span class="hljs-string">"low"</span>),
+    Stream.source(<span class="hljs-built_in">list</span>(data[<span class="hljs-string">"close"</span>]), dtype=<span class="hljs-string">"float"</span>).rename(<span class="hljs-string">"close"</span>), 
+    Stream.source(<span class="hljs-built_in">list</span>(data[<span class="hljs-string">"volume"</span>]), dtype=<span class="hljs-string">"float"</span>).rename(<span class="hljs-string">"volume"</span>) 
+])
+</code></pre>
+    <p class="normal">Finally, here's the trading environment, which is an instance of the OpenAI Gym (the OpenAI Gym provides a wide variety of simulated environments):</p>
+    <pre class="programlisting code"><code class="hljs-code">env = default.create(
+    portfolio=portfolio,
+    action_scheme=<span class="hljs-string">"managed-risk"</span>,
+    reward_scheme=<span class="hljs-string">"risk-adjusted"</span>,
+    feed=feed,
+    renderer_feed=renderer_feed,
+    renderer=default.renderers.PlotlyTradingChart(),
+    window_size=<span class="hljs-number">20</span>
+)
+</code></pre>
+    <p class="normal">You might <a id="_idIndexMarker888"/>be familiar with Gym environments if you've done reinforcement learning before.</p>
+    <p class="normal">Let's check the Gym feed:</p>
+    <pre class="programlisting code"><code class="hljs-code">env.observer.feed.<span class="hljs-built_in">next</span>()
+</code></pre>
+    <p class="normal">Here's what comes through:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_07.png" alt="/var/folders/80/g9sqgdws2rn0yc3rd5y3nd340000gp/T/TemporaryItems/NSIRD_screencaptureui_GBkklu/Screenshot 2021-09-05 at 11.40.11.png"/></figure>
+    <p class="packt_figref">Figure 11.7: Environment data feed for trading bot</p>
+    <p class="normal">This is what <a id="_idIndexMarker889"/>the trading bot will be able to rely on for making decisions on executing trades.</p>
+    <p class="normal">Now we can set up and train our DQN trading agent:</p>
+    <pre class="programlisting code"><code class="hljs-code">agent = DQNAgent(env)
+agent.train(n_steps=<span class="hljs-number">200</span>, n_episodes=<span class="hljs-number">2</span>, save_path=<span class="hljs-string">"agents/"</span>)
+</code></pre>
+    <p class="normal">It might be a good point here to explain the difference between an epoch and an episode. Readers will probably be familiar with an epoch, which is a single pass over all training examples, whereas an episode is specific to the context of reinforcement learning. An episode is a sequence of states, actions, and rewards, which ends with a terminal state.</p>
+    <p class="normal">We get lots of plotting output from our renderer. Here's the first output I got (yours might differ a bit):</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_08.png" alt="../trading_renderer.png"/></figure>
+    <p class="packt_figref">Figure 11.8: PlotlyPlotRenderer – Episode 2/2 Step 51/200</p>
+    <p class="normal">This plot <a id="_idIndexMarker890"/>gives an overview of the market operations of our trading bot. The first subplot shows the up and down movements of the prices. Then the second subplot charts volumes of stock in the portfolio, and in the bottom-most subplot, you can see the portfolio net worth.</p>
+    <p class="normal">If you want to see the net worth over time (not only the first snapshot as above), you can plot this as well:</p>
+    <pre class="programlisting code"><code class="hljs-code">performance[<span class="hljs-string">"net_worth"</span>].plot()
+</code></pre>
+    <p class="normal">Here's the portfolio net worth over time:</p>
+    <figure class="mediaobject"><img src="../Images/B17577_11_09.png" alt="networth.png"/></figure>
+    <p class="packt_figref">Figure 11.9: Portfolio worth over time</p>
+    <p class="normal">It looks <a id="_idIndexMarker891"/>like our trading bot could need some more training before getting let loose in the wild. I made a loss, so I am happy there wasn't real money on the line.</p>
+    <p class="normal">This is all folks. Let's summarize.</p>
+    <h1 id="_idParaDest-173" class="title">Summary</h1>
+    <p class="normal">While online learning, which we talked about in <em class="chapterRef">Chapter 8</em>, <em class="italic">Online Learning for Time-Series</em> is tackling traditional supervised learning, reinforcement learning tries to deal with the environment. In this chapter, I've introduced reinforcement learning concepts relevant to time-series, and we've discussed many algorithms, such as deep Q-learning and <strong class="keyword">MABs</strong>. </p>
+    <p class="normal">Reinforcement learning algorithms are very useful in certain contexts like recommendations, trading, or – more generally – control scenarios. In the practice section, we implemented a recommender using MABs and a trading bot with a DQN. </p>
+    <p class="normal">In the next chapter, we'll look at case studies with time-series. Among other things, we'll look at multivariate forecasts of energy demand.</p>
+  </div>
+</body></html>
