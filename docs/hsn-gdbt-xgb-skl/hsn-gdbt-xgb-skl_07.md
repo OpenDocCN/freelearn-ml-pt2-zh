@@ -1,4 +1,4 @@
-# *第五章*：XGBoost 揭示
+# 第五章：*第五章*：XGBoost 揭示
 
 在这一章中，你将最终看到**极限梯度提升**（Extreme Gradient Boosting），或称为**XGBoost**。XGBoost 是在我们构建的机器学习叙事框架中呈现的，从决策树到梯度提升。章节的前半部分聚焦于 XGBoost 带给树集成算法的独特进展背后的理论。后半部分则聚焦于在**Higgs 博士 Kaggle 竞赛**中构建 XGBoost 模型，正是这个竞赛让 XGBoost 向全世界展示了它的强大。
 

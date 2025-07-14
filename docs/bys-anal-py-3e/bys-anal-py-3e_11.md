@@ -1,4 +1,4 @@
-# 参考书目
+# 第十二章：参考书目
 
 Oriol Abril-Pla, Virgile Andreani, Colin Carroll, Larry Dong, Christopher J. Fonnesbeck, Maxim Kochurov, Ravin Kumar, Jupeng Lao, Christian C. Luhmann, Osvaldo A. Martin, Michael Osthege, Ricardo Vieira, Thomas Wiecki, 和 Robert Zinkov。Pymc：一个现代化且全面的概率编程框架，基于 Python。*PeerJ 计算机科学*，9:e1516，2023。doi: 10.7717/peerj-cs.1516。
 

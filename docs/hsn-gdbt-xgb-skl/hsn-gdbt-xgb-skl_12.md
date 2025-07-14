@@ -1,4 +1,4 @@
-# *第九章*：XGBoost Kaggle 大师
+# 第九章：*第九章*：XGBoost Kaggle 大师
 
 在本章中，您将学习从`VotingClassifier`和`VotingRegressor`中获得的宝贵技巧和窍门，以构建非相关的机器学习集成模型，并了解**堆叠**最终模型的优势。
 
