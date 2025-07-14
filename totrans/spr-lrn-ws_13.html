@@ -1,0 +1,649 @@
+<html><head></head><body>
+		<br/>
+		<p class="style0">5. Classification Techniques</p>
+		<div style="page-break-before: always;"/>
+	
+
+		<br/>
+		<h4 class="style0">Activity 5.01: Ordinary Least Squares Classifier – Binary Classifier</h4>
+		<br/>
+		<p class="style0">Solution:</p>
+		<br/>
+		<p class="style0">Import the required dependencies:</p>
+		<br/>
+		<p class="style0">import struct</p>
+		<br/>
+		<p class="style0">import numpy as np</p>
+		<br/>
+		<p class="style0">import gzip</p>
+		<br/>
+		<p class="style0">import urllib.request</p>
+		<br/>
+		<p class="style0">import matplotlib.pyplot as plt</p>
+		<br/>
+		<p class="style0">from array import array</p>
+		<br/>
+		<p class="style0">from sklearn.linear_model import LinearRegression</p>
+		<br/>
+		<p class="style0">Load the MNIST data into memory:</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/train-images-idx3-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size, rows, cols = struct.unpack("&gt;IIII", f.read(16))</p>
+		<br/>
+		<p class="style0">    img = np.array(array("B", f.read())).reshape((size, rows, cols))</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/train-labels-idx1-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size = struct.unpack("&gt;II", f.read(8))</p>
+		<br/>
+		<p class="style0">    labels = np.array(array("B", f.read()))</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/t10k-images-idx3-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size, rows, cols = struct.unpack("&gt;IIII", f.read(16))</p>
+		<br/>
+		<p class="style0">    img_test = np.array(array("B", f.read()))\</p>
+		<br/>
+		<p class="style0">               .reshape((size, rows, cols))</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/t10k-labels-idx1-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size = struct.unpack("&gt;II", f.read(8))</p>
+		<br/>
+		<p class="style0">    labels_test = np.array(array("B", f.read()))</p>
+		<br/>
+		<p class="style0">Visualize a sample of the data:</p>
+		<br/>
+		<p class="style0">for i in range(10):</p>
+		<br/>
+		<p class="style0">    plt.subplot(2, 5, i + 1)</p>
+		<br/>
+		<p class="style0">    plt.imshow(img[i], cmap='gray');</p>
+		<br/>
+		<p class="style0">    plt.title(f'{labels[i]}');</p>
+		<br/>
+		<p class="style0">    plt.axis('off')</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br style="line-height: 1,4"/>
+		<div>
+			<img src="../Images/image-HVWAR7CZ.jpg" alt="Figure 5.63: Sample data&#13;&#10;" height="100%"/>
+		</div>
+		<br/>
+		<p class="style0" style="text-align: center">Figure 5.63: Sample data</p>
+		<br/>
+		<p class="style0">Construct a linear classifier model to classify the digits 0 and 1. The model we are going to create is to determine whether the samples are either the digits 0 or 1. To do this, we first need to select only those samples:</p>
+		<br/>
+		<p class="style0">samples_0_1 = np.where((labels == 0) | (labels == 1))[0]</p>
+		<br/>
+		<p class="style0">images_0_1 = img[samples_0_1]</p>
+		<br/>
+		<p class="style0">labels_0_1 = labels[samples_0_1]</p>
+		<br/>
+		<p class="style0">samples_0_1_test = np.where((labels_test == 0) | (labels_test == 1))</p>
+		<br/>
+		<p class="style0">images_0_1_test = img_test[samples_0_1_test]\</p>
+		<br/>
+		<p class="style0">                  .reshape((-1, rows * cols))</p>
+		<br/>
+		<p class="style0">labels_0_1_test = labels_test[samples_0_1_test]</p>
+		<br/>
+		<p class="style0">Visualize the selected information. Here's the code for 0:</p>
+		<br/>
+		<p class="style0">sample_0 = np.where((labels == 0))[0][0]</p>
+		<br/>
+		<p class="style0">plt.imshow(img[sample_0], cmap='gray');</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br style="line-height: 1,4"/>
+		<div>
+			<img src="../Images/image-IPZUMLSW.jpg" alt="Figure 5.64: First sample data&#13;&#10;" height="100%"/>
+		</div>
+		<br/>
+		<p class="style0" style="text-align: center">Figure 5.64: First sample data</p>
+		<br/>
+		<p class="style0">Here's the code for 1:</p>
+		<br/>
+		<p class="style0">sample_1 = np.where((labels == 1))[0][0]</p>
+		<br/>
+		<p class="style0">plt.imshow(img[sample_1], cmap='gray');</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br style="line-height: 1,4"/>
+		<div>
+			<img src="../Images/image-ZJV8H2GT.jpg" alt="Figure 5.65: Second sample data&#13;&#10;" height="100%"/>
+		</div>
+		<br/>
+		<p class="style0" style="text-align: center">Figure 5.65: Second sample data</p>
+		<br/>
+		<p class="style0">In order to provide the image information to the model, we must first flatten the data out so that each image is 1 x 784 pixels in shape:</p>
+		<br/>
+		<p class="style0">images_0_1 = images_0_1.reshape((-1, rows * cols))</p>
+		<br/>
+		<p class="style0">images_0_1.shape</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">(12665, 784)</p>
+		<br/>
+		<p class="style0">Let's construct the model; use the LinearRegression API and call the fit function:</p>
+		<br/>
+		<p class="style0">model = LinearRegression()</p>
+		<br/>
+		<p class="style0">model.fit(X=images_0_1, y=labels_0_1)</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">LinearRegression(copy_X=True, fit_intercept=True, n_jobs=None,</p>
+		<br/>
+		<p class="style0">                 normalize=False)</p>
+		<br/>
+		<p class="style0">Determine the training set accuracy:</p>
+		<br/>
+		<p class="style0">model.score(X=images_0_1, y=labels_0_1)</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">0.9705320567708795</p>
+		<br/>
+		<p class="style0">Determine the label predictions for each of the training samples, using a threshold of 0.5. Values greater than 0.5 classify as 1, while values less than, or equal to, 0.5 classify as 0:</p>
+		<br/>
+		<p class="style0">y_pred = model.predict(images_0_1) &gt; 0.5</p>
+		<br/>
+		<p class="style0">y_pred = y_pred.astype(int)</p>
+		<br/>
+		<p class="style0">y_pred</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">array([0, 1, 1, ..., 1, 0, 1])</p>
+		<br/>
+		<p class="style0">Compute the classification accuracy of the predicted training values versus the ground truth:</p>
+		<br/>
+		<p class="style0">np.sum(y_pred == labels_0_1) / len(labels_0_1)</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">0.9947887879984209</p>
+		<br/>
+		<p class="style0">10. Compare the performance against the test set:</p>
+		<br/>
+		<p class="style0">y_pred = model.predict(images_0_1_test) &gt; 0.5</p>
+		<br/>
+		<p class="style0">y_pred = y_pred.astype(int)</p>
+		<br/>
+		<p class="style0">np.sum(y_pred == labels_0_1_test) / len(labels_0_1_test)</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">0.9938534278959811</p>
+		<br/>
+		<h4 class="style2">Note</h4>
+		<br/>
+		<p class="style2">To access the source code for this specific section, please refer to https://packt.live/3emRZAk.</p>
+		<br/>
+		<p class="style2">You can also run this example online at https://packt.live/37T4bGh. You must execute the entire Notebook in order to get the desired result.</p>
+		<div style="page-break-before: always;"/>
+	
+
+		<br/>
+		<h4 class="style0">Activity 5.02: KNN Multiclass Classifier</h4>
+		<br/>
+		<p class="style0">Import the following packages:</p>
+		<br/>
+		<p class="style0">import struct</p>
+		<br/>
+		<p class="style0">import numpy as np</p>
+		<br/>
+		<p class="style0">import gzip</p>
+		<br/>
+		<p class="style0">import urllib.request</p>
+		<br/>
+		<p class="style0">import matplotlib.pyplot as plt</p>
+		<br/>
+		<p class="style0">from array import array</p>
+		<br/>
+		<p class="style0">from sklearn.neighbors import KNeighborsClassifier as KNN</p>
+		<br/>
+		<p class="style0">Load the MNIST data into memory.</p>
+		<br/>
+		<p class="style0">Training images:</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/train-images-idx3-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size, rows, cols = struct.unpack("&gt;IIII", f.read(16))</p>
+		<br/>
+		<p class="style0">    img = np.array(array("B", f.read())).reshape((size, rows, cols))</p>
+		<br/>
+		<p class="style0">Training labels:</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/train-labels-idx1-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size = struct.unpack("&gt;II", f.read(8))</p>
+		<br/>
+		<p class="style0">    labels = np.array(array("B", f.read()))</p>
+		<br/>
+		<p class="style0">Test images:</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/t10k-images-idx3-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size, rows, cols = struct.unpack("&gt;IIII", f.read(16))</p>
+		<br/>
+		<p class="style0">    img_test = np.array(array("B", f.read()))\</p>
+		<br/>
+		<p class="style0">               .reshape((size, rows, cols))</p>
+		<br/>
+		<p class="style0">Test labels:</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/t10k-labels-idx1-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size = struct.unpack("&gt;II", f.read(8))</p>
+		<br/>
+		<p class="style0">    labels_test = np.array(array("B", f.read()))</p>
+		<br/>
+		<p class="style0">Visualize a sample of the data:</p>
+		<br/>
+		<p class="style0">for i in range(10):</p>
+		<br/>
+		<p class="style0">    plt.subplot(2, 5, i + 1)</p>
+		<br/>
+		<p class="style0">    plt.imshow(img[i], cmap='gray');</p>
+		<br/>
+		<p class="style0">    plt.title(f'{labels[i]}');</p>
+		<br/>
+		<p class="style0">    plt.axis('off')</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br style="line-height: 1,4"/>
+		<div>
+			<img src="../Images/image-DA453QKK.jpg" alt="Figure 5.66: Sample images&#13;&#10;" height="100%"/>
+		</div>
+		<br/>
+		<p class="style0" style="text-align: center">Figure 5.66: Sample images</p>
+		<br/>
+		<p class="style0">Construct a KNN classifier with k=3 to classify the MNIST dataset. Again, to save processing power, randomly sample 5,000 images for use in training:</p>
+		<br/>
+		<p class="style0">np.random.seed(0)</p>
+		<br/>
+		<p class="style0">selection = np.random.choice(len(img), 5000)</p>
+		<br/>
+		<p class="style0">selected_images = img[selection]</p>
+		<br/>
+		<p class="style0">selected_labels = labels[selection]</p>
+		<br/>
+		<p class="style0">In order to provide the image information to the model, we must first flatten the data out so that each image is 1 x 784 pixels in shape:</p>
+		<br/>
+		<p class="style0">selected_images = selected_images.reshape((-1, rows * cols))</p>
+		<br/>
+		<p class="style0">selected_images.shape</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">(5000, 784)</p>
+		<br/>
+		<p class="style0">Build the three-neighbor KNN model and fit the data to the model. Note that, in this activity, we are providing 784 features or dimensions to the model, not just 2:</p>
+		<br/>
+		<p class="style0">model = KNN(n_neighbors=3)</p>
+		<br/>
+		<p class="style0">model.fit(X=selected_images, y=selected_labels)</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski',</p>
+		<br/>
+		<p class="style0">                     metric_params=None, n_jobs=None, n_neighbors=3, p=2,</p>
+		<br/>
+		<p class="style0">                     weights='uniform')</p>
+		<br/>
+		<p class="style0">Determine the score against the training set:</p>
+		<br/>
+		<p class="style0">model.score(X=selected_images, y=selected_labels)</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">0.9692</p>
+		<br/>
+		<p class="style0">Display the first two predictions for the model against the training data:</p>
+		<br/>
+		<p class="style0">model.predict(selected_images)[:2]</p>
+		<br/>
+		<p class="style0">plt.subplot(1, 2, 1)</p>
+		<br/>
+		<p class="style0">plt.imshow(selected_images[0].reshape((28, 28)), cmap='gray');</p>
+		<br/>
+		<p class="style0">plt.axis('off');</p>
+		<br/>
+		<p class="style0">plt.subplot(1, 2, 2)</p>
+		<br/>
+		<p class="style0">plt.imshow(selected_images[1].reshape((28, 28)), cmap='gray');</p>
+		<br/>
+		<p class="style0">plt.axis('off');</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br style="line-height: 1,4"/>
+		<div>
+			<img src="../Images/image-PFHH0LLF.jpg" alt="Figure 5.67: First two values of the test set&#13;&#10;" height="100%"/>
+		</div>
+		<br/>
+		<p class="style0" style="text-align: center">Figure 5.67: First two values of the test set</p>
+		<br/>
+		<p class="style0">Compare the performance against the test set:</p>
+		<br/>
+		<p class="style0">model.score(X=img_test.reshape((-1, rows * cols)), y=labels_test)</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">0.9376</p>
+		<br/>
+		<h4 class="style2">Note</h4>
+		<br/>
+		<p class="style2">To access the source code for this specific section, please refer to https://packt.live/313xdlc.</p>
+		<br/>
+		<p class="style2">You can also run this example online at https://packt.live/2Nl6DMo. You must execute the entire Notebook in order to get the desired result.</p>
+		<div style="page-break-before: always;"/>
+	
+
+		<br/>
+		<h4 class="style0">Activity 5.03: Binary Classification Using a CART Decision Tree</h4>
+		<br/>
+		<p class="style0">Solution:</p>
+		<br/>
+		<p class="style0">Import the required dependencies:</p>
+		<br/>
+		<p class="style0">import struct</p>
+		<br/>
+		<p class="style0">import numpy as np</p>
+		<br/>
+		<p class="style0">import pandas as pd</p>
+		<br/>
+		<p class="style0">import gzip</p>
+		<br/>
+		<p class="style0">import urllib.request</p>
+		<br/>
+		<p class="style0">import matplotlib.pyplot as plt</p>
+		<br/>
+		<p class="style0">from array import array</p>
+		<br/>
+		<p class="style0">from sklearn.model_selection import train_test_split</p>
+		<br/>
+		<p class="style0">from sklearn.tree import DecisionTreeClassifier</p>
+		<br/>
+		<p class="style0">Load the MNIST data into memory:</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/train-images-idx3-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size, rows, cols = struct.unpack("&gt;IIII", f.read(16))</p>
+		<br/>
+		<p class="style0">    img = np.array(array("B", f.read())).reshape((size, rows, cols))</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/train-labels-idx1-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size = struct.unpack("&gt;II", f.read(8))</p>
+		<br/>
+		<p class="style0">    labels = np.array(array("B", f.read()))</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/t10k-images-idx3-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size, rows, cols = struct.unpack("&gt;IIII", f.read(16))</p>
+		<br/>
+		<p class="style0">    img_test = np.array(array("B", f.read()))\</p>
+		<br/>
+		<p class="style0">               .reshape((size, rows, cols))</p>
+		<br/>
+		<p class="style0">with gzip.open('../Datasets/t10k-labels-idx1-ubyte.gz', 'rb') as f:</p>
+		<br/>
+		<p class="style0">    magic, size = struct.unpack("&gt;II", f.read(8))</p>
+		<br/>
+		<p class="style0">    labels_test = np.array(array("B", f.read()))</p>
+		<br/>
+		<p class="style0">Visualize a sample of the data:</p>
+		<br/>
+		<p class="style0">for i in range(10):</p>
+		<br/>
+		<p class="style0">    plt.subplot(2, 5, i + 1)</p>
+		<br/>
+		<p class="style0">    plt.imshow(img[i], cmap='gray');</p>
+		<br/>
+		<p class="style0">    plt.title(f'{labels[i]}');</p>
+		<br/>
+		<p class="style0">    plt.axis('off')</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br style="line-height: 1,4"/>
+		<div>
+			<img src="../Images/image-HVWAR7CZ.jpg" alt="Figure 5.68: Sample data&#13;&#10;" height="100%"/>
+		</div>
+		<br/>
+		<p class="style0" style="text-align: center">Figure 5.68: Sample data</p>
+		<br/>
+		<p class="style0">Construct a linear classifier model to classify the digits 0 and 1. The model we are going to create is to determine whether the samples are either the digits 0 or 1. To do this, we first need to select only those samples:</p>
+		<br/>
+		<p class="style0">samples_0_1 = np.where((labels == 0) | (labels == 1))[0]</p>
+		<br/>
+		<p class="style0">images_0_1 = img[samples_0_1]</p>
+		<br/>
+		<p class="style0">labels_0_1 = labels[samples_0_1]</p>
+		<br/>
+		<p class="style0">samples_0_1_test = np.where((labels_test == 0) | (labels_test == 1))</p>
+		<br/>
+		<p class="style0">images_0_1_test = img_test[samples_0_1_test]\</p>
+		<br/>
+		<p class="style0">                  .reshape((-1, rows * cols))</p>
+		<br/>
+		<p class="style0">labels_0_1_test = labels_test[samples_0_1_test]</p>
+		<br/>
+		<p class="style0">Visualize the selected information. Here's the code for 0:</p>
+		<br/>
+		<p class="style0">sample_0 = np.where((labels == 0))[0][0]</p>
+		<br/>
+		<p class="style0">plt.imshow(img[sample_0], cmap='gray');</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br style="line-height: 1,4"/>
+		<div>
+			<img src="../Images/image-CC4BKBHF.jpg" alt="Figure 5.69: First sample data&#13;&#10;" height="100%"/>
+		</div>
+		<br/>
+		<p class="style0" style="text-align: center">Figure 5.69: First sample data</p>
+		<br/>
+		<p class="style0">Here's the code for 1:</p>
+		<br/>
+		<p class="style0">sample_1 = np.where((labels == 1))[0][0]</p>
+		<br/>
+		<p class="style0">plt.imshow(img[sample_1], cmap='gray');</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br style="line-height: 1,4"/>
+		<div>
+			<img src="../Images/image-0WOP89CS.jpg" alt="Figure 5.70: Second sample data&#13;&#10;" height="100%"/>
+		</div>
+		<br/>
+		<p class="style0" style="text-align: center">Figure 5.70: Second sample data</p>
+		<br/>
+		<p class="style0">In order to provide the image information to the model, we must first flatten the data out so that each image is 1 x 784 pixels in shape:</p>
+		<br/>
+		<p class="style0">images_0_1 = images_0_1.reshape((-1, rows * cols))</p>
+		<br/>
+		<p class="style0">images_0_1.shape</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">(12665, 784)</p>
+		<br/>
+		<p class="style0">Let's construct the model; use the DecisionTreeClassifier API and call the fit function:</p>
+		<br/>
+		<p class="style0">model = DecisionTreeClassifier(random_state=123)</p>
+		<br/>
+		<p class="style0">model = model.fit(X=images_0_1, y=labels_0_1)</p>
+		<br/>
+		<p class="style0">model</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=None,</p>
+		<br/>
+		<p class="style0">                       max_features=None, max_leaf_nodes=None,</p>
+		<br/>
+		<p class="style0">                       min_impurity_decrease=0.0, min_impurity_split=None,</p>
+		<br/>
+		<p class="style0">                       min_samples_leaf=1, min_samples_split=2,</p>
+		<br/>
+		<p class="style0">                       min_weight_fraction_leaf=0.0, presort=False,</p>
+		<br/>
+		<p class="style0">                       random_state=None, splitter='best')</p>
+		<br/>
+		<p class="style0">Determine the training set accuracy:</p>
+		<br/>
+		<p class="style0">model.score(X=images_0_1, y=labels_0_1)</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">1.0</p>
+		<br/>
+		<p class="style0">Determine the label predictions for each of the training samples, using a threshold of 0.5. Values greater than 0.5 classify as 1, values less than or equal to 0.5, classify as 0:</p>
+		<br/>
+		<p class="style0">y_pred = model.predict(images_0_1) &gt; 0.5</p>
+		<br/>
+		<p class="style0">y_pred = y_pred.astype(int)</p>
+		<br/>
+		<p class="style0">y_pred</p>
+		<br/>
+		<p class="style0">Compute the classification accuracy of the predicted training values versus the ground truth:</p>
+		<br/>
+		<p class="style0">np.sum(y_pred == labels_0_1) / len(labels_0_1)</p>
+		<br/>
+		<p class="style0">Compare the performance against the test set:</p>
+		<br/>
+		<p class="style0">y_pred = model.predict(images_0_1_test) &gt; 0.5</p>
+		<br/>
+		<p class="style0">y_pred = y_pred.astype(int)</p>
+		<br/>
+		<p class="style0">np.sum(y_pred == labels_0_1_test) / len(labels_0_1_test)</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">0.9962174940898345</p>
+		<br/>
+		<h4 class="style2">Note</h4>
+		<br/>
+		<p class="style2">To access the source code for this specific section, please refer to https://packt.live/3hNUJbT.</p>
+		<br/>
+		<p class="style2">You can also run this example online at https://packt.live/2Cq5W25. You must execute the entire Notebook in order to get the desired result.</p>
+		<div style="page-break-before: always;"/>
+	
+
+		<br/>
+		<h4 class="style0">Activity 5.04: Breast Cancer Diagnosis Classification Using Artificial Neural Networks</h4>
+		<br/>
+		<p class="style0">Import the required packages. For this activity, we will require the pandas package for loading the data, the matplotlib package for plotting, and scikit-learn for creating the neural network model, as well as to split the dataset into training and test sets. Import all the required packages and relevant modules for these tasks:</p>
+		<br/>
+		<p class="style0">import pandas as pd</p>
+		<br/>
+		<p class="style0">import matplotlib.pyplot as plt</p>
+		<br/>
+		<p class="style0">from sklearn.neural_network import MLPClassifier</p>
+		<br/>
+		<p class="style0">from sklearn.model_selection import train_test_split</p>
+		<br/>
+		<p class="style0">from sklearn import preprocessing</p>
+		<br/>
+		<p class="style0">Load the Breast Cancer Diagnosis dataset using pandas and examine the first five rows:</p>
+		<br/>
+		<p class="style0">df = pd.read_csv('../Datasets/breast-cancer-data.csv')</p>
+		<br/>
+		<p class="style0">df.head()</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br style="line-height: 1,4"/>
+		<div>
+			<img src="../Images/image-D4G2QEWK.jpg" alt="Figure 5.71: First five rows of the breast cancer dataset&#13;&#10;" height="100%"/>
+		</div>
+		<br/>
+		<p class="style0" style="text-align: center">Figure 5.71: First five rows of the breast cancer dataset</p>
+		<br/>
+		<p class="style0">Additionally, dissect the dataset into input (X) and output (y) variables:</p>
+		<br/>
+		<p class="style0">X, y = df[[c for c in df.columns if c != 'diagnosis']], df.diagnosis</p>
+		<br/>
+		<p class="style0">The next step is feature engineering. Different columns of this dataset have different scales of magnitude; hence, before constructing and training a neural network model, we normalize the dataset. For this, we use the MinMaxScaler API from sklearn, which normalizes each column's values between 0 and 1, as discussed in the Logistic Regression section of this chapter (see Exercise 5.03,Logistic Regression – Multiclass Classifier): https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MinMaxScaler.html:</p>
+		<br/>
+		<p class="style0">X_array = X.values #returns a numpy array</p>
+		<br/>
+		<p class="style0">min_max_scaler = preprocessing.MinMaxScaler()</p>
+		<br/>
+		<p class="style0">X_array_scaled = min_max_scaler.fit_transform(X_array)</p>
+		<br/>
+		<p class="style0">X = pd.DataFrame(X_array_scaled, columns=X.columns)</p>
+		<br/>
+		<p class="style0">Examine the first five rows of the normalized dataset:</p>
+		<br/>
+		<p class="style0">X = pd.DataFrame(X_array_scaled, columns=X.columns)</p>
+		<br/>
+		<p class="style0">X.head()</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br style="line-height: 1,4"/>
+		<div>
+			<img src="../Images/image-EV96V76B.jpg" alt="Figure 5.72: First five rows of the normalized dataset&#13;&#10;" height="100%"/>
+		</div>
+		<br/>
+		<p class="style0" style="text-align: center">Figure 5.72: First five rows of the normalized dataset</p>
+		<br/>
+		<p class="style0">Before we can construct the model, we must first convert the diagnosis values into labels that can be used within the model. Replace the benign diagnosis string with the value 0, and the malignant diagnosis string with the value 1:</p>
+		<br/>
+		<p class="style0">diagnoses = ['benign', 'malignant',]</p>
+		<br/>
+		<p class="style0">output = [diagnoses.index(diag) for diag in y]</p>
+		<br/>
+		<p class="style0">Also, in order to impartially evaluate the model, we should split the training dataset into a training and a validation set:</p>
+		<br/>
+		<p class="style0">train_X, valid_X, \</p>
+		<br/>
+		<p class="style0">train_y, valid_y = train_test_split(X, output, \</p>
+		<br/>
+		<p class="style0">                                    test_size=0.2, random_state=123)</p>
+		<br/>
+		<p class="style0">Create the model using the normalized dataset and the assigned diagnosis labels:</p>
+		<br/>
+		<p class="style0">model = MLPClassifier(solver='sgd', hidden_layer_sizes=(100,), \</p>
+		<br/>
+		<p class="style0">                      max_iter=1000, random_state=1, \</p>
+		<br/>
+		<p class="style0">                      learning_rate_init=.01)</p>
+		<br/>
+		<p class="style0">model.fit(X=train_X, y=train_y)</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">MLPClassifier(activation='relu', alpha=0.0001, batch_size='auto',</p>
+		<br/>
+		<p class="style0">              beta_1=0.9, beta_2=0.999, early_stopping=False,</p>
+		<br/>
+		<p class="style0">              epsilon=1e-08, hidden_layer_sizes=(100,),</p>
+		<br/>
+		<p class="style0">              learning_rate='constant',</p>
+		<br/>
+		<p class="style0">              learning_rate_init=0.01, max_iter=1000, momentum=0.9,</p>
+		<br/>
+		<p class="style0">              n_iter_no_change=10, nesterovs_momentum=True, power_t=0.5,</p>
+		<br/>
+		<p class="style0">              random_state=1, shuffle=True, solver='sgd', tol=0.0001,</p>
+		<br/>
+		<p class="style0">              validation_fraction=0.1, verbose=False, warm_start=False)</p>
+		<br/>
+		<p class="style0">Compute the accuracy of the model against the validation set:</p>
+		<br/>
+		<p class="style0">model.score(valid_X, valid_y)</p>
+		<br/>
+		<p class="style0">The output will be as follows:</p>
+		<br/>
+		<p class="style0">0.9824561403508771</p>
+		<br/>
+		<h4 class="style2">Note</h4>
+		<br/>
+		<p class="style2">To access the source code for this specific section, please refer to https://packt.live/3dpNt2G.</p>
+		<br/>
+		<p class="style2">You can also run this example online at https://packt.live/37OpdWM. You must execute the entire Notebook in order to get the desired result.</p>
+		<div style="page-break-before: always;"/>
+	</body></html>
