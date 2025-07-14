@@ -1,0 +1,518 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Implementing Parametric Models</h1>
+                </header>
+            
+            <article>
+                
+<p>In the previous chapter, we got started with the basics of supervised machine learning. In this chapter, we will dive into the guts of several popular supervised learning algorithms within the parametric modeling family. We'll start this chapter by formally introducing parametric models. Then, we'll introduce two very popular parametric models: linear and logistic regression. We'll spend some time looking at their inner workings and then we'll jump into Python and actually code those workings from scratch.</p>
+<p>In this chapter, we will cover the following topics:</p>
+<ul>
+<li>Parametric models</li>
+<li>Implementing linear regression from scratch</li>
+<li>Logistic regression models</li>
+<li>Implementing logistic regression from scratch</li>
+<li>The pros and cons of parametric models</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root"><span class="fontstyle0">For this chapter, you will need to install the following software, if you haven't already done so:</span></p>
+<ul>
+<li>Jupyter Notebook</li>
+<li>Anaconda</li>
+<li>Python</li>
+</ul>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"><span class="fontstyle0">The code files for this chapter can be found at</span><span> </span><a href="https:/%E2%80%8B/%E2%80%8Bgithub.%E2%80%8Bcom/%E2%80%8BPacktPublishing/%20Supervised-Machine-Learning-with-Python" target="_blank"><span class="fontstyle2">https:/</span><span class="fontstyle3">​</span><span class="fontstyle2">/</span><span class="fontstyle3">​</span><span class="fontstyle2">github.</span><span class="fontstyle3">​</span><span class="fontstyle2">com/</span><span class="fontstyle3">​</span><span class="fontstyle2">PacktPublishing/</span><span class="fontstyle2"><br/></span><span class="fontstyle2">Supervised-Machine-Learning-with-Python</span></a><span class="fontstyle0">.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Parametric models</h1>
+                </header>
+            
+            <article>
+                
+<p>When it comes to supervised learning, there are two families of learning algorithms: <strong>parametric</strong> and <strong>non-parametric</strong>. This area also happens to be a hotbed for gatekeeping and opinion-based conjecture regarding which is better. Basically, parametric models are finite-dimensional, which means that they can learn only a defined number of model parameters. Their learning stage is typically categorized by learning some vector theta, which is also called a <strong>coefficient</strong>. Finally, the learning function is often a known form, which we will clarify later in this section.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Finite-dimensional models</h1>
+                </header>
+            
+            <article>
+                
+<p>If we go back to our definition of supervised learning, recall that we need to learn some function, <em>f</em>. A parametric model will summarize the mapping between <em>X</em>, our matrix, and <em>y</em>, our target, within a constrained number of summary points. The number of points is typically related to the number of features in the input data. So, if there are three variables, <em>f</em> will try to summarize the relationship between <em>X</em> and <em>y</em> given that there are three values in theta. These are called <strong>model parameters</strong> <em>f: y=f(X)</em>.</p>
+<p>Let's back up and explain some of the characteristics of parametric models.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The characteristics of parametric learning algorithms</h1>
+                </header>
+            
+            <article>
+                
+<p>We will now cover different features of parametric learning algorithms:</p>
+<ul>
+<li>Model parameters are generally constrained to the same dimensionalities of the input space</li>
+<li>You can point to a variable and its corresponding parameter value and typically learn something about variable importance or its relationship to <em>y</em>, our target</li>
+<li>Finally, they are conventionally fast and do not require much data</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Parametric model example</h1>
+                </header>
+            
+            <article>
+                
+<p>Imagine that we are asked to estimate the price of a house given its square footage and number of bathrooms. How many parameters are we going to need to learn? How many parameters will we have to learn for our example?</p>
+<p>Well, given the square footage and number of bathrooms we will have to learn two parameters. So, our function can be expressed as the estimated price given two variables—square footage and the number of bathrooms—<em>P1</em> and <em>P2</em>. <em>P1</em> will be the relationship between square footage and price. <em>P2</em> will be the relationship between the number of bathrooms and price.</p>
+<p>The following code shows the problem set up in Python. <kbd>x1</kbd> is our first variable—the amount of square footage. You can see that this ranges from anything as small as <kbd>1200</kbd> to as high as <kbd>4000</kbd> and our price range is anywhere from <kbd>200000</kbd> to <kbd>500000</kbd>. In <kbd>x2</kbd>, we have the number of bathrooms. This ranges from as few as <kbd>1</kbd> to as many as <kbd>4</kbd>:</p>
+<pre>import numpy as np<br/>from numpy import linalg<br/><br/>x1 = np.array([2500, 2250, 3500, 4000, 1890, 1200, 2630])<br/>x2 = np.array([3, 2, 4, 3, 2, 1, 2])<br/>y = np.array([260000, 285000, 425000, 482500, 205000, 220000, 320000])</pre>
+<p>Now, you can see from our plots that there seems to be a positive trend going on here. And that makes sense. But we're going to find out as we dig into this example:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-490 image-border" src="assets/3082ec42-423e-4e6f-a435-fd878d94150c.png" style="width:69.42em;height:23.75em;"/></p>
+<p class="CDPAlignCenter CDPAlign"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>Now, we want to learn a function that estimates the price, and that function is simply going to be the inner product of our estimated parameters in each vector <span>row</span> of our data. So, we are performing linear regression here. Linear regression can conveniently be solved by using the least squares equation. Since we technically have an infinite number of possible solutions to this problem, least squares will find the solution that minimizes the sum of the squared error.</p>
+<p>Here, we complete our least squares on <kbd>X</kbd>, and learn our parameters in the first cell. Then, in the next cell, we multiply <kbd>X</kbd> by the <span>theta </span>parameters that we just learned to get the predictions. So, if you really dig into it, there's only one home that we grossly underestimate in value: the second to last one, which is <kbd>1200</kbd> square foot and has one bathroom. So, it's probably an apartment and it may be located in a really hot part of town, which is why it was priced so highly to begin with:</p>
+<pre># solve for the values of theta<br/>from numpy import linalg<br/>X = np.hstack((x1.reshape(x1.shape[0], 1), x2.reshape(x2.shape[0], 1)))<br/>linalg.lstsq(X, y)[0]<br/><br/># get the estimated y values<br/>X.dot(linalg.lstsq(X,y)[0])</pre>
+<p>The output of the preceding code snippet is as follows:</p>
+<pre>array([   142.58050018, -23629.43252307])<br/><br/>array([285562.95287566, 273547.26035425, 404514.02053054, 499433.70314259,<br/>       222218.28029018, 147467.16769047, 327727.85042187])</pre>
+<p>Now to pick apart our parameters. With each square foot that we add to our house, the estimated price jumps by 142 dollars and 58 cents, which intuitively makes sense. However, for each bathroom we add, our house decreases in value by 24,000 dollars: <em>Price = 142.58 *sqft + -23629.43*bathrooms</em>.</p>
+<p>There's another conundrum here. By this logic, if we had a house with 3,000 square feet and 0 bathrooms, it would be priced in the ballpark of what a 4,000-square-feet home that has four bathrooms is. So, there's obviously some limitations with our model here. When we try to summarize the mapping with few features and data, there are going to be some non sequiturs that emerge. But there are some other factors that we didn't consider that can help us out when we're fitting our linear regression. First of all, we did not fit an intercept and we did not center our features. So, if you go back to middle school or even early high school algebra, you will remember that, when you're fitting your good line on a Cartesian plot, the intercept is where the line intersects the <em>y</em> axis, and we did not fit one of those.</p>
+<p class="mce-root"/>
+<p>In the following code, we have centered our data before solving the least squares and estimated an intercept, which is simply the average of <kbd>y</kbd>, the actual prices minus the inner product of the <kbd>X</kbd> var, which is the means of the columns of <kbd>X</kbd> and the estimated parameters:</p>
+<pre>X_means = X.mean(axis=0) # compute column (variable) name<br/>X_center = X - X_means  # center our data<br/>theta = linalg.lstsq(X_center, y)[0]  # solve lstsq<br/>print ("Theta: %r" % theta)<br/><br/>intercept = y.mean() -np.dot(X_means, theta.T) # find the intercept<br/>print("Intercept: %.2f" % intercept)<br/>print("Preds: %r" % (X.dot(theta.T) + intercept))</pre>
+<p>The output of the preceding code snippet is as follows:</p>
+<pre>Theta: array([ 128.90596161, -28362.07260241])<br/>Intercept: 51887.87<br/>Preds: array([289066.55823365, 285202.14043457, 389610.44723722, 482425.50064261,<br/> 238795.99425642, 178212.9533507 , 334186.40584484])</pre>
+<p class="CDPAlignLeft CDPAlign">So, that summarizes the introduction to the math and the concept behind linear regression, as well as that of parametric learning. In linear regression, we are simply fitting the best line across a number of points, trying to minimize the sum of squared errors there. In the next section, we will learn about PyCharm, and walk through how to actually code a linear regression class from scratch.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Implementing linear regression from scratch</h1>
+                </header>
+            
+            <article>
+                
+<p>Linear regression solves the least squares equation to discover the parameters vector theta. In this section, we will walk through the source code for a linear regression class in the <kbd>packtml</kbd> Python library and then cover a brief graphical example in the <kbd>examples</kbd> directory.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>Before we look at the code, we will be introduced to the interface that backs all of the estimators in the book. It is called <kbd>BaseSimpleEstimator</kbd>, which is an abstract class. It's going to enforce only one method, which is <kbd>predict</kbd>. Different subclass layers are going to enforce other methods for different model families. But this layer backs all the models that we will build, as everything that we are putting together is supervised, so it's all going to need to be able to predict. You will notice that the signature is prescribed in the <kbd>dock</kbd> string. Every model will accept <kbd>X</kbd> and <kbd>y</kbd> in the signature, as well as any other model hyperparameters:</p>
+<pre>class BaseSimpleEstimator(six.with_metaclass(ABCMeta)):<br/> """Base class for packt estimators.<br/> The estimators in the Packt package do not behave exactly like <br/> scikit-learn<br/> estimators (by design). They are made to perform the model fit <br/> immediately upon class instantiation. Moreover, many of the hyper<br/> parameter options are limited to promote readability and avoid<br/> confusion.<br/> The constructor of every Packt estimator should resemble the <br/> following::<br/> def __init__(self, X, y, *args, **kwargs):<br/> ...<br/> where ``X`` is the training matrix, ``y`` is the training target<br/> variable,<br/> and ``*args`` and ``**kwargs`` are varargs that will differ for each<br/> estimator.<br/> """<br/> @abstractmethod<br/> def predict(self, X):<br/> """Form predictions based on new data.<br/> This function must be implemented by subclasses to generate<br/> predictions given the model fit.<br/> Parameters<br/> ----------<br/> X : array-like, shape=(n_samples, n_features)<br/> The test array. Should be only finite values.<br/> """</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The BaseSimpleEstimator interface</h1>
+                </header>
+            
+            <article>
+                
+<p>The first flush is similar to that of a scikit-learn base estimator interface. But there are several differences. First of all, we're not going to permit as many options when we build a model. Furthermore, the model is trained at the moment it's instantiated. This also differs from scikit-learn in the fact that we don't have a <kbd>fit</kbd> method. Scikit-learn has a <kbd>fit</kbd> method to permit grid searches and hyperparameter tuning. So, this is just one more reason that we're differing from their signature. With that, let's go ahead and look into linear regression:</p>
+<ol>
+<li>If you have PyCharm, go ahead and open it up. We are going to be inside the <kbd>packtml</kbd> <kbd>Hands-on-Supervised-Machine-Learning-with-Python</kbd> library, as shown in the following code. You can see this is in PyCharm. This is just the root level of the project level and the package we're going to be working with is <kbd>packtml</kbd>. We are just going to walk through how all of the <kbd>simple_regression.py</kbd> file code works. If you are not using PyCharm, Sublime is an alternative, or you can use any other text editor of your preference:</li>
+</ol>
+<pre style="padding-left: 60px">from __future__ import absolute_import<br/><br/>from sklearn.utils.validation import check_X_y, check_array<br/><br/>import numpy as np<br/>from numpy.linalg import lstsq<br/><br/><span class="pl-k">from</span><span> </span><span class="x x-first x-last">packtml</span><span>.base </span><span class="pl-k">import</span><span> BaseSimpleEstimator</span><br/><br/><br/>__all__ = [<br/> 'SimpleLinearRegression'<br/>]<br/><br/><br/>class SimpleLinearRegression(BaseSimpleEstimator):<br/> """Simple linear regression.<br/><br/> This class provides a very simple example of straight forward OLS<br/> regression with an intercept. There are no tunable parameters, and<br/> the model fit happens directly on class instantiation.<br/><br/> Parameters<br/> ----------<br/> X : array-like, shape=(n_samples, n_features)<br/> The array of predictor variables. This is the array we will use<br/> to regress on ``y``.</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="CDPAlignLeft CDPAlign" style="padding-left: 60px"><kbd>base.py</kbd>, which is is located inside our package level, will provide the interface for <kbd>BaseSimpleEstimator</kbd>, which we will use across the entire package. The only method that is going to be enforced on the abstract level for everything is the <kbd>predict</kbd> function. This function will take one argument, which is <kbd>X</kbd>. We already mentioned that supervised learning means that we will learn a function, <em>f,</em> given <kbd>X</kbd> and <kbd>y</kbd>, such that we can approximate <img class="fm-editor-equation" src="assets/05adbda5-3f19-428e-b0da-e3beccb26ed9.png" style="width:0.83em;height:1.58em;"/> given <img class="fm-editor-equation" src="assets/634ff51a-a39a-4a3c-a23a-a3cdc1e4313c.png" style="width:1.33em;height:1.67em;"/>, or the <kbd>X</kbd> test in this case. Since every subclass is going to implement a different <kbd>predict</kbd> method, we will use the abstract method, which is <kbd>base</kbd>, as shown in the following code snippet:</p>
+<pre style="padding-left: 60px">@abstractmethod<br/>   def predict(self, X):<br/>       """Form predictions based on new data.<br/>       This function must be implemented by subclasses to generate<br/>       predictions given the model fit.<br/>       Parameters<br/>       ----------<br/>       X : array-like, shape=(n_samples, n_features)<br/>       The test array. Should be only finite values.<br/>      """</pre>
+<ol start="2">
+<li class="mce-root">Next, inside the <kbd>regression</kbd> submodule, we will open the <kbd>simple_regression.py</kbd> file. This file will implement a class called <kbd>SimpleLinearRegression</kbd>. We call it simple just so you don't confuse it with the scikit-learn linear regression:</li>
+</ol>
+<pre style="padding-left: 60px">from __future__ import absolute_import<br/><br/>from sklearn.utils.validation import check_X_y, check_array<br/><br/>import numpy as np<br/>from numpy.linalg import lstsq<br/><br/>from ..base import BaseSimpleEstimator<br/><br/><br/>__all__ = [<br/>    'SimpleLinearRegression'<br/>]<br/><br/><br/>class SimpleLinearRegression(BaseSimpleEstimator):<br/>    """Simple linear regression.<br/><br/>    This class provides a very simple example of straight forward OLS<br/>    regression with an intercept. There are no tunable parameters, and<br/>    the model fit happens directly on class instantiation.<br/><br/>    Parameters<br/>    ----------<br/>    X : array-like, shape=(n_samples, n_features)<br/>        The array of predictor variables. This is the array we will use<br/>        to regress on ``y``.</pre>
+<p style="padding-left: 60px"><kbd>SimpleLinearRegression</kbd> is going to take two arguments. <kbd>X</kbd>, which is our matrix covariance, and <kbd>y</kbd>, the training targets, explained as follows:</p>
+<p> </p>
+<pre style="padding-left: 60px">Parameters<br/>    ----------<br/>    X : array-like, shape=(n_samples, n_features)<br/>        The array of predictor variables. This is the array we will use<br/>        to regress on ``y``.<br/><br/>    y : array-like, shape=(n_samples,)<br/>        This is the target array on which we will regress to build<br/>        our model.<br/>    Attributes<br/>    ----------<br/>    theta : array-like, shape=(n_features,)<br/>        The least-squares solution (the coefficients)<br/><br/>    rank : int<br/>        The rank of the predictor matrix, ``X``<br/><br/>    singular_values : array-like, shape=(n_features,)<br/>        The singular values of ``X``<br/><br/>    X_means : array-like, shape=(n_features,)<br/>        The column means of the predictor matrix, ``X``<br/><br/>    y_mean : float<br/>        The mean of the target variable, ``y``<br/><br/>    intercept : float<br/>        The intercept term<br/>    """<br/>    def __init__(self, X, y):<br/>        # First check X, y and make sure they are of equal length, no<br/>        NaNs<br/>        # and that they are numeric<br/>        X, y = check_X_y(X, y, y_numeric=True,<br/>                         accept_sparse=False) # keep it simple</pre>
+<ol start="3">
+<li class="CDPAlignLeft CDPAlign">Now, in our signature, the very first thing that we will do inside the <kbd>init</kbd> function is run this through scikit-learn's <kbd>check_X_y</kbd>. We will make sure that the dimensionality matches between <kbd>X</kbd> and <kbd>y</kbd>, as it won't work for us to pass a vector of training targets that is smaller than that of the number of samples in <kbd>X</kbd> and vice versa. We are also enforcing that everything that is in <kbd>y</kbd> is numeric.</li>
+<li>The next thing we need to do is compute the mean of the columns in <kbd>X</kbd>, so that we can center everything, and the mean of the values in <kbd>y</kbd>, so that we can center them. In this entire function, it is from the least squares optimization function that we pulled out of the NumPy library. So, we're just going to feed in <kbd>X</kbd> and <kbd>y</kbd>, which are now centered in <kbd>lstsq</kbd>. We will get back three things, the first of which is theta, which is the learned parameter. So, <kbd>X.theta</kbd> is going to be the best approximate value of <kbd>y</kbd>. We're then going to get the rank, which is the rank of <kbd>matrix</kbd> and <kbd>singular_values</kbd>, in case you want to dig into the decomposition of the actual solution. As discussed in the last section, regarding the mean house cost, if we're computing the value of a house minus the inner product of <kbd>X_means</kbd>, the column means is a vector times theta, another vector. So, we're going to get a scalar value here for the intercept and we're going to assign some <kbd>self</kbd> attributes:</li>
+</ol>
+<pre style="padding-left: 60px"><br/># We will do the same with our target variable, y<br/>X_means = np.average(X, axis=0)<br/>y_mean = y.mean(axis=0)<br/><br/># don't do in place, so we get a copy<br/>X = X - X_means<br/>y = y - y_mean<br/><br/># Let's compute the least squares on X wrt y<br/># Least squares solves the equation `a x = b` by computing a<br/># vector `x` that minimizes the Euclidean 2-norm `|| b - a x ||^2`.<br/>theta, _, rank, singular_values = <span>lstsq(X, y</span><span class="x x-first">, </span><span class="pl-v x">rcond</span><span class="pl-k x">=</span><span class="pl-c1 x x-last">None</span><span>)</span><br/><br/># finally, we compute the intercept values as the mean of the target<br/># variable MINUS the inner product of the X_means and the coefficients<br/>intercept = y_mean - np.dot(X_means, theta.T)<br/><br/># ... and set everything as an instance attribute<br/>self.theta = theta<br/>self.rank = rank<br/>self.singular_values = singular_values<br/><br/># we have to retain some of the statistics around the data too<br/>self.X_means = X_means<br/>self.y_mean = y_mean<br/>self.intercept = intercept</pre>
+<p style="padding-left: 60px">The moment that you instantiate a class, you have fit a linear regression. However, we have to override <span>the </span><kbd>predict</kbd><span> functions </span>from the <kbd>BaseSimpleEstimator</kbd> superclass. To predict this, all you have to do is compute the inner product of <kbd>X</kbd>, the new matrix on <kbd>theta</kbd>, and the parameters that we've already learned, and then add the intercept. Now, what differs here from what you saw on the constructor is that we don't have to re-center <kbd>X</kbd>. If an <kbd>X</kbd> test comes in, the only time we center the data is when we're learning the parameters and not when we're applying them. Then, we will multiply <kbd>X</kbd> times the parameters, the inner product there, and then add the intercept. Now we have a vector of predicted <img class="fm-editor-equation" src="assets/77b9e227-5b76-4859-9918-cf731a200011.png" style="width:0.83em;height:1.58em;"/> values:</p>
+<pre style="padding-left: 60px">def predict(self, X):<br/>        """Compute new predictions for X"""<br/>        # copy, make sure numeric, etc...<br/>        X = check_array(X, accept_sparse=False, copy=False) # type: np.ndarray<br/><br/>        # make sure dims match<br/>        theta = self.theta<br/>        if theta.shape[0] != X.shape[1]:<br/>            raise ValueError("Dim mismatch in predictors!")<br/><br/>        # creates a copy<br/>        return np.dot(X, theta.T) + self.intercept<br/><br/></pre>
+<ol start="5">
+<li class="CDPAlignLeft CDPAlign">So, now, we can go ahead and look at one of our examples. Open up the <kbd>examples</kbd> directory at the project level, and then open up <kbd>regression</kbd>. We will look at the <kbd>example_linear_regression.py</kbd> file, as follows:</li>
+</ol>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/fe4735c6-9f3c-4fbc-9e3f-f88a0b11ded3.png" style="width:18.08em;height:14.00em;"/></div>
+<p style="padding-left: 60px">Let's walk through exactly what happens here, just to show you how we can apply this to real data. We will load up the linear regression that we just created and import scikit-learn's linear regression so that we can compare the results. The first thing we're going to do is create the <kbd>X</kbd> matrix of random values with <kbd>500</kbd> samples and <kbd>2</kbd> dimensions. We will then create the <kbd>y</kbd> matrix, which will be a linear combination of the first <kbd>X</kbd> variable and <kbd>0</kbd>, which will be <kbd>2</kbd> times the first column plus <kbd>1.5</kbd> times the second column. The reason we are doing this is to show that our linear regression class is going to learn these exact parameters, <kbd>2</kbd> and <kbd>1.5</kbd>, as shown in the following code snippets:</p>
+<pre style="padding-left: 60px">from packtml.regression import SimpleLinearRegression<br/>from sklearn.linear_model import LinearRegression<br/>from sklearn.model_selection import train_test_split<br/>from matplotlib import pyplot as plt<br/>import numpy as np<br/>import sys<br/><br/># #############################################################################<br/># Create a data-set that perfectly models the linear relationship:<br/># y = 2a + 1.5b + 0<br/>random_state = np.random.RandomState(42)<br/>X = random_state.rand(500, 2)<br/>y = 2. * X[:, 0] + 1.5 * X[:, 1]<br/><br/></pre>
+<p style="padding-left: 60px">As we've already discussed, we want to split our data. You never want to just evaluate and fit against your in-sample data; otherwise, you're prone to overfitting:</p>
+<pre style="padding-left: 60px"># split the data<br/>X_train, X_test, y_train, y_test = train_test_split(X, y,<br/><br/>                                                   random_state=random_state)</pre>
+<ol start="6">
+<li>Next, we will fit our linear regression and compute our predictions. So, we can also show with our assertion that the theta that we learned is incredibly close to the actual theta that we expected; that is, <kbd>2</kbd> and <kbd>1.5</kbd>. Therefore, our predictions should resemble the <kbd>y</kbd> train input:</li>
+</ol>
+<pre style="padding-left: 60px"># Fit a simple linear regression, produce predictions<br/>lm = SimpleLinearRegression(X_train, y_train)<br/>predictions = lm.predict(X_test)<br/>print("Test sum of residuals: %.3f" % (y_test - predictions).sum())<br/>assert np.allclose(lm.theta, [2., 1.5])<br/><br/></pre>
+<ol start="7">
+<li class="CDPAlignLeft CDPAlign">Next, we will fit a scikit-learn regression to show that we get a similar result, if not the exact same result. We're showing that the theta in the class that we just created matches the coefficients that scikit-learn produces. Scikit-learn is an incredibly well-tested and well-known library. So, the fact that they match shows that we are on the right track. Finally, we can show that our predictions are very close to the scikit-learn solution:</li>
+</ol>
+<pre style="padding-left: 60px"># Show that our solution is similar to scikit-learn's<br/><br/>lr = LinearRegression(fit_intercept=True)<br/>lr.fit(X_train, y_train)<br/>assert np.allclose(lm.theta, lr.coef_)<br/>assert np.allclose(predictions, lr.predict(X_test))</pre>
+<ol start="8">
+<li>We will now fit a linear regression on a class, so that we can look at a plot. To do this, let's go ahead and run the following example:</li>
+</ol>
+<pre style="padding-left: 60px"># Fit another on ONE feature so we can show the plot<br/>X_train = X_train[:, np.newaxis, 0]<br/>X_test = X_test[:, np.newaxis, 0]<br/>lm = SimpleLinearRegression(X_train, y_train)<br/><br/># create the predictions &amp; plot them as the line<br/>preds = lm.predict(X_test)<br/>plt.scatter(X_test[:, 0], y_test, color='black')<br/>plt.plot(X_test[:, 0], preds, linewidth=3)<br/><br/># if we're supposed to save it, do so INSTEAD OF showing it<br/>if len(sys.argv) &gt; 1:<br/>    plt.savefig(sys.argv[1])<br/>else:<br/>    plt.show()</pre>
+<ol start="9">
+<li>Go to the Terminal inside the <kbd>Hands-on-Supervised-Machine-Learning-with-Python-master</kbd> top level: the project level. Remember to source the content environment. So, if you've not already done that, you will need to <kbd>source activate</kbd> for Unix users, or just activate by typing the following:</li>
+</ol>
+<pre style="padding-left: 90px"><strong>source activate packt-sml</strong></pre>
+<ol start="10">
+<li>Run this example by typing the name of the file, which is <kbd>examples/regression/example_linear_regression.py</kbd>:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-493 image-border" src="assets/adf40228-6a5b-486e-b22c-ed1b546c7a9c.png" style="width:95.58em;height:15.17em;"/></p>
+<p class="mce-root"/>
+<p class="CDPAlignLeft CDPAlign">When we run the preceding code, we should get our plot, as shown in the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-495 image-border" src="assets/23f870bd-3a57-4f1a-99ac-4803aa1e57f8.png" style="width:41.50em;height:32.92em;"/></p>
+<p class="CDPAlignLeft CDPAlign">We can see that our sum of residuals is essentially zero, meaning that we were spot on in our predictions. It is easy in this case, because we created a scenario where we learned our exact theta values. You can see here the line that we're fitting across one variable. This is a bit more approximated given that we only learned it on one variable. It seems to both qualitatively and quantitatively match what we expected via scikit-learn's predictions and coefficients.</p>
+<p class="CDPAlignLeft CDPAlign">In the next section, we will learn about logistic regression models.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Logistic regression models</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will look at logistic regression, which is the first hill-climbing algorithm that we'll cover, and we will have a brief recap of linear regression. We will also look at how logistic regression differs both mathematically and conceptually. Finally, we will learn the core algorithm and explain how it makes predictions.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The concept</h1>
+                </header>
+            
+            <article>
+                
+<p>Logistic regression is conceptually the inverse of linear regression. What if, rather than a real value, we want a discrete value or a class? We have already seen one example of this type of question early on when we wanted to predict whether or not an email was spam. So, with logistic regression, rather than predicting a real value, we can predict the probability of class membership, also known as classification.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The math</h1>
+                </header>
+            
+            <article>
+                
+<p>Mathematically, logistic regression is very similar to linear regression. The inner product of our parameters and <em>X</em> represent the log odds of the membership of a class, which is simply the natural log of the probabilities over <em>1</em> minus the probabilities:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/1c378b72-3456-40b9-a380-9b0bcecbc30c.png" style="width:12.33em;height:2.50em;"/></p>
+<p>What we really want are the probabilities of the class membership. We can back out of the log odds and determine the probabilities using the sigmoid or logistic function.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The logistic (sigmoid) transformation</h1>
+                </header>
+            
+            <article>
+                
+<p>In the following code, we will create an <kbd>X</kbd> vector of values between <kbd>-10</kbd> and <kbd>10</kbd> and then apply the logistic transformation to get <kbd>y</kbd>, which we can then plot:</p>
+<pre>import numpy as np<br/>import matplotlib.pyplot as plt<br/>%matplotlib inline<br/><br/>x = np.linspace(-10, 10, 10000)<br/>y = 1. / (1 + np.exp(-x)) # sigmoid transformation<br/>plt.plot(x, y)</pre>
+<p>As you can see, we get an S-shaped curve with the original <kbd>X</kbd> values on the <em>x</em> axis and the <kbd>y</kbd> values on the <em>y</em> axis. Notice that everything is mapped between zero and one on the <em>y</em> axis. These can now be interpreted as probabilities:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-281 image-border" src="assets/aaaab465-81eb-4407-ad05-b3699b28a07d.png" style="width:23.83em;height:15.50em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The algorithm</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, we have already covered the logistic regression algorithm briefly in the earlier section. But here's a recap of how we learn our parameters:</p>
+<ol>
+<li>We start out by initializing theta as a zero vector:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/d7b1d136-7920-4d85-8c0c-b2a8fbb157cb.png" style="width:3.50em;height:1.83em;"/></p>
+<ol start="2">
+<li>As this is a hill-climbing algorithm, it is iterative. So, for each iteration, we compute the log odds as theta transpose <em>X</em> and then transform them via the logistic transformation:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/11564b99-d4fb-4fd5-9fcf-81418826430c.png" style="width:7.75em;height:2.75em;"/></p>
+<ol start="3">
+<li>Next, we compute the gradient, which is a vector of partial derivatives of the slope of our function, which we covered in the last section. We simply compute this as <em>X</em> transpose times the residuals, <em>y - <img class="fm-editor-equation" src="assets/e35e83e5-16a8-41b6-b237-2a443870a922.png" style="width:0.67em;height:1.25em;"/>.</em> Keep in mind that <em><img class="fm-editor-equation" src="assets/26c98c1f-1dc1-478e-8a0b-2b25162bb75b.png" style="width:0.83em;height:1.58em;"/> </em>is the probability now following the logistic transformation:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/9d1b6e26-2d31-468d-8c23-c0a2e1ad025a.png" style="width:4.50em;height:1.33em;"/></p>
+<p class="mce-root"/>
+<ol start="4">
+<li>Finally, we can update our coefficients as theta plus the gradient. You can also see a <img class="fm-editor-equation" src="assets/1185d50d-f929-492f-8fb9-57e0a9b27bd5.png" style="width:0.75em;height:1.17em;"/> parameter here, which is simply a learning rate parameter. This controls how radically we allow the coefficients to grow for each step:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/b40eca30-20d9-43e9-869d-cf52a42fc3f2.png" style="width:9.33em;height:1.33em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating predictions</h1>
+                </header>
+            
+            <article>
+                
+<p>We finally converge our gradient, which is no longer updating our coefficients, and we are left with a bunch of class probabilities. So, how do we produce the predictions? All we have to do is get above a given threshold and we can get classes. So, in this section, we will be using a binary problem. But, for multi-class, we could just use the argmax functions for each class. Now, we will produce discrete predictions, as shown in the following code:</p>
+<pre>sigmoid = (lambda x: 1. / (1 + np.exp(-x)))<br/>log_odds = np.array([-5.6, 8.9, 3.7, 0.6, 0.])<br/>probas = sigmoid(log_odds)<br/>classes = np.round(probas).astype(int)<br/>print("Log odds: %r\nProbas: %r\nClasses: %r"<br/>      % (log_odds, probas, classes))</pre>
+<p>The output of the preceding code is as follows:</p>
+<pre>Log odds: array([-5.6, 8.9, 3.7, 0.6, 0. ])<br/>Probas: array([0.00368424, 0.99986363, 0.97587298, 0.64565631, 0.5 ])<br/>Classes: array([0, 1, 1, 1, 0])</pre>
+<p>In the next section, we will walk through the implementation of logistic regression from scratch in the <kbd>packtml</kbd> package.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Implementing logistic regression from scratch</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will walk through the implementation of logistic regression in Python within the <kbd>packtml</kbd> package. We will start off with a brief recap of what logistic regression seeks to accomplish and then go over the source code and look at an example.</p>
+<p class="mce-root"/>
+<div class="packt_tip packt_infobox">Recall that logistic regression seeks to classify a sample into a discrete category, also known as <strong>classification</strong>. The logistic transformation allows us to transform the log odds that we get from the inner product of our parameters and <kbd>X</kbd>.</div>
+<p>Notice that we have three Python files open. One is <kbd>extmath.py</kbd>, from within the <kbd>utils</kbd> directory inside of <kbd>packtml</kbd>; another is <kbd>simple_logistic.py</kbd>, from within the <kbd>regression</kbd> library in <kbd>packtml</kbd>; and the final one is an <kbd>example_logistic_regression.py</kbd> file, inside the <kbd>examples</kbd> directory and <kbd>regression</kbd>.</p>
+<p><span>We will dive right into the code base using the following steps:</span></p>
+<ol>
+<li>We will start with the <kbd>extmath.py</kbd> file. There are two functions that we will be using here. The first is <kbd>log_likelihood</kbd>, which is the objective function that we would like to maximize inside of the logistic regression:</li>
+</ol>
+<pre style="padding-left: 60px">def log_likelihood(X, y, w):<br/>    """Compute the log-likelihood function.<br/><br/>    Computes the log-likelihood function over the training data.<br/>    The key to the log-likelihood is that the log of the product of<br/>    likelihoods becomes the sum of logs. That is (in pseudo-code),<br/><br/>        np.log(np.product([f(i) for i in range(N)]))<br/><br/>    is equivalent to:<br/><br/>        np.sum([np.log(f(i)) for i in range(N)])<br/><br/>    The log-likelihood function is used in computing the gradient for<br/>    our loss function since the derivative of the sum (of logs) is equivalent<br/>    to the sum of derivatives, which simplifies all of our math.</pre>
+<ol start="2">
+<li>The specifics of the <kbd>log_likelihood</kbd> function are not necessarily critical for understanding how logistic regression works. But, essentially, what you can see here is that we will be summing up <kbd>y</kbd> times the log odds, minus the log of <kbd>1</kbd> plus the exponential of the log odds. Weighted here is essentially the log odds, that is, <kbd>X.dot(w)</kbd>, <kbd>w</kbd> being the theta that we are learning. This is the objective function. So, we're summing over those logs:</li>
+</ol>
+<pre style="padding-left: 60px"> weighted = X.dot(w)<br/> return (y * weighted - np.log(1. + np.exp(weighted))).sum()</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<ol start="3">
+<li>The second is the <kbd>logistic_sigmoid</kbd> function, which we will now learn in greater depth. This is how we can back out of the log odds to get the class probabilities, which is simply <kbd>1</kbd> over <kbd>1</kbd> plus the exponential of the negative log odds, where <kbd>x</kbd> is the log odds in this case:</li>
+</ol>
+<pre style="padding-left: 60px">def logistic_sigmoid(x):<br/>    """The logistic function.<br/><br/>    Compute the logistic (sigmoid) function over a vector, ``x``.<br/><br/>    Parameters<br/>    ----------<br/>    x : np.ndarray, shape=(n_samples,)<br/>        A vector to transform.<br/>    """<br/>    return 1. / (1. + np.exp(-x))</pre>
+<ol start="4">
+<li>We will use both of these functions inside the logistic regression class. So, inside of <kbd>simple_logistic.py</kbd>, you will see a class that resembles the linear regression class that we used in the last section:</li>
+</ol>
+<pre style="padding-left: 60px"># -*- coding: utf-8 -*-<br/><br/>from __future__ import absolute_import<br/><br/>from sklearn.utils.validation import check_X_y, check_array<br/><br/>import numpy as np<br/><span class="pl-k">from</span><span> </span><span class="x x-first x-last">packtml</span><span>.utils.extmath </span><span class="pl-k">import</span><span> log_likelihood, logistic_sigmoid</span><br/><span class="pl-k">from</span><span> </span><span class="x x-first x-last">packtml</span><span>.utils.validation </span><span class="pl-k">import</span><span> assert_is_binary</span><br/><span class="pl-k">from</span><span> </span><span class="x x-first x-last">packtml</span><span>.base </span><span class="pl-k">import</span><span> BaseSimpleEstimator</span><br/><br/>__all__ = [<br/>    'SimpleLogisticRegression'<br/>]<br/><br/>try:<br/>    xrange<br/>except NameError: # py 3 doesn't have an xrange<br/>    xrange = range<br/><br/><br/>class SimpleLogisticRegression(BaseSimpleEstimator):<br/>    """Simple logistic regression.<br/><br/>    This class provides a very simple example of straight forward logistic<br/>    regression with an intercept. There are few tunable parameters aside from<br/>    the number of iterations, &amp; learning rate, and the model is fit upon<br/>    class initialization.</pre>
+<ol start="5">
+<li>Now, this function, or class, extends <kbd>BaseSimpleEstimator</kbd>. We will override the <kbd>predict</kbd> function at some point and the constructor will fit the model and learn the parameters. So, we have four hyperparameters here that come in for this class. The first of which is <kbd>X</kbd>, which is our training data; then <kbd>y</kbd>, as our training labels; and <kbd>n_steps</kbd> recalls that logistic regression as an iterative model. So, <kbd>n_steps</kbd> is the number of iterations that we will perform to which the <kbd>learning_rate</kbd> is our lambda. If you go back to the algorithm itself, this controls how quickly we update our theta given the gradients, and, lastly, <kbd>loglik_interval</kbd>. This is just a helper parameter. Computing the log likelihood can be pretty expensive. We can see this explanation in the following code snippet:</li>
+</ol>
+<pre style="padding-left: 60px">Parameters<br/>    ----------<br/>X : array-like, shape=(n_samples, n_features)<br/>        The array of predictor variables. This is the array we will use<br/>        to regress on ``y``.<br/><br/>y : array-like, shape=(n_samples,)<br/>        This is the target array on which we will regress to build<br/>        our model. It should be binary (0, 1).<br/><br/>n_steps : int, optional (default=100)<br/>        The number of iterations to perform.<br/><br/>learning_rate : float, optional (default=0.001)<br/>        The learning rate.<br/><br/>loglik_interval : int, optional (default=5)<br/>        How frequently to compute the log likelihood. This is an expensive<br/>        operation--computing too frequently will be very expensive.</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="6">
+<li>At the end, we get <kbd>theta</kbd>, the parameters, <kbd>intercept</kbd>, and then <kbd>log_likelihood</kbd>, which is just a list of the computed log likelihoods at each of the intervals. We will first check that our <kbd>X</kbd> and <kbd>y</kbd> are as we want them to be, which is <kbd>0, 1</kbd>. We won't do anything close to what scikit-learn is capable of. We will also not allow different string classes either:</li>
+</ol>
+<pre style="padding-left: 60px">def __init__(self, X, y, n_steps=100, learning_rate=0.001,<br/>                 loglik_interval=5):<br/>        X, y = check_X_y(X, y, accept_sparse=False, # keep dense for example<br/>                         y_numeric=True)<br/><br/>        # we want to make sure y is binary since that's all our example covers<br/>        assert_is_binary(y)<br/><br/>        # X should be centered/scaled for logistic regression, much like<br/>        # with linear regression<br/>        means, stds = X.mean(axis=0), X.std(axis=0)<br/>        X = (X - means) / stds</pre>
+<ol start="7">
+<li>Next, we want to make sure that it's actually binary. The reason for this is that we're performing logistic regression, which is discrete between <kbd>0</kbd> and <kbd>1</kbd>. There is a generalization of the regression, called <strong>softmax regression</strong>, which will allow us to use a number of different classes. it's a multi-class classification. We will get to this when we get into neural nets. For now, we're constraining this to be a binary problem.</li>
+<li>Next, we want to center and standardize our <kbd>X</kbd> matrix. That means we're going to subtract the column <kbd>means</kbd> from <kbd>X</kbd> and divide it by its standard deviation. So, we have mean <kbd>0</kbd>, and standard deviation <kbd>1</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"># since we're going to learn an intercept, we can cheat and set the<br/># intercept to be a new feature that we'll learn with everything else<br/>X_w_intercept = np.hstack((np.ones((X.shape[0], 1)), X))</pre>
+<ol start="9">
+<li>Now, we can do something a little bit clever here when we are learning our linear regression parameters, or the logistic regression parameters that we could not do in linear regression. We can add the intercept to the matrix while we learn it, rather than having to compute it after the fact. We will create a vector of ones as a new feature on our <kbd>X</kbd> matrix, as shown:</li>
+</ol>
+<pre style="padding-left: 60px"> # initialize the coefficients as zeros<br/> theta = np.zeros(X_w_intercept.shape[1])</pre>
+<p class="mce-root"/>
+<ol start="10">
+<li>As we defined in our algorithm, we start out by defining that theta is equal to zero. There are as many parameters as there are columns in <kbd>X</kbd>. For each iteration, we will compute the log odds here. Then, we transform this with a logistic sigmoid. We will compute our residuals as <kbd>y - preds</kbd>. So, at this point, <kbd>preds</kbd> is probabilities. <kbd>y</kbd> can be considered to be class probabilities for a binary classification problem where <kbd>1</kbd> is 100% probable that something belongs to class <kbd>1</kbd>, and <kbd>0</kbd> is 0% probable that something belongs to class <kbd>1</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"> # now for each step, we compute the inner product of X and the<br/> # coefficients, transform the predictions with the sigmoid function,<br/> # and adjust the weights by the gradient<br/> ll = []<br/> for iteration in xrange(n_steps):<br/>     preds = logistic_sigmoid(X_w_intercept.dot(theta))<br/>     residuals = y - preds # The error term<br/>     gradient = X_w_intercept.T.dot(residuals)</pre>
+<p style="padding-left: 60px">So, we can subtract the probabilities from <kbd>y</kbd> to get our residuals. In order to get our gradient, we will perform <kbd>X</kbd> times the residuals, which is the inner product there. Keep in mind that a gradient is a vector of partial derivatives for the slope of our function.</p>
+<ol start="11">
+<li>We will update <kbd>theta</kbd> and the parameters by adding the gradient times our learning rate. The learning rate is the lambda function that controls how quickly we learn. As you may remember, if we learn too quickly, we can overstep a global optimum and end up getting a non-optimal solution. If we go too slowly, then we're going to fit for a long time. Logistic regression is an interesting case; as this is actually a convex optimization problem, we will have enough iterations to reach the global optimum. So, <kbd>learning_rate</kbd> here is a little bit tongue-in-cheek, but this is how, in general, hill-climbing functions work by using <kbd>learning_rate</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"># update the coefficients<br/>theta += learning_rate * gradient<br/><br/># you may not always want to do this, since it's expensive. Tune<br/># the error_interval to increase/reduce this<br/>if (iteration + 1) % loglik_interval == 0:<br/>    ll.append(log_likelihood(X_w_intercept, y, theta))</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<ol start="12">
+<li>The very last step here is that, if we are at the proper intervals, we will compute <kbd>log_likelihood</kbd>. Now, again, you could compute this function at every iteration, but it would take you a very long time. We can opt to make this happen after every 5 or 10 minutes, which will allow us to see that we're optimizing this function. But, at the same time, it means that we don't have to compute it at every iteration.</li>
+<li>Finally, we will save all of these as instance parameters for a class. Notice that we are stripping out the intercept and keeping <kbd>1</kbd> onward as far as the parameters go. These are the non-intercept parameters that we'll just compute in our inner product for the predictions:</li>
+</ol>
+<pre style="padding-left: 90px"># recall that our theta includes the intercept, so we need to  pop<br/># that off and store it<br/>self.intercept = theta[0]<br/>self.theta = theta[1:]<br/>self.log_likelihood = ll<br/>self.column_means = means<br/>self.column_std = stds</pre>
+<p>So, we take the logistic transformation of <kbd>X</kbd> times <kbd>theta.T</kbd> and then add in <kbd>intercept</kbd> after we have centered and standardized our input, <kbd>X</kbd>, which would then give us the probabilities:</p>
+<pre># scale the data appropriately<br/>X = (X - self.column_means) / self.column_std<br/><br/># creates a copy<br/>return logistic_sigmoid(np.dot(X, theta.T) + self.intercept)</pre>
+<p>But, to get the actual prediction, we just round up the probabilities. So, in the <kbd>predict</kbd> function, we will take <kbd>predict_proba</kbd> and round it up or down to either zero or one and get the type as <kbd>int</kbd>, which will give us our classes zero and one:</p>
+<pre> def predict(self, X):<br/>     return np.round(self.predict_proba(X)).astype(int)</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Example of logistic regression</h1>
+                </header>
+            
+            <article>
+                
+<p>Now, as an example, we will look at our <kbd>example_logistic_regression.py</kbd> script. We will compare the output of our <kbd>simple_logistic_regression.py</kbd> file with that of scikit-learn and prove that we get similar, if not exactly equal, parameters learned in our output. We use the scikit-learn <kbd>make_classification</kbd> function to create <kbd>100</kbd> samples and two features and do <kbd>train_test_split</kbd>. First, we will fit our own <kbd>SimpleLogisticRegression</kbd> with the model that we just walked through and take <kbd>50</kbd> steps, as this is a <kbd>50</kbd> iteration, as shown in the following code:</p>
+<pre># -*- coding: utf-8 -*-<br/><br/>from __future__ import absolute_import<br/><br/>from packtml.regression import SimpleLogisticRegression<br/>from packtml.utils.plotting import add_decision_boundary_to_axis<br/>from sklearn.linear_model import LogisticRegression<br/>from sklearn.datasets import make_classification<br/>from sklearn.model_selection import train_test_split<br/>from sklearn.metrics import accuracy_score<br/>from matplotlib import pyplot as plt<br/>import sys<br/><br/># #############################################################################<br/># Create an almost perfectly linearly-separable classification set<br/>X, y = make_classification(n_samples=100, n_features=2, random_state=42,<br/>                           n_redundant=0, n_repeated=0, n_classes=2,<br/>                           class_sep=1.0)<br/><br/># split data<br/>X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)<br/><br/># #############################################################################<br/># Fit a simple logistic regression, produce predictions<br/>lm = SimpleLogisticRegression(X_train, y_train, n_steps=50)<br/><br/>predictions = lm.predict(X_test)<br/>acc = accuracy_score(y_test, predictions)<br/>print("Test accuracy: %.3f" % acc)</pre>
+<p>Next, we will compute scikit-learn's <kbd>LogisticRegression</kbd> with almost no regularization and fit it as shown:</p>
+<pre># Show that our solution is similar to scikit-learn's<br/>lr = LogisticRegression(fit_intercept=True, C=1e16) # almost no regularization<br/>lr.fit(X_train, y_train)<br/>print("Sklearn test accuracy: %.3f" % accuracy_score(y_test, <br/>                                                   lr.predict(X_test)))</pre>
+<p>We will run this code. Make sure that you've got your Anaconda environment already activated by typing <kbd>source activate packt-sml</kbd>.</p>
+<div class="packt_infobox">If you're on Windows, this would just be <kbd>activate packt-sml</kbd>.</div>
+<p>We see that our test accuracy is 96%, which is pretty close to <kbd>Sklearn</kbd> at 100%. Scikit-learn runs more iterations, which is why it gets better accuracy. If we ran more iterations, we could theoretically get perfect accuracy. In the following output, you can see a perfectly linearly separable boundary here. But, since we haven't run as many iterations, we're not hitting it. So, what you can see in this diagram is that we have this linear boundary, which is the decision function we've learned, separating these two classes. On the left, you have one class, and on the right, you have another, as shown:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-496 image-border" src="assets/b26fd4cd-0ca3-4d1f-bdb5-732d5062ffbc.png" style="width:96.17em;height:11.33em;"/></p>
+<p>The output of the preceding code is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-283 image-border" src="assets/e3eddc15-ee9b-4acb-ab29-e3407fb81f18.png" style="width:47.75em;height:38.33em;"/></p>
+<p>Hypothetically, if we ran this code for a hundred or even more iterations, we could achieve a perfectly linearly separable plane, which could guarantee a linearly separable class, because logistic regression will always reach a global optimum. We also know that our formulation is exactly the same as scikit-learn's. So, it's just a matter of how many iterations we ran there.</p>
+<p>In the next section, we're going to look at some of the pros and cons of parametric models.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The pros and cons of parametric models</h1>
+                </header>
+            
+            <article>
+                
+<p>Parametric models have some really convenient attributes. Namely, they are fast to fit, don't require too much data, and can be very easily explained. In the case of linear and logistic regression, it's easy to look at coefficients and directly explain the impact of fluctuating one variable in either direction. In regulated industries, such as finance or insurance, parametric models tend to reign supreme, since they can be easily explained to regulators. Business partners tend to really rely on the insights that the coefficients produce. However, as is evident in what we've already seen so far, they tend to oversimplify. So, as an example, the logistic regression decision boundary that we looked at in the last section assumes a perfect linear boundary between two classes.</p>
+<p>It is rare that the real world can be constrained into linear relationships. That said, the models are very simple. They don't always capture the true nuances of relationships between variables, which is a bit of a double-edged sword. Also, they're heavily impacted by outliers and data scale. So, you have to take great care with data preparation. This is one of the reasons that we had to make sure we centered and scaled our data before fitting. Finally, if you add data to your models, it's unlikely that they're going to get much better. This introduces a new concept, which we're going to call bias.</p>
+<p>Error due to bias is a concept we will talk about in subsequent chapters. It's the result of a model that is oversimplified. In the following diagram, our model oversimplifies a <kbd>logit</kbd> function by treating it as linear:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-497 image-border" src="assets/c3f57086-32f9-43e4-9c09-66a912959d67.png" style="width:23.58em;height:20.33em;"/></p>
+<p>This is also known as <strong>underfitting</strong>, which is common within the parametric model family. There are several ways to combat high bias, most of which we will introduce in the next chapter. But, in the spirit of exploring the drawbacks of parametric models, it's worth pointing some of them out here. As mentioned before, we cannot add more data to learn a better function in high-bias situations. If we take the previous example, if you were to add more samples along the logit line, our learned or blue line would not approach the true function any more than it already has, because it's linear. It's not complex enough to model the true underlying function, which is an unfortunate consequence of the simplicity of many parametric models. More model complexity and complex nonlinear features usually help t<span>o correct high bias</span>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we were introduced to parametric models. We then walked through the low-level math of linear logistic regression, before moving on to implementations in Python. Now that we've covered some of the pros and cons of parametric models, in the next chapter, we will take a look at some non-parametric models.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

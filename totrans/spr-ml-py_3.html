@@ -1,0 +1,837 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Working with Non-Parametric Models</h1>
+                </header>
+            
+            <article>
+                
+<p>In the last chapter, we introduced parametric models and explored how to implement linear and logistic regression. In this chapter, we will cover the non-parametric model family. We will start by covering the bias-variance trade-off, and explaining how parametric and non-parametric models differ at a fundamental level. Later, we'll get into decision trees and clustering methods. Finally, we'll address some of the pros and cons of the non-parametric models.</p>
+<p>In this chapter, we will cover the following topics:</p>
+<ul>
+<li>The bias/variance trade-off</li>
+<li>An introduction to non-parametric models and decision trees</li>
+<li>Decision trees</li>
+<li>Implementing a decision tree from scratch</li>
+<li>Various clustering methods</li>
+<li>Implementing <strong>K-Nearest Neighbors</strong> (<strong>KNNs</strong>) from scratch</li>
+<li>Non-parametric models – the pros and cons</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root"><span class="fontstyle0">For this chapter, you will need to install the following software, if you haven't already done so:</span></p>
+<ul>
+<li>Jupyter Notebook</li>
+<li>Anaconda</li>
+<li>Python</li>
+</ul>
+<p class="mce-root"/>
+<p class="mce-root"><span class="fontstyle0">The code files for this chapter can be found at</span><span> </span><a href="https:/%E2%80%8B/%E2%80%8Bgithub.%E2%80%8Bcom/%E2%80%8BPacktPublishing/%20Supervised-Machine-Learning-with-Python" target="_blank"><span class="fontstyle2">https:/</span><span class="fontstyle3">​</span><span class="fontstyle2">/</span><span class="fontstyle3">​</span><span class="fontstyle2">github.</span><span class="fontstyle3">​</span><span class="fontstyle2">com/</span><span class="fontstyle3">​</span><span class="fontstyle2">PacktPublishing/</span><span class="fontstyle2"><br/></span><span class="fontstyle2">Supervised-Machine-Learning-with-Python</span></a><span class="fontstyle0">.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The bias/variance trade-off</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we're going to continue our discussion of error due to <strong>bias</strong>, and introduce a new source of error called <strong>variance</strong>. We will begin by clarifying what we mean by error terms and then dissect various sources of modeling errors.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Error terms</h1>
+                </header>
+            
+            <article>
+                
+<p>One of the central topics of model building is reducing error. However, there are several types of errors, two of which we have control over to some extent. These are called <strong>bias</strong> and <strong>variance</strong>. There is a trade-off in the ability for a model to minimize either bias or variance, and this is called the <strong>bias-variance trade-off</strong> or the <strong>bias-variance dilemma</strong>.</p>
+<p>Some models do well at controlling both to an extent. However, this is a dilemma that, for the most part, is always going to be present in your modeling considerations.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Error due to bias</h1>
+                </header>
+            
+            <article>
+                
+<p>High bias can also be called underfitting or over-generalization. High bias generally leads to an inflexible model that misses the true relationship between features in the target function that we are modeling. In the following diagram, the true relationship <span>between</span> <em>x</em> <span>and</span> <em>y</em> i<span>s oversimplified</span> <span>and the true function of</span> <em>f(x)</em><span>, which is essentially a logic function, is missed:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/52bed5c5-28a1-4bc7-8087-1ed23193d643.png" style="width:20.58em;height:15.67em;"/></p>
+<p>Parametric models tend to suffer high bias problems more than non-parametric models. Examples of this include linear and logistic regression, which we will explore in more detail in the final section of this chapter.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Error due to variance</h1>
+                </header>
+            
+            <article>
+                
+<p>In contrast, for the high bias that you're now familiar with, error due to variance can be thought of as the variability of a model's prediction for a given sample. Imagine you repeat the modeling process many times; the variance is how much the predictions for a given sample will vary across different inductions of the model. High variance models are commonly referred to as overfitting, and suffer the exact inverse of high bias. That is, they do not generalize enough. High variance usually comes from a model's insensitivity to the signal as a result of its hypersensitivity to noise. Generally, as model complexity increases, variance becomes our primary concern. Notice in the diagram that a polynomial term has led to a very overfitting model, where a simple <strong>logit</strong> function would have sufficed:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/caf73d07-a9f2-4b3d-9759-7957874afafd.png" style="width:20.17em;height:15.75em;"/></p>
+<p>Unlike high bias problems, high variance problems can be addressed with more training data, which can help the model learn to generalize a bit better. So, examples of high variance models, which we haven't yet covered, are decision trees and KNN. We're going to cover both of these in this chapter.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Learning curves</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will examine a handy way to diagnose high bias or variance called <strong>learning curves</strong>. In this example Python snippet, we will leverage the function in the <kbd>packtml.utils</kbd> submodule called <kbd>plot_learning_curve</kbd>, as shown in the following code:</p>
+<pre>from sklearn.datasets import load_boston<br/>from sklearn.metrics import mean_squared_error<br/>from packtml.utils.plotting import plot_learning_curve<br/>from packtml.regression import SimpleLinearRegression<br/>%matplotlib inline<br/><br/>boston = load_boston()<br/>plot_learning_curve(<br/>        model=SimpleLinearRegression, X=boston.data, y=boston.target,<br/>        metric=mean_squared_error, n_folds=3,<br/>        train_sizes=(50, 150, 250, 300),<br/>        seed=42, y_lim=(0, 45))\<br/>    .show</pre>
+<p>This function is going to take an estimator and fit it on various sizes of training data defined in the <kbd>train_sizes</kbd> parameter. What is displayed is the model performance on the train and the corresponding validation set for each incremental model fit. So, this example uses our linear regression class to model the Boston housing data, which is a regression problem and displays symptoms of high bias. Notice that our error is very similar for the training and validation sets. It got there very rapidly, but it's still relatively high. They don't improve as our training set grows at all. We get the output for the preceding code as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-268 image-border" src="assets/5bb09654-b826-464c-981a-9d322d1a7c55.png" style="width:31.83em;height:16.83em;"/></p>
+<p class="CDPAlignCenter CDPAlign"/>
+<p>Alternatively, if we model the same data with a decision tree regressor, we notice the symptoms of high variance or overfitting:</p>
+<pre>from sklearn.datasets import load_boston<br/>from sklearn.metrics import mean_squared_error<br/>from packtml.utils.plotting import plot_learning_curve<br/>from packtml.decision_tree import CARTRegressor<br/>%matplotlib inline<br/><br/>boston = load_boston()<br/>plot_learning_curve(<br/>        model=CARTRegressor, X=boston.data, y=boston.target,<br/>        metric=mean_squared_error, n_folds=3,<br/>        train_sizes=(25, 150, 225, 350),<br/>        seed=42, random_state=21, max_depth=50)\<br/>    .show</pre>
+<p>There is a huge discrepancy between the <strong>Training score</strong> and <strong>Validation score</strong>, and even though it gets better with more data, it never quite reaches convergence. We get the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-270 image-border" src="assets/e0e0dc71-135b-4802-8a4a-996d3e6db219.png" style="width:32.00em;height:19.33em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Strategies for handling high bias</h1>
+                </header>
+            
+            <article>
+                
+<p>If you determine that you're suffering from a high bias problem, you can try making your model more complex by engineering more informative signal-rich features. For example, here, one thing you could try doing is creating new features that are polynomial combinations of your <em>x1</em> so, you can create logit function of <em>x1</em>, and that would model our function perfectly. You can also try tuning some of the hyperparameters, for instance, KNNs, even though it's a high variance model, and it can become highly biased very quickly as you increase the <em>k</em> hyperparameter, and vice versa:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/8d8f5203-9b9c-4b73-8e96-2f0c952b665a.png" style="width:14.58em;height:12.83em;"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Strategies for handling high variance</h1>
+                </header>
+            
+            <article>
+                
+<p>If you, instead, find yourself facing a high variance problem, we've already seen how more training data can help, to an extent. You can also perform some feature selection to pare down the model's complexity. The most robust solution lies in bagging or ensembling, which combines the output to mini models, which all, in turn, vote on each sample's label or output regression score:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/477ce929-ccc1-4fd0-8f69-882886f9d56f.png" style="width:15.08em;height:13.83em;"/></div>
+<p>In the next section, we're going to more formally define non-parametric learning algorithms and introduce decision trees.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Introduction to non-parametric models and decision trees</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we're going to formally define what non-parametric learning algorithms are, and introduce some of the concepts and math behind our first algorithm, called <strong>decision trees</strong>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Non-parametric learning</h1>
+                </header>
+            
+            <article>
+                
+<p>Non-parametric models do not learn parameters. They do learn characteristics or attributes about the data, but not parameters in the formal sense. We will not end up extracting a vector of coefficients. The easiest example is a decision tree. A decision tree is going to learn where to recursively split data so that its leaves are as pure as possible. So, in that sense, the decision function is a splitting point for each leaf that is not a parameter.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Characteristics of non-parametric learning algorithms</h1>
+                </header>
+            
+            <article>
+                
+<p>Non-parametric models tend to be a bit more flexible and do not make as many assumptions about the underlying structure of the data. Many linear models, or parametric models, for instance, assume that a normal distribution for each feature is required to be independent of one another. This is not the case with most non-parametric models. As we covered in the last section, the bias-variance trade-off also knows that non-parametric models will require more data to train, so as not to be as afflicted by high variance problems.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Is a model parametric or not?</h1>
+                </header>
+            
+            <article>
+                
+<p>If you find yourself wondering whether or not a model is parametric, it's probably not the most important question to answer. You should select the modeling technique that best suits your data. However, a good rule of thumb is how many characteristics or parameters a model learns. If it's related to the feature space or dimensionality, it's probably parametric, for instance, learning the number of coefficients theta in a linear regression. If, instead, it's related to the number of samples, it's probably non-parametric, for instance, the depth of the decision tree or the number of neighbors in clustering.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">An intuitive example – decision tree</h1>
+                </header>
+            
+            <article>
+                
+<p>A decision tree will start out with all of the data, iteratively making splits until each leaf has maximized its purity or some other stopping criteria is met. In this example, we will start out with three samples. The tree learns that splitting on the color feature will be our most informative step towards maximizing its leaf purity. So, that's the first thing to note. The first split is the most informative split that will best segment the data into two pieces. As shown in the following diagram, the potato class is isolated on the left by splitting on color. We have perfectly classified the potato. However, the other two samples still need to be split. So, the tree learns that, if it's orange and round, it's a sweet potato. Otherwise, if it's just orange and not round, it's a carrot, and it goes left one more time. Here, we can see a perfect split of all of our classes:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/f35a17a3-c73c-4c27-8952-478a124f2999.png" style="width:45.58em;height:22.17em;"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Decision trees – an introduction</h1>
+                </header>
+            
+            <article>
+                
+<p>What we're interested in doing with decision trees is defining a flexible extensible algorithm that can achieve the decision tree. This is where the <strong>Classification and Regression Trees</strong> <span>(</span><span><strong>CART</strong>)</span> algorithm comes in. CART is generalizable to either task and it learns, essentially, by asking questions of the data. At each split point, CART will scan the entire feature space, sampling values from each feature to identify the best feature and value for the split. It does this by evaluating the information gain formula, which seeks to maximize a gain in purity in the split, which is pretty intuitive. <em>Gini Impurity</em> is computed at the leaf level, and is a way of measuring how pure or impure a leaf is; its formula is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/d6268b54-06ba-49be-8da4-7dc894aee979.png" style="width:14.42em;height:3.00em;"/></p>
+<p><em>IG</em> at the bottom is our information gain, and it's the gini of the root node, as shown here:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/fce97018-e381-4527-9384-4960853433e3.png" style="width:24.00em;height:1.33em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How do decision trees make decisions?</h1>
+                </header>
+            
+            <article>
+                
+<p>We will first address the objective before looking at the math. We will compute the information gain of a split to determine the best splitting point. If information gain is positive, that means we have learned something from that split, which might be the optimal point. If information gain is negative, it means we're actually going in the wrong direction. What we have done is created a non-informative split. Each split in the tree will select the point that maximizes information gain.</p>
+<p class="mce-root"/>
+<p>So, here's the setup:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/a2152363-2f8b-4a2f-8327-3bf389e2ece8.png" style="width:27.50em;height:22.75em;"/></div>
+<p>A Gini impurity of 0 would be particularly pure. A higher impurity essentially means that a more random collection of classes has found itself in that leaf. So, our root is fairly impure. Now our tree will scan the entire feature space, sampling values from each feature. It will evaluate the information gained on if we were to split there. So, let's say that our tree selects <em>x12</em>. We will split along the same value that's sampled that variable. What we want to know is, if we end up getting more pure leaf nodes from this split, we will compute the information gain. To do that, we have to compute the Gini for each of the leaf nodes that we just created.</p>
+<p>We will look at an example of this problem using the <kbd>packtml</kbd> library. We have the <kbd>example_information_gain.py</kbd> file, which is in the <kbd>examples/decision_tree</kbd> directory:</p>
+<pre># -*- coding: utf-8 -*-<br/><br/>from __future__ import absolute_import<br/><br/>from packtml.decision_tree.metrics import gini_impurity, InformationGain<br/>import numpy as np<br/><br/># #############################################################################<br/># Build the example from the slides<br/>y = np.array([0, 0, 0, 1, 1, 1, 1])<br/>uncertainty = gini_impurity(y)<br/>print("Initial gini impurity: %.4f" % uncertainty)<br/><br/># now get the information gain of the split from the slides<br/>directions = np.array(["right", "left", "left", "left",<br/>                       "right", "right", "right"])<br/>mask = directions == "left"<br/>print("Information gain from the split we created: %.4f"<br/>      % InformationGain("gini")(target=y, mask=mask, uncertainty=uncertainty))</pre>
+<p>Next, we will compute the information gain using the <kbd>InformationGain</kbd> class from <kbd>packtml.decision_tree.metrics</kbd>:</p>
+<pre>from packtml.decision_tree.metrics import gini_impurity, InformationGain<br/>import numpy as np</pre>
+<p>We will get the following output when we run <kbd>example_information_gain.py</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-271 image-border" src="assets/064c2ef2-3f84-4a24-8500-8b100b2fd139.png" style="width:94.25em;height:5.67em;"/></p>
+<p>In the next section, we're going to go a bit deeper and learn how a decision tree produces the candidate split for us to evaluate.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Decision trees</h1>
+                </header>
+            
+            <article>
+                
+<p>In the previous section, we computed the information gained for a given split. Recall that it's computed or calculated by computing the Gini impurity for the parent node in each <kbd>LeafNode</kbd>. A higher information again is better, which means we have successfully reduced the impurities of the child nodes with our split. However, we need to know how a candidate split is produced to be evaluated.</p>
+<p>For each split, beginning with the root, the algorithm will scan all the features in the data, selecting a random number of values for each. There are various strategies to select these values. For the general use case, we will describe and select a <em>k</em> random approach:</p>
+<ul>
+<li>For each of the sample values in each feature, we simulate a candidate split</li>
+<li>Values above the sampled value go to one direction, say left, and values above that go the other direction, that is, to the right</li>
+<li>Now, for each candidate split, we're going to compute the information gain, and select the feature value combination that produces the highest information gain, which is the best split</li>
+<li>From the best split, we will recurse down each split as a new parent until the stopping criteria are met</li>
+</ul>
+<p>Now, regarding where and when to stop the criteria, there are various methods we can use for this. A common one is maximum tree depth. If we get too deep, we start to overfit. So, we might prune our tree when it grows five times deep, for instance. Another, is a minimum number of samples per leaf. If we have 1 million training samples, we grow our tree until there's one sample per leaf; we're also probably overfitting. So, the min samples leaf parameter will allow us to stop splitting a leaf once there are, say, 50 samples remaining after a split. This is a tunable hyperparameter that you can work within your cross-validation procedure.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Splitting a tree by hand</h1>
+                </header>
+            
+            <article>
+                
+<p>We will now look into an exercise. Let's imagine we have this training set:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/cbadade4-c934-4312-b1d4-61859101f0cb.png" style="width:10.00em;height:3.58em;"/></p>
+<p>From the preceding data, where is the optimal split point? What feature or value combination should we use to define our rule?</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">If we split on x1</h1>
+                </header>
+            
+            <article>
+                
+<p>First, we will compute the Gini impurity of the root node, which is the pre-split state. We get <em>0.444</em>, as shown:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/6ace640a-6b82-49f9-938a-94cd878bf06f.png" style="width:25.42em;height:1.67em;"/></p>
+<p>The next stage in the algorithm is to iterate each feature. There are three cases, shown as follows. Using our <em>IG</em> formula, we can compute which is the best split point for this feature. The first happens to be the best, in this case:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/cbf032eb-f9f3-498e-9bbe-a0a42ca5c3ea.png" style="width:41.17em;height:2.83em;"/></p>
+<p>Splitting on the second case, where <em>x1</em> is greater than or equal to <em>4</em>, is not a good idea since the result is no different than the state at the root. Therefore, our information gain is <em>0</em>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/72157416-b405-492b-a5ae-d6668cac95a4.png" style="width:44.83em;height:3.08em;"/></p>
+<p>In the last case, splitting when <em>x1</em> is greater than or equal to <em>37</em> does yield a positive IG since we have successfully split one sample of the positive class away from the others:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/cadc0ea0-fc63-4d29-9e00-94f92d172e50.png" style="width:37.58em;height:2.58em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">If we split on x2</h1>
+                </header>
+            
+            <article>
+                
+<p>However, we don't know if we're done yet. So, we will iterate to <em>x2</em>, where there might be a better split point:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="fm-editor-equation" src="assets/5f99b20b-6803-4822-aee8-4094b8f563c3.png" style="width:37.42em;height:4.58em;"/></p>
+<p>The candidate split shows us that neither potential split is the optimal split when compared to the current best that we've identified in <em>x1</em>.</p>
+<p class="mce-root"/>
+<p>Therefore, the best split is <em>x1</em> greater than or equal to <em>21</em>, which will perfectly separate our class labels. You can see in this decision tree when we produce that split, sure enough, we get perfectly separated classes:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/2aee3630-4c83-49b8-9d60-fc674c593e8b.png" style="width:24.25em;height:18.58em;"/></div>
+<p>However, in a larger example, we may not have perfectly separated our classes, if we had millions of samples, for instance. Hence, we would recurse at this point, finding new split points for each node until we hit our stopping criteria. At this point, let's use our <kbd>packtml</kbd> library to run this exact example and show that we do in fact identify the same optimal split point, and prove that is not just trickery of the hand.</p>
+<p>In PyCharm, the <kbd>example_classification_split.py</kbd> file is open. This is located inside your <kbd>examples</kbd> directory and within the <kbd>decision_tree</kbd> examples directory. You can see we're going to import two things from <kbd>packtml</kbd>. Both of them happen to be inside the <kbd>decision_tree</kbd> submodule where you got <kbd>RandomSplitter</kbd>:</p>
+<pre>from __future__ import absolute_import<br/><br/>from packtml.decision_tree.cart import RandomSplitter<br/>from packtml.decision_tree.metrics import InformationGain<br/>import numpy as np</pre>
+<p>We already looked at <kbd>InformationGain</kbd> a little bit in the last section to compute our information gain candidate split. Here, we will look at how we actually create the candidate split. We get the following data along with the corresponding class labels:</p>
+<pre># Build the example from the slides (3.3)<br/>X = np.array([[21, 3], [ 4, 2], [37, 2]])<br/>y = np.array([1, 0, 1])</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p><kbd>RandomSplitter</kbd> will evaluate each of the preceding values since <kbd>n_val_sample</kbd> is <kbd>3</kbd>. So, it's going to compute three candidates split points for each feature, and we will find out which of them are the best:</p>
+<pre># this is the splitting class; we'll use gini as the criteria<br/>random_state = np.random.RandomState(42)<br/>splitter = RandomSplitter(random_state=random_state,<br/>                          criterion=InformationGain('gini'),<br/>                          n_val_sample=3)<br/># find the best:<br/>best_feature, best_value, best_gain = splitter.find_best(X, y)<br/>print("Best feature=%i, best value=%r, information gain: %.3f"<br/>      % (best_feature, best_value, best_gain))</pre>
+<p>When we run the preceding code, we see <kbd>best_feature</kbd> is <kbd>0</kbd> and <kbd>best_value</kbd> is <kbd>21</kbd>, meaning that anything greater than or equal to <kbd>21</kbd> in feature <kbd>0</kbd> will go left, and everything else goes right. The <kbd>InformationGain</kbd> we get is <kbd>0.444</kbd>, which, sure enough, when we computed it by hand, is exactly what we expected:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-272 image-border" src="assets/5b3a8a2e-2d07-4764-9e59-4ebfdc49d163.png" style="width:94.33em;height:4.00em;"/></p>
+<p>In the next section, we'll cover how we can implement a decision tree from scratch inside the <kbd>packtml</kbd> library.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Implementing a decision tree from scratch</h1>
+                </header>
+            
+            <article>
+                
+<p>We will start out by looking at the implementation of our splitting metrics. Then we'll cover some of our splitting logic, and finally, we'll see how we can wrap the tree so that we can generalize from classification and regression tasks.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Classification tree</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's go ahead and walk through a classification tree example. We will be using the information gain criteria. In PyCharm there are three scripts open, two of which are <kbd>metrics.py</kbd> and <kbd>cart.py</kbd>, both of which are found inside of the <kbd>packtml/decision_tree</kbd> submodule. Then we have the <kbd>example_classification_decision_tree.py</kbd> file, which is in <kbd>examples/decision_tree</kbd>. Let's start with metrics.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>If you open up the <kbd>cart.py</kbd> file, we have an order in which we should step through this so that you can understand how the decision tree class is going to work:</p>
+<pre># 1. metrics.InformationGain &amp; metrics.VarianceReduction<br/># 2. RandomSplitter<br/># 3. LeafNode<br/># 4. BaseCART</pre>
+<p>Starting with the <kbd>metrics.py</kbd> file from the top, you can see that <kbd>_all_</kbd> is going to include four different metrics:</p>
+<pre>__all__ = [<br/>    'entropy',<br/>    'gini_impurity',<br/>    'InformationGain',<br/>    'VarianceReduction'<br/>]</pre>
+<p><kbd>entropy</kbd> and <kbd>gini_impurity</kbd> are both classification metrics. We have talked about <kbd>gini_impurity</kbd>. You can see here that both of them are calling the <kbd>clf_metric</kbd> private function as shown:</p>
+<pre>def entropy(y):<br/>    """Compute the entropy of class labels.<br/><br/>    This computes the entropy of training samples. A high entropy means<br/>    a relatively uniform distribution, while low entropy indicates a<br/>    varying distribution (many peaks and valleys).<br/><br/>    References<br/>    ----------<br/>    .. [1] http://www.cs.csi.cuny.edu/~imberman/ai/Entropy%20and%20Information%20Gain.htm<br/>    """<br/>    return _clf_metric(y, 'entropy')<br/><br/><br/>def gini_impurity(y):<br/>    """Compute the Gini index on a target variable.<br/><br/>    The Gini index gives an idea of how mixed two classes are within a leaf<br/>    node. A perfect class separation will result in a Gini impurity of 0 (that is,<br/>    "perfectly pure").<br/>    """<br/>    return _clf_metric(y, 'gini')</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p>Now, <kbd>gini</kbd> and <kbd>entropy</kbd> acts essentially the same way, except that at the end, <kbd>gini</kbd> computes a norm essentially on itself where <kbd>entropy</kbd> is <kbd>log2</kbd>:</p>
+<pre>def _clf_metric(y, metric):<br/>    """Internal helper. Since this is internal, so no validation performed"""<br/>    # get unique classes in y<br/>    y = np.asarray(y)<br/>    C, cts = np.unique(y, return_counts=True)<br/><br/>    # a base case is that there is only one class label<br/>    if C.shape[0] == 1:<br/>        return 0.<br/><br/>    pr_C = cts.astype(float) / y.shape[0] # P(Ci)<br/><br/>    # 1 - sum(P(Ci)^2)<br/>    if metric == 'gini':<br/>        return 1. - pr_C.dot(pr_C) # np.sum(pr_C ** 2)<br/>    elif metric == 'entropy':<br/>        return np.sum(-pr_C * np.log2(pr_C))<br/><br/>    # shouldn't ever get to this point since it is internal<br/>    else:<br/>        raise ValueError("metric should be one of ('gini', 'entropy'), "<br/>                         "but encountered %s" % metric)</pre>
+<div class="packt_tip">One thing to note here is that entropy and Gini are going to make a huge difference in how your tree performs. Gini is actually canon for the CART algorithm, but we included entropy here so you could see that this is something you can use if you want to.</div>
+<p><kbd>BaseCriterion</kbd> is our base class for a splitting criterion. We have two splitting criteria, <kbd>InformationGain</kbd> and <kbd>VarianceReduction</kbd>. Both of them are going to implement <kbd>compute_uncertainty</kbd>:</p>
+<pre>class BaseCriterion(object):<br/>    """Splitting criterion.<br/><br/>    Base class for InformationGain and VarianceReduction. WARNING - do<br/>    not invoke this class directly. Use derived classes only! This is a<br/>    loosely-defined abstract class used to prescribe a common interface<br/>    for sub-classes.<br/>    """<br/>    def compute_uncertainty(self, y):<br/>        """Compute the uncertainty for a vector.<br/><br/>        A subclass should override this function to compute the uncertainty<br/>        (that is, entropy or gini) of a vector.<br/>        """<br/><br/><br/>class InformationGain(BaseCriterion):<br/>    """Compute the information gain after a split.<br/><br/>    The information gain metric is used by CART trees in a classification<br/>    context. It measures the difference in the gini or entropy before and<br/>    after a split to determine whether the split "taught" us anything.</pre>
+<p>If you remember from the last section, uncertainty is essentially the level of impurity, or entropy, induced by the split. When we compute <kbd>InformationGain</kbd> using either <kbd>gini</kbd> or <kbd>entropy</kbd>, our uncertainty is going to be <kbd>metric</kbd> pre-split:</p>
+<pre>def __init__(self, metric):<br/>        # let fail out with a KeyError if an improper metric<br/>        self.crit = {'gini': gini_impurity,<br/>                     'entropy': entropy}[metric]</pre>
+<p>If we compute <kbd>uncertainty</kbd>, we would pass in a node and say compute Gini, for instance, on all of the samples inside of the node before we split, and then, when we call to actually compute <kbd>InformationGain</kbd>, we pass in <kbd>mask</kbd> for whether something is going <kbd>left</kbd> or <kbd>right</kbd>. We will compute the Gini on the left and right side, and return <kbd>InformationGain</kbd>:</p>
+<pre>def __call__(self, target, mask, uncertainty):<br/>        """Compute the information gain of a split.<br/><br/>        Parameters<br/>        ----------<br/>        target : np.ndarray<br/>            The target feature<br/><br/>        mask : np.ndarray<br/>            The value mask<br/><br/>        uncertainty : float<br/>            The gini or entropy of rows pre-split<br/>        """<br/>        left, right = target[mask], target[~mask]<br/>        p = float(left.shape[0]) / float(target.shape[0])<br/><br/>        crit = self.crit # type: callable<br/>        return uncertainty - p * crit(left) - (1 - p) * crit(right)</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>This is how we compute <kbd>InformationGain</kbd>, and this is just the wrapper class that we have built. <kbd>VarianceReduction</kbd> is very similar, except the <kbd>compute_uncertainty</kbd> function is simply going to return the variance of <em>y</em>. When we call this, we are subtracting the uncertainty of the pre-split node, minus the sum of the uncertainties for the left and right on the split. What we're doing here is maximizing the reduction of the variance between each split respectively. That way, we can know if a split is good. It separates along a relatively intuitive line, as follows:</p>
+<pre>class VarianceReduction(BaseCriterion):<br/>    """Compute the variance reduction after a split.<br/><br/>    Variance reduction is a splitting criterion used by CART trees in the<br/>    context of regression. It examines the variance in a target before and<br/>    after a split to determine whether we've reduced the variability in the<br/>    target.<br/>    """<br/>    def compute_uncertainty(self, y):<br/>        """Compute the variance of a target."""<br/>        return np.var(y)<br/><br/>    def __call__(self, target, mask, uncertainty):<br/>        left, right = target[mask], target[~mask]<br/>        return uncertainty - (self.compute_uncertainty(left) +<br/>                              self.compute_uncertainty(right))</pre>
+<p>These are our two splitting criteria: <kbd>InformationGain</kbd> and <kbd>VarianceReduction</kbd>. We're going to use <span><kbd>InformationGain</kbd></span> for classification and <kbd>VarianceReduction</kbd> for regression. Since we're talking about classification right now, let's focus on <kbd>InformationGain</kbd>. Moving over to the <kbd>cart.py</kbd> file, we see that the next thing we want to talk about is <kbd>RandomSplitter</kbd>.</p>
+<p>In one of the last sections, we learned about a strategy to produce candidate splits. This is essentially <kbd>RandomSplitter</kbd>. There are a lot of different strategies you can use here. We're going to use a bit of entropy so that we can get through this class and this algorithm relatively quickly, without getting into the nitty-gritty.</p>
+<p><kbd>RandomSplitter</kbd> will take several arguments. We want <kbd>random_state</kbd> so that we can replicate this split later. The criterion is an instance of either <kbd>InformationGain</kbd> or <kbd>VarianceReduction</kbd> and the number of values that we want to sample from each feature:</p>
+<pre> def __init__(self, random_state, criterion, n_val_sample=25):<br/>        self.random_state = random_state<br/>        self.criterion = criterion # BaseCriterion from metrics<br/>        self.n_val_sample = n_val_sample</pre>
+<p>So, our <kbd>find_best</kbd> <span>function</span> will scan the entire feature space, sample the number of values per split or per feature, and determine <kbd>best_value</kbd> and <kbd>best_feature</kbd> on which to split. This will produce our best split for the tree at the time. So, <kbd>best_gain</kbd> will start as <kbd>0</kbd>. If it's negative it's a bad one, so we don't want to split at all. If it's positive then it's better than our current best, and so we'll take that and increment it to find our best. We want to find our <kbd>best_feature</kbd> and our <kbd>best_value</kbd>:</p>
+<pre>def find_best(self, X, y):<br/>        criterion = self.criterion<br/>        rs = self.random_state<br/><br/>        # keep track of the best info gain<br/>        best_gain = 0.<br/><br/>        # keep track of best feature and best value on which to split<br/>        best_feature = None<br/>        best_value = None<br/><br/>        # get the current state of the uncertainty (gini or entropy)<br/>        uncertainty = criterion.compute_uncertainty(y)</pre>
+<p>Now, for each of the columns of our dataset, we're going to go ahead and grab out the feature. This is just a NumPy array, a 1D NumPy array:</p>
+<pre># iterate over each feature<br/>for col in xrange(X.shape[1]):<br/>    feature = X[:, col]</pre>
+<p>We will create a set so that we can keep track of which values we have already seen, if we happen to sample the same one over and over again. We will permute this feature so that we can shuffle it up and scan over each of the values in the feature. One thing you'll note here is that we could collect just the unique values of the feature. But first of all, it's kind of expensive to get the unique values. Secondly, that throws away all the distributional information about the feature. By doing this, we happen to have more of a certain value than another, or more values grouped more closely together. This is going to allow us to get a little bit more of a true sample of the feature itself:</p>
+<pre> # For each of n_val_sample iterations, select a random value<br/> # from the feature and create a split. We store whether we've seen<br/> # the value before; if we have, continue. Continue until we've seen<br/> # n_vals unique values. This allows us to more likely select values<br/> # that are high frequency (retains distributional data implicitly)<br/> for v in rs.permutation(feature):</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p>If the number of <kbd>seen_values</kbd> in our set is equal to the number of values that we want to sample, we're going to break out. So, if we say there are <kbd>100</kbd> unique values, but we've already seen <kbd>25</kbd>, we're going to break out. Otherwise, if we have already seen this value in that set, we're going to keep going. We don't want to compute the same thing over a value that we have already computed. So, here we will add that value to the set, and create our mask for whether we split left or right:</p>
+<pre># if we've hit the limit of the number of values we wanted to<br/># examine, break out<br/>if len(seen_values) == n_vals:<br/>   break<br/># if we've already tried this value, continue<br/>elif v in seen_values: # O(1) lookup<br/>     continue<br/># otherwise, it's a new value we've never tried splitting on.<br/># add it to the set.<br/>seen_values.add(v)<br/><br/># create the mask (these values "go left")<br/>mask = feature &gt;= v # type: np.ndarray</pre>
+<p>Now, there's one more corner case. If we have grabbed the minimum value, then our mask is going to take everything in one direction, which is what this is checking. We don't want that, because, otherwise, we're not creating a true split. So, if that's the case, then we <kbd>continue</kbd>, and sample again:</p>
+<pre># skip this step if this doesn't divide the dataset<br/>if np.unique(mask).shape[0] == 1: # all True or all False<br/>    continue</pre>
+<p>Now let's compute the gain, either <kbd>InformationGain</kbd> or <kbd>VarianceReduction</kbd>, which computes the Gini on the left and right side and subtracts that from the original uncertainty. If the <kbd>gain</kbd> is good, meaning if it's better than the current best we've seen, then we have a new <kbd>best_feature</kbd> and a new <kbd>best_value</kbd>, and we store that. So, we loop over this and go over the randomly sampled values within each feature and determine the <kbd>best_feature</kbd> to split on and the <kbd>best_value</kbd> in that feature to split on. If we don't have one, it means we never found a viable split, which happens in rare cases:</p>
+<pre># compute how good this split was<br/>gain = criterion(y, mask, uncertainty=uncertainty)<br/><br/># if the gain is better, we keep this feature &amp; value &amp;<br/># update the best gain we've seen so far<br/>if gain &gt; best_gain:<br/>    best_feature = col<br/>    best_value = v<br/>    best_gain = gain<br/><br/># if best feature is None, it means we never found a viable split...<br/># this is likely because all of our labels were perfect. In this case,<br/># we could select any feature and the first value and define that as<br/># our left split and nothing will go right.<br/>if best_feature is None:<br/>    best_feature = 0<br/>    best_value = np.squeeze(X[:, best_feature])[0]<br/>    best_gain = 0.<br/><br/># we need to know the best feature, the best value, and the best gain<br/>return best_feature, best_value, best_gain</pre>
+<p>Next, we will look in <kbd>LeafNode</kbd>. If you have ever built a binary tree before, then you would be familiar with the concept of <kbd>LeafNode</kbd>. <kbd>LeafNode</kbd> is going to store a left and a right pointer, both typically initialized to null to show that there's nothing there. So, the leaf node, in this case, is going to be the guts of our decision tree. It provides the skeleton where the tree itself is just a wrapper:</p>
+<pre>class LeafNode(object):<br/>    """A tree node class.<br/><br/>    Tree node that store the column on which to split and the value above<br/>    which to go left vs. right. Additionally, it stores the target statistic<br/>    related to this node. For instance, in a classification scenario:<br/><br/>        &gt;&gt;&gt; X = np.array([[ 1, 1.5 ],<br/>        ...               [ 2, 0.5 ],<br/>        ...               [ 3, 0.75]])<br/>        &gt;&gt;&gt; y = np.array([0, 1, 1])<br/>        &gt;&gt;&gt; node = LeafNode(split_col=0, split_val=2,<br/>        ...                 class_statistic=_most_common(y))</pre>
+<p><kbd>LeafNode</kbd> is going to store <kbd>split_col</kbd>, the feature that we are splitting on, <kbd>split_val</kbd>, and <kbd>split_gain</kbd>, as well as <kbd>class_statistic</kbd>. So, <kbd>class_statistic</kbd> for classification is going to be the node, where we vote for the most common value. In regression, it's going to be the mean. If you want to get really fancy you might use the median or some other strategy for regression. However, we're just going to use the mean because we're keeping it simple here. So, a constructor is going to store these values and initialize our left and right as null again:</p>
+<pre>   def __init__(self, split_col, split_val, split_gain, class_statistic):<br/><br/>        self.split_col = split_col<br/>        self.split_val = split_val<br/>        self.split_gain = split_gain<br/><br/>        # the class statistic is the mode or the mean of the targets for<br/>        # this split<br/>        self.class_statistic = class_statistic<br/><br/>        # if these remain None, it's a terminal node<br/>        self.left = None<br/>        self.right = None<br/><br/>    def create_split(self, X, y):<br/>        """Split the next X, y.</pre>
+<p>Now in the <kbd>create_split</kbd> function, we actually get to the tree structure itself. But this is going to essentially split the node and create a new left and right. Hence, it goes from the terminal node to the next split downward, which we can recurse over. We will take the current set for that current dataset from the <kbd>X</kbd> and <kbd>y</kbd> <span>split.</span> Given that the value in the feature that we have already initialized will create our mask for left and right, if we're going all left or all right, that's where it stores. Otherwise, it's going to produce this split, segmenting out the rows on the left side and the rows on the right side, or else the rows are none. If there's no split on the left/right, we just use none and we will return <kbd>X_left</kbd>, <kbd>X_right</kbd>, <kbd>y_left</kbd> and <kbd>y_right</kbd>:</p>
+<pre># If values in the split column are greater than or equal to the<br/># split value, we go left.<br/>left_mask = X[:, self.split_col] &gt;= self.split_val<br/><br/># Otherwise we go to the right<br/>right_mask = ~left_mask # type: np.ndarray<br/><br/># If the left mask is all False or all True, it means we've achieved<br/># a perfect split.<br/>all_left = left_mask.all()<br/>all_right = right_mask.all()<br/><br/># create the left split. If it's all right side, we'll return None<br/>X_left = X[left_mask, :] if not all_right else None<br/>y_left = y[left_mask] if not all_right else None<br/><br/># create the right split. If it's all left side, we'll return None.<br/>X_right = X[right_mask, :] if not all_left else None<br/>y_right = y[right_mask] if not all_left else None<br/><br/>return X_left, X_right, y_left, y_right</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>The terminal is just a shortcut here for left and right. If we have either, then it's not terminal. But, if it has both null for left and right, then it's a terminal node:</p>
+<pre>def is_terminal(self):<br/>     """Determine whether the node is terminal.<br/><br/>     If there is no left node and no right node, it's a terminal node.<br/>     If either is non-None, it is a parent to something.<br/>     """<br/>     return self.left is None and self.right is None</pre>
+<p>We will use the <kbd>predict_record</kbd> function internally for producing predictions inside <kbd>LeafNode</kbd>. This is going to use that <kbd>class_statistic</kbd> function that we have. <kbd>class_statistic</kbd> is either the mode for classification or the mean for regression. For predicting whether or not a record goes left or right, we recurse down, and that is just what is happening here in <kbd>predict</kbd>, which we'll get to, and look at how we produce predictions:</p>
+<pre>   def predict_record(self, record):<br/>        """Find the terminal node in the tree and return the class statistic"""<br/>        # First base case, this is a terminal node:<br/>        has_left = self.left is not None<br/>        has_right = self.right is not None<br/>        if not has_left and not has_right:<br/>            return self.class_statistic<br/><br/>        # Otherwise, determine whether the record goes right or left<br/>        go_left = record[self.split_col] &gt;= self.split_val<br/><br/>        # if we go left and there is a left node, delegate the recursion to the<br/>        # left side<br/>        if go_left and has_left:<br/>            return self.left.predict_record(record)<br/><br/>        # if we go right, delegate to the right<br/>        if not go_left and has_right:<br/>            return self.right.predict_record(record)<br/><br/>        # if we get here, it means one of two things:<br/>        # 1. we were supposed to go left and didn't have a left<br/>        # 2. we were supposed to go right and didn't have a right<br/>        # for both of these, we return THIS class statistic<br/>        return self.class_statistic</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p>Now, the trees themselves are two classes. We have <kbd>CARTRegressor</kbd> and <kbd>CARTClassifier</kbd>. Both of these are going to wrap the <kbd>BaseCART</kbd> class, which we will walk through right now. <kbd>BaseCART</kbd>, as with most of our base simple estimators that we've already walked through, is going to take two arguments for certain, which are <kbd>X</kbd> and <kbd>y</kbd>—our training data and our training labels. It's also going to take our criterion, which we will pass at the bottom. It's either your <kbd>InformationGain</kbd> for classification, <kbd>VarianceReduction</kbd> for regression, <kbd>min_samples_split</kbd>, and all these other hyperparameters, which we've already kind of talked through. The first thing we're going to do is, as usual, check our <kbd>X</kbd> and <kbd>y</kbd> to make sure that we have all continuous values, that we're not missing any data. This is just assigning <kbd>self</kbd> attributes for the hyperparameters and we will create our <kbd>splitter</kbd> as <kbd>RandomSplitter</kbd>, which we're going to use in this process. This is how we grow the tree. It all happens in <kbd>find_next_split</kbd>. So, this is going to take three arguments. We've got our <kbd>X</kbd>, our <kbd>y</kbd>, and then the count:</p>
+<pre>class _BaseCART(BaseSimpleEstimator):<br/>    def __init__(self, X, y, criterion, min_samples_split, max_depth,<br/>                 n_val_sample, random_state):<br/>        # make sure max_depth &gt; 1<br/>        if max_depth &lt; 2:<br/>            raise ValueError("max depth must be &gt; 1")<br/><br/>        # check the input arrays, and if it's classification validate the<br/>        # target values in y<br/>        X, y = check_X_y(X, y, accept_sparse=False, dtype=None, copy=True)<br/>        if is_classifier(self):<br/>            check_classification_targets(y)<br/><br/>        # hyper parameters so we can later inspect attributes of the model<br/>        self.min_samples_split = min_samples_split<br/>        self.max_depth = max_depth<br/>        self.n_val_sample = n_val_sample<br/>        self.random_state = random_state<br/><br/>        # create the splitting class<br/>        random_state = check_random_state(random_state)<br/>        self.splitter = RandomSplitter(random_state, criterion, n_val_sample)<br/><br/>        # grow the tree depth first<br/>        self.tree = self._find_next_split(X, y, 0)</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>Essentially, we will recurse over the <kbd>find_next_split</kbd> function until our tree is fully grown or pruned. Since we're recursing, we always set our base case first. If <kbd>current_depth</kbd> is equal to <kbd>maximum_depth</kbd> that we want to grow a tree, or the size, the number of samples in <kbd>X</kbd>, is less than or equal to the <kbd>min_samples_split</kbd> in our split, both of which are our terminal criteria, and we will return <kbd>None</kbd>:</p>
+<pre>    def _find_next_split(self, X, y, current_depth):<br/>        # base case 1: current depth is the limit, the parent node should<br/>        # be a terminal node (child = None)<br/>        # base case 2: n samples in X &lt;= min_samples_split<br/>        if current_depth == self.max_depth or \<br/>                X.shape[0] &lt;= self.min_samples_split:<br/>            return None</pre>
+<p>Otherwise, we will grab our splitter and find the best split between <kbd>X</kbd> and <kbd>y</kbd>, which gives us our <kbd>best_feature</kbd>, <kbd>best_value</kbd>, and <kbd>gain</kbd>, either <kbd>VarianceReduction</kbd> or <kbd>InformationGain</kbd>. Next, we have just found our first split. So, now we will create the node that corresponds to that split. The node is going to take all of those same arguments, plus the target statistics. When we produce predictions for the node, if it's terminal, we return the node for that label; otherwise, we return the mean for our training labels. That's how we assign that prediction there. So, now we have our node, and we want to create our split. So, we get <kbd>X_right</kbd> and <kbd>X_left</kbd>. We can recurse down both sides of the tree. We will use that node to create the split on <kbd>X</kbd> and <kbd>Y</kbd>. So, if <kbd>X</kbd> is <kbd>None</kbd>, <kbd>X_left</kbd> is <kbd>None</kbd>, which means we're not going to go down to the left side anymore. If it is not <kbd>None</kbd>, then we can assign a node to the left, which is going to recurse on <kbd>find_next_split</kbd>. If <kbd>X_right</kbd> is <kbd>None</kbd> then it means we're not going to grow it on the right anymore. If it's not <kbd>None</kbd>, we can do the same thing. So, we're going to assign our right side by recursing down <kbd>find_next_split</kbd>. We recurse over this, continually adding <kbd>current_depth + 1</kbd>, until one side has reached its <kbd>maximum_depth</kbd>. Otherwise, the size of the splits are no longer long enough for <kbd>min_sample_split</kbd> and we stop growing. So, we reach that point where we stop growing:</p>
+<pre># create the next split<br/>split_feature, split_value, gain = \<br/>     self.splitter.find_best(X, y)<br/><br/># create the next node based on the best split feature and value<br/># that we just found. Also compute the "target stat" (mode of y for<br/># classification problems or mean of y for regression problems) and<br/># pass that to the node in case it is the terminal node (that is, the<br/># decision maker)<br/>node = LeafNode(split_feature, split_value, gain, self._target_stat(y))<br/># Create the splits based on the criteria we just determined, and then<br/># recurse down left, right sides<br/>X_left, X_right, y_left, y_right = node.create_split(X, y)<br/><br/># if either the left or right is None, it means we've achieved a<br/># perfect split. It is then a terminal node and will remain None.<br/>if X_left is not None:<br/>node.left = self._find_next_split(X_left, y_left,<br/>                                  current_depth + 1)</pre>
+<p>Now, for predicting, we will traverse down the tree until we find the point where a record belongs. So, for each row in <kbd>X</kbd>, we will predict a row, which we have already looked at in the <kbd>LeafNode</kbd> class, traversing down the left or right until we find the node where that row belongs. Then we'll return <kbd>class_statistics</kbd>. So, if the row gets to a node, it says this belongs here. If the node for that class, for classification, was <kbd>1</kbd>, then we return <kbd>1</kbd>. Otherwise, if the mean was, say, <kbd>5.6</kbd>, then we return the same. That's how we produce these predictions, which we're just going to bundle into a NumPy array:</p>
+<pre>def predict(self, X):<br/>    # Check the array<br/>    X = check_array(X, dtype=np.float32) # type: np.ndarray<br/><br/>    # For each record in X, find its leaf node in the tree (O(log N))<br/>    # to get the predictions. This makes the prediction operation<br/>    # O(N log N) runtime complexity<br/>    predictions = [self.tree.predict_record(row) for row in X]<br/>    return np.asarray(predictions)</pre>
+<p>So, let's look at how a classification decision tree can perform on some real data. In the following example script, we will import <kbd>CARTClassifier</kbd>:</p>
+<pre>from packtml.decision_tree import CARTClassifier<br/>from packtml.utils.plotting import add_decision_boundary_to_axis<br/>from sklearn.metrics import accuracy_score<br/>from sklearn.model_selection import train_test_split<br/>import matplotlib.pyplot as plt<br/>import numpy as np<br/>import sys</pre>
+<p>We will create two different bubbles inside of our 2D access on <kbd>multivariate_normal</kbd>. Using this <kbd>multivariate_normal</kbd> inside of <kbd>RandomState</kbd>, we will stack that all together and produce <kbd>train_test_split</kbd> as usual:</p>
+<pre># Create a classification dataset<br/>rs = np.random.RandomState(42)<br/>covariance = [[1, .75], [.75, 1]]<br/>n_obs = 500<br/>x1 = rs.multivariate_normal(mean=[0, 0], cov=covariance, size=n_obs)<br/>x2 = rs.multivariate_normal(mean=[1, 3], cov=covariance, size=n_obs)<br/><br/>X = np.vstack((x1, x2)).astype(np.float32)<br/>y = np.hstack((np.zeros(n_obs), np.ones(n_obs)))<br/><br/># split the data<br/>X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)</pre>
+<p>We will fit <kbd>CARTClassifier</kbd> and perform two different classifiers. We will do the first one. Knowing what you now know about variance and bias, you know that classifier or non-parametric models, particularly the decision tree, are capable of having very high variance: they can overfit really easily. So, if we use a really shallow depth, then we're more likely to not overfit. In the second one, we're going to try to overfit as much as we can with a max depth of <kbd>25</kbd>. Since we have a pretty small dataset, we can be reasonably certain that this is probably going to overfit. We'll see that when we look at the actual output of this example:</p>
+<pre># Fit a simple decision tree classifier and get predictions<br/>shallow_depth = 2<br/>clf = CARTClassifier(X_train, y_train, max_depth=shallow_depth, criterion='gini',<br/>                     random_state=42)<br/>pred = clf.predict(X_test)<br/>clf_accuracy = accuracy_score(y_test, pred)<br/>print("Test accuracy (depth=%i): %.3f" % (shallow_depth, clf_accuracy))<br/><br/># Fit a deeper tree and show accuracy increases<br/>clf2 = CARTClassifier(X_train, y_train, max_depth=25, criterion='gini',<br/>                      random_state=42)<br/>pred2 = clf2.predict(X_test)<br/>clf2_accuracy = accuracy_score(y_test, pred2)<br/>print("Test accuracy (depth=25): %.3f" % clf2_accuracy)</pre>
+<p>So, we fit the two of these, look at the accuracy, and plot them. Let's go ahead and run the code and see how it looks:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-273 image-border" src="assets/b83c0c9e-95c3-4083-986c-9d3ad10eb106.png" style="width:94.25em;height:5.58em;"/></p>
+<p>If you run the preceding code, we get the test's accuracy of 95% on our underfitted tree as shown:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-274 image-border" src="assets/b9a554fc-c31a-41a8-82cb-c0070e92a9a6.png" style="width:40.58em;height:28.17em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Regression tree</h1>
+                </header>
+            
+            <article>
+                
+<p>Now let's see how a regression tree can perform. We walked through the same exact implementation of our regression tree, except we're going to use the variance reduction. Rather than using the mode voting here for producing predictions, we're going to use the mean.</p>
+<p>Inside the <kbd>examples</kbd> directory, we have the <kbd>example_regression_decision_tree.py</kbd> file. So, here we will import <kbd>CARTRegressor</kbd> and use <kbd>mean_squared_error</kbd> as our loss function to determine how well we did:</p>
+<pre>from packtml.decision_tree import CARTRegressor<br/>from sklearn.metrics import mean_squared_error<br/>from sklearn.model_selection import train_test_split<br/>import matplotlib.pyplot as plt<br/>import numpy as np<br/>import sys</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mceNonEditable"/>
+<p>We will just create random values here in a sine wave. That's what we want to be our function as our output here:</p>
+<pre># Create a classification dataset<br/>rs = np.random.RandomState(42)<br/>X = np.sort(5 * rs.rand(80, 1), axis=0)<br/>y = np.sin(X).ravel()<br/><br/># split the data<br/>X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)</pre>
+<p>We're going to do the same kind of thing that we did in the classification tree. We will fit a simple <kbd>max_depth=3</kbd> tree for a regression tree and then a <kbd>max_depth=10</kbd> tree for the second one. It's not going to overfit quite as much, but it'll show how we increase our predictive capacity as we grow a bit deeper:</p>
+<pre># Fit a simple decision tree regressor and get predictions<br/>clf = CARTRegressor(X_train, y_train, max_depth=3, random_state=42)<br/>pred = clf.predict(X_test)<br/>clf_mse = mean_squared_error(y_test, pred)<br/>print("Test MSE (depth=3): %.3f" % clf_mse)<br/><br/># Fit a deeper tree and show accuracy increases<br/>clf2 = CARTRegressor(X_train, y_train, max_depth=10, random_state=42)<br/>pred2 = clf2.predict(X_test)<br/>clf2_mse = mean_squared_error(y_test, pred2)<br/>print("Test MSE (depth=10): %.3f" % clf2_mse)</pre>
+<p>Here, we're just plotting the outputs:</p>
+<pre>x = X_train.ravel()<br/>xte = X_test.ravel()<br/><br/>fig, axes = plt.subplots(1, 2, figsize=(12, 8))<br/>axes[0].scatter(x, y_train, alpha=0.25, c='r')<br/>axes[0].scatter(xte, pred, alpha=1.)<br/>axes[0].set_title("Shallow tree (depth=3) test MSE: %.3f" % clf_mse)<br/><br/>axes[1].scatter(x, y_train, alpha=0.4, c='r')<br/>axes[1].scatter(xte, pred2, alpha=1.)<br/>axes[1].set_title("Deeper tree (depth=10) test MSE: %.3f" % clf2_mse)<br/><br/># if we're supposed to save it, do so INSTEAD OF showing it<br/>if len(sys.argv) &gt; 1:<br/>    plt.savefig(sys.argv[1])<br/>else:<br/>    plt.show()</pre>
+<p class="mce-root"/>
+<p>Let's go ahead and run this. Rather than <kbd>example_classification_decision_tree.py</kbd>, we're going to run <kbd>example_regression_decision_tree.py</kbd>:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-275 image-border" src="assets/6040481b-c400-4601-89a7-2bbfa8b7a408.png" style="width:94.00em;height:5.67em;"/></p>
+<p>So, first, you can see that our mean squared error decreases with the <kbd>max_depth</kbd> growing, which is good. You can also see that our outcome starts to model this sine wave pretty well as we increase the depth, and we're able to learn this non-linear function very well:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-276 image-border" src="assets/1d363e0b-682a-4d90-a01e-4099456ded17.png" style="width:41.42em;height:28.50em;"/></p>
+<p>In the next section, we're going to look at clustering methods and move on from decision trees.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Various clustering methods</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will cover the different clustering methods. First, let's look at what clustering is. Then we'll explain some of the mathematical tricks that we can use in clustering. And finally, we're going to introduce our newest non-parametric algorithm KNN.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">What is clustering?</h1>
+                </header>
+            
+            <article>
+                
+<p>Clustering is about as intuitive as it gets in terms of machine learning models. The idea is we can segment groups of samples based on their nearness to one another. The hypothesis is the samples that are closer are more similar in some respects. So, there are two reasons we might want to cluster. The first is for discovery purposes, and we usually do this when we make no assumptions about the underlying structure of the data, or don't have labels. And so, this typically is done in a purely unsupervised sense. But as this is obviously a supervised learning book, we're going to focus on the second use case, which uses clustering as a classification technique.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Distance metrics</h1>
+                </header>
+            
+            <article>
+                
+<p>So, before we get into the algorithms, I want to address some mathematical esotericism. When you have two points, or any number of points, in a 2D space, it's fairly easy to conceptualize. It's basically calculating the hypotenuse along some right triangle, in terms of measuring the distance. However, what happens when you have a really high dimensional space? That's what we're going to get into, and we have a lot of clustering problems.</p>
+<p>So, the most common distance metric is the Euclidean distance. This is essentially a generalization of the 2D approach. It's the square root of the sum of squared differences between two vectors, and it can be used in any dimensional space. There's a lot of others that we're not going to get into. Two of them are <strong>Manhattan</strong> and <strong>Mahalanobis</strong>. Manhattan is a lot like the Euclidean distance. However, rather than having the squared difference, it's going to have the absolute value of the difference.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">KNN – introduction</h1>
+                </header>
+            
+            <article>
+                
+<p>KNN is a really simple intuitive approach to building a clustering classifier. The idea is, given a set of labeled samples, when a new sample is introduced, we look at the k nearest points, and we make an estimate for its class membership based on the majority of points around it. So, in the following diagram we would classify this new question mark as a positive sample since the majority of its neighbors are positive:</p>
+<div class="packt_figure CDPAlignCenter CDPAlign"><img src="assets/a81eab9b-1197-4342-acde-ce1ae5e74b3e.png" style="width:13.33em;height:11.00em;"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">KNN – considerations</h1>
+                </header>
+            
+            <article>
+                
+<p>There are a few considerations you should take into account here. KNN is a bit interesting and can fluctuate between wildly high bias or high variance depending on its hyperparameter <em>K</em>. If <em>K</em> is too large and you're comparing a new sample to the entire training set, it favors the majority class. Essentially, whichever is more, we vote that way. This would be a highly underfitted model. If <em>K</em> is too small, it gives higher priority to the immediately adjacent samples, which means that the model is extremely overfitted. In addition to considerations around <em>K</em>, you may also want to consider centering and scaling your data. Otherwise, your distance metric will not be very sensitive to small-scale features. For instance, if one of your features is thousands of dollars for a house and the other feature is the number of bathrooms, <em>1.5</em> to <em>3.5</em> or so, you're going to implicitly be favoring the dollars versus the number of bathrooms. So, you might want to center and scale.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">A classic KNN algorithm</h1>
+                </header>
+            
+            <article>
+                
+<p>A classic KNN algorithm will compute the distances between the training samples and store them in a distance-partitioned heap structure, such as <strong>KDTree</strong> or a ball tree, which are essentially sorted-heap binary trees. We then query the tree for test samples. Our approach in this class is going to be a little bit different in order to be a bit more intuitive and readable.</p>
+<p>In the next section, we'll cover how we can implement it from scratch.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Implementing KNNs from scratch</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will jump into the <kbd>packtml</kbd> code base, and see how we can implement it from scratch. We'll start by revisiting the classic algorithm we covered in the last section, and then we'll look at the actual Python code, which has some implementation changes.</p>
+<p>Recall the archetypal KNN algorithm. The efficient implementation is going to be to pre-compute the distances and store them in a special heap. Of course, with most things in computer science, there's the clever way and then there's the easy-to-read way. We're going to do things a bit differently in an effort to maximize the readability, but it's the same fundamental algorithm.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">KNN clustering</h1>
+                </header>
+            
+            <article>
+                
+<p>We've got two files we want to look at. The first is the source code in the <kbd>packtml</kbd> Python package. Second, we're going to look an example of the KNN applied to the <kbd>iris</kbd> dataset. Let's go ahead and jump over to PyCharm, where there are two files open. Inside of the <kbd>clustering</kbd> submodule, we have the <kbd>knn.py</kbd> file open. This is where we're going to find the KNN class and all the implementation details. Then in the examples directory, in the <kbd>clustering</kbd> subdirectory, we have the <kbd>example_knn_classifier.py</kbd> file open as well. We'll walk through that after we've gone through the implementation details.</p>
+<p>Now, regarding other libraries, we're going to use scikit-learn's utils to validate the <kbd>X</kbd>, <kbd>y</kbd>, and classification targets. However, we're also going to use the <kbd>metrics.pairwise</kbd> submodule to use <kbd>euclidean_distances</kbd>:</p>
+<pre>from __future__ import absolute_import<br/><br/>from sklearn.metrics.pairwise import euclidean_distances<br/>from sklearn.utils.validation import check_X_y<br/>from sklearn.utils.multiclass import check_classification_targets</pre>
+<p>If we want to use a different distance metric, we could also import Manhattan, as mentioned in the earlier section. But for this, we're just going to use Euclidean. So, if you want to adjust that later, feel free. Our KNN class here is going to take three parameters. As usual for <kbd>BaseSimpleEstimator</kbd>, we're going to take our <kbd>X</kbd> and <kbd>y</kbd>, which are our training vectors and our training label, and then <kbd>k</kbd>, which is our tuning parameter for the number of neighbors that we want to compute around each sample:</p>
+<pre> Parameters<br/> ----------<br/> X : array-like, shape=(n_samples, n_features)<br/>     The training array. Should be a numpy array or array-like structure<br/>     with only finite values.<br/><br/>y : array-like, shape=(n_samples,)<br/>    The target vector.<br/>k : int, optional (default=10)<br/>    The number of neighbors to identify. The higher the ``k`` parameter,<br/>    the more likely you are to *under*-fit your data. The lower the ``k``<br/>    parameter, the more likely you are to *over*-fit your model.</pre>
+<p>So, our constructor is pretty simple. We're going to check our <kbd>X</kbd> and <kbd>y</kbd> and basically store them. Then we assign <kbd>k</kbd> to a <kbd>self</kbd> attribute. Now, in other implementations we might go ahead and compute our KDTree or our ball tree:</p>
+<pre>    def __init__(self, X, y, k=10):<br/>        # check the input array<br/>        X, y = check_X_y(X, y, accept_sparse=False, dtype=np.float32,<br/>                         copy=True)<br/><br/>        # make sure we're performing classification here<br/>        check_classification_targets(y)<br/><br/>        # Save the K hyper-parameter so we can use it later<br/>        self.k = k<br/><br/>        # kNN is a special case where we have to save the training data in<br/>        # order to make predictions in the future<br/>        self.X = X<br/>        self.y = y</pre>
+<p>So, we're going to do a brute force method, where we don't compute the distances until we predict. This is a lazy evaluation of distances. In our predict function, we are going to take our <kbd>X</kbd>, which is our test array. <kbd>X</kbd>, which we assigned in the constructor. We will compute <kbd>euclidean_distances</kbd> between our training array and our test array. Here, we get an <kbd>M</kbd> by <kbd>M</kbd> matrix, where <kbd>M</kbd> is the number of samples in our test array:</p>
+<pre>def predict(self, X):<br/>    # Compute the pairwise distances between each observation in<br/>    # the dataset and the training data. This can be relatively expensive<br/>    # for very large datasets!!<br/>    train = self.X<br/>    dists = euclidean_distances(X, train)</pre>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>In order to find the nearest distance, we <kbd>argsort</kbd> distances by the column to show which samples are closest. Following, is the array of distances, and we are going to <kbd>argsort</kbd> it along the <kbd>axis</kbd> <span>column,</span> such that we get the samples that are closest, based on the distance:</p>
+<pre># Arg sort to find the shortest distance for each row. This sorts<br/># elements in each row (independent of other rows) to determine the<br/># order required to sort the rows.<br/># that is:<br/># &gt;&gt;&gt; P = np.array([[4, 5, 1], [3, 1, 6]])<br/># &gt;&gt;&gt; np.argsort(P, axis=1)<br/># array([[2, 0, 1],<br/># [1, 0, 2]])<br/>nearest = np.argsort(dists, axis=1)</pre>
+<p>We will slice the labels based on <kbd>top_k</kbd> along <kbd>y</kbd>. These are basically the class labels:</p>
+<pre><br/> # We only care about the top K, really, so get sorted and then truncate<br/> # that is:<br/> # array([[1, 2, 1],<br/> # ...<br/> # [0, 0, 0]])<br/> predicted_labels = self.y[nearest][:, :self.k]</pre>
+<p>Since it's a classification, we're interested in <kbd>mode</kbd>. Take the mode using the <kbd>mode</kbd> function along that <kbd>axis</kbd> and <kbd>ravel</kbd> it into a NumPy array:</p>
+<pre> # We want the most common along the rows as the predictions<br/> # that is:<br/> # array([1, ..., 0])<br/> return mode(predicted_labels, axis=1)[0].ravel()</pre>
+<p>Hence, we're just computing the distances for the predict function, argsorting the closest distances, then finding the corresponding labels, and taking the mode. Now, over in the <kbd>examples/clustering</kbd> directory, go to <kbd>example_knn_classifier.py</kbd>. We're going to use the <kbd>load_iris</kbd> function from scikit-learn:</p>
+<pre>from __future__ import absolute_import<br/><br/>from packtml.clustering import KNNClassifier<br/>from packtml.utils.plotting import add_decision_boundary_to_axis<br/>from sklearn.model_selection import train_test_split<br/>from sklearn.preprocessing import StandardScaler<br/>from sklearn.metrics import accuracy_score<br/>from sklearn.datasets import load_iris<br/>from matplotlib import pyplot as plt<br/>from matplotlib.colors import ListedColormap<br/>import sys</pre>
+<p>We will only use the first two dimensions so that we can visualize it in a relatively intuitive fashion. Perform the training split, and then center and scale using <kbd>StandardScaler</kbd>:</p>
+<pre># Create a classification sub-dataset using iris<br/>iris = load_iris()<br/>X = iris.data[:, :2] # just use the first two dimensions<br/>y = iris.target<br/><br/># split data<br/>X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)<br/><br/># scale the data<br/>scaler = StandardScaler()<br/>X_train = scaler.fit_transform(X_train)<br/>X_test = scaler.transform(X_test)<br/><br/></pre>
+<p>Fit the <kbd>KNNClassifier</kbd> with <kbd>k=10</kbd>:</p>
+<pre># Fit a k-nearest neighbor model and get predictions<br/>k=10<br/>clf = KNNClassifier(X_train, y_train, k=k)<br/>pred = clf.predict(X_test)<br/>clf_accuracy = accuracy_score(y_test, pred)<br/>print("Test accuracy: %.3f" % clf_accuracy)</pre>
+<p>Finally, we will plot it by typing the following command. Make sure you've got your environment activated, as usual:</p>
+<p><img class="alignnone size-full wp-image-418 image-border" src="assets/eed9a1bd-cf77-4838-801e-e3921dbe7935.png" style="width:95.58em;height:5.83em;"/></p>
+<p>The output for <kbd>k = 10</kbd>, and we get about 73-74% test accuracy. Note that we're only using two dimensions:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-419 image-border" src="assets/d072a43a-558f-42b2-983c-feb58cb1ba79.png" style="width:17.75em;height:14.50em;"/></p>
+<p>So, now that you're a KNN expert, you can build one from scratch. In the next section, we will compare non-parametric models to parametric models.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Non-parametric models – pros/cons</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will discuss every statistician's favorite philosophical debate, which is the pros and cons of non-parametric models versus parametric models.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Pros of non-parametric models</h1>
+                </header>
+            
+            <article>
+                
+<p>Non-parametric models are able to learn some really complex relationships between your predictors and the output variable, which can make them really powerful for non-trivial modeling problems. Just like the regression sinusoidal wave we modeled in the decision trees, a lot of non-parametric models are fairly tolerant to data scale as well. The major exception here is the clustering techniques, but these techniques can pose a major advantage for models such as decision trees, which don't require the same level of pre-processing that parametric models might. Finally, if you find yourself suffering from high variance, you can always add more training data, with which your model is likely to get better.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Cons of non-parametric models</h1>
+                </header>
+            
+            <article>
+                
+<p>There are the not-so-good parts of non-parametric models as well. Several of these we have already covered. So, as you may know, they can be slower to fit or predict, and less intuitive in many cases than a lot of parametric models. If speed is less critical than accuracy, non-parametric models may be a great candidate for your model. Likewise, with explainability, these models can be over-complicated and tough to understand. Finally, one of the advantages of non-parametric models is the ability to get better with more data, which can be a weakness if data is hard to get. They generally do require a bit more data to train effectively than their parametric brethren.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Which model to use?</h1>
+                </header>
+            
+            <article>
+                
+<p>Parametric models that we've already covered have some really great and convenient attributes. There are several reasons you may opt for a parametric model over a non-parametric model. Particularly if you're in a regulated industry, we need to explain the models more easily. Non-parametric models, on the other hand, may create a better, more complex model. But if you don't have a good chunk of data, it may not perform very well. It is best not to get overly philosophical about which one you should or should not use. Just use whichever best fits your data and meets your business requirements.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we initially got introduced to non-parametric models and then we walked through the decision trees. In the next sections, we learned the splitting criteria and how they produce splits. We also learned about the bias-variance trade-off, and how non-parametric models tend to favor a higher variance set of error, while parametric models favor high bias. Next, we looked into clustering methods and even coded a KNN class from scratch. Finally, we wrapped up with the pros and cons of non-parametric methods.</p>
+<p>In the next chapter, we will get into some more of the advanced topics in supervised machine learning, including recommender systems and neural networks.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>
