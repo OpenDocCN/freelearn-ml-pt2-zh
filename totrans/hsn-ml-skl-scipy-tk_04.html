@@ -1,0 +1,459 @@
+<html><head></head><body>
+    <section>
+      <header class="header-title chapter-title">
+                    Making Decisions with Linear Equations
+                </header>
+      <article>
+        <p>The method of least squares regression analysis dates back to the time of Carl Friedrich Gauss in the 18<sup>th</sup> century. For over two centuries, many algorithms have been built on top of it or have been inspired by it in some form. These linear models are possibly the most commonly used algorithms today for both regression and classification. We will start this chapter by looking at the basic least squares algorithm, then we will move on to more advanced algorithms as the chapter progresses.</p>
+        <p>Here is a list of the topics covered in this chapter:</p>
+        <ul>
+          <li>Understanding linear models</li>
+          <li>Predicting house prices in Boston</li>
+          <li>Regularizing the regressor</li>
+          <li>Finding regression intervals</li>
+          <li>Additional linear regressors</li>
+          <li>Using logistic regression for classification</li>
+          <li>Additional linear classifiers</li>
+        </ul>
+        <h1 id="uuid-7f1e9f86-8a0d-4274-bee8-89ab11bd6466">Understanding linear models</h1>
+        <p>To be able to explain linear models well, I would like to start with an example where the solution can be found using a system of linear equations—a technique we all learned in school when we were around 12 years old. We will then see why this technique doesn't always work with real-life problems, and so a linear regression model is needed. Then, we will apply the regression model to a real-life regression problem and learn how to improve our solution along the way. </p>
+        <h2 id="uuid-ec253ef2-7a97-4420-8db5-beec8ca55591">Linear equations</h2>
+        <div class="packt_quote">"Mathematics is the most beautiful and most powerful creation of the human spirit."</div>
+        <div class="packt_quote CDPAlignRight CDPAlign">– Stefan Banach</div>
+        <p>In this example, we have five passengers who have taken a taxi trip. Here, we have a record of the distance each taxi covered in kilometers and the fair displayed on its meter at the end of each trip:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/c515257d-2dbc-4faa-b78a-7ec497bd5bb9.png" style="width:12.17em;"/>
+        </p>
+        <p>We know that taxi meters usually start with a certain amount and then they add a fixed charge for each kilometer traveled. We can model the meter using the following equation:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img class="fm-editor-equation" src="assets/c2a865a5-da87-469e-84c3-a3412c7f67fd.png" style="width:13.25em;"/>
+        </p>
+        <p>Here, <em>A</em> is the meter's starting value and <em>B</em> is the charge added per kilometer. We also know that with two unknowns—<em>A</em> and <em>B</em>—we just need two data samples to figure out that <em>A</em> is <kbd>5</kbd> and <em>B</em> is <kbd>2.5</kbd>. We can also plot the formula with the values for <em>A</em> and <em>B</em>, as follows:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/284965ec-b7d8-4136-9c86-c73ed11ee969.png" style="width:36.83em;"/>
+        </p>
+        <p>We also know that the blue line will meet the <em>y</em>-axis at the value of <em>A</em> (<kbd>5</kbd>). So, we call <em>A</em> the <strong>intercept</strong>. We also know that the slope of the line equals <em>B</em> (<kbd>2.5</kbd>).</p>
+        <p>The passengers didn't always have change, so they sometimes rounded up the amount shown on the meter to add a tip for the driver. Here is the data for the amount each passenger ended up paying:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/67a8b31e-d936-4d2a-8237-a3561d53129b.png" style="width:18.33em;"/>
+        </p>
+        <p class="mce-root"/>
+        <p>After we add the tips, it's clear that the relationship between the distance traveled and the amount paid is no longer linear. The plot on the right-hand side shows that a straight line cannot be drawn to capture this relationship:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/95527f92-ecc4-40f7-ab82-cdb9aae56698.png" style="width:61.92em;"/>
+        </p>
+        <p>We now know that our usual method of solving equationswill not work this time. Nevertheless, we can tell that there is still a line that can somewhat approximate this relationship. In the next section, we will use a linear regression algorithm to find this approximation.</p>
+        <h2 id="uuid-24e7de16-c0b6-4f8a-8d7d-a82cc932b016">Linear regression</h2>
+        <p>Algorithms are all about objectives. Our objective earlier was to find a single line that goes through all the points in the graph. We have seen that this objective is not feasible if a linear relationship does not exist between the points. Therefore, we will use the linear regression algorithm since it has a different objective. The linear regression algorithm tries to find a line where the mean of the squared errors between the estimated points on the line and the actual points is minimal. Visually speaking, in the following graph, we want a dotted line that makes the average squared lengths of the vertical lines minimal:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/7cc116de-9a1e-436d-b53d-8a1da2aafe7f.png" style="width:43.08em;"/>
+        </p>
+        <div class="packt_tip">The method used here to find a line that minimizes the <strong>Mean Squared Error</strong> (<strong>MSE</strong>) is known as ordinary least squares. Often, linear regression just means ordinary least squares. Nevertheless, throughout this chapter, I will be using the term <kbd>LinearRegression</kbd> (as a single word) to refer to scikit-learn's implementation of ordinary least squares, and I will reserve the term <em>linear regression</em> (as two separate words) for referring to the general concept of linear regression, whether the ordinary least squares method is used or a different method is being employed.</div>
+        <p class="mce-root">The method of ordinary least squares is about two centuries old and it uses simple mathematics to estimate the parameters. That's why some may argue that this algorithm is not actually a machine learning one. Personally, I follow a more liberal approach when categorizing what is machine learning and what is not. As long as the algorithm automatically learns from data and we use that data to evaluate it, then for me, it falls within the machine learning paradigm.</p>
+        <h3 id="uuid-75d3f99d-12b2-4ee4-907c-0cf1a7880e29">Estimating the amount paid to the taxi driver</h3>
+        <p>Now that we know how linear regression works, let's take a look at how to estimate the amount paid to the taxi driver.</p>
+        <ol>
+          <li>Let's use scikit-learn to build a regression model to estimate the amount paid to the taxi driver:</li>
+        </ol>
+        <pre style="padding-left: 60px">from sklearn.linear_model import LinearRegression<br/><br/># Initialize and train the model<br/>reg = LinearRegression()<br/>reg.fit(df_taxi[['Kilometres']], df_taxi['Paid (incl. tips)'])<br/><br/># Make predictions<br/>df_taxi['Paid (Predicted)'] = reg.predict(df_taxi[['Kilometres']])</pre>
+        <p style="padding-left: 60px">Clearly, scikit-learn has a consistent interface. We have used the same <kbd>fit()</kbd> and <kbd>predict()</kbd> methods as in the previous chapter, but this time with the <kbd>LinearRegression</kbd> object.</p>
+        <p style="padding-left: 60px">We only have one feature this time, <kbd>Kilometres</kbd>; nevertheless, the <kbd>fit()</kbd> and <kbd>predict()</kbd> methods expect a two-dimensional <kbd>ax</kbd>, which is why we enclosed <kbd>Kilometers</kbd> in an extra set of square brackets—<kbd>df_taxi[['Kilometres']]</kbd>.</p>
+        <ol start="2">
+          <li>We put our predictions in the same DataFrame under <kbd>Paid (Predicted)</kbd>. We can then plot the actual values versus the estimated ones using the following code:</li>
+        </ol>
+        <pre style="padding-left: 60px">fig, axs = plt.subplots(1, 2, figsize=(16, 5))<br/><br/>df_taxi.set_index('Kilometres')['Meter'].plot(<br/>   title='Meter', kind='line', ax=axs[0]<br/>)<br/><br/>df_taxi.set_index('Kilometres')['Paid (incl. tips)'].plot(<br/>title='Paid (incl. tips)', label='actual', kind='line',  ax=axs[1]<br/>)<br/>df_taxi.set_index('Kilometres')['Paid (Predicted)'].plot(<br/>    title='Paid (incl. tips)', label='estimated', kind='line', ax=axs[1]<br/>)<br/><br/>fig.show()</pre>
+        <p style="padding-left: 60px">I cut out the formatting parts of the code to keep it short and to the point. Here is the final result:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/42d4da52-87fe-41c7-98ba-f1b78e138679.png" style="width:59.58em;"/>
+        </p>
+        <ol start="3">
+          <li>Once a linear model is trained, you can get its intercept and coefficients using the <kbd>intercept_</kbd> and <kbd>coef_</kbd> parameters. So, we can use the following code snippet to create the linear equations of the estimated line:</li>
+        </ol>
+        <pre style="padding-left: 60px">print(<br/>    'Amount Paid = {:.1f} + {:.1f} * Distance'.format(<br/>        reg.intercept_, reg.coef_[0], <br/>    )<br/>) </pre>
+        <p style="padding-left: 60px">The following equation is then printed:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img class="fm-editor-equation" src="assets/98c62d28-a9c5-4f5f-b481-c4fcdb8cc961.png" style="width:19.08em;"/>
+        </p>
+        <p>Getting the parameters for the linear equation can be handy in cases where you want to build a model in scikit-learn and then use it in another language or even in your favorite spreadsheet software. Knowing the coefficient also helps us understand why the model made certain decisions. More on this later in this chapter. </p>
+        <div class="packt_infobox CDPAlignLeft CDPAlign">In software, the input to functions and methods is referred to as parameters. In machine learning, the weights learned for a model are also referred to as parameters. When setting a model, we pass its configuration to its <kbd>__init__</kbd> method. Thus, to prevent any confusion, the model's configurations are called hyperparameters.</div>
+        <h1 id="uuid-9da1cedc-d61f-44ca-9d2d-dfa244ac85b7">Predicting house prices in Boston</h1>
+        <p>Now that we understand how linear regression works, let's move on to looking at a real dataset where we can demonstrate a more practical use case.</p>
+        <p>The Boston dataset is a small set representing the house prices in the city of Boston. It contains 506 samples and 13 features. Let's load the data into a DataFrame, as follows:</p>
+        <pre>from sklearn.datasets import load_boston<br/><br/>boston = load_boston()<br/><br/>df_dataset = pd.DataFrame(<br/>    boston.data,<br/>    columns=boston.feature_names,<br/>)<br/>df_dataset['target'] = boston.target</pre>
+        <h2 id="uuid-a8c53988-fab0-4b88-932f-f010a480d75c">Data exploration</h2>
+        <p>It's important to make sure you do not have any null values in your data; otherwise, scikit-learn will complain about it. Here, I will count the sum of the null values in each column, then take the sum of it. If I get <kbd>0</kbd>, then I am a happy man:</p>
+        <pre>df_dataset.isnull().sum().sum() # Luckily, the result is zero</pre>
+        <p>For a regression problem, the most important thing to do is to understand the distribution of your target. If a target ranges between <kbd>1</kbd> and <kbd>10</kbd>, and after training our model we get a mean absolute error of <kbd>5</kbd>, we can tell that the error is large in this context.</p>
+        <p>However, the same error for a target that ranges between <kbd>500,000</kbd> and <kbd>1,000,000</kbd> is negligible. Histograms are your friend when you want to visualize distributions. In addition to the target's distribution, let's also plot the mean values for each feature:</p>
+        <pre>fig, axs = plt.subplots(1, 2, figsize=(16, 8))<br/><br/>df_dataset['target'].plot(<br/>    title='Distribution of target prices', kind='hist', ax=axs[0]<br/>)<br/>df_dataset[boston.feature_names].mean().plot(<br/>    title='Mean of features', kind='bar', ax=axs[1]<br/>)<br/><br/>fig.show()</pre>
+        <p>This gives us the following graphs:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/0268778e-62bf-4ccf-abb4-b737d7f6f4f3.png" style="width:54.08em;"/>
+        </p>
+        <p>In the preceding graph, it is observed that:</p>
+        <ul>
+          <li>The prices range between <kbd>5</kbd> and <kbd>50</kbd>. Obviously, these are not real prices, probably normalized values, but this doesn't matter for now.</li>
+          <li>Furthermore, we can tell from the histogram that most of the prices are below <kbd>35</kbd>. We can use the following code snippet to see that 90% of the prices are below <kbd>34.8</kbd>:</li>
+        </ul>
+        <pre style="padding-left: 60px">df_dataset['target'].describe(percentiles=[.9, .95, .99])</pre>
+        <p>You can always go deeper with your data exploration, but we will stop here on this occasion.</p>
+        <h2 id="uuid-b92782d4-0012-4bed-9201-f6cfb53e8c24">Splitting the data</h2>
+        <p>When it comes to small datasets, it's advised that you allocate enough data for testing. So, we will split our data into 60% for training and 40% for testing using the <kbd>train_test_split</kbd> function:</p>
+        <pre>from sklearn.model_selection import train_test_split<br/><br/>df_train, df_test = train_test_split(df_dataset, test_size=0.4)<br/><br/>x_train = df_train[boston.feature_names]<br/>x_test = df_test[boston.feature_names]<br/>y_train = df_train['target']<br/>y_test = df_test['target']</pre>
+        <p>Once you have the training and test sets, split them further into <em>x</em> sets and <em>y</em> sets. Then, we are ready to move to the next step. </p>
+        <h2 id="uuid-3a2b2dd5-c55b-4709-9087-67f5add0ba3f">Calculating a baseline </h2>
+        <p>The distribution of the target gave us an idea of what level of error we can tolerate. Nevertheless, it is always useful to compare our final model to something. If we were in the real estate business and human agents were used to estimate house prices, then we would most likely be expected to build a model that can do better than the human agents. Nevertheless, since we do not know any real estimations to compare our model to, we can come up with our own baseline instead. The mean house price is <kbd>22.5</kbd>. If we build a dummy model that returns the mean price regardless of the data given to it, then it would make a reasonable baseline.</p>
+        <p>Keep in mind that the value of <kbd>22.5</kbd> is calculated for the entire dataset, but since we are pretending to only have access to the training data, then it makes sense to calculate the mean price for the training set only. To save us all this effort, scikit-learn has dummy regressors available that do all this work for us. </p>
+        <p>Here, we will create a dummy regressor and use it to calculate baseline predictions for the test set:</p>
+        <pre>from sklearn.dummy import DummyRegressor<br/><br/>baselin = DummyRegressor(strategy='mean')<br/>baselin.fit(x_train, y_train)<br/><br/>y_test_baselin = baselin.predict(x_test)<br/><br/></pre>
+        <p class="mce-root">There are other strategies that we can use, such as finding the median (the 50<sup>th</sup> quantile) or any other <em>N</em><sup>th</sup> quantile. Keep in mind that for the same data, using the mean as an estimation gives a lower MSE compared to when the median is used. Conversely, the median gives a lower <strong>Mean Absolute Error</strong> (<strong>MAE</strong>). We want our model to beat the baseline for both the MAE and MSE. </p>
+        <h2 id="uuid-106c4089-f3a1-4557-aee0-7740dd49eaf9">Training the linear regressor</h2>
+        <p>Isn't the code for the baseline model almost identical to the one for the actual models? That's the beauty of scikit-learn's API. It means that when we decide to try a different algorithm—say, the decision tree algorithm from the previous chapter—we only need to change a few lines of code. Anyway, here is the code for the linear regressor:</p>
+        <pre>from sklearn.linear_model import LinearRegression<br/><br/>reg = LinearRegression()<br/>reg.fit(x_train, y_train)<br/><br/>y_test_pred = reg.predict(x_test)</pre>
+        <p>We are going to stick to the default configuration for now. </p>
+        <h2 id="uuid-72473bd5-6b2a-4ed1-a1ed-1e7e03c308b5">Evaluating our model's accuracy</h2>
+        <p>There are three commonly used metrics for regression: <em>R<sup>2</sup></em>, <em>MAE</em>, and <em>MSE</em>. Let's first write the code that calculates the three metrics and prints the results:</p>
+        <pre>from sklearn.metrics import r2_score<br/>from sklearn.metrics import mean_absolute_error<br/>from sklearn.metrics import mean_squared_error<br/><br/>print(<br/>    'R2 Regressor = {:.2f} vs Baseline = {:.2f}'.format(<br/>        r2_score(y_test, y_test_pred), <br/>        r2_score(y_test, y_test_baselin)<br/>     )<br/>)<br/>print(<br/>    'MAE Regressor = {:.2f} vs Baseline = {:.2f}'.format(<br/>        mean_absolute_error(y_test, y_test_pred), <br/>        mean_absolute_error(y_test, y_test_baselin)<br/>    )<br/>)<br/>print(<br/>    'MSE Regressor = {:.2f} vs Baseline = {:.2f}'.format(<br/>        mean_squared_error(y_test, y_test_pred), <br/>        mean_squared_error(y_test, y_test_baselin)<br/>    )<br/>)</pre>
+        <p>Here are the results we get:</p>
+        <pre>R2 Regressor = 0.74 vs Baseline = -0.00
+MAE Regressor = 3.19 vs Baseline = 6.29
+MSE Regressor = 19.70 vs Baseline = 76.11</pre>
+        <p>By now, you should already know how <em>MAE</em> and <em>MSE</em> are calculated. Just keep in mind that <em>MSE</em> is more sensitive to outliers than <em>MAE</em>. That's why the mean estimations for the baseline scored badly there. As for the <em>R</em><em><sup>2</sup></em>, let's look at its formula:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img class="fm-editor-equation" src="assets/f27ffaad-70dd-4596-85cd-172325776462.png" style="width:17.67em;"/>
+        </p>
+        <p>Here's an explanation of the preceding formula:</p>
+        <ul>
+          <li class="mce-root">The numerator probably reminds you of <em>MSE</em>. We basically calculate the squared differences between all the predicted values and their corresponding actual values.</li>
+          <li class="mce-root">As for the denominator, we use the mean of the actual values as pseudo estimations. </li>
+          <li class="mce-root">Basically, this metric tells us how much better our predictions are compared to using the target's mean as an estimation.</li>
+          <li class="mce-root">An R<sup>2 </sup>score of <kbd>1</kbd> is the best we could get, and a score of <kbd>0</kbd> means that we offered no additional value in comparison to using a biased model that just relies on the mean as an estimation.</li>
+          <li class="mce-root">A negative score means that we should throw our model in the trash and use the target's mean instead. </li>
+          <li class="mce-root">Obviously, in the baseline model, we already used the target's mean as the prediction. That's why its R<sup>2 </sup>score is <kbd>0</kbd>. </li>
+        </ul>
+        <div class="packt_infobox CDPAlignLeft CDPAlign">For<em>MAE</em>and<em>MSE</em>, the smaller their values, the better the model is. Conversely, for <em>R</em><em><sup>2</sup></em>, the higher its values, the better the model is. In scikit-learn, the names of metric functions, where higher values correlate with better results, end with <kbd>_score</kbd>, while for functions ending with <kbd>_error</kbd> or <kbd>_loss</kbd>, the lower the value, the better.</div>
+        <p>Now, if we compare the scores, it is clear that our model scored better than the baseline in all of the three scores used. Congratulations!</p>
+        <h2 id="uuid-329ef0a8-b89f-44de-a905-c02c1a2ce3df">Showing feature coefficients </h2>
+        <p>We know that a linear model multiplies each of the features by a certain coefficient, and then gets the sum of these products as its final prediction. We can use the regressor's <kbd>coef_</kbd> method after the model is trained to print these coefficients:</p>
+        <pre>df_feature_importance = pd.DataFrame(<br/>    {<br/>        'Features': x_train.columns,<br/>        'Coeff': reg.coef_,<br/>        'ABS(Coeff)': abs(reg.coef_),<br/>    }<br/>).set_index('Features').sort_values('Coeff', ascending=False)</pre>
+        <p>As we can see in these results, some coefficients are positive and others are negative. A positive coefficient means that the feature correlates positively with the target and vice versa. I also added another column for the absolute values of the coefficients:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/13b79c89-465b-4c68-b59e-cc398779f2a1.png" style="width:15.33em;"/>
+        </p>
+        <p>In the preceding screenshot, the following is observed :</p>
+        <ul>
+          <li>Ideally, the value for each coefficient should tell us how important each feature is. A higher absolute value, regardless of its sign, reflects high importance.</li>
+          <li>However, I made a mistake here. If you check the data, you will notice that the maximum value for <kbd>NOX</kbd> is <kbd>0.87</kbd>, while <kbd>TAX</kbd> goes up to <kbd>711</kbd>. This means that if <kbd>NOX</kbd> has just marginal importance, its coefficient will still be high to balance its small value, while for <kbd>TAX</kbd> , its coefficient will always be small compared to the high values of the feature itself.</li>
+          <li>So, we want to scale the features to keep them all in the comparable ranges. In the next section, we are going to see how to scale our features. </li>
+        </ul>
+        <h2 id="uuid-1148fc96-0761-493e-af0a-e7d568222655">Scaling for more meaningful coefficients</h2>
+        <p>scikit-learn has a number of scalers. We are going to use <kbd>MinMaxScaler</kbd> for now. Using it with its default configuration will squeeze out all the values for all the features between <kbd>0</kbd> and <kbd>1</kbd>. The scaler needs to be fitted first to learn the features' ranges. Fitting should be done on the training <em>x</em> set only. Then, we use the scaler's <kbd>transform</kbd> function to scale both the training and test <em>x</em> sets:</p>
+        <pre>from sklearn.linear_model import LinearRegression<br/>from sklearn.preprocessing import MinMaxScaler<br/><br/>scaler = MinMaxScaler()<br/>reg = LinearRegression()<br/><br/>scaler.fit(x_train)<br/>x_train_scaled = scaler.transform(x_train)<br/>x_test_scaled = scaler.transform(x_test)<br/><br/>reg.fit(x_train_scaled, y_train)<br/>y_test_pred = reg.predict(x_test_scaled)</pre>
+        <p>There is a shorthand version of this code for fitting one dataset and then transforming it. In other words, the following uncommented line takes the place of the two commented ones: </p>
+        <pre># scaler.fit(x_train)<br/># x_train_scaled = scaler.transform(x_train)<br/>x_train_scaled = scaler.fit_transform(x_train)</pre>
+        <p>We will be using the <kbd>fit_transform()</kbd> function a lot from now on where needed.</p>
+        <div class="packt_tip CDPAlignLeft CDPAlign">It's important to scale your features if you want meaningful coefficients. Furthermore, scaling helps gradient-based solvers converge quicker (more on this later). In addition to scaling, you should also make sure you don't have highly correlated features for more meaningful coefficients and a stable linear regression model. </div>
+        <p>Now that we have scaled our features and retrained the model, we can print the features and their coefficients again:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/605484b4-76a8-455e-86ff-bfcdb35e22e7.png" style="width:18.75em;"/>
+        </p>
+        <p>Notice how <kbd>NOX</kbd> is less important now than before.</p>
+        <h2 id="uuid-2b69889c-d848-4376-8c36-d27950bf9566">Adding polynomial features</h2>
+        <p>Now that we know what the most important features are, we can plot the target against them to see how they correlate with them:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/abc909a7-3fe5-4cb0-ab64-0806c175e522.png" style="width:56.50em;"/>
+        </p>
+        <p>In the preceding screenshot, the following is observed:</p>
+        <ul>
+          <li>These plots don't seem to be very linear to me, and a linear model will not be able to capture this non-linearity.</li>
+          <li>Although we cannot turn a linear model into a non-linear one, we can still transform the data instead.</li>
+          <li>Think of it this way: if <em>y</em> is a function of <em>x<sup>2</sup></em>, we can either use a non-linear model—one that is capable of capturing the quadratic relation between <em>x</em> and <em>y</em>—or we can just calculate <em>x<sup>2</sup></em> and give it to a linear model instead of <em>x</em>. Furthermore, linear regression algorithms do not capture feature interactions.</li>
+          <li>The current model cannot capture interactions between multiple features. </li>
+        </ul>
+        <p>A polynomial transformation can solve both the non-linearity and feature interaction issues for us. Given the original data, scikit-learn's polynomial transformer will transform the features into higher dimensions (for example, it will add the quadratic and cubic values for each feature). Additionally, it will also add the products to each feature-pair (or triplets). <kbd>PolynomialFeatures</kbd> works in a similar fashion to the scaler we used earlier in this chapter. We are going to use its <kbd>fit_transform</kbd> variable and a <kbd>transform()</kbd> method, as follows:</p>
+        <pre>from sklearn.preprocessing import PolynomialFeatures<br/><br/>poly = PolynomialFeatures(degree=3)<br/>x_train_poly = poly.fit_transform(x_train)<br/>x_test_poly = poly.transform(x_test)</pre>
+        <p>To get both the quadratic and cubic feature transformation, we set the <kbd>degree</kbd> parameter to <kbd>3</kbd>.</p>
+        <p>One annoying thing about <kbd>PolynomialFeatures</kbd> is that it doesn't keep track of the DataFrame's column names. It replaces the feature names with <kbd>x0</kbd>, <kbd>x1</kbd>, <kbd>x2</kbd>, and so on. However, with our Python skills at hand, we can reclaim our column names. Let's do exactly that using the following block of code:</p>
+        <pre>feature_translator = [<br/>    (f'x{i}', feature) for i, feature in enumerate(x_train.columns, 0)<br/>]<br/><br/>def translate_feature_names(s):<br/>    for key, val in feature_translator:<br/>        s = s.replace(key, val)<br/>    return s<br/><br/>poly_features = [<br/>    translate_feature_names(f) for f in poly.get_feature_names()<br/>]<br/><br/>x_train_poly = pd.DataFrame(x_train_poly, columns=poly_features)<br/>x_test_poly = pd.DataFrame(x_test_poly, columns=poly_features)</pre>
+        <p>We can now use the newly derived polynomial features instead of the original ones. </p>
+        <h3 id="uuid-b72da039-bc62-471c-8351-7fa48333569f">Fitting the linear regressor with the derived features</h3>
+        <p>
+          <em>"When I was six, my sister was half my age. Now I am 60 years old, how old is my sister?"</em>
+        </p>
+        <p>
+          <em>This is a puzzle found on the internet. If your answer is 30, then you forgot to fit an intercept into your linear regression model.</em>
+        </p>
+        <p>Now, we are ready to use our linear regressor with the newly transformed features. One thing to keep in mind is that the <kbd>PolynomialFeatures</kbd>transformer adds one additional column where all the values are <kbd>1</kbd>. The coefficient this column gets after training is equivalent to the intercept. So, we will not fit an intercept by setting <kbd>fit_intercept=False</kbd>when training our regressor this time:</p>
+        <pre>from sklearn.linear_model import LinearRegression<br/><br/>reg = LinearRegression(fit_intercept=False)</pre>
+        <pre>reg.fit(x_train_poly, y_train)<br/><br/>y_test_pred = reg.predict(x_test_poly)</pre>
+        <p>Finally, as we print the <em>R<sup>2</sup></em>, <em>MAE</em>, and <em>MSE</em> results, we face the following unpleasant surprise:</p>
+        <pre>R2 Regressor = -84.887 vs Baseline = -0.0
+MAE Regressor = 37.529 vs Baseline = 6.2
+MSE Regressor = 6536.975 vs Baseline = 78.1</pre>
+        <p>The regressor is way worse than before and even worse than the baseline. What did the polynomial features do to our model? </p>
+        <p>One major problem with the o<span class="std std-ref">rdinary least s</span><span class="std std-ref">quares</span> regression algorithm is that it doesn't work well with highly correlated features (multicollinearity).</p>
+        <p>The polynomial feature transformation's kitchen-sink approach—where we add features, their squared and cubic values, and the product of the features' pairs and triples—will very likely give us multiple correlated features. This multi-collinearity harms the model's performance. Furthermore, if you print the shape of <kbd>x_train_poly</kbd>, you will see that it has 303 samples and 560 features. This is another problem known as the curse of dimensionality.</p>
+        <div class="packt_infobox CDPAlignLeft CDPAlign">The <strong>curse of dimensionality</strong> is when you have too many features compared to your samples. If you imagine your DataFrame as a rectangle with the features as its base and the samples as its height, you always want your rectangle to have a much bigger height than its base. Imagine having two binary columns—<kbd>x1</kbd> and <kbd>x2</kbd>. They can take four possible value combinations—<kbd>(0, 0)</kbd>, <kbd>(0, 1)</kbd>, <kbd>(1, 0)</kbd>, and <kbd>(1, 1)</kbd>. Similarly, for <em>n</em> columns, they can take <em>2<sup>n</sup></em> combinations. As you can see, the number of possibilities increases exponentially with the number of features. For a supervised learning algorithm to work well, it needs enough samples to cover a reasonable number of all these possibilities. This problem is even more drastic when we have non-binary features, as is our case here. </div>
+        <p>Thankfully, two centuries is long enough for people to find solutions to these two problems. Regularization is the solution we are going to have fun with in the next section.</p>
+        <h1 id="uuid-37a7cb75-cd61-48ab-97d5-eec138787c36">Regularizing the regressor</h1>
+        <div class="packt_quote">"It is vain to do with more what can be done with fewer."</div>
+        <div class="b-qt qt_142887 packt_quote CDPAlignRight CDPAlign">– William of Occam</div>
+        <p>Originally, our objective was to minimize the MSE value of the regressor. Later on, we discovered that too many features are an issue. That's why we need a new objective. We still need to minimize the MSE value of the regressor, but we also need to incentivize the model to ignore the useless features. This second part of our objective is what regularization does in a nutshell.</p>
+        <p>Two algorithms are commonly used for regularized linear regression—<strong>lasso</strong> and <strong>ridge</strong>. Lasso pushes the model to have fewer coefficients—that is, it sets as many coefficients as possible to <kbd>0</kbd>—while ridge pushes the model to have as small values as possible for its coefficients. Lasso uses a form of regularization called L1, which penalizes the absolute values of the coefficients, while ridge uses L2, which penalizes the squared values of the coefficients. These two algorithms have a hyperparameter (alpha), which controls how strongly the coefficients will be regularized. Setting alpha to <kbd>0</kbd> means no regularization at all, which brings us back to an ordinary least <span class="std std-ref">s</span><span class="std std-ref">quares</span> regressor. While larger values for alpha specify stronger regularization, we will start with the default value for alpha, and then see how to set it correctly later on.</p>
+        <div class="packt_infobox CDPAlignLeft CDPAlign">The standard approach used in the ordinary least squares algorithm does not work here. We now have an objective function that aims to minimize the size of the coefficients, in addition to minimizing the predictor's MSE values. So, a solver is used to find the optimum coefficients to minimize the new objective functions. We will look further at solvers later in this chapter.</div>
+        <h2 id="uuid-ef4b9408-8dbe-42d6-9eb8-a6e13cf192ba">Training the lasso regressor</h2>
+        <p>Training lasso is no different to training any other model. Similar to what we did in the previous section, we will set <kbd>fit_intercept</kbd> to <kbd>False</kbd> here:</p>
+        <pre>from sklearn.linear_model import Ridge, Lasso<br/><br/>reg = Lasso(fit_intercept=False)<br/>reg.fit(x_train_poly, y_train)<br/><br/>y_test_pred = reg.predict(x_test_poly)</pre>
+        <p>Once done, we can print the R<sup>2</sup>, MAE, and MSE:</p>
+        <pre>R2 Regressor = 0.787 vs Baseline = -0.0
+MAE Regressor = 2.381 vs Baseline = 6.2
+MSE Regressor = 16.227 vs Baseline = 78.</pre>
+        <p>Not only did we fix the problems introduced by the polynomial features, but we also have better performance than the original linear regressor. <em>MAE</em> is <kbd>2.4</kbd> here, compared to <kbd>3.6</kbd> before, <em>MSE</em> is <kbd>16.2</kbd>, compared to <kbd>25.8</kbd> before, and <em>R<sup>2</sup></em> is <kbd>0.79</kbd>, compared to <kbd>0.73</kbd> before.</p>
+        <p>Now that we have seen promising results after applying regularization, it's time to see how to set an optimum value for the regularization parameter. </p>
+        <h2 id="uuid-7efa592e-7a39-4eb8-9ab5-d0ceff735a1d">Finding the optimum regularization parameter</h2>
+        <p>Ideally, after splitting the data into training and test sets, we would further split the training set into <em>N</em> folds. Then, we would make a list of all the values of alpha that we would like to test and loop over them one after the other. With each iteration, we would apply <em>N</em>-fold cross-validation to find the value for alpha that gives the minimal error. Thankfully, scikit-learn has a module called <kbd>LassoCV</kbd> (<kbd>CV</kbd> stands for cross-validation). Here, we are going to use this module to find the best value for alpha using five-fold cross-validation:</p>
+        <pre>from sklearn.linear_model import LassoCV<br/><br/># Make a list of 50 values between 0.000001 &amp; 1,000,000<br/>alphas = np.logspace(-6, 6, 50)<br/><br/># We will do 5-fold cross validation<br/>reg = LassoCV(alphas=alphas, fit_intercept=False, cv=5)<br/>reg.fit(x_train_poly, y_train)<br/><br/>y_train_pred = reg.predict(x_train_poly)<br/>y_test_pred = reg.predict(x_test_poly)</pre>
+        <p>Once done, we can use the model for predictions. You may want to predict for both the training and test sets and see whether the model overfits on the training set. We can also print the chosen alpha, as follows:</p>
+        <pre>print(f"LassoCV: Chosen alpha = {reg.alpha_}")</pre>
+        <p>I got an <kbd>alpha</kbd> value of <kbd>1151.4</kbd>.</p>
+        <p>Furthermore, we can also see, for each value of alpha, what the <em>MSE</em> value for each of the five folds was. We can access this information via <kbd>mse_path_</kbd>.</p>
+        <p/>
+        <p>Since we have five values for <em>MSE</em> for each value of alpha, we can plot the mean of these five values, as well as the confidence interval around the mean. </p>
+        <div class="packt_infobox">The confidence interval is used to show the expected range that observed data may take. A 95% confidence interval means that we expect 95% of our values to fall within this range. Having a wide confidence interval means that the data may take a wide range of values, while a narrower confidence interval means that we can almost pinpoint exactly what value the data will take. </div>
+        <p>A 95% confidence interval is calculated as follows:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img class="fm-editor-equation" src="assets/01b5aeff-8657-4768-97f9-0ba308fb09c9.png" style="width:25.92em;"/>
+        </p>
+        <p>Here, the standard error is equal to the standard deviation divided by the square root of the number of samples (<sub><img src="assets/be193ff5-f516-4cdf-a157-9287578ae2b2.png" style="width:1.25em;"/></sub>, since we have five folds here).</p>
+        <div class="packt_infobox">The equation for the confidence interval here is not 100% accurate. Statistically speaking, when dealing with small samples, and their underlying variance is not known, a t-distribution should be used instead of a z-distribution. Thus, given the small number of folds here, the 1.96 coefficient should be replaced by a more accurate value from the t-distribution table, where its degrees of freedom are inferred from the number of folds.</div>
+        <p>The following code snippets calculate and plot the confidence intervals for MSE versus alpha:</p>
+        <ol>
+          <li>We start by calculating the descriptive statistics of the <em>MSE</em> values returned:</li>
+        </ol>
+        <pre style="padding-left: 60px"># n_folds equals to 5 here<br/>n_folds = reg.mse_path_.shape[1]<br/><br/># Calculate the mean and standard error for MSEs<br/>mse_mean = reg.mse_path_.mean(axis=1)<br/>mse_std = reg.mse_path_.std(axis=1)<br/># Std Error = Std Deviation / SQRT(number of samples)<br/>mse_std_error = mse_std / np.sqrt(n_folds)</pre>
+        <ol start="2">
+          <li>Then, we put our calculations into a data frame and plot them using the default line chart:</li>
+        </ol>
+        <pre style="padding-left: 60px">fig, ax = plt.subplots(1, 1, figsize=(16, 8))<br/><br/># We multiply by 1.96 for a 95% Confidence Interval<br/>pd.DataFrame(<br/>    {<br/>        'alpha': reg.alphas_,<br/>        'Mean MSE': mse_mean,<br/>        'Upper Bound MSE': mse_mean + 1.96 * mse_std_error,<br/>        'Lower Bound MSE': mse_mean - 1.96 * mse_std_error,<br/>    }<br/>).set_index('alpha')[<br/>    ['Mean MSE', 'Upper Bound MSE', 'Lower Bound MSE']<br/>].plot(<br/>    title='Regularization plot (MSE vs alpha)', <br/>    marker='.', logx=True, ax=ax<br/>)<br/><br/># Color the confidence interval <br/>plt.fill_between(<br/>    reg.alphas_, <br/>    mse_mean + 1.96 * mse_std_error, <br/>    mse_mean - 1.96 * mse_std_error, <br/>)<br/><br/># Print a vertical line for the chosen alpha<br/>ax.axvline(reg.alpha_, linestyle='--', color='k')<br/>ax.set_xlabel('Alpha')<br/>ax.set_ylabel('Mean Squared Error')</pre>
+        <p class="mce-root"/>
+        <p>Here is the output of the previous code:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/7c750341-03f6-4570-8edb-b0b98a6920da.png" style="width:57.92em;"/>
+        </p>
+        <p>The MSE value is lowest at the chosen alpha value. The confidence interval is also narrower there, which reflects more confidence in the expected <em>MSE</em> result. </p>
+        <p>Finally, setting the model's alpha value to the onesuggested and using it to make predictions for the test data gives us the following results:</p>
+        <table style="border-collapse: collapse;width: 100%;border-color: #000000" border="1">
+          <tbody>
+            <tr>
+              <td style="width: 14%"/>
+              <td style="width: 24%">
+                <strong>Baseline</strong>
+              </td>
+              <td style="width: 25.9308%">
+                <strong>Linear Regression</strong>
+              </td>
+              <td style="width: 26.0692%">
+                <strong>Lasso at Alpha = 1151.4</strong>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 14%">
+                <strong>R<sup>2</sup></strong>
+              </td>
+              <td style="width: 24%">
+                <kbd>0.00</kbd>
+              </td>
+              <td style="width: 25.9308%">
+                <kbd>0.73</kbd>
+              </td>
+              <td style="width: 26.0692%">
+                <kbd>0.83</kbd>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 14%">
+                <strong>MAE</strong>
+              </td>
+              <td style="width: 24%">
+                <kbd>7.20</kbd>
+              </td>
+              <td style="width: 25.9308%">
+                <kbd>3.56</kbd>
+              </td>
+              <td style="width: 26.0692%">
+                <kbd>2.76</kbd>
+              </td>
+            </tr>
+            <tr>
+              <td style="width: 14%">
+                <strong>MSE</strong>
+              </td>
+              <td style="width: 24%">
+                <kbd>96.62</kbd>
+              </td>
+              <td style="width: 25.9308%">
+                <kbd>25.76</kbd>
+              </td>
+              <td style="width: 26.0692%">
+                <kbd>16.31</kbd>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p><br/>
+Clearly, regularization fixed the issues caused by the curse of dimensionality earlier. Furthermore, we were able to use cross-validation to find the optimum regularization parameter. We plotted the confidence intervals of errors to visualize the effect of alpha on the regressor. The fact that I have been talking about the confidence intervals in this section inspired me to dedicate the next section to regression intervals.   </p>
+        <h1 id="uuid-1cf6c496-0698-45b2-bfd3-6cae822fb570">Finding regression intervals</h1>
+        <div class="packt_quote">"Exploring the unknown requires tolerating uncertainty."</div>
+        <div class="packt_quote CDPAlignRight CDPAlign">– Brian Greene</div>
+        <p>It's not always guaranteed that we have accurate models. Sometimes, our data is inherently noisy and we cannot model it using a regressor. In these cases, it is important to be able to quantify how certain we arein our estimations. Usually, regressors make point predictions. These are the expected values (typically the mean) of the target (<em>y</em>) at each value of <em>x</em>. A Bayesian ridge regressor is capable of returning the expected values as usual, yet it also returns the standard deviation of the target (<em>y</em>) at each value of <em>x</em>. </p>
+        <p>To demonstrate how this works, let's create a noisy dataset, where <img src="assets/e6f30f23-e2ed-4ea5-827e-21067cb1c1d8.png" style="width:7.08em;"/>:</p>
+        <pre>import numpy as np<br/>import pandas as pd<br/><br/>df_noisy = pd.DataFrame(<br/>    {<br/>        'x': np.random.random_integers(0, 30, size=150),<br/>        'noise': np.random.normal(loc=0.0, scale=5.0, size=150)<br/>    }<br/>)<br/><br/>df_noisy['y'] = df_noisy['x'] + df_noisy['noise']</pre>
+        <p>Then, we can plot it in the form of a scatter plot:</p>
+        <pre>df_noisy.plot(<br/>    kind='scatter', x='x', y='y'<br/>)</pre>
+        <p>Plotting the resulting data frame will give us the following plot:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/253614ca-7f47-4c93-be97-f64ca09cc0d9.png" style="width:27.17em;"/>
+        </p>
+        <p>Now, let's train two regressors on the same data—<kbd>LinearRegression</kbd> and <kbd>BayesianRidge</kbd>. I will stick to the default values for the Bayesian ridge hyperparameters here:</p>
+        <pre>from sklearn.linear_model import LinearRegression<br/>from sklearn.linear_model import BayesianRidge<br/><br/>lr = LinearRegression()<br/>br = BayesianRidge()<br/><br/>lr.fit(df_noisy[['x']], df_noisy['y'])<br/>df_noisy['y_lr_pred'] = lr.predict(df_noisy[['x']])<br/><br/>br.fit(df_noisy[['x']], df_noisy['y'])<br/>df_noisy['y_br_pred'], df_noisy['y_br_std'] = br.predict(df_noisy[['x']], return_std=True)</pre>
+        <p>Notice how the Bayesian ridge regressor returns two values when predicting.</p>
+        <div class="packt_infobox">The Bayesian approach to linear regression differs from the aforementioned algorithms in the way that it sees its coefficients. For all the algorithms we have seen so far, each coefficient takes a single value after training, but for a Bayesian model, a coefficient is rather a distribution with an estimated mean and standard deviation. A coefficient is initialized using a prior distribution, which gets updated by the training data to reach a posterior distribution via Bayes' theorem. The Bayesian ridge regressor is a regularized Bayesian regressor.</div>
+        <p>The predictions made by the two models are very similar. Nevertheless, we can use the standard deviation returned to calculate a range around the values that we expect most of the future data to fall into.The following code snippet creates plots for the two models and their predictions:</p>
+        <pre>fig, axs = plt.subplots(1, 3, figsize=(16, 6), sharex=True, sharey=True)<br/><br/># We plot the data 3 times<br/>df_noisy.sort_values('x').plot(<br/>    title='Data', kind='scatter', x='x', y='y', ax=axs[0]<br/>)<br/>df_noisy.sort_values('x').plot(<br/>    kind='scatter', x='x', y='y', ax=axs[1], marker='o', alpha=0.25<br/>)<br/>df_noisy.sort_values('x').plot(<br/>    kind='scatter', x='x', y='y', ax=axs[2], marker='o', alpha=0.25<br/>)<br/><br/># Here we plot the Linear Regression predictions<br/>df_noisy.sort_values('x').plot(<br/>    title='LinearRegression', kind='scatter', x='x', y='y_lr_pred', <br/>    ax=axs[1], marker='o', color='k', label='Predictions'<br/>)<br/><br/># Here we plot the Bayesian Ridge predictions<br/>df_noisy.sort_values('x').plot(<br/>    title='BayesianRidge', kind='scatter', x='x', y='y_br_pred', <br/>    ax=axs[2], marker='o', color='k', label='Predictions'<br/>)<br/><br/># Here we plot the range around the expected values<br/># We multiply by 1.96 for a 95% Confidence Interval<br/>axs[2].fill_between(<br/>    df_noisy.sort_values('x')['x'], <br/>    df_noisy.sort_values('x')['y_br_pred'] - 1.96 * <br/>                df_noisy.sort_values('x')['y_br_std'], <br/>    df_noisy.sort_values('x')['y_br_pred'] + 1.96 * <br/>                df_noisy.sort_values('x')['y_br_std'],<br/>    color="k", alpha=0.2, label="Predictions +/- 1.96 * Std Dev"<br/>)<br/><br/>fig.show()</pre>
+        <p>Running the preceding code gives us the following graphs. In the <kbd>BayesianRidge</kbd> case, the shaded area shows where we expect 95% of our targets to fall:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/c7f47af5-d666-4262-ad74-0716d20f0daa.png" style="width:66.92em;"/>
+        </p>
+        <p>Regression intervals are handy when we want to quantify our uncertainties. In <a href="https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=30&amp;action=edit">Chapter 8</a>, <em>Ensembles – When One Model Is Not Enough</em>, we will revisit regression intervals</p>
+        <h1 id="uuid-8f1f5e04-7d38-4a8e-a186-50b4583aa8df">Getting to know additional linear regressors</h1>
+        <p>Before moving on to linear classifiers, it makes sense to also add the following additional linear regression algorithms to your toolset:</p>
+        <ul>
+          <li><strong>Elastic-net</strong> uses a mixture of L1 and L2 regularization techniques, where <kbd>l1_ratio</kbd> controls the mix of the two. This is useful in cases when you want to learn a sparse model where few of the weights are non-zero (as in <strong>lasso</strong>) while keeping the benefits of <strong>ridge</strong> regularization.</li>
+          <li><strong>Random Sample Consensus</strong>(<strong>RANSAC</strong>) is useful when your data has outliers. It tries to separate the outliers from the inlier samples. Then, it fits the model on the inliers only.</li>
+          <li><strong>Least-Angle Regression</strong> (<strong>LARS</strong>) is useful when dealing with high-dimensional data—that is, when there is a significant number of features compared to the number of samples. You may want to try it with the polynomial features example we saw earlier and see how it performs there. </li>
+        </ul>
+        <p>Let's move on to the next section of the book where you will learn to use logistic regression to classify data.</p>
+        <h1 id="uuid-af267645-0c7a-49df-a0f6-be0da7405bcd">Using logistic regression for classification</h1>
+        <div class="packt_quote">"You can tell whether a man is clever by his answers. You can tell whether a man is wise by his questions."</div>
+        <div class="packt_quote CDPAlignRight CDPAlign">– <span class="authorOrTitle">Naguib Mahfouz</span></div>
+        <p>One day, when applying for a job, an interviewer asks: <em>So tell me, is logistic regression a classification or a regression algorithm?</em> The short answer to this is that it is a classification algorithm, but a longer and more interesting answer requires a good understanding of the logistic function. Then, the question may end up having a different meaning altogether. </p>
+        <h2 id="uuid-6b6a7a36-7f0f-40a6-b73c-856b6f625afa">Understanding the logistic function</h2>
+        <p>The logistic function is a member of the sigmoid (<em>s</em>-shaped) functions, and it is represented by the following formula:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img class="fm-editor-equation" src="assets/d263ba93-0475-4daa-91a5-1c6645de549f.png" style="width:7.17em;"/>
+        </p>
+        <p>Don't let this equation scare you. What actually matters is how this function looks visually. Luckily, we can use our computer to generate a bunch of values for theta—for example, between <kbd>-10</kbd> and <kbd>10</kbd>. Then, we can plug these values into the formula and plot the resulting <kbd>y</kbd> values versus the theta values, as we have done in the following code:</p>
+        <pre>import numpy as np<br/>import pandas as pd<br/><br/>fig, ax = plt.subplots(1, 1, figsize=(16, 8))<br/><br/>theta = np.arange(-10, 10, 0.05)<br/>y = 1 / (1 + np.exp(-1 * theta))<br/><br/>pd.DataFrame(<br/>    {<br/>        'theta': theta,<br/>        'y': y<br/>    }<br/>).plot(<br/>    title='Logistic Function', <br/>    kind='scatter', x='theta', y='y', <br/>    ax=ax<br/>)<br/><br/>fig.show()</pre>
+        <p>Running this code gives us the following graph:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/313d6584-8e70-4dc0-a531-b5c989b2975a.png" style="width:58.58em;"/>
+        </p>
+        <p>Two key characteristics to notice in the logistic function are as follows:</p>
+        <ul>
+          <li><em>y</em> only goes between <kbd>0</kbd> and <kbd>1</kbd>. It approaches <kbd>1</kbd> as theta approaches infinity, and approaches <kbd>0</kbd> as theta approaches negative infinity.</li>
+          <li><kbd>y</kbd> takes the value of <kbd>0.5</kbd> when theta is <kbd>0</kbd>.</li>
+        </ul>
+        <h2 id="uuid-740ed5a3-c99c-4864-9d42-e4b53f0cf976">Plugging the logistic function into a linear model</h2>
+        <div class="mce-root packt_quote">"Probability is not a mere computation of odds on the dice or more complicated variants; it is the acceptance of the lack of certainty in our knowledge and the development of methods for dealing with our ignorance."</div>
+        <div class="mce-root packt_quote CDPAlignRight CDPAlign">– Nassim Nicholas Taleb</div>
+        <p>For a line model with a couple of features, <em>x<sub>1</sub></em> and <em>x<sub>2</sub></em>, we can have an intercept and two coefficients. Let's call them <img class="fm-editor-equation" src="assets/7b829d0f-4b60-4173-90b1-ca98ebe6e69d.png" style="width:1.08em;height:0.92em;"/>, <img class="fm-editor-equation" src="assets/16a7a93c-f405-4f3e-abff-a2a80688aaf3.png" style="width:1.00em;height:1.00em;"/> , and <img class="fm-editor-equation" src="assets/a914785a-b7f0-4197-8e3d-62e47bac1a5c.png" style="width:1.00em;"/>. Then, the linear regression equation will be as follows:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img class="fm-editor-equation" src="assets/4cd8809f-b19d-4c1e-87e5-0a52e8419f49.png" style="width:11.67em;"/>
+        </p>
+        <p>Separately, we can also plug the right-hand side of the preceding equation into the logistic function in place of <img class="fm-editor-equation" src="assets/e4173069-bef8-4e29-8c88-10cfc96da625.png" style="width:0.50em;"/>. This will give the following equation for <em>y</em>:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img class="fm-editor-equation" src="assets/d78652ca-db05-492b-a081-edde13e8d20f.png" style="width:14.83em;"/>
+        </p>
+        <p>In this case, the variation in the values of <em>x</em> will move <em>y</em> between <kbd>0</kbd> and <kbd>1</kbd>. Higher values for the products of <em>x</em> and its coefficients will move <em>y</em> closer to <kbd>1</kbd>, and lower values will move it toward <kbd>0</kbd>. We also know that probabilities take values between <kbd>0</kbd> and <kbd>1</kbd>. So, it makes sense to interpret <em>y</em> as the probability of <em>y</em> belonging to a certain class, given the value of <em>x</em>. If we don't want to deal with probabilities, we can just specify <img class="fm-editor-equation" src="assets/d4188933-f93c-4834-9b32-7a83a1377fcd.png" style="width:3.00em;"/>; then, our sample belongs to class 1, and it belongs to class 0 otherwise. </p>
+        <p>This was a brief look at how logistic regression works. It is a classifier, yet it is called <em>regression </em>since it's basically a regressor returning a value between <kbd>0</kbd> and <kbd>1</kbd>, which we interpret as probabilities. </p>
+        <p>To train the logistic regression model, we need an objective function, as well as a solver that tries to find the optimal coefficients to minimize this function. In the following sections, we will go through all of these in more detail.</p>
+        <h3 id="uuid-70606c87-50e6-430a-9754-4f6c7b1bc413">Objective function</h3>
+        <p>During the training phase, the algorithm loops through the data trying to find the coefficients that minimize a predefined objective (loss) function. The loss function we try to minimize in the case of logistic regression is called log loss. It measures how far the predicted probabilities (<em>p</em>) are from the actual class labels (<em>y</em>) using the following formula:</p>
+        <p class="mce-root CDPAlignCenter CDPAlign">
+          <em>-log(p) if y == 1 else -log(1 - p)</em>
+        </p>
+        <p>Mathematicians use a rather ugly way to express this formula due to their lack of <kbd>if-else</kbd> conditions. So, I chose to display the Python form here for its clarity. Jokes aside, the mathematical formula will turn out to be beautiful once you know its informational theory roots, but that's not something we'll look at now.</p>
+        <h3 id="uuid-6baf5d95-80bb-4c5f-b13a-63c2c70fe7f4">Regularization</h3>
+        <p>Furthermore, scikit-learn's implementation of logistic regression algorithms uses regularization by default. Out of the box, it uses L2 regularization (as in the ridge regressor), but it can also use L1 (as in lasso) or a mixture of L1 and L2 (as in elastic-net). </p>
+        <h3 id="uuid-560ee90d-ee90-4464-af6b-5f419c582e88">Solvers</h3>
+        <p>Finally, how do we find the optimal coefficients to minimize our loss function? A naive approach would be to try all the possible combinations of the coefficients until the minimal loss is found. Nevertheless, since an exhaustive search is not feasible given the infinite combinations, solvers are there to efficiently search for the best coefficients. scikit-learn implements about half a dozen solvers.</p>
+        <p>The choice of solver, along with the regularization method used, are the two main decisions to take when configuring the logistic regression algorithm. In the next section, we are going to see how and when to pick each one. </p>
+        <h2 id="uuid-29478b29-93cb-4e54-9a98-42d7cfeb0442">Configuring the logistic regression classifier</h2>
+        <p>Before talking about solvers, let's go through some of the common hyperparameters used:</p>
+        <ul>
+          <li><strong><kbd>fit_intercept</kbd></strong>: Usually, in addition to the coefficient for each feature, there is a constant intercept in your equation. Nevertheless, there are cases where you might not need an intercept—for example, if you know for sure that the value of <em>y</em> is supposed to be <kbd>0.5</kbd> when all the values of <em>x</em> are <kbd>0</kbd>. One other case is when your data already has an additional constant column with all values set to <kbd>1</kbd>. This usually occurs if your data has been processed in an earlier stage, as in the case of the polynomial processor. The coefficient for the <kbd>constant</kbd> column will be interpreted as the intercept in this case. The same configuration exits for the linear regression algorithms explained earlier.</li>
+          <li><strong><kbd>max_iter</kbd></strong>: For the solver to find the optimum coefficients, it loops over the training data more than once. These iterations are also called epochs. You usually set a limit on the number of iterations to prevent overfitting. The same hyperparameter is used by the lasso and ridge regressors explained earlier.</li>
+          <li><strong><kbd>tol</kbd></strong>: This is another way to stop the solver from iterating too much. If you set this to a high value, it means that only high improvements between one iteration and the next are tolerated; otherwise, the solver will stop. Conversely, a lower value will keep the solver going for more iterations until it reaches <strong><kbd>max_iter</kbd>.</strong></li>
+          <li><strong><kbd>penalty</kbd></strong>: This picks the regularization techniques to be used. This can be either L1, L2, elastic-net, or none for no regularization. Regularization helps to prevent overfitting, so it is important to use it when you have a lot of features. It also mitigates the overfitting effect when <kbd>max_iter</kbd> and<strong><kbd>tol</kbd></strong> are set to high values.</li>
+          <li><kbd>C</kbd> or <kbd>alpha</kbd>: These are parameters for setting how strong you want the regularization to be. Since we are going to use two different implementations of the logistic regression algorithm here, it is important to know that each of these two implementations uses a different parameter (<kbd>C</kbd> versus <kbd>alpha</kbd>). <kbd>alpha</kbd> is basically the inverse of <kbd>C</kbd>—(<img class="fm-editor-equation" src="assets/c4f16ce4-15f1-4eed-b539-3895626e3ad4.png" style="width:0.92em;"/>). This means that smaller values for <kbd>C</kbd> specify stronger regularization, while for <kbd>alpha</kbd>, larger values are needed for stronger regularization.</li>
+          <li><kbd>l1_ratio</kbd>: When using a mixture of L1 and L2, as in elastic-net, this fraction specifies how much weight to give to L1 versus L2. </li>
+        </ul>
+        <p>The following are some of the solvers we can use:</p>
+        <ul>
+          <li><kbd>liblinear</kbd>:<strong/>This solver is implemented in <kbd>LogisticRegression</kbd> and is recommended for smaller datasets. It supports L1 and L2 regularization, but you cannot use it if you want to use elastic-net, nor if you do not want to use regularization at all.</li>
+          <li><kbd>sag</kbd> or <kbd>saga</kbd>: These solvers are implemented in <kbd>LogisticRegression</kbd> and <kbd>RidgeClassifier</kbd>. They are faster for larger datasets. However, you need to scale your features for them to converge. We used <kbd>MinMaxScaler</kbd> earlier in this chapter to scale our features. Now, it is not only needed for more meaningful coefficients, but also for the solver to find a solution earlier. <kbd>saga</kbd> supports all four penalty options. </li>
+          <li><kbd>lbfgs</kbd>:<strong/>This solver is implemented in <kbd>LogisticRegression</kbd>. It supports the L2 penalty or no regularization at all. </li>
+        </ul>
+        <ul>
+          <li><strong>Stochastic Gradient Descent</strong> (<strong>SGD</strong>): There are dedicated implementations for SGD—<kbd>SGDClassifier</kbd> and <kbd>SGDRegressor</kbd>. This is different to <kbd>LogisticRegression</kbd>, where the focus is on performing logistic regression by optimizing the one-loss function—log loss. The focus of <kbd>SGDClassifier</kbd> is on the SGD solver itself, which means that the same classifier allows different loss functions to be used. If <kbd>loss</kbd> is set to <kbd>log</kbd>, then it is a logistic regression model. However, setting <kbd>loss</kbd> to <kbd>hinge</kbd> or <kbd>perceptron</kbd> turns it into a <strong>Support Vector Machine</strong> (<strong>SVM</strong>) or perceptron, respectively. These are two other linear classifiers. </li>
+        </ul>
+        <div class="packt_infobox CDPAlignLeft CDPAlign"><strong>Gradie</strong><strong>nt</strong><strong>descent</strong> is an optimization algorithm that aims to find a local minimum in a function by iteratively moving in the direction of steepest descent. The direction of the steepest descent is found using calculus, hence the term <em>gradient</em>. If you imagine the objective (loss) function as a curve, the gradient descent algorithm blindly lands on a random point on this curve and uses the gradient at the point it is on as a guiding stick to move to a local minimum step by step. Usually, the loss function is chosen to be a convex one so that its local minima is also its global one. In<strong/>the<strong> stochastic</strong> version of <strong>gradient descent</strong>, rather than calculating the gradient for the entire training data, the estimator's weights are updated with each training sample. Gradient descent is covered in more detail in <a href="https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=33&amp;action=edit">Chapter 7</a>, <em>Neural Networks – Here Comes the Deep Learning</em>.</div>
+        <h2 id="uuid-718762c1-ec36-4cda-b9f7-70a5f6ab43a6">Classifying the Iris dataset using logistic regression</h2>
+        <p>We will load the Iris dataset into a data frame. The following is a similar block of code to the one used in <a href="http://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=25&amp;action=edit">Chapter 2</a>, <em>Making Decisions with Trees</em>, to load the dataset:</p>
+        <pre>from sklearn import datasets<br/>iris = datasets.load_iris()<br/><br/>df = pd.DataFrame(<br/>    iris.data,<br/>    columns=iris.feature_names<br/>)<br/><br/>df['target'] = pd.Series(<br/>    iris.target<br/>)</pre>
+        <p>Then, we will use <kbd>cross_validate</kbd> to evaluate the accuracy of the <kbd>LogisticRegression</kbd> algorithm using six-fold cross-validation, as follows:</p>
+        <pre>from sklearn.linear_model import LogisticRegression<br/>from sklearn.model_selection import cross_validate<br/><br/>num_folds = 6<br/><br/>clf = LogisticRegression(<br/>    solver='lbfgs', multi_class='multinomial', max_iter=1000<br/>)<br/>accuracy_scores = cross_validate(<br/>    clf, df[iris.feature_names], df['target'], <br/>    cv=num_folds, scoring=['accuracy']<br/>)<br/><br/>accuracy_mean = pd.Series(accuracy_scores['test_accuracy']).mean()<br/>accuracy_std = pd.Series(accuracy_scores['test_accuracy']).std()<br/>accuracy_sterror = accuracy_std / np.sqrt(num_folds)<br/><br/>print(<br/>     'Logistic Regression: Accuracy ({}-fold): {:.2f} ~ {:.2f}'.format(<br/>         num_folds,<br/>         (accuracy_mean - 1.96 * accuracy_sterror),<br/>         (accuracy_mean + 1.96 * accuracy_sterror),<br/>    )<br/>)</pre>
+        <p>Running the preceding code will give us a set of accuracy scores with a 95% confidence interval that ranges between <kbd>0.95</kbd> and <kbd>1.00</kbd>. Running the same code for the decision tree classifier gives us a confidence interval that ranges between <kbd>0.93</kbd> and <kbd>0.99</kbd>. </p>
+        <p>Since we have three classes here, the coefficients calculated for each class boundary are separate from the others. After we train the logistic regression algorithm once more without the <kbd>cross_validate</kbd> wrapper, we can access the coefficients via <kbd>coef_</kbd>. We can also access the intercepts via <kbd>intercept_</kbd>.</p>
+        <div class="packt_infobox CDPAlignLeft CDPAlign">In the next code snippet, I will be using a dictionary comprehension. In Python, one way to create the <kbd>[0, 1, 2, 3]</kbd> list is by using the <kbd>[i for i in range(4)]</kbd> list comprehension. This basically executes the loop to populate the list. Similarly, the <kbd>['x' for i in range(4)]</kbd> list comprehension will create the <kbd>['x', 'x', 'x, 'x']</kbd> list. Dictionary comprehension works in the same fashion. For example, the <kbd>{str(i): i for i in range(4)}</kbd> line of code will create the<kbd>{'0': 0, '1': 1, '2': 2, '3': 3}</kbd> dictionary.</div>
+        <p>The following code puts the coefficients into a data frame. It basically creates a dictionary whose keys are the class IDs and maps each ID to a list of its corresponding coefficients. Once the dictionary is created, we convert it into a data frame and add the intercepts to the data frame before displaying it: </p>
+        <pre># We need to fit the model again before getting its coefficients<br/>clf.fit(df[iris.feature_names], df['target'])<br/><br/># We use dictionary comprehension instead of a for-loop<br/>df_coef = pd.DataFrame(<br/>    {<br/>        f'Coef [Class {class_id}]': clf.coef_[class_id]<br/>        for class_id in range(clf.coef_.shape[0])<br/>    },<br/>    index=iris.feature_names<br/>)<br/>df_coef.loc['intercept', :] = clf.intercept_</pre>
+        <p>Don't forget to scale your features before training. Then, you should get a coefficient data frame that looks like this:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/a1f7d610-7309-4052-9edd-39bd765144c6.png" style="width:32.50em;"/>
+        </p>
+        <p>The table in the preceding screenshot shows the following:</p>
+        <ul>
+          <li>From the first row, we can tell that the increase in sepal length is correlated with classes 1 and 2 more than the remaining class, based on the positive sign of classes 1 and class 2's coefficients.</li>
+          <li>Having a linear model here means that the class boundaries will not be limited to horizontal and vertical lines, as in the case of decision trees, but they will take linear forms.</li>
+        </ul>
+        <p>To better understand this, in the next section, we will draw the logistic regression classifier's decision boundaries and compare them to those of decision trees. </p>
+        <h2 id="uuid-27a98c57-a6a7-4576-bdac-f75ba3e610ec">Understanding the classifier's decision boundaries</h2>
+        <p>By seeing the decision boundaries visually, we can understand why the model makes certain decisions. Here are the steps for plotting those boundaries:</p>
+        <ol>
+          <li>We start by creating a function that takes the classifier's object and data samples and then plots the decision boundaries for that particular classifier and data:</li>
+        </ol>
+        <pre style="padding-left: 60px">def plot_decision_boundary(clf, x, y, ax, title):<br/><br/>   cmap='Paired_r' <br/>   feature_names = x.columns<br/>   x, y = x.values, y.values<br/><br/>   x_min, x_max = x[:,0].min(), x[:,0].max()<br/>   y_min, y_max = x[:,1].min(), x[:,1].max()<br/><br/>   step = 0.02<br/><br/>   xx, yy = np.meshgrid(<br/>      np.arange(x_min, x_max, step),<br/>      np.arange(y_min, y_max, step)<br/>   )<br/>   Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])<br/>   Z = Z.reshape(xx.shape)<br/><br/>   ax.contourf(xx, yy, Z, cmap=cmap, alpha=0.25)<br/>   ax.contour(xx, yy, Z, colors='k', linewidths=0.7)<br/>   ax.scatter(x[:,0], x[:,1], c=y, edgecolors='k')<br/>   ax.set_title(title)<br/>   ax.set_xlabel(feature_names[0])<br/>   ax.set_ylabel(feature_names[1])</pre>
+        <ol start="2">
+          <li>Then, we split our data into training and test sets:</li>
+        </ol>
+        <pre style="padding-left: 60px">from sklearn.model_selection import train_test_split<br/>df_train, df_test = train_test_split(df, test_size=0.3, random_state=22)</pre>
+        <ol start="3">
+          <li>To be able to visualize things easily, we are going to use two features. In the following code, we will train a logistic regression model and a decision tree model, and then compare their decision boundaries when trained on the same data:</li>
+        </ol>
+        <pre style="padding-left: 60px">from sklearn.metrics import accuracy_score<br/>from sklearn.linear_model import LogisticRegression<br/>from sklearn.tree import DecisionTreeClassifier<br/><br/>fig, axs = plt.subplots(1, 2, figsize=(12, 6))<br/><br/>two_features = ['petal width (cm)', 'petal length (cm)']<br/><br/>clf_lr = LogisticRegression()<br/>clf_lr.fit(df_train[two_features], df_train['target'])<br/>accuracy = accuracy_score(<br/>    df_test['target'], <br/>    clf_lr.predict(df_test[two_features])<br/>)<br/>plot_decision_boundary(<br/>    clf_lr, df_test[two_features], df_test['target'], ax=axs[0], <br/>    title=f'Logistic Regression Classifier\nAccuracy: {accuracy:.2%}'<br/>)<br/><br/>clf_dt = DecisionTreeClassifier(max_depth=3)<br/>clf_dt.fit(df_train[two_features], df_train['target'])<br/>accuracy = accuracy_score(<br/>    df_test['target'], <br/>    clf_dt.predict(df_test[two_features])<br/>)<br/>plot_decision_boundary(<br/>    clf_dt, df_test[two_features], df_test['target'], ax=axs[1], <br/>    title=f'Decision Tree Classifier\nAccuracy: {accuracy:.2%}'<br/>)<br/><br/>fig.show()</pre>
+        <p>Running this code will give us the following graphs:</p>
+        <p class="CDPAlignCenter CDPAlign">
+          <img src="assets/1b01de5a-6f69-4161-b6e9-8690fbfeb07a.png" style="width:52.42em;"/>
+        </p>
+        <p>In the preceding graph, the following is observed:</p>
+        <ul>
+          <li>The logistic regression model did not perform well this time when only two features were used. Nevertheless, what we care about here is the shape of the boundaries.</li>
+          <li>It's clear that the boundaries on the left are not horizontal and vertical lines as on the right. While the ones on the right can be composed of multiple line fragments, the ones on the left can only be made of continuous lines.</li>
+        </ul>
+        <h1 id="uuid-bb36d358-32a5-4027-848d-ef4bb78538a7">Getting to know additional linear classifiers</h1>
+        <p>Before ending this chapter, it is useful to highlight some additional linear classification algorithms:</p>
+        <ul>
+          <li><strong>SGD</strong> is a versatile solver. As mentioned earlier, it can perform a logistic regression classification in addition to SVM and perceptron classification, depending on the loss function used. It also allows regularized penalties.</li>
+          <li><strong>The r</strong><strong>ide</strong><strong>classifier</strong> converts class labels into <kbd>1</kbd> and <kbd>-1</kbd> and treats the problem as a regression task. It also deals well with non-binary classification tasks. Due to its design, it uses a different set of solvers, so it's worth trying as it may be quicker to learn when dealing with a large number of classes.</li>
+          <li><strong>Line</strong><strong>ar</strong><strong>Support</strong><strong>Vector</strong><strong>Classification</strong> (<strong>LinearSVC</strong>) is another linear model. Rather than log loss, it uses the <kbd>hinge</kbd> function, which aims to find class boundaries where the samples of each class are as far as possible from the boundaries. This is not to be confused with SVMs. Contrary to their linear cousins, SVMs are non-linear algorithms, due to what is known as the kernel trick. SVMs are not as commonly used as they used to be a couple of decades ago, and they are beyond the scope of this book.</li>
+        </ul>
+        <h1 id="uuid-77f405dc-5d7a-4eea-8883-5a74394c251b">Summary</h1>
+        <p>Linear models are found everywhere. Their simplicity, as well as the capabilities they offer—such as regularization—makes them popular among practitioners. They also share many concepts with neural networks, which means that understanding them will help you in later chapters.</p>
+        <p>Being linear isn't usually a limiting factor as long as we can get creative with our feature transformation. Furthermore, in higher dimensions, the linearity assumption may hold more often than we think. That's why it is advised to always start with a linear model and then decide whether you need to go for a more advanced model.</p>
+        <p>Having that said, it can sometimesbe tricky to figure out the best configurations for your linear model or decide on which solver to use. In this chapter, we learned about using cross-validation to fine-tune a model's hyperparameters. We have also seen the different hyperparameters and solvers available, with tips for when to use each one. </p>
+        <p>So far, for all the datasets that we have dealt with in the first two chapters, we were lucky to have the data in the correct format. We have dealt only with numerical data with no missing values. Nevertheless, in real-world scenarios, this is rarely the case.</p>
+        <p>In the next chapter, we are going to learn more about data preprocessing so that we can seamlessly continue working with more datasets and more advanced algorithms later on. </p>
+      </article>
+    </section>
+  </body></html>

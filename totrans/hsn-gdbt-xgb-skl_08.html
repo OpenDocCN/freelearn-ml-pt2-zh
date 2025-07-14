@@ -1,0 +1,335 @@
+<html><head></head><body>
+		<div id="_idContainer130">
+			<h1 id="_idParaDest-128"><em class="italic"><a id="_idTextAnchor136"/>Chapter 6</em>: XGBoost Hyperparameters</h1>
+			<p>XGBoost has many hyperparameters. XGBoost base learner hyperparameters incorporate all decision tree hyperparameters as a starting point. There are gradient boosting hyperparameters, since XGBoost is an enhanced version of gradient boosting. Hyperparameters unique to XGBoost are designed to improve upon accuracy and speed. However, trying to tackle all XGBoost hyperparameters at once can be dizzying.</p>
+			<p>In <a href="B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047"><em class="italic">Chapter 2</em></a>, <em class="italic">Decision Trees in Depth</em>, we reviewed and applied base learner hyperparameters such as <strong class="source-inline">max_depth</strong>, while in <a href="B15551_04_Final_NM_ePUB.xhtml#_idTextAnchor093"><em class="italic">Chapter 4</em></a>, <em class="italic">From Gradient Boosting to XGBoost</em>, we applied important XGBoost hyperparameters, including <strong class="source-inline">n_estimators</strong> and <strong class="source-inline">learning_rate</strong>. We will revisit these hyperparameters in this chapter in the context of XGBoost. Additionally, we will also learn about novel XGBoost hyperparameters such as <strong class="source-inline">gamma</strong> and a <a id="_idIndexMarker356"/>technique called <strong class="bold">early stopping</strong>.</p>
+			<p>In this chapter, to gain proficiency in fine-tuning XGBoost hyperparameters, we will cover the following main topics:</p>
+			<ul>
+				<li><p>Preparing data and base models</p></li>
+				<li><p>Tuning core XGBoost hyperparameters</p></li>
+				<li><p>Applying early stopping</p></li>
+				<li><p>Putting it all together</p></li>
+			</ul>
+			<h1 id="_idParaDest-129"><a id="_idTextAnchor137"/>Technical requirements</h1>
+			<p>The code for this chapter can be found at <a href="https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter06">https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter06</a>.</p>
+			<h1 id="_idParaDest-130"><a id="_idTextAnchor138"/>Preparing data and base models</h1>
+			<p>Before introducing and applying XGBoost hyperparameters, let's prepare by doing the following:</p>
+			<ul>
+				<li><p>Getting the <strong class="bold">heart disease dataset</strong> </p></li>
+				<li><p>Building an <strong class="source-inline">XGBClassifier</strong> model</p></li>
+				<li><p>Implementing <strong class="source-inline">StratifiedKFold</strong></p></li>
+				<li><p>Scoring a <strong class="bold">baseline XGBoost model</strong></p></li>
+				<li><p>Combining <strong class="source-inline">GridSearchCV</strong> with <strong class="source-inline">RandomizedSearchCV</strong> to form one powerful function</p></li>
+			</ul>
+			<p>Good preparation is essential for gaining accuracy, consistency, and speed when fine-tuning hyperparameters. </p>
+			<h2 id="_idParaDest-131"><a id="_idTextAnchor139"/>The heart disease dataset</h2>
+			<p>The dataset used <a id="_idIndexMarker357"/>throughout this chapter is the heart disease dataset originally presented in <a href="B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047"><em class="italic">Chapter 2</em></a>, <em class="italic">Decision Trees in Depth</em>. We have chosen the same dataset to maximize the time spent doing hyperparameter fine-tuning, and to minimize the time spent on data analysis. Let's begin the process:</p>
+			<ol>
+				<li><p>Go to <a href="https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter06">https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter06</a> to load <strong class="source-inline">heart_disease.csv</strong> into a DataFrame and display the first five rows. Here is the code:</p><p class="source-code">import pandas as pd</p><p class="source-code">df = pd.read_csv('heart_disease.csv')</p><p class="source-code">df.head()</p><p>The result should look as follows:</p><div id="_idContainer128" class="IMG---Figure"><img src="image/B15551_06_01.jpg" alt="Figure 6.1 – The first five rows"/></div><p class="figure-caption">Figure 6.1 – The first five rows</p><p>The last column, <strong class="bold">target</strong>, is the target column, where <strong class="bold">1</strong> indicates presence, meaning the patient has a heart disease, and <strong class="bold">2</strong> indicates absence. For detailed information on the other columns, visit <a href="https://archive.ics.uci.edu/ml/datasets/Heart+Disease">https://archive.ics.uci.edu/ml/datasets/Heart+Disease</a> at the UCI Machine Learning Repository, or see <a href="B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047"><em class="italic">Chapter 2</em></a>, <em class="italic">Decision Trees in Depth</em>.</p></li>
+				<li><p>Now, check <strong class="source-inline">df.info()</strong> to <a id="_idIndexMarker358"/>ensure that the data is all numerical with no null values:</p><p class="source-code">df.info()</p><p>Here is the output:</p><p class="source-code">&lt;class 'pandas.core.frame.DataFrame'&gt;</p><p class="source-code">RangeIndex: 303 entries, 0 to 302</p><p class="source-code">Data columns (total 14 columns):</p><p class="source-code"> #   Column    Non-Null Count  Dtype  </p><p class="source-code">---  ------    --------------  -----  </p><p class="source-code"> 0   age       303 non-null    int64  </p><p class="source-code"> 1   sex       303 non-null    int64  </p><p class="source-code"> 2   cp        303 non-null    int64  </p><p class="source-code"> 3   trestbps  303 non-null    int64  </p><p class="source-code"> 4   chol      303 non-null    int64  </p><p class="source-code"> 5   fbs       303 non-null    int64  </p><p class="source-code"> 6   restecg   303 non-null    int64  </p><p class="source-code"> 7   thalach   303 non-null    int64  </p><p class="source-code"> 8   exang     303 non-null    int64  </p><p class="source-code"> 9   oldpeak   303 non-null    float64</p><p class="source-code"> 10  slope     303 non-null    int64  </p><p class="source-code"> 11  ca        303 non-null    int64  </p><p class="source-code"> 12  thal      303 non-null    int64  </p><p class="source-code"> 13  target    303 non-null    int64  </p><p class="source-code">dtypes: float64(1), int64(13)</p><p class="source-code">memory usage: 33.3 KB</p></li>
+			</ol>
+			<p>Since all data <a id="_idIndexMarker359"/>points are non-null and numerical, the data is machine learning-ready. It's time to build a classifier.</p>
+			<h2 id="_idParaDest-132"><a id="_idTextAnchor140"/>XGBClassifier</h2>
+			<p>Before tuning<a id="_idIndexMarker360"/> hyperparameters, let's build a classifier so that we can obtain a baseline score as a starting point. </p>
+			<p>To build an XGBoost classifier, follow these steps:</p>
+			<ol>
+				<li value="1"><p>Download <strong class="source-inline">XGBClassifier</strong> and <strong class="source-inline">accuracy_score</strong> from their respective libraries. The code is as follows: </p><p class="source-code">from xgboost import XGBClassifier</p><p class="source-code">from sklearn.metrics import accuracy_score</p></li>
+				<li><p>Declare <strong class="source-inline">X</strong> as the predictor columns and <strong class="source-inline">y</strong> as the target column, where the last row is the target column:</p><p class="source-code">X = df.iloc[:, :-1]</p><p class="source-code">y = df.iloc[:, -1]</p></li>
+				<li><p>Initialize <strong class="source-inline">XGBClassifier</strong> with the <strong class="source-inline">booster='gbtree'</strong> and <strong class="source-inline">objective='binary:logistic'</strong> defaults along with <strong class="source-inline">random_state=2</strong>:</p><p class="source-code">model = XGBClassifier(booster='gbtree', objective='binary:logistic', random_state=2)</p><p>The <strong class="source-inline">'gbtree'</strong> booster, the base learner, is a gradient boosted tree. The <strong class="source-inline">'binary:logistic'</strong> objective is standard for binary classification in determining the loss function. Although <strong class="source-inline">XGBClassifier</strong> includes these values by default, we include them here to gain familiarity in preparation of modifying them in later chapters.</p></li>
+				<li><p>To score the <a id="_idIndexMarker361"/>baseline model, import <strong class="source-inline">cross_val_score</strong> and <strong class="source-inline">numpy</strong> to fit, score, and display results:</p><p class="source-code">from sklearn.model_selection import cross_val_score</p><p class="source-code">import numpy as np</p><p class="source-code">scores = cross_val_score(model, X, y, cv=5)</p><p class="source-code">print('Accuracy:', np.round(scores, 2))</p><p class="source-code">print('Accuracy mean: %0.2f' % (scores.mean()))</p><p>The accuracy score is as follows:</p><p class="source-code">Accuracy: [0.85 0.85 0.77 0.78 0.77]</p><p class="source-code">Accuracy mean: 0.81</p></li>
+			</ol>
+			<p>An accuracy score of 81% is an excellent starting point, considerably higher than the 76% cross-validation obtained by <strong class="source-inline">DecisionTreeClassifier</strong> in <a href="B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047"><em class="italic">Chapter 2</em></a>, <em class="italic">Decision Trees in Depth</em>.</p>
+			<p>We used <strong class="source-inline">cross_val_score</strong> here, and we will use <strong class="source-inline">GridSearchCV</strong> to tune hyperparameters. Next, let's find a way to ensure that the test folds are the same using <strong class="source-inline">StratifiedKFold</strong>.</p>
+			<h2 id="_idParaDest-133"><a id="_idTextAnchor141"/>StratifiedKFold</h2>
+			<p>When fine-tuning <a id="_idIndexMarker362"/>hyperparameters, <strong class="source-inline">GridSearchCV</strong> and <strong class="source-inline">RandomizedSearchCV</strong> are the standard options. An issue from <a href="B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047"><em class="italic">Chapter 2</em></a>, <em class="italic">Decision Trees in Depth</em>, is that <strong class="source-inline">cross_val_score</strong> and <strong class="source-inline">GridSearchCV</strong>/<strong class="source-inline">RandomizedSearchCV</strong> do not split data the same way.</p>
+			<p>One solution is to use <strong class="source-inline">StratifiedKFold</strong> whenever cross-validation is used.</p>
+			<p>A stratified fold includes the same percentage of target values in each fold. If a dataset contains 60% 1s and 40% 0s in the target column, each stratified test set contains 60% 1s and 40% 0s. When folds are random, it's possible that one test set contains a 70-30 split while another contains a 50-50 split of target values.</p>
+			<p class="callout-heading">Tip</p>
+			<p class="callout">When using <strong class="source-inline">train_test_split</strong>, the shuffle and stratify parameters use defaults to stratify the data for you. See <a href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html">https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html</a> for general information.</p>
+			<p>To use <strong class="source-inline">StratifiedKFold</strong>, do the following:</p>
+			<ol>
+				<li value="1"><p>Implement <strong class="source-inline">StratifiedKFold</strong> from <strong class="source-inline">sklearn.model_selection</strong>:</p><p class="source-code">from sklearn.model_selection import StratifiedKFold</p></li>
+				<li><p>Next, define the number of folds as <strong class="source-inline">kfold</strong> by selecting <strong class="source-inline">n_splits=5</strong>, <strong class="source-inline">shuffle=True</strong>, and <strong class="source-inline">random_state=2</strong> as the <strong class="source-inline">StratifiedKFold</strong> parameters. Note that <strong class="source-inline">random_state</strong> provides a consistent ordering of indices, while <strong class="source-inline">shuffle=True</strong> allows rows to be initially shuffled:</p><p class="source-code">kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=2)</p><p>The <strong class="source-inline">kfold</strong> variable can now be used inside <strong class="source-inline">cross_val_score</strong>, <strong class="source-inline">GridSeachCV</strong>, and <strong class="source-inline">RandomizedSearchCV</strong> to ensure consistent results.</p></li>
+			</ol>
+			<p>Now, let's return to <strong class="source-inline">cross_val_score</strong> using <strong class="source-inline">kfold</strong> so that we have an appropriate baseline for comparison.</p>
+			<h2 id="_idParaDest-134"><a id="_idTextAnchor142"/>Baseline model</h2>
+			<p>Now that we have a <a id="_idIndexMarker363"/>method for obtaining consistent folds, it's time to score an official baseline model using <strong class="source-inline">cv=kfold</strong> inside <strong class="source-inline">cross_val_score</strong>. The code is as follows:</p>
+			<p class="source-code">scores = cross_val_score(model, X, y, cv=kfold)</p>
+			<p class="source-code">print('Accuracy:', np.round(scores, 2))</p>
+			<p class="source-code">print('Accuracy mean: %0.2f' % (scores.mean()))</p>
+			<p>The accuracy score is as follows:</p>
+			<p class="source-code">Accuracy: [0.72 0.82 0.75 0.8 0.82]</p>
+			<p class="source-code">Accuracy mean: 0.78</p>
+			<p>The score has gone down. What does this mean?</p>
+			<p>It's important not to become too invested in obtaining the highest possible score. In this case, we trained the same <strong class="source-inline">XGBClassifier</strong> model on different folds and obtained different scores. This shows the importance of being consistent with test folds when training models, and why the score is not necessarily the most important thing. Although when choosing between models, obtaining the best possible score is an optimal strategy, the difference in scores here reveals that the model is not necessarily better. In this case, the two models have the same hyperparameters, and the difference in scores is attributed to the different folds.</p>
+			<p>The point here is to use the same folds to obtain new scores when fine-tuning hyperparameters with <strong class="source-inline">GridSearchCV</strong> and <strong class="source-inline">RandomizedSearchCV</strong> so that the comparison of scores is fair.</p>
+			<h2 id="_idParaDest-135"><a id="_idTextAnchor143"/>Combining GridSearchCV and RandomizedSearchCV</h2>
+			<p><strong class="source-inline">GridSearchCV</strong> searches <a id="_idIndexMarker364"/>all possible <a id="_idIndexMarker365"/>combinations in a hyperparameter grid to find the best results. <strong class="source-inline">RandomizedSearchCV</strong> selects 10 random hyperparameter combinations by default. <strong class="source-inline">RandomizedSearchCV</strong> is typically used when <strong class="source-inline">GridSearchCV</strong> becomes unwieldy because there are too many hyperparameter combinations to exhaustively check each one.</p>
+			<p>Instead of writing two separate functions for <strong class="source-inline">GridSearchCV</strong> and <strong class="source-inline">RandomizedSearchCV</strong>, we will combine them into one streamlined function with the following steps:</p>
+			<ol>
+				<li value="1"><p>Import <strong class="source-inline">GridSearchCV</strong> and <strong class="source-inline">RandomizedSearchCV</strong> from <strong class="source-inline">sklearn.model_selection</strong>:</p><p class="source-code">from sklearn.model_selection import GridSearchCV, RandomizedSearchCV</p></li>
+				<li><p>Define a <strong class="source-inline">grid_search</strong> function with the <strong class="source-inline">params</strong> dictionary as input, along with <strong class="source-inline">random=False</strong>:</p><p class="source-code">def grid_search(params, random=False): </p></li>
+				<li><p>Initialize<a id="_idIndexMarker366"/> an XGBoos<a id="_idIndexMarker367"/>t classifier using the standard defaults:</p><p class="source-code">xgb = XGBClassifier(booster='gbtree', objective='binary:logistic', random_state=2)</p></li>
+				<li><p>If <strong class="source-inline">random=True</strong>, initialize <strong class="source-inline">RandomizedSearchCV</strong> with <strong class="source-inline">xgb</strong> and the <strong class="source-inline">params </strong>dictionary. Set <strong class="source-inline">n_iter=20</strong> to allow 20 random combinations instead of 10. Otherwise, initialize <strong class="source-inline">GridSearchCV</strong> with the same inputs. Make sure to set <strong class="source-inline">cv=kfold</strong> for consistent results:</p><p class="source-code">    if random:</p><p class="source-code">        grid = RandomizedSearchCV(xgb, params, cv=kfold, n_iter=20, n_jobs=-1)</p><p class="source-code">    else:</p><p class="source-code">        grid = GridSearchCV(xgb, params, cv=kfold, n_jobs=-1)</p></li>
+				<li><p>Fit <strong class="source-inline">X</strong> and <strong class="source-inline">y</strong> to the <strong class="source-inline">grid</strong> model:</p><p class="source-code">grid.fit(X, y)</p></li>
+				<li><p>Obtain and print <strong class="source-inline">best_params_</strong>:</p><p class="source-code">best_params = grid.best_params_</p><p class="source-code">print("Best params:", best_params)</p></li>
+				<li><p>Obtain and print <strong class="source-inline">best_score_</strong>:</p><p class="source-code">best_score = grid.best_score_</p><p class="source-code">print("Training score: {:.3f}".format(best_score))</p></li>
+			</ol>
+			<p>The <strong class="source-inline">grid_search</strong> function<a id="_idIndexMarker368"/> can<a id="_idIndexMarker369"/> now be used to fine-tune all hyperparameters.</p>
+			<h1 id="_idParaDest-136"><a id="_idTextAnchor144"/>Tuning XGBoost hyperparameters</h1>
+			<p>There are <a id="_idIndexMarker370"/>many XGBoost hyperparameters, some of which have been introduced in previous chapters. The following table summarizes key XGBoost hyperparameters, most of which we cover in this book.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">The XGBoost hyperparameters presented here are not meant to be exhaustive, but they are meant to be comprehensive. For a complete list of hyperparameters, read the official documentation, <em class="italic">XGBoost Parameters</em>, at <a href="https://xgboost.readthedocs.io/en/latest/parameter.html">https://xgboost.readthedocs.io/en/latest/parameter.html</a>.</p>
+			<p>Following the table, further explanations and examples are provided:</p>
+			<div>
+				<div id="_idContainer129" class="IMG---Figure">
+					<img src="image/B15551_06_02.jpg" alt="Figure 6.2 – XGBoost hyperparameter table"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 6.2 – XGBoost hyperparameter table</p>
+			<p>Now that the key XGBoost hyperparameters have been presented, let's get to know them better by <a id="_idIndexMarker371"/>tuning them one at a time.</p>
+			<h2 id="_idParaDest-137"><a id="_idTextAnchor145"/>Applying XGBoost hyperparameters</h2>
+			<p>The XGBoost <a id="_idIndexMarker372"/>hyperparameters presented in this section are frequently fine-tuned by machine learning practitioners. After a brief explanation of each hyperparameter, we will test standard variations using the <strong class="source-inline">grid_search</strong> function defined in the previous section.</p>
+			<h2 id="_idParaDest-138"><a id="_idTextAnchor146"/>n_estimators</h2>
+			<p>Recall <a id="_idIndexMarker373"/>that <strong class="source-inline">n_estimators</strong> provides the number of trees<a id="_idIndexMarker374"/> in the ensemble. In the case of XGBoost, <strong class="source-inline">n_estimators</strong> is the number of trees trained on the residuals.</p>
+			<p>Initialize a grid search of <strong class="source-inline">n_estimators</strong> with the default of <strong class="source-inline">100</strong>, then double the number of trees through <strong class="source-inline">800</strong> as follows:</p>
+			<p class="source-code">grid_search(params={'n_estimators':[100, 200, 400, 800]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'n_estimators': 100}</p>
+			<p class="source-code">Best score: 0.78235</p>
+			<p>Since our dataset is small, increasing <strong class="source-inline">n_estimators</strong> did not produce better results. One strategy for finding an ideal value of <strong class="source-inline">n_estimators</strong> is discussed in the <em class="italic">Applying early stopping</em> section in this chapter. </p>
+			<h2 id="_idParaDest-139"><a id="_idTextAnchor147"/>learning_rate</h2>
+			<p><strong class="source-inline">learning_rate</strong> shrinks<a id="_idIndexMarker375"/> the weights of trees for each <a id="_idIndexMarker376"/>round of boosting. By lowering <strong class="source-inline">learning_rate</strong>, more trees are required to produce better scores. Lowering <strong class="source-inline">learning_rate</strong> prevents overfitting because the size of the weights carried forward is smaller.</p>
+			<p>A default value of <strong class="source-inline">0.3</strong> is used, though previous versions of scikit-learn have used <strong class="source-inline">0.1</strong>. Here is a starting range for <strong class="source-inline">learning_rate</strong> as placed inside our <strong class="source-inline">grid_search</strong> function:</p>
+			<p class="source-code">grid_search(params={'learning_rate':[0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'learning_rate': 0.05}</p>
+			<p class="source-code">Best score: 0.79585</p>
+			<p>Changing the<a id="_idIndexMarker377"/> learning rate has resulted in a slight increase. As<a id="_idIndexMarker378"/> described in <a href="B15551_04_Final_NM_ePUB.xhtml#_idTextAnchor093"><em class="italic">Chapter 4</em></a>,<em class="italic"> From Gradient Boosting to XGBoost</em>, lowering <strong class="source-inline">learning_rate</strong> may be advantageous when <strong class="source-inline">n_estimators</strong> goes up.</p>
+			<h2 id="_idParaDest-140"><a id="_idTextAnchor148"/>max_depth</h2>
+			<p><strong class="source-inline">max_depth</strong> determines <a id="_idIndexMarker379"/>the length of the tree, equivalent <a id="_idIndexMarker380"/>to the number of rounds of splitting. Limiting <strong class="source-inline">max_depth</strong> prevents overfitting because the individual trees can only grow as far as <strong class="source-inline">max_depth</strong> allows. XGBoost provides a default <strong class="source-inline">max_depth</strong> value of six:</p>
+			<p class="source-code">grid_search(params={'max_depth':[2, 3, 5, 6, 8]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'max_depth': 2}</p>
+			<p class="source-code">Best score: 0.79902</p>
+			<p>Changing <strong class="source-inline">max_depth</strong> from <strong class="source-inline">6</strong> to <strong class="source-inline">2</strong> gave a better score. The lower value for <strong class="source-inline">max_depth</strong> means variance has been reduced.</p>
+			<h2 id="_idParaDest-141"><a id="_idTextAnchor149"/>gamma</h2>
+			<p>Known <a id="_idIndexMarker381"/>as a <strong class="bold">Lagrange multiplier</strong>, <strong class="source-inline">gamma</strong> provides <a id="_idIndexMarker382"/>a threshold<a id="_idIndexMarker383"/> that nodes must surpass before making further splits according to the loss function. There is no upper limit to the value of <strong class="source-inline">gamma</strong>. The default is <strong class="source-inline">0</strong>, and anything over <strong class="source-inline">10</strong> is considered very high. Increasing <strong class="source-inline">gamma</strong> results in a more conservative model:</p>
+			<p class="source-code">grid_search(params={'gamma':[0, 0.1, 0.5, 1, 2, 5]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'gamma': 0.5}</p>
+			<p class="source-code">Best score: 0.79574</p>
+			<p>Changing <strong class="source-inline">gamma</strong> from <strong class="source-inline">0</strong> to <strong class="source-inline">0.5</strong> has <a id="_idIndexMarker384"/>resulted in a slight <a id="_idIndexMarker385"/>improvement. </p>
+			<h2 id="_idParaDest-142"><a id="_idTextAnchor150"/>min_child_weight</h2>
+			<p><strong class="source-inline">min_child_weight</strong> refers <a id="_idIndexMarker386"/>to the minimum <a id="_idIndexMarker387"/>sum of weights required for a node to split into a child. If the sum of the weights is less than the value of <strong class="source-inline">min_child_weight</strong>, no further splits are made. <strong class="source-inline">min_child_weight</strong> reduces overfitting by increasing its value:</p>
+			<p class="source-code">grid_search(params={'min_child_weight':[1, 2, 3, 4, 5]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'min_child_weight': 5}</p>
+			<p class="source-code">Best score: 0.81219</p>
+			<p>A slight adjustment to <strong class="source-inline">min_child_weight</strong> gives the best results yet.</p>
+			<h2 id="_idParaDest-143"><a id="_idTextAnchor151"/>subsample</h2>
+			<p>The <strong class="source-inline">subsample</strong> hyperparameter <a id="_idIndexMarker388"/>limits the percentage of <a id="_idIndexMarker389"/>training instances (rows) for each boosting round. Decreasing <strong class="source-inline">subsample</strong> from 100% reduces overfitting:</p>
+			<p class="source-code">grid_search(params={'subsample':[0.5, 0.7, 0.8, 0.9, 1]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'subsample': 0.8}</p>
+			<p class="source-code">Best score: 0.79579</p>
+			<p>The score has improved by a slight amount once again, indicating a small presence of overfitting.</p>
+			<h2 id="_idParaDest-144"><a id="_idTextAnchor152"/>colsample_bytree</h2>
+			<p>Similar<a id="_idIndexMarker390"/> to <strong class="source-inline">subsample</strong>, <strong class="source-inline">colsample_bytree</strong> randomly <a id="_idIndexMarker391"/>selects particular columns according to the given percentage. <strong class="source-inline">colsample_bytree</strong> is useful for limiting the influence of columns and reducing variance. Note that <strong class="source-inline">colsample_bytree</strong> takes a percentage as input, not the number of columns:</p>
+			<p class="source-code">grid_search(params={'colsample_bytree':[0.5, 0.7, 0.8, 0.9, 1]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'colsample_bytree': 0.7}</p>
+			<p class="source-code">Best score: 0.79902</p>
+			<p>Gains here are minimal at best. You are encouraged to try <strong class="source-inline">colsample_bylevel</strong> and <strong class="source-inline">colsample_bynode</strong> on your own. <strong class="source-inline">colsample_bylevel</strong> randomly selects columns for each tree depth, and <strong class="source-inline">colsample_bynode</strong> randomly selects columns when evaluating each tree split.</p>
+			<p>Fine-tuning hyperparameters is an art and a science. As with both disciplines, varied approaches work. Next, we will look into early stopping as a specific strategy for fine-tuning <strong class="source-inline">n_estimators</strong>.</p>
+			<h1 id="_idParaDest-145"><a id="_idTextAnchor153"/>Applying early stopping</h1>
+			<p>Early stopping is a <a id="_idIndexMarker392"/>general method to limit the number of training rounds in iterative machine learning algorithms. In this section, we look at <strong class="source-inline">eval_set</strong>, <strong class="source-inline">eval_metric</strong>, and <strong class="source-inline">early_stopping_rounds</strong> to apply early stopping.</p>
+			<h2 id="_idParaDest-146"><a id="_idTextAnchor154"/>What is early stopping?</h2>
+			<p>Early stopping provides <a id="_idIndexMarker393"/>a limit to the number of rounds that iterative machine learning algorithms train on. Instead of predefining the number of training rounds, early stopping allows training to continue until <em class="italic">n</em> consecutive rounds fail to produce any gains, where <em class="italic">n</em> is a number decided by the user.</p>
+			<p>It doesn't make sense to only choose multiples of 100 when looking for <strong class="source-inline">n_estimators</strong>. It's possible that the best value is 737 instead of 700. Finding a value this precise manually can be tiring, especially when hyperparameter adjustments may require changes down the road.</p>
+			<p>With XGBoost, a score may be determined after each boosting round. Although scores go up and down, eventually scores will level off or move in the wrong direction.</p>
+			<p>A peak score is reached when all subsequent scores fail to provide any gains. You determine the peak after 10, 20, or 100 training rounds fail to improve upon the score. You choose the number of rounds.</p>
+			<p>In early stopping, it's important to give the model sufficient time to fail. If the model stops too early, say, after five rounds of no improvement, the model may miss general patterns that it could <a id="_idIndexMarker394"/>pick up on later. As with deep learning, where early stopping is used frequently, gradient boosting needs sufficient time to find intricate patterns within data.</p>
+			<p>For XGBoost, <strong class="source-inline">early_stopping_rounds</strong> is the key parameter for applying early stopping. If <strong class="source-inline">early_stopping_rounds=10</strong>, the model will stop training after 10 consecutive training rounds fail to improve the model. Similarly, if <strong class="source-inline">early_stopping_rounds=100</strong>, training continues until 100 consecutive rounds fail to improve the model.</p>
+			<p>Now that you understand what early stopping is, let's take a look at <strong class="source-inline">eval_set</strong> and <strong class="source-inline">eval_metric</strong>.</p>
+			<h2 id="_idParaDest-147"><a id="_idTextAnchor155"/>eval_set and eval_metric</h2>
+			<p><strong class="source-inline">early_stopping_rounds</strong> is <a id="_idIndexMarker395"/>not a hyperparameter, but <a id="_idIndexMarker396"/>a strategy for optimizing the <strong class="source-inline">n_estimators</strong> hyperparameter.</p>
+			<p>Normally when choosing hyperparameters, a test score is given after all boosting rounds are complete. To use early stopping, we need a test score after each round.</p>
+			<p><strong class="source-inline">eval_metric</strong> and <strong class="source-inline">eval_set</strong> may be used as parameters for <strong class="source-inline">.fit</strong> to generate test scores for each training round. <strong class="source-inline">eval_metric</strong> provides the scoring method, commonly <strong class="source-inline">'error'</strong> for classification, and <strong class="source-inline">'rmse'</strong> for regression. <strong class="source-inline">eval_set</strong> provides the test to be evaluated, commonly <strong class="source-inline">X_test</strong> and <strong class="source-inline">y_test</strong>.</p>
+			<p>The following six steps display an evaluation metric for each round of training with the default <strong class="source-inline">n_estimators=100</strong>:</p>
+			<ol>
+				<li value="1"><p>Split the data into training and test sets:</p><p class="source-code">from sklearn.model_selection import train_test_split</p><p class="source-code">X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=2)</p></li>
+				<li><p>Initialize the model:</p><p class="source-code">model = XGBClassifier(booster='gbtree', objective='binary:logistic', random_state=2)</p></li>
+				<li><p>Declare <strong class="source-inline">eval_set</strong>:</p><p class="source-code">eval_set = [(X_test, y_test)]</p></li>
+				<li><p>Declare <strong class="source-inline">eval_metric</strong>:</p><p class="source-code">eval_metric = 'error'</p></li>
+				<li><p>Fit the <a id="_idIndexMarker397"/>model <a id="_idIndexMarker398"/>with <strong class="source-inline">eval_metric</strong> and <strong class="source-inline">eval_set</strong>:</p><p class="source-code">model.fit(X_train, y_train, eval_metric=eval_metric, eval_set=eval_set)</p></li>
+				<li><p>Check the final score:</p><p class="source-code">y_pred = model.predict(X_test)</p><p class="source-code">accuracy = accuracy_score(y_test, y_pred)</p><p class="source-code">print("Accuracy: %.2f%%" % (accuracy * 100.0))</p><p>Here is the truncated output:</p><p class="source-code">[0]	validation_0-error:0.15790</p><p class="source-code">[1]	validation_0-error:0.10526</p><p class="source-code">[2]	validation_0-error:0.11842</p><p class="source-code">[3]	validation_0-error:0.13158</p><p class="source-code">[4]	validation_0-error:0.11842</p><p class="source-code">…</p><p class="source-code">[96]	validation_0-error:0.17105</p><p class="source-code">[97]	validation_0-error:0.17105</p><p class="source-code">[98]	validation_0-error:0.17105</p><p class="source-code">[99]	validation_0-error:0.17105</p><p class="source-code"><strong class="bold">Accuracy: 82.89%</strong></p></li>
+			</ol>
+			<p>Do not get too excited <a id="_idIndexMarker399"/>about the score as we have not used cross-validation. In fact, we know<a id="_idIndexMarker400"/> that <strong class="source-inline">StratifiedKFold</strong> cross-validation gives a mean accuracy of 78% when <strong class="source-inline">n_estimators=100</strong>. The disparity in scores comes from the difference in test sets. </p>
+			<h2 id="_idParaDest-148"><a id="_idTextAnchor156"/>early_stopping_rounds</h2>
+			<p><strong class="source-inline">early_stopping_rounds</strong> is an<a id="_idIndexMarker401"/> optional parameter<a id="_idIndexMarker402"/> to include with <strong class="source-inline">eval_metric</strong> and <strong class="source-inline">eval_set</strong> when fitting a model.</p>
+			<p>Let's try <strong class="source-inline">early_stopping_rounds=10</strong>.</p>
+			<p>The previous code is repeated with <strong class="source-inline">early_stopping_rounds=10</strong> added in:</p>
+			<p class="source-code">model = XGBClassifier(booster='gbtree', objective='binary:logistic', random_state=2)</p>
+			<p class="source-code">eval_set = [(X_test, y_test)]</p>
+			<p class="source-code">eval_metric='error'</p>
+			<p class="source-code">model.fit(X_train, y_train, eval_metric="error", eval_set=eval_set, early_stopping_rounds=10, verbose=True)</p>
+			<p class="source-code">y_pred = model.predict(X_test)</p>
+			<p class="source-code">accuracy = accuracy_score(y_test, y_pred)</p>
+			<p class="source-code">print("Accuracy: %.2f%%" % (accuracy * 100.0))</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">[0]	validation_0-error:0.15790</p>
+			<p class="source-code">Will train until validation_0-error hasn't improved in 10 rounds.</p>
+			<p class="source-code">[1]	validation_0-error:0.10526</p>
+			<p class="source-code">[2]	validation_0-error:0.11842</p>
+			<p class="source-code">[3]	validation_0-error:0.13158</p>
+			<p class="source-code">[4]	validation_0-error:0.11842</p>
+			<p class="source-code">[5]	validation_0-error:0.14474</p>
+			<p class="source-code">[6]	validation_0-error:0.14474</p>
+			<p class="source-code">[7]	validation_0-error:0.14474</p>
+			<p class="source-code">[8]	validation_0-error:0.14474</p>
+			<p class="source-code">[9]	validation_0-error:0.14474</p>
+			<p class="source-code">[10]	validation_0-error:0.14474</p>
+			<p class="source-code">[11]	validation_0-error:0.15790</p>
+			<p class="source-code">Stopping. Best iteration:</p>
+			<p class="source-code">[1]	validation_0-error:0.10526</p>
+			<p class="source-code"><strong class="bold">Accuracy: 89.47%</strong></p>
+			<p>The result may<a id="_idIndexMarker403"/> come as a surprise. Early stopping<a id="_idIndexMarker404"/> reveals that <strong class="source-inline">n_estimators=2</strong> gives the best result, which may be an account of the test fold.</p>
+			<p>Why only two trees? By only giving the model 10 rounds to improve upon accuracy, it's possible that patterns within the data have not yet been discovered. However, the dataset is very small, so it's possible that two boosting rounds gives the best possible result.</p>
+			<p>A more thorough approach is to use larger values, say, <strong class="source-inline">n_estimators = 5000</strong> and <strong class="source-inline">early_stopping_rounds=100</strong>.</p>
+			<p>By setting <strong class="source-inline">early_stopping_rounds=100</strong>, you are guaranteed to reach the default of <strong class="source-inline">100</strong> boosted trees presented by XGBoost.</p>
+			<p>Here is the code that gives a maximum of 5,000 trees and that will stop after 100 consecutive rounds fail to find any improvement:</p>
+			<p class="source-code">model = XGBClassifier(random_state=2, n_estimators=5000)</p>
+			<p class="source-code">eval_set = [(X_test, y_test)]</p>
+			<p class="source-code">eval_metric="error"</p>
+			<p class="source-code">model.fit(X_train, y_train, eval_metric=eval_metric, eval_set=eval_set, early_stopping_rounds=100)</p>
+			<p class="source-code">y_pred = model.predict(X_test)</p>
+			<p class="source-code">accuracy = accuracy_score(y_test, y_pred)</p>
+			<p class="source-code">print("Accuracy: %.2f%%" % (accuracy * 100.0))</p>
+			<p>Here is <a id="_idIndexMarker405"/>the <a id="_idIndexMarker406"/>truncated output:</p>
+			<p class="source-code">[0]	validation_0-error:0.15790</p>
+			<p class="source-code">Will train until validation_0-error hasn't improved in 100 rounds.</p>
+			<p class="source-code">[1]	validation_0-error:0.10526</p>
+			<p class="source-code">[2]	validation_0-error:0.11842</p>
+			<p class="source-code">[3]	validation_0-error:0.13158</p>
+			<p class="source-code">[4]	validation_0-error:0.11842</p>
+			<p class="source-code">...</p>
+			<p class="source-code">[98]	validation_0-error:0.17105</p>
+			<p class="source-code">[99]	validation_0-error:0.17105</p>
+			<p class="source-code">[100]	validation_0-error:0.17105</p>
+			<p class="source-code">[101]	validation_0-error:0.17105</p>
+			<p class="source-code">Stopping. Best iteration:</p>
+			<p class="source-code">[1]	validation_0-error:0.10526</p>
+			<p class="source-code"><strong class="bold">Accuracy: 89.47%</strong></p>
+			<p>After 100 rounds of boosting, the score provided by two trees remains the best.</p>
+			<p>As a final note, consider <a id="_idIndexMarker407"/>that early stopping is particularly useful for large datasets when it's unclear<a id="_idIndexMarker408"/> how high you should aim.</p>
+			<p>Now, let's use the results from early stopping with all the hyperparameters previously tuned to generate the best possible model.</p>
+			<h1 id="_idParaDest-149"><a id="_idTextAnchor157"/>Combining hyperparameters</h1>
+			<p>It's time to<a id="_idIndexMarker409"/> combine all the components of this chapter to improve upon the 78% score obtained through cross-validation. </p>
+			<p>As you know, there is no one-size-fits-all approach to hyperparameter fine-tuning. One approach is to input all hyperparameter ranges with <strong class="source-inline">RandomizedSearchCV</strong>. A more systematic approach is to tackle hyperparameters one at a time, using the best results for subsequent iterations. All approaches have advantages and limitations. Regardless of strategy, it's essential to try multiple variations and make adjustments when the data comes in.</p>
+			<h2 id="_idParaDest-150"><a id="_idTextAnchor158"/>One hyperparameter at a time</h2>
+			<p>Using a systematic approach, we add one hyperparameter at a time, aggregating results along the way.</p>
+			<h3>n_estimators</h3>
+			<p>Even though<a id="_idIndexMarker410"/> the <strong class="source-inline">n_estimators</strong> value of <strong class="source-inline">2</strong> gave the best<a id="_idIndexMarker411"/> result, it's worth trying a range on the <strong class="source-inline">grid_search</strong> function, which uses cross-validation:</p>
+			<p class="source-code">grid_search(params={'n_estimators':[2, 25, 50, 75, 100]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'n_estimators': 50}</p>
+			<p class="source-code">Best score: 0.78907</p>
+			<p>It's no surprise that <strong class="source-inline">n_estimators=50</strong>, between the previous best value of 2, and the default of 100, gives the best result. Since cross-validation was not used in early stopping, the<a id="_idIndexMarker412"/> results<a id="_idIndexMarker413"/> here are different.</p>
+			<h3>max_depth</h3>
+			<p>The <strong class="source-inline">max_depth</strong> hyperparameter <a id="_idIndexMarker414"/>determines the length of<a id="_idIndexMarker415"/> each tree. Here is a nice range:</p>
+			<p class="source-code">grid_search(params={'max_depth':[1, 2, 3, 4, 5, 6, 7, 8], 'n_estimators':[50]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'max_depth': 1, 'n_estimators': 50}</p>
+			<p class="source-code">Best score: 0.83869</p>
+			<p>This is a very substanial<a id="_idIndexMarker416"/> gain. A tree with a depth of 1 is called a <strong class="bold">decision tree stump</strong>. We have gained four percentage points from our baseline model by adjusting just two hyperparameters.</p>
+			<p>A limitation with the approach of keeping the top values is that we may miss out on better combinations. Perhaps <strong class="source-inline">n_estimators=2</strong> or <strong class="source-inline">n_esimtators=100</strong> gives better results in conjunction with <strong class="source-inline">max_depth</strong>. Let's find out:</p>
+			<p class="source-code">grid_search(params={'max_depth':[1, 2, 3, 4, 6, 7, 8], 'n_estimators':[2, 50, 100]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'max_depth': 1, 'n_estimators': 50}</p>
+			<p class="source-code">Best score: 0.83869</p>
+			<p><strong class="source-inline">n_estimators=50</strong> and <strong class="source-inline">max_depth=1</strong> still give the best results, so we will use them going forward, returning to our early stopping analysis later.</p>
+			<h3>learning_rate</h3>
+			<p>Since <strong class="source-inline">n_esimtators</strong> is<a id="_idIndexMarker417"/> reasonably low, adjusting<a id="_idIndexMarker418"/> <strong class="source-inline">learning_rate</strong> may improve results. Here is a standard range:</p>
+			<p class="source-code">grid_search(params={'learning_rate':[0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5], 'max_depth':[1], 'n_estimators':[50]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'learning_rate': 0.3, 'max_depth': 1, 'n_estimators': 50}</p>
+			<p class="source-code">Best score: 0.83869</p>
+			<p>This is the same score as previously obtained. Note that a <strong class="source-inline">learning_rate</strong> value of 0.3 is the default value provided by XGBoost.</p>
+			<h3>min_child_weight</h3>
+			<p>Let's see <a id="_idIndexMarker419"/>whether adjusting the sum of weights required<a id="_idIndexMarker420"/> to split into child nodes increases the score:</p>
+			<p class="source-code">grid_search(params={'min_child_weight':[1, 2, 3, 4, 5], 'max_depth':[1], 'n_estimators':[50]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'max_depth': 1, 'min_child_weight': 1, 'n_estimators': 50}</p>
+			<p class="source-code">Best score: 0.83869</p>
+			<p>In this case, the best score is the same. Note that 1 is the default for <strong class="source-inline">min_child_weight</strong>.</p>
+			<h3>subsample</h3>
+			<p>If reducing <a id="_idIndexMarker421"/>variance is beneficial, <strong class="source-inline">subsample</strong> may work by limiting<a id="_idIndexMarker422"/> the percentage of samples. In this case, however, there are only 303 samples to begin with, and a small number of samples makes it difficult to adjust hyperparameters to improve scores. Here is the code:</p>
+			<p class="source-code">grid_search(params={'subsample':[0.5, 0.6, 0.7, 0.8, 0.9, 1], 'max_depth':[1], 'n_estimators':[50]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'max_depth': 1, 'n_estimators': 50, 'subsample': 1}</p>
+			<p class="source-code">Best score: 0.83869</p>
+			<p>Still no gains. At this point, you may be wondering whether new gains would have continued with <strong class="source-inline">n_esimtators=2</strong>. </p>
+			<p>Let's find out <a id="_idIndexMarker423"/>by using a comprehensive grid search of the values used<a id="_idIndexMarker424"/> thus far.</p>
+			<p class="source-code">grid_search(params={'subsample':[0.5, 0.6, 0.7, 0.8, 0.9, 1], </p>
+			<p class="source-code">                    'min_child_weight':[1, 2, 3, 4, 5], </p>
+			<p class="source-code">                    'learning_rate':[0.1, 0.2, 0.3, 0.4, 0.5], </p>
+			<p class="source-code">                    'max_depth':[1, 2, 3, 4, 5],</p>
+			<p class="source-code">                    'n_estimators':[2]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'learning_rate': 0.5, 'max_depth': 2, 'min_child_weight': 4, 'n_estimators': 2, 'subsample': 0.9}</p>
+			<p class="source-code">Best score: 0.81224</p>
+			<p>It's not surprising that a classifier with only two trees performs worse. Even though the initial scores were better, it does not go through enough iterations for the hyperparameters to make significant adjustments.</p>
+			<h2 id="_idParaDest-151"><a id="_idTextAnchor159"/>Hyperparameter adjustments</h2>
+			<p>When shifting<a id="_idIndexMarker425"/> directions with hyperparameters, <strong class="source-inline">RandomizedSearchCV</strong> is useful due to the extensive range of inputs.</p>
+			<p>Here is a range of hyperparameter values combining new inputs with previous knowledge. Limiting ranges with <strong class="source-inline">RandomizedSearchCV</strong> increases the odds of finding the best combination. Recall that <strong class="source-inline">RandomizedSearchCV</strong> is useful when the total number of combinations is too time-consuming for a grid search. There are 4,500 possible combinations with the following options:</p>
+			<p class="source-code">grid_search(params={'subsample':[0.5, 0.6, 0.7, 0.8, 0.9, 1], </p>
+			<p class="source-code">                    'min_child_weight':[1, 2, 3, 4, 5], </p>
+			<p class="source-code">                    'learning_rate':[0.1, 0.2, 0.3, 0.4, 0.5], </p>
+			<p class="source-code">                    'max_depth':[1, 2, 3, 4, 5, None], </p>
+			<p class="source-code">                    'n_estimators':[2, 25, 50, 75, 100]},</p>
+			<p class="source-code">                    random=True)</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'subsample': 0.6, 'n_estimators': 25, 'min_child_weight': 4, 'max_depth': 4, 'learning_rate': 0.5}</p>
+			<p class="source-code">Best score: 0.82208</p>
+			<p>This is interesting. Different values are obtaining good results.</p>
+			<p>We use the hyperparameters from the best score going forward. </p>
+			<h3>Colsample</h3>
+			<p>Now, let's<a id="_idIndexMarker426"/> try <strong class="source-inline">colsample_bytree</strong>, <strong class="source-inline">colsample_bylevel</strong>, and <strong class="source-inline">colsample_bynode</strong>, in that order.</p>
+			<h4>colsample_bytree</h4>
+			<p>Let's start <a id="_idIndexMarker427"/>with <strong class="source-inline">colsample_bytree</strong>:</p>
+			<p class="source-code">grid_search(params={'colsample_bytree':[0.5, 0.6, 0.7, 0.8, 0.9, 1], 'max_depth':[1], 'n_estimators':[50]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'colsample_bytree': 1, 'max_depth': 1, 'n_estimators': 50}</p>
+			<p class="source-code">Best score: 0.83869</p>
+			<p>The score has not improved. Next, try <strong class="source-inline">colsample_bylevel</strong>.</p>
+			<h4>colsample_bylevel</h4>
+			<p>Use the following <a id="_idIndexMarker428"/>code to try out <strong class="source-inline">colsample_bylevel</strong>:</p>
+			<p class="source-code">grid_search(params={'colsample_bylevel':[0.5, 0.6, 0.7, 0.8, 0.9, 1],'max_depth':[1], 'n_estimators':[50]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'colsample_bylevel': 1, 'max_depth': 1, 'n_estimators': 50}</p>
+			<p class="source-code">Best score: 0.83869</p>
+			<p>Still no gain.</p>
+			<p>It seems that we are peaking out with the shallow dataset. Let's try a different approach. Instead of using <strong class="source-inline">colsample_bynode</strong> alone, let's tune all colsamples together.</p>
+			<h4>colsample_bynode</h4>
+			<p>Try the <a id="_idIndexMarker429"/>following code:</p>
+			<p class="source-code">grid_search(params={'colsample_bynode':[0.5, 0.6, 0.7, 0.8, 0.9, 1], 'colsample_bylevel':[0.5, 0.6, 0.7, 0.8, 0.9, 1], 'colsample_bytree':[0.5, 0.6, 0.7, 0.8, 0.9, 1], 'max_depth':[1], 'n_estimators':[50]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'colsample_bylevel': 0.9, 'colsample_bynode': 0.5, 'colsample_bytree': 0.8, 'max_depth': 1, 'n_estimators': 50}</p>
+			<p class="source-code">Best score: 0.84852</p>
+			<p>Outstanding. Working<a id="_idIndexMarker430"/> together, the colsamples have combined to deliver the highest score yet, 5 percentage points higher than the original.</p>
+			<h3>gamma</h3>
+			<p>The last hyperparameter<a id="_idIndexMarker431"/> that we will attempt to fine-tune is <strong class="source-inline">gamma</strong>. Here is <a id="_idIndexMarker432"/>a range of <strong class="source-inline">gamma</strong> values designed to reduce overfitting:</p>
+			<p class="source-code">grid_search(params={'gamma':[0, 0.01, 0.05, 0.1, 0.5, 1, 2, 3], 'colsample_bylevel':[0.9], 'colsample_bytree':[0.8], 'colsample_bynode':[0.5], 'max_depth':[1], 'n_estimators':[50]})</p>
+			<p>The output is as follows:</p>
+			<p class="source-code">Best params: {'colsample_bylevel': 0.9, 'colsample_bynode': 0.5, 'colsample_bytree': 0.8, 'gamma': 0, 'max_depth': 1, 'n_estimators': 50}</p>
+			<p class="source-code">Best score: 0.84852</p>
+			<p><strong class="source-inline">gamma</strong> remains at the default value of <strong class="source-inline">0</strong>.</p>
+			<p>Since our best score is over five percentage points higher than the original, no small feat with XGBoost, we will stop here.</p>
+			<h1 id="_idParaDest-152"><a id="_idTextAnchor160"/>Summary</h1>
+			<p>In this chapter, you prepared for hyperparameter fine-tuning by establishing a baseline XGBoost model using <strong class="source-inline">StratifiedKFold</strong>. Then, you combined <strong class="source-inline">GridSearchCV</strong> and <strong class="source-inline">RandomizedSearchCV</strong> to form one powerful function. You learned the standard definitions, ranges, and applications of key XGBoost hyperparameters, in addition to a new technique called early stopping. You synthesized all functions, hyperparameters, and techniques to fine-tune the heart disease dataset, gaining an impressive five percentage points from the default XGBoost classifier.</p>
+			<p>XGBoost hyperparameter fine-tuning takes time to master, and you are well on your way. Fine-tuning hyperparameters is a key skill that separates machine learning experts from machine learning novices. Knowledge of XGBoost hyperparameters is not just useful, it's essential to get the most out of the machine learning models that you build.</p>
+			<p>Congratulations on completing this important chapter.</p>
+			<p>Next, we present a case study of XGBoost regression from beginning to end, highlighting the power, range, and applications of <strong class="source-inline">XGBClassifier</strong>.</p>
+		</div>
+	</body></html>

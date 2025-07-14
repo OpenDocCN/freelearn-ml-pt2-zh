@@ -1,0 +1,520 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Recommending Movies with Keras</h1>
+                </header>
+            
+            <article>
+                
+<p class="NormalPACKT">Recommendation systems are an invaluable tool. They are able to increase both customer experience and a company's profitability. Such systems work by recommending items that users will probably like, based on other items they have already liked. For example, when shopping for a smartphone on Amazon, accessories for that specific smartphone will be recommended. This improves the customer's experience (as they do not need to search for accessories), while it also increases Amazon's profits (for example, if the user did not know that there are accessories <span>available </span>for sale).</p>
+<p>In this chapter, we will cover the following topics:</p>
+<ul>
+<li>Demystifying recommendation systems</li>
+<li>Neural recommendation systems</li>
+<li>Using Keras for movie recommendations</li>
+</ul>
+<p class="NormalPACKT">In this chapter, we will utilize the MovieLens dataset (available at <a href="http://files.grouplens.org/datasets/movielens/ml-latest-small.zip">http://files.grouplens.org/datasets/movielens/ml-latest-small.zip</a>) in order to create a movie recommendation system using the<span> </span><span>Keras </span>deep learning framework and ensemble learning techniques. </p>
+<div class="packt_infobox">We would like to thank the GroupLens members for giving us permission to use their data in this book. For more information about the data, please read the following relevant paper:<br/>
+<br/>
+<span>F. Maxwell Harper and Joseph A. Konstan. 2015. <em>The MovieLens Datasets: History and Context</em>. ACM Transactions on Interactive Intelligent Systems (TiiS) 5, 4, Article 19 (December 2015), 19 pages. <br/>
+<br/></span> <a href="http://dx.doi.org/10.1145/2827872">The paper is available at: http://dx.doi.org/10.1145/2827872</a></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>You will require basic knowledge of machine learning techniques and algorithms. Furthermore, a knowledge of python conventions and syntax is required. Finally, familiarity with the NumPy library will greatly help the reader to understand some custom algorithm implementations.</p>
+<p>The code files of this chapter can be found on GitHub:</p>
+<p><a href="https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter12">https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter12</a></p>
+<p>Check out the following video to see the Code in Action: <a href="http://bit.ly/2NXZqVE">http://bit.ly/2NXZqVE</a>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Demystifying recommendation systems</h1>
+                </header>
+            
+            <article>
+                
+<p>Although the inner workings of <span>recommendation</span> systems may seem intimidating at first, they are actually quite intuitive. Let's take an example of various movies and users. Each user has the option to rate a movie on a scale of 1 to 5. The <span>recommendation</span> system will try to find users with similar preferences to a new user, and will then recommend movies that the new user will probably like, as similar users also like them. Let's take the following simple example, consisting of four users and six movies:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>User</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Interstellar</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>2001: A Space Odyssey</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>The Matrix</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Full Metal Jacket</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Jarhead</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Top Gun</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>U0</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>5</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>4</p>
+</td>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>2</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign"/>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>U1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>4</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>4</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>3</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>U2</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>4</p>
+</td>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>4</p>
+</td>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>1</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>U3</p>
+</td>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>4</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>5</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>5</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>4</p>
+</td>
+<td class="CDPAlignCenter CDPAlign"/>
+</tr>
+</tbody>
+</table>
+<div class="packt_figref CDPAlignCenter CDPAlign"><span>Ratings for each movie from each user</span></div>
+<p>As is evident, each user has rated a number of movies, although not all users watched the same movies and each user liked different movies. If we want to recommend a movie to <strong>user two</strong> (<strong>U2</strong>), we must first find the most similar users. We can then make predictions in a <strong>k-Nearest Neighbor</strong> (<strong>k-NN</strong>) fashion, using the <em>K</em> most similar users. Of course, we can see that the user probably likes sci-fi films, but we need a quantitative method to measure it. If we treat each user's preferences as a vector, we have four vectors of six elements. We can then compute the cosine between any two vectors. If the vectors align<span> perfectly</span>, the cosine will be 1, indicating a perfect equality. If the vectors are completely opposite, it will be -1, indicating a perfect disagreement between the two users' preferences. The only problem that arises is the fact that not all movies have been rated by each user. We can fill empty entries with zeros, in order to compute the cosine similarities. The following graph shows the cosine similarities between the users:</p>
+<div class="CDPAlignCenter CDPAlign packt_figref"><img class="aligncenter size-full wp-image-682 image-border" src="assets/387799cc-8a62-41af-ad61-84416098f610.png" style="width:34.17em;height:30.00em;"/></div>
+<div class="packt_figref CDPAlignCenter CDPAlign">Cosine similarities between users</div>
+<div>
+<p>We notice that users U0 and U3 exhibit a high level of similarity with U2. The problem is that U0 also exhibits high similarity with U1, although their ratings are complete opposites. This is due to the fact that we fill any non-rated movie with 0, meaning all users who have not watched a movie agree that they do not like it. This can be remedied by first subtracting the mean of each user's ratings from their ratings. This normalizes the values and centers them around 0. Following this, we assign 0 to any movie the user has not yet rated. This indicates that the user is indifferent toward this movie and <span>the user's mean rating is not altered</span>. By computing the centered cosine similarity, we get the following values:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-683 image-border" src="assets/814c6255-6afd-4803-a455-f18e7dc4b21e.png" style="width:33.42em;height:29.33em;"/></p>
+</div>
+<div class="packt_figref CDPAlignCenter CDPAlign">Centered cosine similarities between users</div>
+<div>
+<p>We can now see that U2 is similar to U0 and U3, while U1 and U0 are quite dissimilar. In order to compute a prediction about movies that U2 has not seen, but that the nearest <em>K</em> neighbors have seen, we will compute the weighted average for each movie, using the cosine similarities as weights. We only do this for movies that all similar users have rated, but that the target user has not rated yet. This gives us the following predicted ratings. If we were to recommend a single movie to U2, we would recommend <em>2001: A Space Odyssey</em>, a sci-fi film, as we speculated earlier:</p>
+</div>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Interstellar</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>2001: A Space Odyssey</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>The Matrix</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Full Metal Jacket</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Jarhead</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Top Gun</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>-</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>4.00</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>3.32</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>2.32</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="packt_figref CDPAlignCenter CDPAlign"><span>Predicted ratings for user U2</span></div>
+<p>This recommendation method is called <strong>collaborative filtering</strong>. When we search for similar users, as we did in this small example, it is called <strong>user-user filtering</strong>. We can also apply this method to search for similar items by transposing the ratings table. This is called <strong>item-item filtering</strong>, and it usually performs better in real-world applications. This is due to the fact that items usually belong to more well-defined categories, when compared to users. For example, a movie can be an action movie, a thriller, a documentary, or a comedy with little overlap between the genres. A user may like a certain mix of those categories; thus, it is easier to find similar movies, rather than similar users.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Neural recommendation systems</h1>
+                </header>
+            
+            <article>
+                
+<p>Instead of explicitly defining similarity metrics, we can utilize deep learning techniques in order to learn good representations and mappings of the feature space. There are a number of ways to employ neural networks in order to build recommendation systems. In this chapter, we will present two of the simplest ways to do so in order to demonstrate the ability to incorporate ensemble learning into the system. The most important piece that we will utilize in our networks is the embedding layer. These layer types accept an integer index as input and map it to an n-dimensional space. For example, a two-dimensional mapping could map 1 to [0.5, 0.5]. Utilizing these layers, we will be able to feed the user's index and the movie's index <span>to our network, </span>and the network will predict the rating for the specific user-movie combination.</p>
+<p>The first architecture that we will test consists of two embedding layers, where we will multiply their outputs using a dot product, in order to predict the user's rating of the movie. The architecture is depicted in the following diagram. Although it is not a traditional neural network, we will utilize backpropagation in order to train the parameters of the two embedding layers:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-684 image-border" src="assets/813302e0-f9b1-4198-94ec-2dabd06b1515.png" style="width:26.17em;height:22.17em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">Simple dot product architecture</div>
+<div>
+<p>The second architecture is a more traditional neural network. Instead of relying on a predefined operation to combine the outputs of the embedding layers (the dot product), we will allow the network to find the optimal way to combine them. Instead of a dot product, we will feed the output of the embedding layers to a series of fully-connected (<strong>dense</strong>) layers. The architecture is depicted in the following diagram:</p>
+</div>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-685 image-border" src="assets/5598ed5a-7097-49cd-8f2e-b1dfc95f9543.png" style="width:25.92em;height:32.67em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">The fully connected architecture</div>
+<p>In order to train the networks, we will utilize the Adam optimizer, and we will use the <strong>mean squared error</strong> (<strong>MSE</strong>) as a loss function. Our goal will be to predict the ratings of movies <span>for any given user </span>as accurately as possible. As the embedding layers have a predetermined output dimension, we will utilize a number of networks with different dimensions in order to create a stacking ensemble. Each individual network will be a separate base learner, and a relatively simple machine learning algorithm will be utilized in order to combine the individual predictions.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using Keras for movie recommendations</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will utilize Keras as a deep learning framework in order to build our models. Keras can easily be installed by using either <kbd>pip</kbd> (<kbd>pip install keras</kbd>) or <kbd>conda</kbd> (<kbd>conda install -c conda-forge keras</kbd>). In order to build the neural networks, we must first understand our data. The MovieLens dataset consists of almost 100,000 samples and 4 different variables:</p>
+<ul>
+<li><kbd>userId</kbd>: A numeric index corresponding to a specific user</li>
+<li><kbd>movieId</kbd>: A numeric index corresponding to a specific movie</li>
+<li><kbd>rating</kbd>: A value between 0 and 5</li>
+<li><kbd>timestamp</kbd>: The specific time when the user rated the movie</li>
+</ul>
+<p>A sample from the dataset is depicted in the following table. As is evident, the dataset is sorted by the <kbd>userId</kbd> column. This can potentially create overfitting problems in our models. Thus, we will shuffle the data before any split happens. Furthermore, we will not utilize the <kbd>timestamp</kbd> variable in our models, as we do not care about the order in which the movies were rated:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>userId</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>movieId</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>rating</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>timestamp</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>4</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>964982703</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>3</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>4</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>964981247</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>6</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>4</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>964982224</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>47</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>5</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>964983815</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>50</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>5</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>964982931</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span>A sample from the dataset</span></div>
+<p class="CDPAlignLeft CDPAlign">By looking at the distribution of ratings on the following graph, we can see that most movies were rated at 3.5, which is above the middle of the rating scale (2.5). Furthermore, the distribution shows a left tail, indicating that most users are generous with their ratings. Indeed, the first quartile of the ratings spans from 0.5 to 3, while the other 75% of the ratings lie in the 3-5 range. In other words, a user only rates 1 out of 4 movies with a value of less than 3:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-686 image-border" src="assets/c8b2bbe4-1cbb-4474-80e1-e82bd00c6c6c.png" style="width:34.42em;height:25.58em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">Ratings' distribution</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating the dot model</h1>
+                </header>
+            
+            <article>
+                
+<p>Our first model will consist of two embedding layers, one for the movie index and one for the user index, as well as their dot product. We will use the <kbd>keras.layers</kbd> package, which contains the necessary layer implementations, as well as the <kbd>Model</kbd> implementation from the <kbd>keras.models</kbd> package. The layers that we will utilize are as follows:</p>
+<ul>
+<li>The<kbd>Input</kbd> layer, which is responsible for creating Keras tensors from more conventional Python data types</li>
+<li>The <kbd>Embedding</kbd> layer, which is the implementation of embedding layers</li>
+<li>The <kbd>Flatten</kbd> layer, which transforms any Keras n-dimensional tensor to a single dimensional tensor</li>
+<li>The <kbd>Dot</kbd> layer, which implements the dot product</li>
+</ul>
+<p>Furthermore, we will utilize <kbd>train_test_split</kbd> and <kbd>metrics</kbd> from <kbd>sklearn</kbd>:</p>
+<pre>from keras.layers import Input, Embedding, Flatten, Dot, Dense, Concatenate<br/>from keras.models import Model<br/>from sklearn.model_selection import train_test_split<br/>from sklearn import metrics<br/><br/>import numpy as np<br/>import pandas as pd</pre>
+<p>Apart from setting the random seed of <kbd>numpy</kbd>, we define a function that loads and preprocesses our data. We read the data from the <kbd>.csv</kbd> file, drop the timestamp, and shuffle the data by utilizing the <span>shuffle function </span>of <kbd>pandas</kbd>. Furthermore, we create a train/test split of 80%/20%. We then re-map the dataset's indices in order to have consecutive integers as indices:</p>
+<pre>def get_data():<br/>    # Read the data and drop timestamp<br/>    data = pd.read_csv('ratings.csv')<br/>    data.drop('timestamp', axis=1, inplace=True)<br/> <br/>    # Re-map the indices<br/>    users = data.userId.unique()<br/>    movies = data.movieId.unique()<br/>    # Create maps from old to new indices<br/>    moviemap={}<br/>    for i in range(len(movies)):<br/>        moviemap[movies[i]]=i<br/>    usermap={}<br/>    for i in range(len(users)):<br/>        usermap[users[i]]=i<br/> <br/>    # Change the indices<br/>    data.movieId = data.movieId.apply(lambda x: moviemap[x]) <br/>    data.userId = data.userId.apply(lambda x: usermap[x]) <br/> <br/>    # Shuffle the data<br/>    data = data.sample(frac=1.0).reset_index(drop=True)<br/> <br/>    # Create a train/test split<br/>    train, test = train_test_split(data, test_size=0.2)<br/> <br/>    n_users = len(users)<br/>    n_movies = len(movies)<br/><br/>    return train, test, n_users, n_movies<br/>train, test, n_users, n_movies = get_data()</pre>
+<p>In order to create the network, we first define the movie part of the input. We create an <kbd>Input</kbd> layer, which will act as the interface to our <kbd>pandas</kbd> dataset by accepting its data and transforming it into Keras tensors. Following this, the layer's output is fed into the <kbd>Embedding</kbd> layer, in order to map the integer to a five-dimensional space. We define the number of possible indices as <kbd>n_movies</kbd> (first parameter), and the number of features as <kbd>fts</kbd> (second parameter). Finally, we flatten the output. The same process is repeated for the user part:</p>
+<pre>fts = 5<br/><br/># Movie part. Input accepts the index as input<br/># and passes it to the Embedding layer. Finally,<br/># Flatten transforms Embedding's output to a<br/># one-dimensional tensor.<br/>movie_in = Input(shape=[1], name="Movie")<br/>mov_embed = Embedding(n_movies, fts, name="Movie_Embed")(movie_in)<br/>flat_movie = Flatten(name="FlattenM")(mov_embed)<br/><br/># Repeat for the user.<br/>user_in = Input(shape=[1], name="User")<br/>user_inuser_embed = Embedding(n_users, fts, name="User_Embed")(user_in)<br/>flat_user = Flatten(name="FlattenU")(user_inuser_embed)</pre>
+<p>Finally, we define the dot product layer, with the two flattened embeddings as inputs. We then define <kbd>Model</kbd> by specifying the <kbd>user_in</kbd> and <kbd>movie_in</kbd> (<kbd>Input</kbd>) layers as inputs, and the <kbd>prod</kbd> (<kbd>Dot</kbd>) layer as an output. After defining the model, Keras needs to compile it in order to create the computational graph. During compilation, we define the optimizer and loss functions:</p>
+<pre># Calculate the dot-product of the two embeddings<br/>prod = Dot(name="Mult", axes=1)([flat_movie, flat_user])<br/><br/># Create and compile the model<br/>model = Model([user_in, movie_in], prod)<br/>model.compile('adam', 'mean_squared_error')</pre>
+<p>By calling <kbd>model.summary()</kbd>, we can see that the model has around 52,000 trainable parameters. All of these parameters are in the <kbd>Embedding</kbd> layers. This means that the network will only learn how to map the user and movie indices to the five-dimensional space. The function's output is as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-687 image-border" src="assets/6e947f22-661c-49ef-b9bb-98dfbef6a3e4.png" style="width:41.50em;height:22.67em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">The model's summary</div>
+<p>Finally, we fit the model to our train set and evaluate it on the test set. We train the network for ten epochs in order to observe how it behaves, as well as how much time it needs to train itself. The following code depicts the training progress of the network:</p>
+<pre># Train the model on the train set<br/>model.fit([train.userId, train.movieId], train.rating, epochs=10, verbose=1)<br/><br/># Evaluate on the test set<br/>print(metrics.mean_squared_error(test.rating, <br/>      model.predict([test.userId, test.movieId])))</pre>
+<p>Take a look at the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-688 image-border" src="assets/610b0fd4-a499-4dd9-b633-43eb6bd20209.png" style="width:38.75em;height:22.08em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">Training progress of the dot product network</div>
+<div>
+<p>The model is able to achieve an MSE of 1.28 on the test set. In order to improve the model, we could increase the number of features each <kbd>Embedding</kbd> layer is able to learn, but the main limitation is the dot product layer. Instead of increasing the number of features, we will give the model the freedom to choose how to combine the two layers.</p>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating the dense model</h1>
+                </header>
+            
+            <article>
+                
+<p>In order to create the dense model, we will substitute the <kbd>Dot</kbd> layer with a series of <kbd>Dense</kbd> layers. <kbd>Dense</kbd> layers are classic neurons, where each neuron gets, as input, all the outputs from the previous layer. In our case, as we have two <kbd>Embedding</kbd> layers, we must first concatenate them using the <kbd>Concatenate</kbd> layer, and then feed them to the first <kbd>Dense</kbd> layer. These two layers are also included in the <kbd>keras.layers</kbd> package. Thus, our model definition will now look like this:</p>
+<pre><span># Movie part. Input accepts the index as input<br/># and passes it to the Embedding layer. Finally,<br/># Flatten transforms Embedding's output to a<br/># one-dimensional tensor.<br/>movie_in = Input(shape=[1], name="Movie")<br/>mov_embed = Embedding(n_movies, fts, name="Movie_Embed")(movie_in)<br/>flat_movie = Flatten(name="FlattenM")(mov_embed)<br/><br/></span># Repeat for the user.<br/>user_in = Input(shape=[1], name="User")<br/>user_inuser_embed = Embedding(n_users, fts, name="User_Embed")(user_in)<br/>flat_user = Flatten(name="FlattenU")(user_inuser_embed)<br/><br/># Concatenate the Embedding layers and feed them <br/># to the Dense part of the network<br/>concat = Concatenate()([flat_movie, flat_user])<br/>dense_1 = Dense(128)(concat)<br/>dense_2 = Dense(32)(dense_1)<br/>out = Dense(1)(dense_2)<br/><br/># Create and compile the model<br/>model = Model([user_in, movie_in], out)<br/>model.compile('adam', 'mean_squared_error')</pre>
+<p>By adding these three <kbd>Dense</kbd> layers, we have increased the number of trainable parameters from almost 52,000 to almost 57,200 (an increase of 10%). Furthermore, each step now needs almost 210 microseconds, which increased from 144 us (a 45% increase), as is evident from the training progression and summary, as depicted in the following diagrams:</p>
+<p class="mce-root CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-689 image-border" src="assets/6a1c2efe-311b-48ad-9b1b-c8c71eb3c77a.png" style="width:41.08em;height:27.67em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">Summary of the dense model</div>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-690 image-border" src="assets/52afae2e-d3ca-4544-8b37-e560cdcff7c3.png" style="width:43.58em;height:24.83em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">Training progression of the dense model</div>
+<p>Nonetheless, the model now achieves an MSE 0.77 , which is 60% of the original dot-product model. Thus, as this model outperforms the previous model, we will utilize this architecture for our stacking ensemble. Moreover, as each network has a higher degree of freedom, it has a higher probability of diversifying from other base learners.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating a stacking ensemble</h1>
+                </header>
+            
+            <article>
+                
+<p>In order to create our stacking ensemble, we will utilize three dense networks, with embeddings consisting of 5, 10, and 15 features as base learners. We will train all networks on the original train set and utilize them to make predictions on the test set. Furthermore, we will train a Bayesian ridge regression as a meta learner. In order to train the regression, we will use all but the last 1,000 samples of the test set. Finally, we will evaluate the stacking ensemble on these last 1,000 samples.</p>
+<p>First, we will create a function that creates and trains a dense network with <em>n</em> number of embedding features, as well as a function that accepts a model as input and return its predictions on the test set:</p>
+<pre>def create_model(n_features=5, train_model=True, load_weights=False):<br/>    fts = n_features<br/> <br/>    # Movie part. Input accepts the index as input<br/>    # and passes it to the Embedding layer. Finally,<br/>    # Flatten transforms Embedding's output to a<br/>    # one-dimensional tensor.<br/>    movie_in = Input(shape=[1], name="Movie")<br/>    mov_embed = Embedding(n_movies, fts, name="Movie_Embed")(movie_in)<br/>    flat_movie = Flatten(name="FlattenM")(mov_embed)<br/> <br/>    # Repeat for the user.<br/>    user_in = Input(shape=[1], name="User")<br/>    user_inuser_embed = Embedding(n_users, fts, name="User_Embed")(user_in)<br/>    flat_user = Flatten(name="FlattenU")(user_inuser_embed)<br/> <br/>    # Concatenate the Embedding layers and feed them <br/>    # to the Dense part of the network<br/>    concat = Concatenate()([flat_movie, flat_user])<br/>    dense_1 = Dense(128)(concat)<br/>    dense_2 = Dense(32)(dense_1)<br/>    out = Dense(1)(dense_2)<br/> <br/>    # Create and compile the model<br/>    model = Model([user_in, movie_in], out)<br/>    model.compile('adam', 'mean_squared_error')<br/>    # Train the model<br/>    model.fit([train.userId, train.movieId], train.rating, epochs=10, verbose=1)<br/> <br/>    return model<br/><br/>def predictions(model):<br/>    preds = model.predict([test.userId, test.movieId])<br/>    return preds</pre>
+<p>We will then create and train our base learners and meta learner in order to predict on the test set. We combine all three models' predictions in a single array:</p>
+<pre># Create base and meta learner<br/>model5 = create_model(5)<br/>model10 = create_model(10)<br/>model15 = create_model(15)<br/>meta_learner = BayesianRidge()<br/><br/># Predict on the test set<br/>preds5 = predictions(model5)<br/>preds10 = predictions(model10)<br/>preds15 = predictions(model15)<br/># Create a single array with the predictions<br/>preds = np.stack([preds5, preds10, preds15], axis=-1).reshape(-1, 3)</pre>
+<p>Finally, we train the meta learner on all but the last 1,000 test samples and evaluate the base learners, as well as the whole ensemble, on these last 1,000 samples:</p>
+<pre># Fit the meta learner on all but the last 1000 test samples<br/>meta_learner.fit(preds[:-1000], test.rating[:-1000])<br/><br/># Evaluate the base learners and the meta learner on the last<br/># 1000 test samples<br/>print('Base Learner 5 Features')<br/>print(metrics.mean_squared_error(test.rating[-1000:], preds5[-1000:]))<br/>print('Base Learner 10 Features')<br/>print(metrics.mean_squared_error(test.rating[-1000:], preds10[-1000:]))<br/>print('Base Learner 15 Features')<br/>print(metrics.mean_squared_error(test.rating[-1000:], preds15[-1000:]))<br/>print('Ensemble')<br/>print(metrics.mean_squared_error(test.rating[-1000:], meta_learner.predict(preds[-1000:])))</pre>
+<p>The results are depicted in the following table. As is evident, the ensemble is able to outperform the individual base learners on unseen data, achieving a lower MSE than any individual base learner:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign" style="width: 51.8678%">
+<p><strong>Model</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 46.1322%">
+<p><strong>MSE</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign" style="width: 51.8678%">
+<p>Base Learner 5</p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 46.1322%">
+<p>0.7609</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign" style="width: 51.8678%">
+<p>Base Learner 10</p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 46.1322%">
+<p>0.7727</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign" style="width: 51.8678%">
+<p>Base Learner 15</p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 46.1322%">
+<p>0.7639</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign" style="width: 51.8678%">
+<p>Ensemble</p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 46.1322%">
+<p>0.7596</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span>Results for individual base learners and the ensemble</span></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we briefly presented the concept of recommendation systems and how collaborative filtering works. We then presented how neural networks can be utilized in order to avoid explicitly defining rules that dictate how unrated items would be rated by a user, using embedding layers and dot products. Following that, we showed how the performance of these models can be improved if we allow the networks to learn how to combine the embedding layers themselves. This gives the models considerably higher degrees of freedom without<span> drastically</span> increasing the number of parameters, leading to considerable increases in performance. Finally, we showed how the same architecture—with variable numbers of embedding features—can be utilized in order to create base learners for a stacking ensemble. In order to combine the base learners, we utilized a Bayesian ridge regression, which resulted in better results than any individual base learner.</p>
+<p>This chapter serves as an introduction to the concept of using ensemble learning techniques for deep recommendation systems, rather than a fully detailed guide. There are many more options that can lead to considerable improvements in the system. For example, the usage of user descriptions (rather than indices), additional information about each movie (such as genre), and different architectures, can all greatly contribute to performance improvements. Still, all these concepts can greatly benefit from the usage of ensemble learning techniques, which this chapter adequately demonstrates.</p>
+<p>In the next and final chapter, we will use ensemble learning techniques in order to cluster data from the World Happiness Report as we try to uncover patterns in the data.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

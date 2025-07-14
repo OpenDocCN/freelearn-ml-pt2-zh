@@ -1,0 +1,359 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 8. Recommendations"><div class="titlepage"><div><div><h1 class="title"><a id="ch08"/>Chapter 8. Recommendations</h1></div></div></div><p>Recommendations<a id="id431" class="indexterm"/> have become one of the staples of online services and commerce. This type of automated system can provide each user with a personalized list of suggestions (be it a list of products to purchase, features to use, or new connections). In this chapter, we will see the basic ways in which automated recommendation generation systems work. The field of recommendation based on consumer inputs is often called collaborative filtering, as the users collaborate through the system to find the best items for each other.</p><p>In the first part of this chapter, we will see how we can use past product ratings from consumers to predict new ratings. We start with a few ideas that are helpful and then combine all of them. When combining, we use regression to learn the best way in they can be combined. This will also allow us to explore a generic concept in machine learning: ensemble learning.</p><p>In the second part of this chapter, we will take a look at a different way of learning recommendations: basket analysis. Unlike the case in which we have numeric ratings, in the basket analysis setting, all we have is information about the shopping baskets, that is, what items were bought together. The goal is to learn about recommendations. You have probably already seen features of the form "people who bought X also bought Y" in online shopping. We will develop a similar feature of our own.</p><div class="section" title="Rating predictions and recommendations"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec50"/>Rating predictions and recommendations</h1></div></div></div><p>If you have used <a id="id432" class="indexterm"/>any online shopping system in the last 10 years, you have probably seen these recommendations. Some are like Amazon's "costumers who bought X also bought Y". These will be dealt with later in the chapter in the <span class="emphasis"><em>Basket analysis</em></span> section. Other recommendations are based on predicting the rating of a product, such as a movie.</p><p>The problem of learning recommendations based on past product ratings was made famous by the Netflix Prize, a million-dollar machine learning public challenge by Netflix. Netflix (well-known in the USA and UK and in a process of international expansion) is a movie rental company. Traditionally, you would receive DVDs in the mail; more recently, Netflix has focused on the online streaming of movies and TV shows. From<a id="id433" class="indexterm"/> the start, one of the distinguishing features of the service was that it gives users the option to rate the films they have seen. Netflix then uses these ratings to recommend other films to its customers. In this machine learning problem, you not only have the information about which films the user saw but also about how the user rated them.</p><p>In 2006, Netflix made a large number of customer ratings of films in its database available for a public challenge. The goal was to improve on their in-house algorithm for rating prediction. Whoever would be able to beat it by 10 percent or more would win 1 million dollars. In 2009, an international team named BellKor's Pragmatic Chaos was able to beat this mark and take the prize. They did so just 20 minutes before another team, The Ensemble, and passed the 10 percent mark as well—an exciting photo finish for a competition that lasted several years.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip16"/>Tip</h3><p>
+<span class="strong"><strong>Machine learning in the real world</strong></span>
+</p><p>Much has been written about the Netflix Prize, and you may learn a lot by reading up on it. The techniques that won were a mixture of advanced machine learning and a lot of work put into preprocessing the data. For example, some users like to rate everything very highly, while others are always more negative; if you do not account for this in preprocessing, your model will suffer. Other normalizations were also necessary for a good result: how old is the film and how many ratings did it receive. Good algorithms are a good thing, but you always need to "get your hands dirty" and tune your methods to the properties of the data you have in front of you. Preprocessing and normalizing the data is often the most time-consuming part of the machine learning process. However, this is also the place where one can have the biggest impact on the final performance of the system.</p></div></div><p>The first thing to note about the Netflix Prize is how hard it was. Roughly speaking, the internal system that Netflix used was about 10 percent better than no recommendations (that is, assigning each movie just the average value for all users). The goal was to obtain just another 10 percent improvement on this. In total, the winning system was roughly just 20 percent better than no personalization. Yet, it took a tremendous amount of time and effort to achieve this goal. And even though 20 percent does not seem like much, the result is a system that is useful in practice.</p><p>Unfortunately, for legal reasons, this dataset is no longer available. Although the data was anonymous, there were concerns that it might be possible to discover who the clients were and reveal private details of movie rentals. However, we can use an academic dataset with similar characteristics. This data comes from GroupLens, a research laboratory at the University of Minnesota.</p><p>How can we solve a Netflix style ratings prediction question? We will see two different approaches, neighborhood <a id="id434" class="indexterm"/>approaches and regression approaches. We will also see how to combine these to obtain a single prediction.</p><div class="section" title="Splitting into training and testing"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec67"/>Splitting into training and testing</h2></div></div></div><p>At a high level, splitting<a id="id435" class="indexterm"/> the dataset into training and testing data in order to obtain a principled estimate of the system's performance is performed as in previous chapters: we take a certain fraction of our data points (we will use 10 percent) and reserve them for testing; the rest will be used for training. However, because the data is structured differently in this context, the code is different. The first step is to load the data from disk, for which we use the following function:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>def load():</strong></span>
+<span class="strong"><strong>    import numpy as np</strong></span>
+<span class="strong"><strong>    from scipy import sparse</strong></span>
+
+<span class="strong"><strong>    data = np.loadtxt('data/ml-100k/u.data')</strong></span>
+<span class="strong"><strong>    ij = data[:, :2]</strong></span>
+<span class="strong"><strong>    ij -= 1  # original data is in 1-based system</strong></span>
+<span class="strong"><strong>    values = data[:, 2]</strong></span>
+<span class="strong"><strong>    reviews = sparse.csc_matrix((values, ij.T)).astype(float)</strong></span>
+<span class="strong"><strong>    return reviews.toarray()</strong></span>
+</pre></div><p>Note that zero entries in this matrix represent missing ratings.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; reviews = load()</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; U,M = np.where(reviews)</strong></span>
+</pre></div><p>We now use the standard random module to choose indices to test:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; import random</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; test_idxs = np.array(random.sample(range(len(U)), len(U)//10))</strong></span>
+</pre></div><p>Now, we build the <code class="literal">train</code> matrix, which is like <code class="literal">reviews</code>, but with the testing entries set to zero:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; train = reviews.copy()</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; train[U[test_idxs], M[test_idxs]] = 0</strong></span>
+</pre></div><p>Finally, the <code class="literal">test</code> matrix contains just the testing values:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; test = np.zeros_like(reviews)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; test[U[test_idxs], M[test_idxs]] = reviews[U[test_idxs], M[test_idxs]]</strong></span>
+</pre></div><p>From now on, we will work on taking the training data, and try to predict all the missing entries in the dataset. That is, we <a id="id436" class="indexterm"/>will write code that assigns each (user, movie) pair a recommendation.</p></div><div class="section" title="Normalizing the training data"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec68"/>Normalizing the training data</h2></div></div></div><p>As we<a id="id437" class="indexterm"/> discussed, it is best to normalize the data to remove obvious movie or user-specific effects. We will just use one very simple type of normalization, which we used before: conversion to z-scores.</p><p>Unfortunately, we cannot simply use scikit-learn's normalization objects as we have to deal with the missing values in our data (that is, not all movies were rated by all users). Thus, we want to normalize by the mean and standard deviation of the values that are, in fact, present.</p><p>We will write our own class, which ignores missing values. This class will follow the scikit-learn preprocessing API:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>class NormalizePositive(object):</strong></span>
+</pre></div><p>We want to choose the axis of normalization. By default, we normalize along the first axis, but sometimes it will be useful to normalize along the second one. This follows the convention of many other NumPy-related functions:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>    def __init__(self, axis=0):</strong></span>
+<span class="strong"><strong>        self.axis = axis</strong></span>
+</pre></div><p>The most important method is the fit method. In our implementation, we compute the mean and standard deviation of the values that are not zero. Recall that zeros indicate "missing values":</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>    def fit(self, features, y=None):</strong></span>
+</pre></div><p>If the axis is 1, we operate on the transposed array as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>      if self.axis == 1:</strong></span>
+<span class="strong"><strong>          features = features.T</strong></span>
+<span class="strong"><strong>      #  count features that are greater than zero in axis 0:</strong></span>
+<span class="strong"><strong>      binary = (features &gt; 0)</strong></span>
+<span class="strong"><strong>      count0 = binary.sum(axis=0)</strong></span>
+
+<span class="strong"><strong>      # to avoid division by zero, set zero counts to one:</strong></span>
+<span class="strong"><strong>      count0[count0 == 0] = 1.</strong></span>
+
+<span class="strong"><strong>      # computing the mean is easy:</strong></span>
+<span class="strong"><strong>      self.mean = features.sum(axis=0)/count0</strong></span>
+
+<span class="strong"><strong>      # only consider differences where binary is True:</strong></span>
+<span class="strong"><strong>      diff = (features - self.mean) * binary</strong></span>
+<span class="strong"><strong>      diff **= 2</strong></span>
+<span class="strong"><strong>      # regularize the estimate of std by adding 0.1</strong></span>
+<span class="strong"><strong>      self.std = np.sqrt(0.1 + diff.sum(axis=0)/count0)</strong></span>
+<span class="strong"><strong>      return self</strong></span>
+</pre></div><p>We add 0.1 to <a id="id438" class="indexterm"/>the direct estimate of the standard deviation to avoid underestimating the value of the standard deviation when there are only a few samples, all of which may be exactly the same. The exact value used does not matter much for the final result, but we need to avoid division by zero.</p><p>The <code class="literal">transform</code> method needs to take care of maintaining the binary structure as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>    def transform(self, features):</strong></span>
+<span class="strong"><strong>        if self.axis == 1:</strong></span>
+<span class="strong"><strong>            features = features.T</strong></span>
+<span class="strong"><strong>        binary = (features &gt; 0)</strong></span>
+<span class="strong"><strong>        features = features - self.mean</strong></span>
+<span class="strong"><strong>        features /= self.std</strong></span>
+<span class="strong"><strong>        features *= binary</strong></span>
+<span class="strong"><strong>        if self.axis == 1:</strong></span>
+<span class="strong"><strong>            features = features.T</strong></span>
+<span class="strong"><strong>        return features</strong></span>
+</pre></div><p>Notice how we took care of transposing the input matrix when the axis is 1 and then transformed it back so that the return value has the same shape as the input. The <code class="literal">inverse_transform</code> method performs the inverse operation to transform as shown here:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>    def inverse_transform(self, features, copy=True):</strong></span>
+<span class="strong"><strong>        if copy:</strong></span>
+<span class="strong"><strong>            features = features.copy()</strong></span>
+<span class="strong"><strong>        if self.axis == 1:</strong></span>
+<span class="strong"><strong>            features = features.T</strong></span>
+<span class="strong"><strong>        features *= self.std</strong></span>
+<span class="strong"><strong>        features += self.mean</strong></span>
+<span class="strong"><strong>        if self.axis == 1:</strong></span>
+<span class="strong"><strong>            features = features.T</strong></span>
+<span class="strong"><strong>        return features</strong></span>
+</pre></div><p>Finally, we add the <code class="literal">fit_transform</code> method which, as the name indicates, combines both the <code class="literal">fit</code> and <code class="literal">transform</code> operations:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>    def fit_transform(self, features):</strong></span>
+<span class="strong"><strong>        return self.fit(features).transform(features)</strong></span>
+</pre></div><p>The methods that we defined (<code class="literal">fit</code>, <code class="literal">transform</code>, <code class="literal">transform_inverse</code>, and <code class="literal">fit_transform</code>) were the same as the objects defined in the <code class="literal">sklearn.preprocessing</code> module. In the following <a id="id439" class="indexterm"/>sections, we will first normalize the inputs, generate normalized predictions, and finally apply the inverse transformation to obtain the final predictions.</p></div><div class="section" title="A neighborhood approach to recommendations"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec69"/>A neighborhood approach to recommendations</h2></div></div></div><p>The <a id="id440" class="indexterm"/>neighborhood concept can be implemented in two ways: user neighbors or movie neighbors. User neighborhoods are based on a very simple concept: to know how a user will rate a movie, find the users most similar to them, and look at their ratings. We will only consider user neighbors for the moment. At the end of this section, we will discuss how the code can be adapted to compute movie neighbors.</p><p>One of the<a id="id441" class="indexterm"/> interesting techniques that we will now explore is to just see which movies each user has rated, even without taking a look at what rating was given. Even with a binary matrix where we have an entry equal to 1 when a user rates a movie, and 0 when they did not, we can make useful predictions. In hindsight, this makes perfect sense; we do not completely randomly choose movies to watch, but instead pick those where we already have an expectation of liking them. We also do not make random choices of which movies to rate, but perhaps only rate those we feel most strongly about (naturally, there are exceptions, but on average this is probably true).</p><p>We can visualize the values of the matrix as an image, where each rating is depicted as a little square. Black represents the absence of a rating and the gray levels represent the rating value.</p><p>The code to visualize the data is very simple (you can adapt it to show a larger fraction of the matrix than is possible to show in this book), as shown in the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; from matplotlib import pyplot as plt</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # Build an instance of the object we defined above</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; norm = NormalizePositive(axis=1)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; binary = (train &gt; 0)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; train = norm.fit_transform(train)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # plot just 200x200 area for space reasons</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; plt.imshow(binary[:200, :200], interpolation='nearest')</strong></span>
+</pre></div><p>The following screenshot is the output of this code:</p><div class="mediaobject"><img src="images/2772OS_08_03.jpg" alt="A neighborhood approach to recommendations"/></div><p>We can see that<a id="id442" class="indexterm"/> the matrix is sparse—most of the squares are black. We can also see that some users rate a lot more movies than others and that some movies are the target of many more ratings than others.</p><p>We are now going <a id="id443" class="indexterm"/>to use this binary matrix to make predictions of movie ratings. The general algorithm will be (in pseudo code) as follows:</p><div class="orderedlist"><ol class="orderedlist arabic"><li class="listitem">For each user, rank every other user in terms of closeness. For this step, we will use the binary matrix and use correlation as the measure of closeness (interpreting the binary matrix as zeros and ones allows us to perform this computation).</li><li class="listitem">When we need to estimate a rating for a (user, movie) pair, we look at all the users who have rated that movie and split them into two: the most similar half and the most dissimilar half. We then use the average of the most similar half as the prediction.</li></ol></div><p>We can use the <code class="literal">scipy.spatial.distance.pdist</code> function to obtain the distance between all the users as a matrix. This function returns the correlation distance, which transforms the<a id="id444" class="indexterm"/> correlation value by inverting it so that larger numbers mean less similar. Mathematically, the correlation distance is <span class="inlinemediaobject"><img src="images/2772OS_08_06.jpg" alt="A neighborhood approach to recommendations"/></span>, where <span class="inlinemediaobject"><img src="images/2772OS_11_15.jpg" alt="A neighborhood approach to recommendations"/></span> is the correlation value. The code is as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; from scipy.spatial import distance</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # compute all pair-wise distances:</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; dists = distance.pdist(binary, 'correlation')</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # Convert to square form, so that dists[i,j]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # is distance between binary[i] and binary[j]:</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; dists = distance.squareform(dists)</strong></span>
+</pre></div><p>We can use this <a id="id445" class="indexterm"/>matrix to select the nearest neighbors of each user. These are the users that most resemble it.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; neighbors = dists.argsort(axis=1)</strong></span>
+</pre></div><p>Now, we iterate over all users to estimate predictions for all inputs:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; # We are going to fill this matrix with results</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; filled = train.copy()</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; for u in range(filled.shape[0]):</strong></span>
+<span class="strong"><strong>...     # n_u is neighbors of user</strong></span>
+<span class="strong"><strong>...     n_u = neighbors[u, 1:]</strong></span>
+<span class="strong"><strong>...     # t_u is training data</strong></span>
+
+<span class="strong"><strong>...     for m in range(filled.shape[1]):</strong></span>
+<span class="strong"><strong>...         # get relevant reviews in order!</strong></span>
+<span class="strong"><strong>...         revs = [train[neigh, m]</strong></span>
+<span class="strong"><strong>...                    for neigh in n_u</strong></span>
+<span class="strong"><strong>...                         if binary  [neigh, m]]</strong></span>
+<span class="strong"><strong>...         if len(revs):</strong></span>
+<span class="strong"><strong>...             # n is the number of reviews for this movie</strong></span>
+<span class="strong"><strong>...             n = len(revs)</strong></span>
+<span class="strong"><strong>...             # consider half of the reviews plus one</strong></span>
+<span class="strong"><strong>...             n //= 2</strong></span>
+<span class="strong"><strong>...             n += 1</strong></span>
+<span class="strong"><strong>...             revs = revs[:n]</strong></span>
+<span class="strong"><strong>...             filled[u,m] = np.mean(revs )</strong></span>
+</pre></div><p>The tricky part in the preceding snippet is indexing by the right values to select the neighbors who have rated the movie. Then, we choose the half that is closest to the user (in the <code class="literal">rev[:n]</code> line) and average those. Because some films have many reviews and others very few, it is hard to find a single number of users for all cases. Choosing half of the available data is a more generic approach.</p><p>To obtain the <a id="id446" class="indexterm"/>final result, we need to un-normalize the predictions as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; predicted = norm.inverse_transform(filled)</strong></span>
+</pre></div><p>We can use the same metrics we learned about in the previous chapter:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; from sklearn import metrics</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; r2 = metrics.r2_score(test[test &gt; 0], predicted[test &gt; 0])</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; print('R2 score (binary neighbors): {:.1%}'.format(r2))</strong></span>
+<span class="strong"><strong>R2 score (binary neighbors): 29.5%</strong></span>
+</pre></div><p>The preceding code <a id="id447" class="indexterm"/>computes the result for user neighbors, but we can use it to compute the movie neighbors by simply transposing the input matrix. In fact, the code computes neighbors of whatever are the rows of its input matrix.</p><p>So we can rerun the following code, by just inserting the following line at the top:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; reviews = reviews.T</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # use same code as before …</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; r2 = metrics.r2_score(test[test &gt; 0], predicted[test &gt; 0])</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; print('R2 score (binary movie neighbors): {:.1%}'.format(r2))</strong></span>
+<span class="strong"><strong>R2 score (binary movie neighbors): 29.8%</strong></span>
+</pre></div><p>Thus we can see that the results are not that different.</p><p>In this book's code repository, the neighborhood code has been wrapped into a simple function, which makes it easier to reuse.</p></div><div class="section" title="A regression approach to recommendations"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec70"/>A regression approach to recommendations</h2></div></div></div><p>An <a id="id448" class="indexterm"/>alternative to neighborhoods is to formulate <a id="id449" class="indexterm"/>recommendations as a regression problem and apply the methods that we learned in the previous chapter.</p><p>We also consider why this problem is not a good fit for a classification formulation. We could certainly attempt to learn a five-class model, using one class for each possible movie rating. There<a id="id450" class="indexterm"/> are two problems with this approach:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">The different possible errors are not at all the same. For example, mistaking a 5-star movie for a 4-star one is not as serious a mistake as mistaking a 5-star movie for a 1-star one.</li><li class="listitem" style="list-style-type: disc">Intermediate values make sense. Even if our inputs are only integer values, it is perfectly<a id="id451" class="indexterm"/> meaningful to say that the prediction is 4.3. We can see that this is a different prediction than 3.5, even if they both round to 4.</li></ul></div><p>These two factors together mean that classification is not a good fit to the problem. The regression framework is a better fit.</p><p>For a basic <a id="id452" class="indexterm"/>approach, we again have two choices: we can build movie-specific or user-specific models. In our case, we are going to first build user-specific models. This means that, for each user, we take the movies that the user has rated as our target variable. The inputs are the ratings of other users. We hypothesize that this will give a high value to users who are similar to our user (or a negative value to users who like the same movies that our user dislikes).</p><p>Setting up the <code class="literal">train</code> and <code class="literal">test</code> matrices is as before (including running the normalization steps). Therefore, we jump directly to the learning step. First, we instantiate a regressor as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; reg = ElasticNetCV(alphas=[</strong></span>
+<span class="strong"><strong>                   0.0125, 0.025, 0.05, .125, .25, .5, 1., 2., 4.])</strong></span>
+</pre></div><p>We build a data matrix, which will contain a rating for every (user, movie) pair. We initialize it as a copy of the training data:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; filled = train.copy()</strong></span>
+</pre></div><p>Now, we iterate over all the users, and each time learn a regression model based only on the data that that user has given us:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; for u in range(train.shape[0]):</strong></span>
+<span class="strong"><strong>...     curtrain = np.delete(train, u, axis=0)</strong></span>
+<span class="strong"><strong>...     # binary records whether this rating is present</strong></span>
+<span class="strong"><strong>...     bu = binary[u]</strong></span>
+<span class="strong"><strong>...     # fit the current user based on everybody else</strong></span>
+<span class="strong"><strong>...     reg.fit(curtrain[:,bu].T, train[u, bu])</strong></span>
+<span class="strong"><strong>...     # Fill in all the missing ratings</strong></span>
+<span class="strong"><strong>...     filled[u, ~bu] = reg.predict(curtrain[:,~bu].T)</strong></span>
+</pre></div><p>Evaluating the method can be done exactly as before:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; predicted = norm.inverse_transform(filled)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; r2 = metrics.r2_score(test[test &gt; 0], predicted[test &gt; 0])</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; print('R2 score (user regression): {:.1%}'.format(r2))</strong></span>
+<span class="strong"><strong>R2 score (user regression): 32.3%</strong></span>
+</pre></div><p>As before, we can adapt this code to perform movie regression by using the transposed matrix.</p></div><div class="section" title="Combining multiple methods"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec71"/>Combining multiple methods</h2></div></div></div><p>We now <a id="id453" class="indexterm"/>combine the aforementioned methods in a single prediction. This seems intuitively a good idea, but how can we do this in practice? Perhaps, the first thought that comes to mind is that we can average the predictions. This might give decent results, but there is no reason to think that all estimated predictions should be treated the same. It might be that one is better than others.</p><p>We can try a weighted average, multiplying each prediction by a given weight before summing it all up. How do we find the best weights, though? We learn them from the data, of course!</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip17"/>Tip</h3><p>
+<span class="strong"><strong>Ensemble learning</strong></span>
+</p><p>We are using a general technique in machine learning, which is not only applicable in regression: <span class="strong"><strong>ensemble learning</strong></span>. We<a id="id454" class="indexterm"/> learn an ensemble (that is, a set) of predictors. Then, we to combine them to obtain a single output. What is interesting is that we can see each prediction as being a new feature, and we are now just combining features based on training data, which is what we have been doing all along. Note that we are doing so for regression here, but the same reasoning is applicable to classification: you learn several classifiers, then a master classifier, which takes the output of all of them and gives a final prediction. Different forms of ensemble learning differ on how you combine the base predictors.</p></div></div><p>In order to combine the methods, we will use a technique called <a id="id455" class="indexterm"/>
+<span class="strong"><strong>stacked learning</strong></span>. The idea is you learn a set of predictors, then you use the output of these predictors as features for another predictor. You can even have several layers, where each layer learns by using the output of the previous layer as features for its prediction. Have a look at the following diagram:</p><div class="mediaobject"><img src="images/2772OS_08_01.jpg" alt="Combining multiple methods"/></div><p>In order to fit this <a id="id456" class="indexterm"/>combination model, we will split the training data into two. Alternatively, we could have used cross-validation (the original stacked learning model worked like this). However, in this case, we have enough data to obtain good estimates by leaving some aside.</p><p>As when fitting hyperparameters, though, we need two layers of training/testing splits: a first, higher-level split, and then, inside the training split, a second split to be able to fit the stacked learner, as show in the following:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; train,test = load_ml100k.get_train_test(random_state=12)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # Now split the training again into two subgroups</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; tr_train,tr_test = load_ml100k.get_train_test(train, random_state=34)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # Call all the methods we previously defined:</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # these have been implemented as functions:</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; tr_predicted0 = regression.predict(tr_train)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; tr_predicted1 = regression.predict(tr_train.T).T</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; tr_predicted2 = corrneighbours.predict(tr_train)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; tr_predicted3 = corrneighbours.predict(tr_train.T).T</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; tr_predicted4 = norm.predict(tr_train)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; tr_predicted5 = norm.predict(tr_train.T).T</strong></span>
+
+<span class="strong"><strong>&gt;&gt;&gt; # Now assemble these predictions into a single array:</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; stack_tr = np.array([</strong></span>
+<span class="strong"><strong>...     tr_predicted0[tr_test &gt; 0],</strong></span>
+<span class="strong"><strong>...     tr_predicted1[tr_test &gt; 0],</strong></span>
+<span class="strong"><strong>...     tr_predicted2[tr_test &gt; 0],</strong></span>
+<span class="strong"><strong>...     tr_predicted3[tr_test &gt; 0],</strong></span>
+<span class="strong"><strong>...     tr_predicted4[tr_test &gt; 0],</strong></span>
+<span class="strong"><strong>...     tr_predicted5[tr_test &gt; 0],</strong></span>
+<span class="strong"><strong>...     ]).T</strong></span>
+
+<span class="strong"><strong>&gt;&gt;&gt; # Fit a simple linear regression</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; lr = linear_model.LinearRegression()</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; lr.fit(stack_tr, tr_test[tr_test &gt; 0])</strong></span>
+</pre></div><p>Now, we apply the whole process to the testing split and evaluate:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; stack_te = np.array([</strong></span>
+<span class="strong"><strong>...     tr_predicted0.ravel(),</strong></span>
+<span class="strong"><strong>...     tr_predicted1.ravel(),</strong></span>
+<span class="strong"><strong>...     tr_predicted2.ravel(),</strong></span>
+<span class="strong"><strong>...     tr_predicted3.ravel(),</strong></span>
+<span class="strong"><strong>...     tr_predicted4.ravel(),</strong></span>
+<span class="strong"><strong>...     tr_predicted5.ravel(),</strong></span>
+<span class="strong"><strong>...     ]).T</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; predicted = lr.predict(stack_te).reshape(train.shape)</strong></span>
+</pre></div><p>Evaluation is as before:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; r2 = metrics.r2_score(test[test &gt; 0], predicted[test &gt; 0])</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; print('R2 stacked: {:.2%}'.format(r2))</strong></span>
+<span class="strong"><strong>R2 stacked: 33.15%</strong></span>
+</pre></div><p>The result of stacked<a id="id457" class="indexterm"/> learning is better than what any single method had achieved. It is quite typical that combining methods is a simple way to obtain a small performance boost, but that the results are not earth shattering.</p><p>By having a flexible way to combine multiple methods, we can simply try any idea we wish by adding it into the mix of learners and letting the system fold it into the prediction. We can, for example, replace the neighborhood criterion in the nearest neighbor code.</p><p>However, we do have to be careful to not overfit our dataset. In fact, if we randomly try too many things, some of them will work well on this dataset, but will not generalize. Even though we are splitting our data, we are not rigorously cross-validating our design decisions. In order to have a good estimate, and if data is plentiful, you should leave a portion of the data untouched until you have a final model that is about to go into production. Then, testing your model on this held out data gives you an unbiased prediction of how well you should expect it to work in the real world.</p></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Basket analysis"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec51"/>Basket analysis</h1></div></div></div><p>The methods <a id="id458" class="indexterm"/>we have discussed so far work well when you have numeric ratings of how much a user liked a product. This type of information is not always available, as it requires active behavior on the part of consumers.</p><p>Basket analysis is an alternative mode of learning recommendations. In this mode, our data consists only <a id="id459" class="indexterm"/>of what items were bought together; it does not contain any information on whether individual items were enjoyed or not. Even if users sometimes buy items they regret, on average, knowing their purchases gives you enough information to build good recommendations. It is often easier to get this data rather than rating data, as many users will not provide ratings, while the basket data is generated as a side effect of shopping. The following screenshot shows you a snippet of Amazon.com's web page for Tolstoy's classic book <span class="emphasis"><em>War and Peace</em></span>, which demonstrates a common way to use these results:</p><div class="mediaobject"><img src="images/2772OS_08_02.jpg" alt="Basket analysis"/></div><p>This mode of learning is not only applicable to actual shopping baskets, naturally. It is applicable in any setting where you have groups of objects together and need to recommend another. For example, recommending additional recipients to a user writing an e-mail is done by Gmail and could be implemented using similar techniques (we do not know what Gmail uses internally; perhaps, they combine multiple techniques, as we did earlier). Or, we could use these methods to develop an app to recommend web pages to visit based on your browsing history. Even if we are handling purchases, it may make sense to group all purchases by a customer into a single basket, independently of whether the items were bought together or on separate transactions. This depends on the business context, but keep in mind that the techniques are flexible and can be useful in many settings.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="note12"/>Note</h3><p>Beer and diapers. One of the stories that is often mentioned in the context of basket analysis is the <span class="emphasis"><em>diapers and beer</em></span> story. It says that when supermarkets first started to look at their data, they found that diapers were often bought together with beer. Supposedly, it was the father who would go out to the supermarket to buy diapers and then would pick up some beer as well. There has been much discussion of whether this is true or just an urban myth. In this case, it seems that it is true. In the early 1990s, Osco Drug did discover that in the early evening, beer and diapers were bought together, and it did surprise the managers who had, until then, never considered these two products to be similar. What is not true is that this led the store to move the beer display closer to the diaper section. Also, we have no idea whether it was really that fathers were buying beer and diapers together more than mothers (or grandparents).</p></div></div><div class="section" title="Obtaining useful predictions"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec72"/>Obtaining useful predictions</h2></div></div></div><p>It is <a id="id460" class="indexterm"/>not just "customers who bought X also bought Y" even though that is how many online retailers phrase it (see the Amazon.com screenshot given earlier); a real system cannot work like this. Why not? Because such a system would get fooled by very frequently bought items and would simply recommend that which is popular without any personalization.</p><p>For example, at a supermarket, many customers buy bread every time they shop or close to it (for the sake of argument, let us say that 50 percent of visits include bread). So, if you focus on any particular item, say dishwasher soap and look at what is frequently bought with dishwasher soap, you might find that bread is frequently bought with soap. In fact, just by random chance, 50 percent of the times someone buys dishwasher soap, they buy bread. However, bread is frequently bought with anything else just because everybody buys bread very often.</p><p>What we are really looking for is "customers who bought X, are statistically more likely to buy Y than the average customer who has not bought X". If you buy dishwasher soap, you are likely to buy bread, but not more so than the baseline. Similarly, a bookstore that simply recommended bestsellers no matter which books you had already bought would not be doing a good job of personalizing recommendations.</p></div><div class="section" title="Analyzing supermarket shopping baskets"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec73"/>Analyzing supermarket shopping baskets</h2></div></div></div><p>As an<a id="id461" class="indexterm"/> example, we will look at a dataset consisting of anonymous transactions at a supermarket in Belgium. This dataset was made available by Tom Brijs at Hasselt University. Due to privacy concerns, the data has been anonymized, so we only have a number for each product and a basket is a set of numbers. The data file is available from several online sources (including this book's companion website).</p><p>We begin by loading the dataset and looking at some statistics (this is always a good idea):</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; from collections import defaultdict</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; from itertools import chain</strong></span>
+
+<span class="strong"><strong>&gt;&gt;&gt; # File is downloaded as a compressed file</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; import gzip</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # file format is a line per transaction</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # of the form '12 34 342 5...'</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; dataset = [[int(tok) for tok in line.strip().split()]</strong></span>
+<span class="strong"><strong>...         for line in gzip.open('retail.dat.gz')]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # It is more convenient to work with sets</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; dataset = [set(d) for d in dataset]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # count how often each product was purchased:</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; counts = defaultdict(int)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; for elem in chain(*dataset):</strong></span>
+<span class="strong"><strong>...     counts[elem] += 1</strong></span>
+</pre></div><p>We can see the resulting counts summarized in the following table:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p># of times bought</p>
+</th><th style="text-align: left" valign="bottom">
+<p># of products</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>Just once</p>
+</td><td style="text-align: left" valign="top">
+<p>2,224</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2 or 3</p>
+</td><td style="text-align: left" valign="top">
+<p>2,438</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>4 to 7</p>
+</td><td style="text-align: left" valign="top">
+<p>2,508</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>8 to 15</p>
+</td><td style="text-align: left" valign="top">
+<p>2,251</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>16 to 31</p>
+</td><td style="text-align: left" valign="top">
+<p>2,182</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>32 to 63</p>
+</td><td style="text-align: left" valign="top">
+<p>1,940</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>64 to 127</p>
+</td><td style="text-align: left" valign="top">
+<p>1,523</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>128 to 511</p>
+</td><td style="text-align: left" valign="top">
+<p>1,225</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>512 or more</p>
+</td><td style="text-align: left" valign="top">
+<p>179</p>
+</td></tr></tbody></table></div><p>There are many products that have only been bought a few times. For example, 33 percent of products were bought four or fewer times. However, this represents only 1 percent of purchases. This phenomenon that many products are only purchased a small number of times is sometimes labeled <span class="emphasis"><em>the long tail</em></span> and has only become more prominent as the Internet made it cheaper to stock and sell niche items. In order to be able to provide recommendations for these products, we would need a lot more data.</p><p>There <a id="id462" class="indexterm"/>are a few open source implementations of basket analysis algorithms out there, but none that are well integrated with scikit-learn or any of the other packages we have been using. Therefore, we are going to implement one classic algorithm ourselves. This algorithm is called the Apriori algorithm, and it is a bit old (it was published in 1994 by Rakesh Agrawal and Ramakrishnan Srikant), but it still works (algorithms, of course, never stop working, they just get superceded by better ideas).</p><p>Formally, the Apriori algorithm takes a collection of sets (that is, your shopping baskets) and returns sets that are very frequent as subsets (that is, items that together are part of many shopping baskets).</p><p>The algorithm works using a bottom-up approach: starting with the smallest candidates (those composed of one single element), it builds up, adding one element at a time. Formally, the algorithm takes a set of baskets and the minimum input that should be considered (a parameter we will call minsupport). The first step is to consider all baskets with just one element with minimal support. Then, these are combined in all possible ways to build up two-element baskets. These are filtered in order to keep only those that have minimal <a id="id463" class="indexterm"/>support. Then, all possible three-element baskets are considered and those with minimal support are kept, and so on. The trick of Apriori is that when building a larger basket, <span class="emphasis"><em>it only needs to consider those that are built up of smaller sets</em></span>.</p><p>The following diagram presents a schematic view of the algorithm:</p><div class="mediaobject"><img src="images/2772OS_08_04.jpg" alt="Analyzing supermarket shopping baskets"/></div><p>We shall now implement this algorithm in code. We need to define the minimum support we are looking for:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; minsupport = 80</strong></span>
+</pre></div><p>Support is the number of times a set of products was purchased together. The goal of Apriori is to find itemsets with high support. Logically, any itemset with more than minimal support can only be composed of items which themselves have at least minimal support:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; valid = set(k for k,v in counts.items()</strong></span>
+<span class="strong"><strong>...           if (v &gt;= minsupport))</strong></span>
+</pre></div><p>Our initial itemsets are singletons (sets with a single element). In particular, all singletons that have at least minimal support are frequent itemsets:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt;  itemsets = [frozenset([v]) for v in valid]</strong></span>
+</pre></div><p>Now, our loop is given as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; freqsets = []</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; for i in range(16):</strong></span>
+<span class="strong"><strong>...     nextsets = []</strong></span>
+<span class="strong"><strong>...     tested = set()</strong></span>
+<span class="strong"><strong>...     for it in itemsets:</strong></span>
+<span class="strong"><strong>...         for v in valid:</strong></span>
+<span class="strong"><strong>...             if v not in it:</strong></span>
+<span class="strong"><strong>...                 # Create a new candidate set by adding v to it</strong></span>
+<span class="strong"><strong>...                 c = (it | frozenset([v]))</strong></span>
+<span class="strong"><strong>...                 # check If we have tested it already</strong></span>
+<span class="strong"><strong>...                 if c in tested:</strong></span>
+<span class="strong"><strong>...                     continue</strong></span>
+<span class="strong"><strong>...                 tested.add(c)</strong></span>
+<span class="strong"><strong>...</strong></span>
+<span class="strong"><strong>...                 # Count support by looping over dataset</strong></span>
+<span class="strong"><strong>...                 # This step is slow.</strong></span>
+<span class="strong"><strong>...                 # Check `apriori.py` for a better implementation.</strong></span>
+<span class="strong"><strong>...                 support_c = sum(1 for d in dataset if d.issuperset(c))</strong></span>
+<span class="strong"><strong>...                 if support_c &gt; minsupport:</strong></span>
+<span class="strong"><strong>...                     nextsets.append(c)</strong></span>
+<span class="strong"><strong>...     freqsets.extend(nextsets)</strong></span>
+<span class="strong"><strong>...     itemsets = nextsets</strong></span>
+<span class="strong"><strong>...     if not len(itemsets):</strong></span>
+<span class="strong"><strong>...         break</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; print("Finished!")</strong></span>
+<span class="strong"><strong>Finished!</strong></span>
+</pre></div><p>This works<a id="id464" class="indexterm"/> correctly, but it is slow. A better implementation has more infrastructure to avoid having to loop over all the datasets to get the count (<code class="literal">support_c</code>). In particular, we keep track of which shopping baskets have which frequent itemsets. This accelerates the loop but makes the code harder to follow. Therefore we will not show it here. As usual, you can find both the implementations on this book's companion website. The code there is also wrapped into a function that can be applied to other datasets.</p><p>The Apriori algorithm returns frequent itemsets, that is, baskets that are present above a certain threshold (given by the <code class="literal">minsupport</code> variable in the code).</p></div><div class="section" title="Association rule mining"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec74"/>Association rule mining</h2></div></div></div><p>Frequent <a id="id465" class="indexterm"/>itemsets are not very useful by themselves. The next step is to build <span class="strong"><strong>association rules</strong></span>. Because of this final goal, the whole field of basket analysis is sometimes called association rule mining.</p><p>An association rule<a id="id466" class="indexterm"/> is a statement of the type "If X, then Y", for example, "if a customer bought War and Peace, then they will buy Anna Karenina". Note that the rule is not deterministic (not all customers who buy X will buy Y), but it is rather cumbersome to always spell it out: "if a customer bought X, he is more likely than baseline to buy Y"; thus, we say "if X, then Y", but we mean it in a probabilistic sense.</p><p>Interestingly, both the antecedent and the conclusion may contain multiple objects: costumers who bought X, Y, and Z also bought A, B, and C. Multiple antecedents may allow you to make more specific predictions than are possible from a single item.</p><p>You can get from a frequent set to a rule by just trying all the possible combinations of X implies Y. It is easy to generate many of these rules. However, you only want to have valuable rules. Therefore, we need to measure the value of a rule. A commonly used measure is called the <span class="strong"><strong>lift</strong></span>. The<a id="id467" class="indexterm"/> lift is the ratio between the probability obtained by applying the rule and the baseline, as in the following formula:</p><div class="mediaobject"><img src="images/2772OS_08_05.jpg" alt="Association rule mining"/></div><p>In the preceding formula, P(Y) is the fraction of all the transactions that include Y, while P(Y|X) is the fraction of transactions that include Y, given that they also include X. Using the lift helps avoid the problem of recommending bestsellers; for a bestseller, both P(Y) and P(Y|X) will be large. Therefore, the lift will be close to one and the rule will be deemed irrelevant. In practice, we wish to have values of lift of at least 10, perhaps even 100.</p><p>Refer to the following code:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; minlift = 5.0</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; nr_transactions = float(len(dataset))</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; for itemset in freqsets:</strong></span>
+<span class="strong"><strong>...       for item in itemset:</strong></span>
+<span class="strong"><strong>...         consequent = frozenset([item])</strong></span>
+<span class="strong"><strong>...         antecedent = itemset-consequent</strong></span>
+<span class="strong"><strong>...         base = 0.0</strong></span>
+<span class="strong"><strong>...         # acount: antecedent count</strong></span>
+<span class="strong"><strong>...         acount = 0.0</strong></span>
+<span class="strong"><strong>...     </strong></span>
+<span class="strong"><strong>...         # ccount : consequent count</strong></span>
+<span class="strong"><strong>...         ccount = 0.0</strong></span>
+<span class="strong"><strong>...         for d in dataset:</strong></span>
+<span class="strong"><strong>...           if item in d: base += 1</strong></span>
+<span class="strong"><strong>...           if d.issuperset(itemset): ccount += 1</strong></span>
+<span class="strong"><strong>...           if d.issuperset(antecedent): acount += 1</strong></span>
+<span class="strong"><strong>...         base /= nr_transactions</strong></span>
+<span class="strong"><strong>...         p_y_given_x = ccount/acount</strong></span>
+<span class="strong"><strong>...         lift = p_y_given_x / base</strong></span>
+<span class="strong"><strong>...         if lift &gt; minlift:</strong></span>
+<span class="strong"><strong>...             print('Rule {0} -&gt;  {1} has lift {2}'</strong></span>
+<span class="strong"><strong>...                   .format(antecedent, consequent,lift))</strong></span>
+</pre></div><p>Some of the<a id="id468" class="indexterm"/> results are shown in the following table. The counts are the number of transactions which include the <span class="strong"><strong>consequent alone</strong></span> (that is, the base rate at which that product is bought), <span class="strong"><strong>all the items in the antecedent</strong></span>, and <span class="strong"><strong>all the items in the antecedent and the consequent</strong></span>.</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Antecedent</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Consequent</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Consequent count</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Antecedent count</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Antecedent &amp; consequent count</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Lift</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>1,378, 1,379, 1,380</p>
+</td><td style="text-align: left" valign="top">
+<p>1,269</p>
+</td><td style="text-align: left" valign="top">
+<p>279 (0.3 percent)</p>
+</td><td style="text-align: left" valign="top">
+<p>80</p>
+</td><td style="text-align: left" valign="top">
+<p>57</p>
+</td><td style="text-align: left" valign="top">
+<p>225</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>48, 41, 976</p>
+</td><td style="text-align: left" valign="top">
+<p>117</p>
+</td><td style="text-align: left" valign="top">
+<p>1026 (1.1 percent)</p>
+</td><td style="text-align: left" valign="top">
+<p>122</p>
+</td><td style="text-align: left" valign="top">
+<p>51</p>
+</td><td style="text-align: left" valign="top">
+<p>35</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>48, 41, 1,6011</p>
+</td><td style="text-align: left" valign="top">
+<p>16,010</p>
+</td><td style="text-align: left" valign="top">
+<p>1316 (1.5 percent )</p>
+</td><td style="text-align: left" valign="top">
+<p>165</p>
+</td><td style="text-align: left" valign="top">
+<p>159</p>
+</td><td style="text-align: left" valign="top">
+<p>64</p>
+</td></tr></tbody></table></div><p>We can see, for example, that there were 80 transactions in which 1,378, 1,379, and 1,380 were bought together. Of these, 57 also included 1,269, so the estimated conditional probability is 57/80 ≈ 71 percent. Compared to the fact that only 0.3 percent of all transactions included 1,269, this gives us a lift of 255.</p><p>The need to have a decent number of transactions in these counts in order to be able to make relatively solid inferences is why we must first select frequent itemsets. If we were to generate rules from an infrequent itemset, the counts would be very small; due to this, the relative values would be meaningless (or subject to very large error bars).</p><p>Note that there are many more association rules discovered from this dataset: the algorithm discovers 1,030 rules (requiring support for the baskets of at least 80 and a minimum lift of 5). This is still a small dataset when compared to what is now possible with the web. With datasets containing millions of transactions, you can expect to generate many thousands of rules, even millions.</p><p>However, for each customer or each product, only a few rules will be relevant at any given time. So each costumer only receives a small number of recommendations.</p></div><div class="section" title="More advanced basket analysis"><div class="titlepage"><div><div><h2 class="title"><a id="ch08lvl2sec75"/>More advanced basket analysis</h2></div></div></div><p>There <a id="id469" class="indexterm"/>are now other algorithms for basket analysis that run faster than Apriori. The code we saw earlier was simple and it was good enough for us, as we only had circa 100 thousand transactions. If we had many millions, it might be worthwhile to use a faster algorithm. Note, though, that learning association rules can often be done offline, where efficiency is not as great a concern.</p><p>There are also methods to work with temporal information, leading to rules that take into account the order in which you have made your purchases. Consider, as an example, that someone buying supplies for a large party may come back for trash bags. Thus, it may make sense to propose trash bags on the first visit. However, it would not make sense to propose party supplies to everyone who buys a trash bag.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch08lvl1sec52"/>Summary</h1></div></div></div><p>In this chapter, we started by using regression for rating predictions. We saw a couple of different ways in which to do so, and then combined them all in a single prediction by learning a set of weights. This technique, ensemble learning, in particular stacked learning, is a general technique that can be used in many situations, not just for regression. It allows you to combine different ideas even if their internal mechanics are completely different; you can combine their final outputs.</p><p>In the second half of the chapter, we switched gears and looked at another mode of producing recommendations: shopping basket analysis or association rule mining. In this mode, we try to discover (probabilistic) association rules of the "customers who bought X are likely to be interested in Y" form. This takes advantage of the data that is generated from sales alone without requiring users to numerically rate items. This is not available in scikit-learn at this moment, so we wrote our own code.</p><p>Association rule mining needs to be careful to not simply recommend bestsellers to every user (otherwise, what is the point of personalization?). In order to do this, we learned about measuring the value of rules in relation to the baseline, using a measure called the lift of a rule.</p><p>At this point in the book, we have seen the major modes of machine learning: classification. In the next two chapters, we will look at techniques used for two specific kinds of data, music and images. Our first goal will be to build a music genre classifier.</p></div></div>
+</body></html>

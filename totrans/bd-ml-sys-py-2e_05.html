@@ -1,0 +1,427 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 5. Classification – Detecting Poor Answers"><div class="titlepage"><div><div><h1 class="title"><a id="ch05"/>Chapter 5. Classification – Detecting Poor Answers</h1></div></div></div><p>Now that we are able to extract useful features from text, we can take on the challenge of building a <a id="id235" class="indexterm"/>classifier using real data. Let's come back to our imaginary website in <a class="link" href="ch03.html" title="Chapter 3. Clustering – Finding Related Posts">Chapter 3</a>, <span class="emphasis"><em>Clustering – Finding Related Posts</em></span>, where users can submit questions and get them answered.</p><p>A continuous challenge for owners of those Q&amp;A sites is to maintain a decent level of quality in the posted content. Sites such as StackOverflow make considerable efforts to encourage users with diverse possibilities to score content and offer badges and bonus points in order to encourage the users to spend more energy on carving out the question or crafting a possible answer.</p><p>One particular successful incentive is the ability for the asker to flag one answer to their question as the accepted answer (again there are incentives for the asker to flag answers as such). This will result in more score points for the author of the flagged answer.</p><p>Would it not be very useful to the user to immediately see how good his answer is while he is typing it in? That means, the website would continuously evaluate his work-in-progress answer and provide feedback as to whether the answer shows some signs of a poor one. This will encourage the user to put more effort into writing the answer (providing a code example? including an image?), and thus improve the overall system.</p><p>Let's build such a mechanism in this chapter.</p><div class="section" title="Sketching our roadmap"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec30"/>Sketching our roadmap</h1></div></div></div><p>As we <a id="id236" class="indexterm"/>will build a system using real data that is very noisy, this chapter is not for the fainthearted, as we will not arrive at the golden solution of a classifier that achieves 100 percent accuracy; often, even humans disagree whether an answer was good or not (just look at some of the StackOverflow comments). Quite the contrary, we will find out that some problems like this one are so hard that we have to adjust our initial goals on the way. But on the way, we will start with the nearest neighbor approach, find out why it is not very good for the task, switch over to logistic<a id="id237" class="indexterm"/> regression, and arrive at a solution that will achieve good enough prediction quality, but on a smaller part of the answers. Finally, we will spend some time looking at how to extract the winner to deploy it on the target system.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Learning to classify classy answers"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec31"/>Learning to classify classy answers</h1></div></div></div><p>In classification, we want to<a id="id238" class="indexterm"/> find the corresponding <a id="id239" class="indexterm"/>
+<span class="strong"><strong>classes</strong></span>, sometimes also called <a id="id240" class="indexterm"/>
+<span class="strong"><strong>labels</strong></span>, for given data instances. To be able to achieve this, we need to answer two questions:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">How should we represent the data instances?</li><li class="listitem" style="list-style-type: disc">Which model or structure should our classifier possess?</li></ul></div><div class="section" title="Tuning the instance"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec31"/>Tuning the instance</h2></div></div></div><p>In its simplest<a id="id241" class="indexterm"/> form, in our case, the data instance is the text of the answer and the label would be a binary value indicating whether the asker accepted this text as an answer or not. Raw text, however, is a very inconvenient representation to process for most machine learning algorithms. They want numbers. And it will be our task to extract useful features from the raw text, which the machine learning algorithm can then use to learn the right label for it.</p></div><div class="section" title="Tuning the classifier"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec32"/>Tuning the classifier</h2></div></div></div><p>Once we<a id="id242" class="indexterm"/> have found or collected enough (text, label) pairs, we can train a<a id="id243" class="indexterm"/> <span class="strong"><strong>classifier</strong></span>. For the underlying structure of the classifier, we have a wide range of possibilities, each of them having advantages and drawbacks. Just to name some of the more prominent choices, there are logistic regression, decision trees, SVMs, and Naïve Bayes. In this chapter, we will contrast the instance-based method from the last chapter, nearest neighbor, with model-based logistic regression.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Fetching the data"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec32"/>Fetching the data</h1></div></div></div><p>Luckily for us, the <a id="id244" class="indexterm"/>team behind StackOverflow provides most of the data<a id="id245" class="indexterm"/> behind the StackExchange universe to which StackOverflow belongs under a cc-wiki license. At the time of writing this book, the latest data dump can be found at <a class="ulink" href="https://archive.org/details/stackexchange">https://archive.org/details/stackexchange</a>. It contains data dumps of all Q&amp;A sites of the StackExchange family. For StackOverflow, you will find<a id="id246" class="indexterm"/> multiple files, of which we only need the <code class="literal">stackoverflow.com-Posts.7z</code> file, which is 5.2 GB.</p><p>After downloading <a id="id247" class="indexterm"/>and extracting it, we have around 26 GB of data in the format of XML, containing all questions and answers as individual <code class="literal">row</code> tags within the <code class="literal">root</code> tag posts:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&lt;?xml version="1.0" encoding="utf-8"?&gt;</strong></span>
+<span class="strong"><strong>&lt;posts&gt;</strong></span>
+<span class="strong"><strong>...</strong></span>
+<span class="strong"><strong>  &lt;row Id="4572748" PostTypeId="2" ParentId="4568987" CreationDate="2011-01-01T00:01:03.387" Score="4" ViewCount="" Body="&amp;lt;p&amp;gt;IANAL, but &amp;lt;a href=&amp;quot;http://support.apple.com/kb/HT2931&amp;quot; rel=&amp;quot;nofollow&amp;quot;&amp;gt;this&amp;lt;/a&amp;gt; indicates to me that you cannot use the loops in your application:&amp;lt;/p&amp;gt;
+
+&amp;lt;blockquote&amp;gt;
+  &amp;lt;p&amp;gt;...however, individual audio loops may
+  not be commercially or otherwise
+  distributed on a standalone basis, nor
+  may they be repackaged in whole or in
+  part as audio samples, sound effects
+  or music beds.&amp;quot;&amp;lt;/p&amp;gt;
+  
+  &amp;lt;p&amp;gt;So don't worry, you can make
+  commercial music with GarageBand, you
+  just can't distribute the loops as
+  loops.&amp;lt;/p&amp;gt;
+&amp;lt;/blockquote&amp;gt;
+" OwnerUserId="203568" LastActivityDate="2011-01-01T00:01:03.387" CommentCount="1" /&gt;</strong></span>
+<span class="strong"><strong>…</strong></span>
+<span class="strong"><strong>&lt;/posts&gt;</strong></span>
+</pre></div><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Name</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Type</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Id</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Integer</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is a unique identifier.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">PostTypeId</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Integer</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This describes the category of the post. The values interesting to us are the following:</p>
+<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Question</li><li class="listitem" style="list-style-type: disc">Answer</li></ul></div>
+<p>Other values will be ignored.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">ParentId</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Integer</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is a unique identifier of the question to which this answer belongs (missing for questions).</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CreationDate</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">DateTime</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the date of submission.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Score</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Integer</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the score of the post.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">ViewCount</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Integer or empty</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the number of user views for this post.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Body</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">String</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the complete post as encoded HTML text.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">OwnerUserId</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Id</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is a unique identifier of the poster. If 1, then it is a wiki question.</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Title</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">String</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the title of the question (missing for answers).</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">AcceptedAnswerId</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Id</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the ID for the accepted answer (missing for answers).</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>
+<code class="literal">CommentCount</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<code class="literal">Integer</code>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>This is the number of comments for the post.</p>
+</td></tr></tbody></table></div><div class="section" title="Slimming the data down to chewable chunks"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec33"/>Slimming the data down to chewable chunks</h2></div></div></div><p>To speed up our <a id="id248" class="indexterm"/>experimentation phase, we should not try to evaluate our classification ideas on the huge XML file. Instead, we should think of how we could trim it down so that we still keep a representable snapshot of it while being able to quickly test our ideas. If we filter the XML for <code class="literal">row</code> tags that have a creation date of, for example, 2012, we still end up with over 6 million posts (2,323,184 questions and 4,055,999 answers), which should be enough to pick our training data from for now. We also do not want to operate on the XML format as it will slow us down, too. The simpler the format, the better. That's why we parse the remaining XML using Python's <code class="literal">cElementTree</code> and write it out to a tab-separated file.</p></div><div class="section" title="Preselection and processing of attributes"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec34"/>Preselection and processing of attributes</h2></div></div></div><p>To cut down the<a id="id249" class="indexterm"/> data even more, we can certainly drop attributes that we think will not help the classifier in distinguishing between good and not-so-good answers. But we have to be cautious here. Although some features are not directly impacting the classification, they are still necessary to keep.</p><p>The<a id="id250" class="indexterm"/> <code class="literal">PostTypeId</code> attribute, for example, is necessary to distinguish between questions and answers. It will not be picked to serve as a feature, but we will need it to filter the data.</p><p>
+<code class="literal">CreationDate</code><a id="id251" class="indexterm"/> could be interesting to determine the time span between posting the question and posting the individual answers, so we keep it. The <code class="literal">Score</code> is of course important as an indicator for the community's evaluation.</p><p>
+<code class="literal">ViewCount</code>, in <a id="id252" class="indexterm"/>contrast, is most likely of no use for our task. Even if it would help the classifier to distinguish between good and bad, we would not have this information at the time when an answer is being submitted. Drop it!</p><p>The <code class="literal">Body</code> attribute<a id="id253" class="indexterm"/> obviously contains the most important information. As it is encoded HTML, we will have to decode to plain text.</p><p>
+<code class="literal">OwnerUserId</code><a id="id254" class="indexterm"/> is only useful if we take user-dependent features in to account, which we won't. Although we drop it here, we encourage you to use it to build a better classifier (maybe in connection with <code class="literal">stackoverflow.com-Users.7z</code>).</p><p>The <code class="literal">Title</code> attribute<a id="id255" class="indexterm"/> is also ignored here, although it could add some more information about the question.</p><p>
+<code class="literal">CommentCount</code><a id="id256" class="indexterm"/> is also ignored. Similar to <code class="literal">ViewCount</code>, it could help the classifier with posts that are out there for a while (more comments = more ambiguous post?). It will, however, not help the classifier at the time an answer is posted.</p><p>
+<code class="literal">AcceptedAnswerId</code><a id="id257" class="indexterm"/> is similar to <code class="literal">Score</code> in that it is an indicator of a post's quality. As we will access this per answer, instead of keeping this attribute, we will create the new attribute <code class="literal">IsAccepted</code>, which is 0 or 1 for answers and ignored for questions (<code class="literal">ParentId=-1</code>).</p><p>We end up with the following format:</p><div class="informalexample"><pre class="programlisting">Id &lt;TAB&gt; ParentId &lt;TAB&gt; IsAccepted &lt;TAB&gt; TimeToAnswer &lt;TAB&gt; Score &lt;TAB&gt; Text</pre></div><p>For the concrete parsing details, please refer to <code class="literal">so_xml_to_tsv.py</code> and <code class="literal">choose_instance.py</code>. Suffice to say that in order to speed up processing, we will split the data into two files: in <code class="literal">meta.json</code>, we store a dictionary mapping a post's <code class="literal">Id</code> value to its other data except <code class="literal">Text</code> in JSON format so that we can read it in the proper format. For example, the score of a post would reside at <code class="literal">meta[Id]['Score']</code>. In <code class="literal">data.tsv</code>, we store the <code class="literal">Id</code> and <code class="literal">Text</code> values, which we can easily read with the following method:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>    def fetch_posts():</strong></span>
+<span class="strong"><strong>        for line in open("data.tsv", "r"):</strong></span>
+<span class="strong"><strong>            post_id, text = line.split("\t")</strong></span>
+<span class="strong"><strong>            yield int(post_id), text.strip()</strong></span>
+</pre></div></div><div class="section" title="Defining what is a good answer"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec35"/>Defining what is a good answer</h2></div></div></div><p>Before we <a id="id258" class="indexterm"/>can train a classifier to distinguish between good and bad answers, we have to create the training data. So far, we only have a bunch of data. What we still have to do is define labels.</p><p>We could, of course, simply use the <code class="literal">IsAccepted</code> attribute as a label. After all, that marks the answer that answered the question.  However, that is only the opinion of the asker. Naturally, the asker wants to have a quick answer and accepts the first <span class="emphasis"><em>best</em></span> answer. If over time more answers are submitted, some of them will tend to be better than the already accepted one. The asker, however, seldom gets back to the question and changes his mind. So we end up with many questions that have accepted answers that are not scored highest.</p><p>At the other extreme, we could simply always take the best and worst scored answer per question as positive and negative examples. However, what do we do with questions that have only good answers, say, one with two and the other with four points? Should we really take an answer with, for example, two points as a negative example just because it happened to be the one with the lower score?</p><p>We should settle somewhere between these extremes. If we take all answers that are scored higher than zero as positive and all answers with zero or less points as negative, we end up with quite reasonable labels:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; all_answers = [q for q,v in meta.items() if v['ParentId']!=-1]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; Y = np.asarray([meta[answerId]['Score']&gt;0 for answerId in all_answers])</strong></span>
+</pre></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Creating our first classifier"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec33"/>Creating our first classifier</h1></div></div></div><p>Let's start <a id="id259" class="indexterm"/>with the simple and beautiful nearest neighbor method from the previous chapter. Although it is not as advanced as other methods, it is very powerful: as it is not model-based, it can <span class="emphasis"><em>learn</em></span> nearly any data. But this beauty comes with a clear disadvantage, which we will find out very soon.</p><div class="section" title="Starting with kNN"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec36"/>Starting with kNN</h2></div></div></div><p>This time, we <a id="id260" class="indexterm"/>won't implement it ourselves, but rather take it from the <code class="literal">sklearn</code> toolkit. There, the classifier resides in <code class="literal">sklearn.neighbors</code>. Let's start with a simple 2-Nearest Neighbor classifier:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; from sklearn import neighbors</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; knn = neighbors.KNeighborsClassifier(n_neighbors=2)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; print(knn)</strong></span>
+<span class="strong"><strong>KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski', n_neighbors=2, p=2, weights='uniform')</strong></span>
+</pre></div><p>It provides the<a id="id261" class="indexterm"/> same interface as all other estimators in <code class="literal">sklearn</code>: we train it using <code class="literal">fit()</code>, after which we can predict the class of new data instances using <code class="literal">predict()</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; knn.fit([[1],[2],[3],[4],[5],[6]], [0,0,0,1,1,1])</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; knn.predict(1.5)</strong></span>
+<span class="strong"><strong>array([0])</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; knn.predict(37)</strong></span>
+<span class="strong"><strong>array([1])</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; knn.predict(3)</strong></span>
+<span class="strong"><strong>array([0])</strong></span>
+</pre></div><p>To get the class probabilities, we can use <code class="literal">predict_proba()</code>. In this case of having two classes, <code class="literal">0</code> and <code class="literal">1</code>, it will return an array of two elements:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; knn.predict_proba(1.5)</strong></span>
+<span class="strong"><strong>array([[ 1.,  0.]])</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; knn.predict_proba(37)</strong></span>
+<span class="strong"><strong>array([[ 0.,  1.]])</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; knn.predict_proba(3.5)</strong></span>
+<span class="strong"><strong>array([[ 0.5,  0.5]])</strong></span>
+</pre></div></div><div class="section" title="Engineering the features"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec37"/>Engineering the features</h2></div></div></div><p>So, what <a id="id262" class="indexterm"/>kind of features can we provide to our classifier? What do we think will have the most discriminative power?</p><p>
+<code class="literal">TimeToAnswer</code><a id="id263" class="indexterm"/> is already there in our <code class="literal">meta</code> dictionary, but it probably won't provide much value on its own. Then there is only <code class="literal">Text</code>, but in its raw form, we cannot pass it to the classifier, as the features must be in numerical form. We will have to do the dirty (and fun!) work of extracting features from it.</p><p>What we could do is check the number of HTML links in the answer as a proxy for quality. Our hypothesis would be that more hyperlinks in an answer indicate better answers and thus a higher likelihood of being up-voted. Of course, we want to only count links in normal text and not code examples:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>import re</strong></span>
+<span class="strong"><strong>code_match = re.compile('&lt;pre&gt;(.*?)&lt;/pre&gt;',</strong></span>
+<span class="strong"><strong>                        re.MULTILINE | re.DOTALL)</strong></span>
+<span class="strong"><strong>link_match = re.compile('&lt;a href="http://.*?".*?&gt;(.*?)&lt;/a&gt;', </strong></span>
+<span class="strong"><strong>                        re.MULTILINE | re.DOTALL)</strong></span>
+<span class="strong"><strong>tag_match = re.compile('&lt;[^&gt;]*&gt;', </strong></span>
+<span class="strong"><strong>                        re.MULTILINE | re.DOTALL)</strong></span>
+
+<span class="strong"><strong>def extract_features_from_body(s):</strong></span>
+<span class="strong"><strong>    link_count_in_code = 0</strong></span>
+<span class="strong"><strong>    # count links in code to later subtract them </strong></span>
+<span class="strong"><strong>    for match_str in code_match.findall(s):</strong></span>
+<span class="strong"><strong>        link_count_in_code += len(link_match.findall(match_str))</strong></span>
+<span class="strong"><strong>    </strong></span>
+<span class="strong"><strong>    return len(link_match.findall(s)) – link_count_in_code</strong></span>
+</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip08"/>Tip</h3><p>For production systems, we would not want to parse HTML content with regular expressions. Instead, we should rely on excellent libraries such as BeautifulSoup, which does a marvelous job of robustly handling all the weird things that typically occur in everyday HTML.</p></div></div><p>With this in<a id="id264" class="indexterm"/> place, we can generate one feature per answer. But before we train the classifier, let's first have a look at what we will train it with. We can get a first impression with the frequency distribution of our new feature. This can be done by plotting the percentage of how often each value occurs in the data. Have a look at the following plot:</p><div class="mediaobject"><img src="images/2772OS_05_01.jpg" alt="Engineering the features"/></div><p>With the majority of posts having no link at all, we know now that this feature will not make a good classifier<a id="id265" class="indexterm"/> alone. Let's nevertheless try it out to get a first estimation of where we are.</p></div><div class="section" title="Training the classifier"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec38"/>Training the classifier</h2></div></div></div><p>We have to pass <a id="id266" class="indexterm"/>the feature array together with the previously defined labels <code class="literal">Y</code> to the kNN learner to obtain a classifier:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>X = np.asarray([extract_features_from_body(text) for post_id, text in
+                fetch_posts() if post_id in all_answers])</strong></span>
+<span class="strong"><strong>knn = neighbors.KNeighborsClassifier()</strong></span>
+<span class="strong"><strong>knn.fit(X, Y)</strong></span>
+</pre></div><p>Using the standard parameters, we just fitted a 5NN (meaning NN with <code class="literal">k=5</code>) to our data. Why 5NN? Well, at the current state of our knowledge about the data, we really have no clue what the right <code class="literal">k</code> should be. Once we have more insight, we will have a better idea of how to set <code class="literal">k</code>.</p></div><div class="section" title="Measuring the classifier's performance"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec39"/>Measuring the classifier's performance</h2></div></div></div><p>We have to<a id="id267" class="indexterm"/> be clear about what we want to measure. The naïve but easiest way is to simply calculate the average prediction quality over the test set. This will result in a value between 0 for predicting everything wrongly and 1 for perfect prediction. The accuracy can be obtained through <code class="literal">knn.score()</code>.</p><p>But as we learned in the previous chapter, we will not do it just once, but apply cross-validation here using the readymade <code class="literal">KFold</code> class from <code class="literal">sklearn.cross_validation</code>. Finally, we will then average the scores on the test set of each fold and see how much it varies using standard deviation:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>from sklearn.cross_validation import KFold</strong></span>
+<span class="strong"><strong>scores = []</strong></span>
+
+<span class="strong"><strong>cv = KFold(n=len(X), k=10, indices=True)</strong></span>
+
+<span class="strong"><strong>for train, test in cv:</strong></span>
+<span class="strong"><strong>    X_train, y_train = X[train], Y[train]</strong></span>
+<span class="strong"><strong>    X_test, y_test = X[test], Y[test]</strong></span>
+<span class="strong"><strong>    clf = neighbors.KNeighborsClassifier()</strong></span>
+<span class="strong"><strong>    clf.fit(X, Y)</strong></span>
+<span class="strong"><strong>    scores.append(clf.score(X_test, y_test))</strong></span>
+
+<span class="strong"><strong>print("Mean(scores)=%.5f\tStddev(scores)=%.5f"\</strong></span>
+<span class="strong"><strong>      %(np.mean(scores), np.std(scores)))</strong></span>
+</pre></div><p>Here is the output:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Mean(scores)=0.50250    Stddev(scores)=0.055591</strong></span>
+</pre></div><p>Now that is <a id="id268" class="indexterm"/>far from being usable. With only 55 percent accuracy, it is not much better than tossing a coin. Apparently, the number of links in a post is not a very good indicator for the quality of a post. So, we can say that this feature does not have much discriminative power—at least not for kNN with <code class="literal">k=5</code>.</p></div><div class="section" title="Designing more features"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec40"/>Designing more features</h2></div></div></div><p>In addition <a id="id269" class="indexterm"/>to using the number of hyperlinks as a proxy for a post's quality, the number of code lines is possibly another good one, too. At least it is a good indicator that the post's author is interested in answering the question. We can find the code embedded in the <code class="literal">&lt;pre&gt;…&lt;/pre&gt;</code> tag. And once we have it extracted, we should count the number of words in the post while ignoring code lines:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>def extract_features_from_body(s):</strong></span>
+<span class="strong"><strong>    num_code_lines = 0     link_count_in_code = 0</strong></span>
+<span class="strong"><strong>    code_free_s = s</strong></span>
+
+<span class="strong"><strong>    # remove source code and count how many lines</strong></span>
+<span class="strong"><strong>    for match_str in code_match.findall(s):</strong></span>
+<span class="strong"><strong>        num_code_lines += match_str.count('\n')</strong></span>
+<span class="strong"><strong>        code_free_s = code_match.sub("", code_free_s)</strong></span>
+
+<span class="strong"><strong>        # Sometimes source code contains links, </strong></span>
+<span class="strong"><strong>        # which we don't want to count</strong></span>
+<span class="strong"><strong>        link_count_in_code += len(link_match.findall(match_str))</strong></span>
+
+<span class="strong"><strong>    links = link_match.findall(s)</strong></span>
+<span class="strong"><strong>    link_count = len(links)</strong></span>
+<span class="strong"><strong>    link_count -= link_count_in_code</strong></span>
+<span class="strong"><strong>    html_free_s = re.sub(" +", " ", </strong></span>
+<span class="strong"><strong>          tag_match.sub('',  code_free_s)).replace("\n", "")</strong></span>
+<span class="strong"><strong>    link_free_s = html_free_s</strong></span>
+
+<span class="strong"><strong>    # remove links from text before counting words</strong></span>
+<span class="strong"><strong>    for link in links:</strong></span>
+<span class="strong"><strong>        if link.lower().startswith("http://"):</strong></span>
+<span class="strong"><strong>            link_free_s = link_free_s.replace(link,'')</strong></span>
+
+<span class="strong"><strong>    num_text_tokens = html_free_s.count(" ")</strong></span>
+
+<span class="strong"><strong>    return num_text_tokens, num_code_lines, link_count</strong></span>
+</pre></div><p>Looking<a id="id270" class="indexterm"/> at them, we notice that at least the number of words in a post shows higher variability:</p><div class="mediaobject"><img src="images/2772OS_05_02.jpg" alt="Designing more features"/></div><p>Training on the bigger feature space improves accuracy quite a bit:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Mean(scores)=0.59800    Stddev(scores)=0.02600</strong></span>
+</pre></div><p>But still, this would mean that we would classify roughly 4 out of 10 wrong. At least we are going in the right direction. More features lead to higher accuracy, which leads us to adding more features. Therefore, let's extend the feature space by even more features:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">AvgSentLen</code>: This<a id="id271" class="indexterm"/> measures the average number of words in a sentence. Maybe there is a pattern that particularly good posts don't overload the reader's brain with overly long sentences?</li><li class="listitem" style="list-style-type: disc"><code class="literal">AvgWordLen</code>: Similar<a id="id272" class="indexterm"/> to <code class="literal">AvgSentLen</code>, this feature measures the average number of characters in the words of a post.</li><li class="listitem" style="list-style-type: disc"><code class="literal">NumAllCaps</code>: This <a id="id273" class="indexterm"/>measures the number of words that are written in uppercase, which is considered bad style.</li><li class="listitem" style="list-style-type: disc"><code class="literal">NumExclams</code>: This <a id="id274" class="indexterm"/>measures the number of exclamation marks.</li></ul></div><p>The following<a id="id275" class="indexterm"/> charts show the value distributions for average sentence and word lengths and number of uppercase words and exclamation marks:</p><div class="mediaobject"><img src="images/2772OS_05_03.jpg" alt="Designing more features"/></div><p>With these four additional features, we now have seven features representing the individual posts. Let's see how we progress:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>Mean(scores)=0.61400    Stddev(scores)= 0.02154</strong></span>
+</pre></div><p>Now, that's interesting. We added four more features and don't get anything in return. How can that be?</p><p>To understand<a id="id276" class="indexterm"/> this, we have to remind ourselves how kNN works. Our 5NN classifier determines the class of a new post by calculating the seven aforementioned features, <code class="literal">LinkCount</code>, <code class="literal">NumTextTokens</code>, <code class="literal">NumCodeLines</code>, <code class="literal">AvgSentLen</code>, <code class="literal">AvgWordLen</code>, <code class="literal">NumAllCaps</code>, and <code class="literal">NumExclams</code>, and then finds the five nearest other posts. The new post's class is then the majority of the classes of those nearest posts. The nearest posts are determined by calculating the Euclidean distance (as we did not specify it, the classifier was initialized with the default <code class="literal">p=2</code>, which is the parameter in the Minkowski distance). That means that all seven features are treated similarly. kNN does not really learn that, for instance, <code class="literal">NumTextTokens</code> is good to have but much less important than <code class="literal">NumLinks</code>. Let's consider the following two posts A and B that only differ in the following features and how they compare to a new post:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Post</p>
+</th><th style="text-align: left" valign="bottom">
+<p>NumLinks</p>
+</th><th style="text-align: left" valign="bottom">
+<p>NumTextTokens</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>A</p>
+</td><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>20</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>B</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>25</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>new</p>
+</td><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>23</p>
+</td></tr></tbody></table></div><p>Although we would think that links provide more value than mere text, post B would be considered more similar to the new post than post A.</p><p>Clearly, kNN has a hard time in correctly using the available data.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Deciding how to improve"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec34"/>Deciding how to improve</h1></div></div></div><p>To improve on this, we basically have<a id="id277" class="indexterm"/> the following options:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Add more data</strong></span>: Maybe it is just not enough data for the learning algorithm and we should simply add more training data?</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Play with the model complexity</strong></span>: Maybe the model is not complex enough? Or maybe it is already too complex? In this case, we could decrease <span class="emphasis"><em>k</em></span> so that it would take less nearest neighbors into account and thus be better in predicting non-smooth data. Or we could increase it to achieve the opposite.</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Modify the feature space</strong></span>: Maybe we do not have the right set of features? We could, for example, change the scale of our current features or design even more new features. Or should we rather remove some of our current features in case some features are aliasing others?</li><li class="listitem" style="list-style-type: disc"><span class="strong"><strong>Change the model</strong></span>: Maybe<a id="id278" class="indexterm"/> kNN is in general not a good fit for our use case such that it will never be capable of achieving good prediction performance, no matter how complex we allow it to be and how sophisticated the feature space will become?</li></ul></div><p>In real life, at this point, people often try to improve the current performance by randomly picking one of the these options and trying them out in no particular order, hoping to find the golden configuration by chance. We could do the same here, but it will surely take longer than making informed decisions. Let's take the informed route, for which we need to introduce the bias-variance tradeoff.</p><div class="section" title="Bias-variance and their tradeoff"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec41"/>Bias-variance and their tradeoff</h2></div></div></div><p>In <a class="link" href="ch01.html" title="Chapter 1. Getting Started with Python Machine Learning">Chapter 1</a>, <span class="emphasis"><em>Getting Started with Python Machine Learning</em></span>, we tried to fit polynomials of<a id="id279" class="indexterm"/> different complexities controlled by the dimensionality parameter <code class="literal">d</code> to fit the data. We realized that a two-dimensional polynomial, a straight line, does not fit the example data very well, because the data was not of linear nature. No matter how elaborate our fitting procedure would have been, our two-dimensional model would see everything as a straight line. We say that it is too biased for the data at hand. It is under-fitting.</p><p>We played a bit with the dimensions and found out that the 100-dimensional polynomial is actually fitting very well to the data on which it was trained (we did not know about train-test splits at that time). However, we quickly found out that it was fitting too well. We realized that it was over-fitting so badly, that with different samples of the data points, we would have gotten totally different 100-dimensional polynomials. We say that the model has a too high variance for the given data, or that it is over-fitting.</p><p>These are the extremes between which most of our machine learning problems reside. Ideally, we want to have both, low bias and low variance. But, we are in a bad world, and have to tradeoff between them. If we improve on one, we will likely get worse on the other.</p></div><div class="section" title="Fixing high bias"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec42"/>Fixing high bias</h2></div></div></div><p>Let's now <a id="id280" class="indexterm"/>assume we suffer from high bias. In that case, adding more training data clearly does not help. Also, removing features surely will not help, as our model would have already been overly simplistic.</p><p>The only possibilities we have in this case are to get more features, make the model more complex, or change the model.</p></div><div class="section" title="Fixing high variance"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec43"/>Fixing high variance</h2></div></div></div><p>If, on<a id="id281" class="indexterm"/> the contrary, we suffer from high variance, that means that our model is too complex for the data. In this case, we can only try to get more data or decrease the complexity. This would mean to increase <span class="emphasis"><em>k</em></span> so that more neighbors would be taken into account or to remove some of the features.</p></div><div class="section" title="High bias or low bias"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec44"/>High bias or low bias</h2></div></div></div><p>To find out what our problem actually is, we have to simply plot the train and test errors over the data size.</p><p>High bias<a id="id282" class="indexterm"/> is typically revealed by the test error decreasing a bit at the beginning, but then settling at a very high value with the train error approaching with a growing dataset size. High variance is recognized by a big gap between both curves.</p><p>Plotting the errors for different dataset sizes for 5NN shows a big gap between train and test errors, hinting<a id="id283" class="indexterm"/> at a high variance problem:</p><div class="mediaobject"><img src="images/2772OS_05_04.jpg" alt="High bias or low bias"/></div><p>Looking at the <a id="id284" class="indexterm"/>graph, we immediately see that adding more training data will not help, as the dashed line corresponding to the test error seems to stay above 0.4. The only option we have is to decrease the complexity, either by increasing <span class="emphasis"><em>k</em></span> or by reducing the feature space.</p><p>Reducing the feature space does not help here. We can easily confirm this by plotting the graph for a simplified feature space of only <code class="literal">LinkCount</code> and <code class="literal">NumTextTokens</code>:</p><div class="mediaobject"><img src="images/2772OS_05_05.jpg" alt="High bias or low bias"/></div><p>We get similar<a id="id285" class="indexterm"/> graphs for other smaller feature sets. No matter what subset of features we take, the graph would look similar.</p><p>At least reducing the model complexity by increasing <span class="emphasis"><em>k</em></span> shows some positive impact:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>k</p>
+</th><th style="text-align: left" valign="bottom">
+<p>mean(scores)</p>
+</th><th style="text-align: left" valign="bottom">
+<p>stddev(scores)</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>40</p>
+</td><td style="text-align: left" valign="top">
+<p>0.62800</p>
+</td><td style="text-align: left" valign="top">
+<p>0.03750</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>10</p>
+</td><td style="text-align: left" valign="top">
+<p>0.62000</p>
+</td><td style="text-align: left" valign="top">
+<p>0.04111</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>5</p>
+</td><td style="text-align: left" valign="top">
+<p>0.61400</p>
+</td><td style="text-align: left" valign="top">
+<p>0.02154</p>
+</td></tr></tbody></table></div><p>But it is not enough, and also comes at a price of lower classification runtime performance. Take, for instance, <code class="literal">k=40</code>, where we have a very low test error. To classify a new post, we would need to find the 40 nearest other posts to decide whether the new post is a good one or not:</p><div class="mediaobject"><img src="images/2772OS_05_06.jpg" alt="High bias or low bias"/></div><p>Clearly, it seems <a id="id286" class="indexterm"/>to be an issue with using nearest neighbor for our scenario. And it has another real disadvantage. Over time, we will get more and more posts into our system. As the nearest neighbor method is an instance-based approach, we will have to store all posts in our system. The more we get, the slower the prediction will be. This is different with model-based approaches, where one tries to derive a model from the data.</p><p>There we are, with enough reasons now to abandon the nearest neighbor approach to look for better places in the classification world. Of course, we will never know whether there is the one golden feature we just did not happen to think of. But for now, let's move on to another classification method that is known to work great in text-based classification scenarios.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Using logistic regression"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec35"/>Using logistic regression</h1></div></div></div><p>Contrary to its name, logistic<a id="id287" class="indexterm"/> regression <a id="id288" class="indexterm"/>is a classification method. It is a very powerful one when it comes to<a id="id289" class="indexterm"/> text-based classification; it achieves this by first doing a regression on a logistic function, hence the name.</p><div class="section" title="A bit of math with a small example"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec45"/>A bit of math with a small example</h2></div></div></div><p>To get an<a id="id290" class="indexterm"/> initial understanding of the way logistic regression works, let's first take a look at the following example where we have artificial feature values <span class="emphasis"><em>X</em></span> plotted with the corresponding classes, 0 or 1. As we can see, the data is noisy such that classes overlap in the feature value range between 1 and 6. Therefore, it is better to not directly model the discrete classes, but rather the probability that a feature value belongs to class 1, <span class="emphasis"><em>P(X)</em></span>. Once we possess such a model, we could then predict class 1 if <span class="emphasis"><em>P(X)&gt;0.5</em></span>, and class 0 otherwise.</p><div class="mediaobject"><img src="images/2772OS_05_07.jpg" alt="A bit of math with a small example"/></div><p>Mathematically, it is always difficult to model something that has a finite range, as is the case here with our discrete labels 0 and 1. We can, however, tweak the probabilities a bit so that they always stay between 0 and 1. And for that, we will need the odds ratio and the logarithm of it.</p><p>Let's say a feature has the probability of 0.9 that it belongs to class 1, <span class="emphasis"><em>P(y=1) = 0.9</em></span>. The odds ratio is then <span class="emphasis"><em>P(y=1)/P(y=0) = 0.9/0.1 = 9</em></span>. We could say that the chance is 9:1 that this feature maps to class 1. If <span class="emphasis"><em>P(y=0.5)</em></span>, we would consequently have a 1:1 chance that the instance is of class 1. The odds ratio is bounded by 0, but goes to infinity (the left graph in the following set of graphs). If we now take the logarithm of it, we can map all probabilities between 0 and 1 to the full range from negative to positive infinity (the right graph in the following set of graphs). The nice thing is that we still maintain the relationship that higher probability leads to a higher log of odds, just not limited to 0 and 1 anymore.</p><div class="mediaobject"><img src="images/2772OS_05_08.jpg" alt="A bit of math with a small example"/></div><p>This means that we <a id="id291" class="indexterm"/>can now fit linear combinations of our features (OK, we only have one and a constant, but that will change soon) to the <span class="inlinemediaobject"><img src="images/2772OS_05_19.jpg" alt="A bit of math with a small example"/></span> values. In a sense, we replace the linear from <a class="link" href="ch01.html" title="Chapter 1. Getting Started with Python Machine Learning">Chapter 1</a>, <span class="emphasis"><em>Getting Started with Python Machine Learning</em></span>, <span class="inlinemediaobject"><img src="images/2772OS_05_14.jpg" alt="A bit of math with a small example"/></span> with <span class="inlinemediaobject"><img src="images/2772OS_05_15.jpg" alt="A bit of math with a small example"/></span> (replacing <span class="emphasis"><em>y</em></span> with <span class="emphasis"><em>log(odds)</em></span>).</p><p>We can solve this for <span class="emphasis"><em>p<sub>i</sub></em></span>, so that we have <span class="inlinemediaobject"><img src="images/2772OS_05_16.jpg" alt="A bit of math with a small example"/></span>.</p><p>We simply have to find the right coefficients, such that the formula gives the lowest errors for all our (x<sub>i</sub>, p<sub>i</sub>) pairs in our data set, but that will be done by scikit-learn.</p><p>After fitting, the formula will give the probability for every new data point <span class="emphasis"><em>x</em></span> that belongs to class 1:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; from sklearn.linear_model import LogisticRegression</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; clf = LogisticRegression()</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; print(clf)</strong></span>
+<span class="strong"><strong>LogisticRegression(C=1.0, class_weight=None, dual=False, fit_intercept=True, intercept_scaling=1, penalty=l2, tol=0.0001)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; clf.fit(X, y)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; print(np.exp(clf.intercept_), np.exp(clf.coef_.ravel()))</strong></span>
+<span class="strong"><strong>[ 0.09437188] [ 1.80094112]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; def lr_model(clf, X):</strong></span>
+<span class="strong"><strong>...     return 1 / (1 + np.exp(-(clf.intercept_ + clf.coef_*X)))</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; print("P(x=-1)=%.2f\tP(x=7)=%.2f"%(lr_model(clf, -1), lr_model(clf, 7)))</strong></span>
+<span class="strong"><strong>P(x=-1)=0.05    P(x=7)=0.85</strong></span>
+</pre></div><p>You might have<a id="id292" class="indexterm"/> noticed that scikit-learn exposes the first coefficient through the special field <code class="literal">intercept_</code>.</p><p>If we plot the fitted model, we see that it makes perfect sense given the data:</p><div class="mediaobject"><img src="images/2772OS_05_09.jpg" alt="A bit of math with a small example"/></div></div><div class="section" title="Applying logistic regression to our post classification problem"><div class="titlepage"><div><div><h2 class="title"><a id="ch05lvl2sec46"/>Applying logistic regression to our post classification problem</h2></div></div></div><p>Admittedly, the<a id="id293" class="indexterm"/> example in the previous section was created to show the beauty of logistic regression. How does it perform on the real, noisy data?</p><p>Comparing it to the best nearest neighbor classifier (<code class="literal">k=40</code>) as a baseline, we see that it performs a bit better, but also won't change the situation a whole lot.</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Method</p>
+</th><th style="text-align: left" valign="bottom">
+<p>mean(scores)</p>
+</th><th style="text-align: left" valign="bottom">
+<p>stddev(scores)</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>LogReg C=0.1 </p>
+</td><td style="text-align: left" valign="top">
+<p>0.64650</p>
+</td><td style="text-align: left" valign="top">
+<p>0.03139</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>LogReg C=1.00  </p>
+</td><td style="text-align: left" valign="top">
+<p>0.64650</p>
+</td><td style="text-align: left" valign="top">
+<p>0.03155</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>LogReg C=10.00 </p>
+</td><td style="text-align: left" valign="top">
+<p>0.64550</p>
+</td><td style="text-align: left" valign="top">
+<p>0.03102</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>LogReg C=0.01 </p>
+</td><td style="text-align: left" valign="top">
+<p>0.63850</p>
+</td><td style="text-align: left" valign="top">
+<p>0.01950</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>40NN </p>
+</td><td style="text-align: left" valign="top">
+<p>0.62800</p>
+</td><td style="text-align: left" valign="top">
+<p>0.03750</p>
+</td></tr></tbody></table></div><p>We have shown the accuracy for different values of the regularization parameter <code class="literal">C</code>. With it, we can control the model complexity, similar to the parameter <code class="literal">k</code> for the nearest neighbor method. Smaller values for <code class="literal">C</code> result in more penalization of the model complexity.</p><p>A quick look at the bias-variance chart for one of our best candidates, <code class="literal">C=0.1</code>, shows that our model has high bias—test and train error curves approach closely but stay at unacceptable high values. This indicates that logistic regression with the current feature space is under-fitting and cannot learn a model that captures the data correctly:</p><div class="mediaobject"><img src="images/2772OS_05_10.jpg" alt="Applying logistic regression to our post classification problem"/></div><p>So what now? We switched the model and tuned it as much as we could with our current state of knowledge, but we still have no acceptable classifier.</p><p>More and more<a id="id294" class="indexterm"/> it seems that either the data is too noisy for this task or that our set of features is still not appropriate to discriminate the classes well enough.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Looking behind accuracy – precision and recall"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec36"/>Looking behind accuracy – precision and recall</h1></div></div></div><p>Let's step back and think again about what we are trying to achieve here. Actually, we do not need a classifier<a id="id295" class="indexterm"/> that perfectly predicts good and bad answers <a id="id296" class="indexterm"/>as we measured it until now using accuracy. If we can tune the classifier to be particularly good at predicting one class, we could adapt the feedback to the user accordingly. If we, for example, had a classifier that was always right when it predicted an answer to be bad, we would give no feedback until the classifier detected the answer to be bad. On the contrary, if the classifier exceeded in predicting answers to be good, we could show helpful comments to the user at the beginning and remove them when the classifier said that the answer is a good one.</p><p>To find out in <a id="id297" class="indexterm"/>which situation we are here, we have to <a id="id298" class="indexterm"/>understand how to measure precision and recall. And to understand that, we have to look into the four distinct classification results as they are described in the following table:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th rowspan="2" colspan="2" style="text-align: center" valign="bottom"> </th><th colspan="2" style="text-align: center" valign="bottom">
+<p>Classified as</p>
+</th></tr><tr><th style="text-align: left" valign="bottom">
+<p>
+<span class="strong"><strong>Positive</strong></span>
+</p>
+</th><th style="text-align: left" valign="bottom">
+<p>
+<span class="strong"><strong>Negative</strong></span>
+</p>
+</th></tr></thead><tbody><tr><td rowspan="2" style="text-align: left" valign="top">
+<p>
+<span class="strong"><strong>In reality it is</strong></span>
+</p>
+</td><td style="text-align: left" valign="top">
+<p>Positive</p>
+</td><td style="text-align: left" valign="top">
+<p>True positive (TP)</p>
+</td><td style="text-align: left" valign="top">
+<p>False negative (FN)</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>Negative</p>
+</td><td style="text-align: left" valign="top">
+<p>False positive (FP)</p>
+</td><td style="text-align: left" valign="top">
+<p>True negative (TN)</p>
+</td></tr></tbody></table></div><p>For instance, if the classifier predicts an instance to be positive and the instance indeed is positive in reality, this is a true positive instance. If on the other hand the classifier misclassified that instance, saying that it is negative while in reality it was positive, that instance is said to be a false negative.</p><p>What we want is to have a high success rate when we are predicting a post as either good or bad, but not necessarily both. That is, we want as much true positives as possible. This is what precision captures:</p><div class="mediaobject"><img src="images/2772OS_05_17.jpg" alt="Looking behind accuracy – precision and recall"/></div><p>If instead our goal would have been to detect as much good or bad answers as possible, we would be more interested in recall:</p><div class="mediaobject"><img src="images/2772OS_05_18.jpg" alt="Looking behind accuracy – precision and recall"/></div><p>In terms<a id="id299" class="indexterm"/> of the following<a id="id300" class="indexterm"/> graphic, precision is the fraction of the intersection of the right circle while recall is the fraction of the intersection of the left circle:</p><div class="mediaobject"><img src="images/2772OS_05_12.jpg" alt="Looking behind accuracy – precision and recall"/></div><p>So, how can we now optimize for precision? Up to now, we have always used 0.5 as the threshold to decide whether an answer is good or not. What we can do now is count the number of TP, FP, and FN while varying that threshold between 0 and 1. With those counts, we can then plot precision over recall.</p><p>The handy function <a id="id301" class="indexterm"/>
+<code class="literal">precision_recall_curve()</code> from the metrics module does all the calculations for us:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; from sklearn.metrics import precision_recall_curve</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; precision, recall, thresholds = precision_recall_curve(y_test,
+    clf.predict(X_test))</strong></span>
+</pre></div><p>Predicting one class with acceptable performance does not always mean that the classifier is also acceptable predicting the other class. This can be seen in the following two plots, where we plot the precision/recall curves for classifying bad (the left graph) and good (the right graph) answers:</p><div class="mediaobject"><img src="images/2772OS_05_11.jpg" alt="Looking behind accuracy – precision and recall"/></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip09"/>Tip</h3><p>In the graphs, we have also included a much better description of a classifier's performance, the <a id="id302" class="indexterm"/>
+<span class="strong"><strong>area under curve</strong></span> (<span class="strong"><strong>AUC</strong></span>). It can be understood as the average precision of the classifier and is a great way of comparing different classifiers.</p></div></div><p>We see that we <a id="id303" class="indexterm"/>can basically forget predicting bad answers (the left plot). Precision drops to a very low recall and stays at an unacceptably low 60 percent.</p><p>Predicting good<a id="id304" class="indexterm"/> answers, however, shows that we can get above 80 percent precision at a recall of almost 40 percent. Let's find out what threshold we need for that. As we trained many classifiers on different folds (remember, we iterated over <code class="literal">KFold()</code> a couple of pages back), we need to retrieve the classifier that was neither too bad nor too good in order to get a realistic view. Let's call it the medium clone:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; medium = np.argsort(scores)[int(len(scores) / 2)]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; thresholds = np.hstack(([0],thresholds[medium]))</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; idx80 = precisions&gt;=0.8</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; print("P=%.2f R=%.2f thresh=%.2f" % (precision[idx80][0], recall[idx80][0], threshold[idx80][0]))</strong></span>
+<span class="strong"><strong>P=0.80 R=0.37 thresh=0.59</strong></span>
+</pre></div><p>Setting the threshold at <code class="literal">0.59</code>, we see that we can still achieve a precision of 80 percent detecting good answers when we accept a low recall of 37 percent. That means that we would detect only one in three good answers as such. But from that third of good answers that we manage to detect, we would be reasonably sure that they are indeed good. For the rest, we could then politely display additional hints on how to improve answers in general.</p><p>To apply<a id="id305" class="indexterm"/> this <a id="id306" class="indexterm"/>threshold in the prediction process, we have to use <code class="literal">predict_proba()</code>, which returns per class probabilities, instead of <code class="literal">predict()</code>, which returns the class itself:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; thresh80 = threshold[idx80][0]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; probs_for_good = clf.predict_proba(answer_features)[:,1]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; answer_class = probs_for_good&gt;thresh80</strong></span>
+</pre></div><p>We can confirm that we are in the desired precision/recall range using <code class="literal">classification_report</code>:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; from sklearn.metrics import classification_report</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; print(classification_report(y_test, clf.predict_proba [:,1]&gt;0.63, target_names=['not accepted', 'accepted']))</strong></span>
+
+<span class="strong"><strong>            precision    recall  f1-score   support</strong></span>
+<span class="strong"><strong>not accepted         0.59      0.85      0.70       101</strong></span>
+<span class="strong"><strong>accepted             0.73      0.40      0.52        99</strong></span>
+<span class="strong"><strong>avg / total          0.66      0.63      0.61       200</strong></span>
+</pre></div><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip10"/>Tip</h3><p>Note that using the threshold will not guarantee that we are always above the precision and recall values that we determined above together with its threshold.</p></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Slimming the classifier"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec37"/>Slimming the classifier</h1></div></div></div><p>It is always <a id="id307" class="indexterm"/>worth looking at the actual contributions of the individual features. For logistic regression, we can directly take the learned coefficients (<code class="literal">clf.coef_</code>) to get an impression of the features' impact. The higher the coefficient of a feature, the more the feature plays a role in determining whether the post is good or not. Consequently, negative coefficients tell us that the higher values for the corresponding features indicate a stronger signal for the post to be classified as bad.</p><div class="mediaobject"><img src="images/2772OS_05_13.jpg" alt="Slimming the classifier"/></div><p>We see that <code class="literal">LinkCount</code>, <code class="literal">AvgWordLen</code>, <code class="literal">NumAllCaps</code>, and <code class="literal">NumExclams</code> have the biggest impact on the overall classification decision, while <code class="literal">NumImages</code> (a feature that we sneaked in just for demonstration purposes a second ago) and <code class="literal">AvgSentLen</code> play a rather minor role. While the <a id="id308" class="indexterm"/>feature importance overall makes sense intuitively, it is surprising that <code class="literal">NumImages</code> is basically ignored. Normally, answers containing images are always rated high. In reality, however, answers very rarely have images. So, although in principal it is a very powerful feature, it is too sparse to be of any value. We could easily drop that feature and retain the same classification performance.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Ship it!"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec38"/>Ship it!</h1></div></div></div><p>Let's assume we want to integrate this classifier into our site. What we definitely do not want is training the classifier each time we start the classification service. Instead, we can simply serialize <a id="id309" class="indexterm"/>the classifier after training and then deserialize on that site:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; import pickle</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; pickle.dump(clf, open("logreg.dat", "w"))</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; clf = pickle.load(open("logreg.dat", "r"))</strong></span>
+</pre></div><p>Congratulations, the classifier is now ready to be used as if it had just been trained.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch05lvl1sec39"/>Summary</h1></div></div></div><p>We made it! For a very noisy dataset, we built a classifier that suits a part of our goal. Of course, we had to be pragmatic and adapt our initial goal to what was achievable. But on the way we learned about strengths and weaknesses of nearest neighbor and logistic regression. We learned how to extract features such as <code class="literal">LinkCount</code>, <code class="literal">NumTextTokens</code>, <code class="literal">NumCodeLines</code>, <code class="literal">AvgSentLen</code>, <code class="literal">AvgWordLen</code>, <code class="literal">NumAllCaps</code>, <code class="literal">NumExclams</code>, and <code class="literal">NumImages</code>, and how to analyze their impact on the classifier's performance.</p><p>But what is even more valuable is that we learned an informed way of how to debug bad performing classifiers. That will help us in the future to come up with usable systems much faster.</p><p>After having looked into nearest neighbor and logistic regression, in the next chapter, we will get familiar with yet another simple yet powerful classification algorithm: Naïve Bayes. Along the way, we will also learn some more convenient tools from scikit-learn.</p></div></div>
+</body></html>

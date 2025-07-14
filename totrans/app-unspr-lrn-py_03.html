@@ -1,0 +1,190 @@
+<html><head></head><body>
+		<div class="Content" id="_idContainer067">
+			<h1 id="_idParaDest-56"><em class="italics"><a id="_idTextAnchor057"/>Chapter 3</em></h1>
+		</div>
+		<div class="Content" id="_idContainer068">
+			<h1 id="_idParaDest-57"><a id="_idTextAnchor058"/>Neighborhood Approaches and DBSCAN</h1>
+		</div>
+		<div class="Content" id="_idContainer069">
+			<h2>Learning Objectives</h2>
+			<p>By the end of this chapter, you will be able to:</p>
+			<ul>
+				<li class="bullets">Understand how neighborhood approaches to clustering work from beginning to end</li>
+				<li class="bullets">Implement the DBSCAN algorithm from scratch by using packages</li>
+				<li class="bullets">Identify the best suited algorithm from k-means, hierarchical clustering, and DBSCAN to solve your problem</li>
+			</ul>
+			<p>In this chapter, we will have a look at DBSCAN clustering approach that will serve us best in the highly complex data.</p>
+		</div>
+		<div class="Content" id="_idContainer083">
+			<h2 id="_idParaDest-58"><a id="_idTextAnchor059"/>Introduction</h2>
+			<p>So far, we have covered two popular ways of approaching the clustering problem: k-means and hierarchical clustering. Both clustering techniques have pros and cons associated with how they are carried out. Once again, let's revisit where we have been in the first two chapters so we can gain further context to where we will be going in this chapter.</p>
+			<p>In the challenge space of unsupervised learning, you will be presented with a collection of feature data, but no complementary labels telling you what these feature variables necessarily mean. While you may not get a discrete view into what the target labels are, you can get some semblance of structure out of the data by clustering similar groups together and seeing what is similar within groups. The first approach we covered to achieve this goal of clustering similar data points is k-means.</p>
+			<p>k-means works best for simpler data challenges where speed is paramount. By simply looking at the closest data points, there is not a lot of computational overhead, however, there is also a greater degree of challenge when it comes to higher-dimensional datasets. k-means is also not ideal if you are unaware of the potential number of clusters you would be looking for. An example we have worked with in <em class="italics">Chapter 2</em>, <em class="italics">Hierarchical Clustering</em>, was looking at chemical profiles to determine which wines belonged together in a disorganized shipment. This exercise only worked well because you knew that three wine types were ordered; however, k-means would have been less successful if you had no intuition on what the original order was made up of.</p>
+			<p>The second clustering approach we explored was hierarchical clustering. This method can work in multiple ways – either agglomerative or divisive. Agglomerative clustering works with a bottom-up approach, treating each data point as its own cluster and recursively grouping them together with linkage criteria. Divisive clustering works in the opposite direction by treating all data points as one large class and recursively breaking them down into smaller clusters. This approach has the benefit of fully understanding the entire data distribution, as it calculates splitting potential, however, it is typically not done in practice due to its greater complexity. Hierarchical clustering is a strong contender for your clustering needs when it comes to not knowing anything about the data. Using a dendrogram, you can visualize all the splits in your data and consider what number of clusters makes sense after the fact. This can be really helpful in your specific use case; however, it also comes at a higher computational cost that is seen in k-means.</p>
+			<p>In this chapter, we will cover a clustering approach that will serve us best in the highly complex data: <strong class="bold">DBSCAN</strong> (Density-Based Spatial Clustering of Applications with Noise). Canonically, this method has always been seen as a high performer in datasets that have a lot of densely interspersed data. Let's walk through why it does so well in these use cases.</p>
+			<h3 id="_idParaDest-59"><a id="_idTextAnchor060"/>Clusters as Neighborhoods</h3>
+			<p>In the first two chapters, we explored the concept of likeness being described as a function of Euclidean distance – data points that are closer to any one point can be seen as similar, while those that are further away in Euclidean space can be seen as dissimilar. This notion is seen once again in the DBSCAN algorithm. As alluded to by the lengthy name, the DBSCAN approach expands upon basic distance metric evaluation by also incorporating the notion of density. If there are clumps of data points that all exist in the same area as each other, they can be seen as members of the same cluster: </p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer070">
+					<img alt="Figure 3.1: Neighbors have a direct connection to clusters&#13;&#10;" src="image/C12626_03_01.jpg"/>
+				</div>
+			</div>
+			<h6>Figure 3.1: Neighbors have a direct connection to clusters</h6>
+			<p>In the preceding example, we can see four neighborhoods.</p>
+			<p>The density-based approach has a number of benefits when compared to the past approaches we've covered that focus exclusively on distance. If you were just focusing on distance as a clustering threshold, then you may find your clustering makes little sense if faced with a sparse feature space with outliers. Both k-means and hierarchical clustering will automatically group together all data points in the space until no points are left. </p>
+			<p>While hierarchical clustering does provide a path around this issue somewhat, since you can dictate where clusters are formed using a dendrogram post-clustering run, k-means is the most susceptible to failing, as it is the simplest approach to clustering. These pitfalls are less evident when we begin evaluating neighborhood approaches to clustering:</p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer071">
+					<img alt="Figure 3.2: Example dendrogram&#13;&#10;" src="image/C12626_03_02.jpg"/>
+				</div>
+			</div>
+			<h6>Figure 3.2: Example dendrogram</h6>
+			<p>By incorporating the notion of neighbor density in DBSCAN, we can leave outliers out of clusters if we choose to, based on the hyperparameters we choose at run time. Only the data points that have close neighbors will be seen as members within the same cluster and those that are farther away can be left as unclustered outliers. </p>
+			<h2 id="_idParaDest-60"><a id="_idTextAnchor061"/>Introduction to DBSCAN</h2>
+			<p>As mentioned in the previous section, the strength of DBSCAN becomes apparent when we analyze the benefits of taking a density-based approach to clustering. DBSCAN evaluates density as a combination of neighborhood radius and minimum points found in a neighborhood deemed a cluster. </p>
+			<p>This concept can be driven home if we re-consider the scenario where you are tasked with organizing an unlabeled shipment of wine for your store. In the past example, it was made clear that we can find similar wines based off their features, such as scientific chemical traits. Knowing this information, we can more easily group together similar wines and efficiently have our products organized for sale in no time. Hopefully, that is clear by now – but what may not have been clear is the fact that products that you order to stock your store often reflect real-world purchase patterns. To promote variety in your inventory, but still have enough stock of the most popular wines, there is a highly uneven distribution of product types that you have available. Most people love the classic wines, such as white and red, however, you may still carry more exotic wines for your customers who love expensive varieties. This makes clustering more difficult, since there are uneven class distributions (you don't order 10 of every wine available, for example).</p>
+			<p>DBSCAN differs from k-means and hierarchical clustering because you can build this intuition into how we evaluate the clusters of customers we are interested in forming. It can cut through the noise in an easier fashion and only point out customers who have the highest potential for remarketing in a campaign.</p>
+			<p>By clustering through the concept of a neighborhood, we can separate out the one-off customers that can be seen as random noise, relative to the more valuable customers that come back to our store time and time again. This approach, of book, calls into question how we establish the best numbers when it comes to neighborhood radius and minimum points per neighborhood. </p>
+			<p>As a high-level heuristic, we want to have our neighborhood radius small, but not too small. At one end of the extreme, you can have the neighborhood radius be quite high – this can max out at treating all points in the feature space as one massive cluster. On the opposite end of the extreme, you can have a very small neighborhood radius. Too small neighborhood radii can result in no points being clustered together and having a large collection of single member clusters.</p>
+			<p>Similar logic applies when it comes to the minimum number of points that can make up a cluster. Minimum points can be seen as a secondary threshold that tunes the neighborhood radius a bit depending on what data you have available in your space. If all of the data in your feature space is extremely sparse, minimum points become extremely valuable, in tandem with neighborhood radius, to make sure you don't just have a large number of uncorrelated data points. When you have very dense data, the minimum points threshold becomes less of a driving factor as opposed to neighborhood radius.</p>
+			<p>As you can see from these two hyperparameter rules, the best options are, as usual, dependent on what your dataset looks like. Oftentimes, you will want to find the perfect "goldilocks" zone of not being too small in your hyperparameters, but also not too large.</p>
+			<h3 id="_idParaDest-61"><a id="_idTextAnchor062"/>DBSCAN In-Depth</h3>
+			<p>To see how DBSCAN works, we can trace the path of a simple toy program as it merges together to form a variety of clusters and noise-labeled data points:</p>
+			<ol>
+				<li>Given <em class="italics">n</em> unvisited sample data points, move through each point in a loop and mark as visited.</li>
+				<li>From each point, look at the distance to every other point in the dataset.</li>
+				<li>For all points that fall within the neighborhood radius hyperparameter, connect them as neighbors.</li>
+				<li>Check to see whether the number of neighbors is at least as many as the minimum points required.</li>
+				<li>If the minimum point threshold is reached, group together as a cluster. If not, mark the point as noise.</li>
+				<li>Repeat until all data points are categorized in clusters or as noise.</li>
+			</ol>
+			<p>DBSCAN is fairly straightforward in some senses – while there are the new concepts of density through neighborhood radius and minimum points, at its core, it is still just evaluating using a distance metric. </p>
+			<h3 id="_idParaDest-62"><a id="_idTextAnchor063"/>Walkthrough of the DBSCAN Algorithm</h3>
+			<p>Here is a simple example walking through the preceding steps in slightly more detail:</p>
+			<ol>
+				<li value="1">Given four sample data points, view each point as its own cluster [ (1,7) ], [ (-8,6) ], [ (-9,4) ] , [ (4, -2) ]:<div class="IMG---Figure" id="_idContainer072"><img alt="Figure 3.3: Plot of sample data points&#13;&#10;" src="image/C12626_03_03.jpg"/></div><h6>Figure 3.3: Plot of sample data points</h6></li>
+				<li>Calculate pairwise the Euclidean distance between each of the points:<div class="IMG---Figure" id="_idContainer073"><img alt="Figure 3.4: Point distances&#13;&#10;" src="image/C12626_03_04.jpg"/></div><h6>Figure 3.4: Point distances</h6></li>
+				<li>From each point, expand out a neighborhood size and form clusters. For the purpose of this example, let's imagine we passed through a neighborhood radius of three. This means that any two points will be neighbors if the distance between them is less than three. Points (-8,6) and (-9,4) are now candidates for clustering.</li>
+				<li>Points that have no neighbors are marked as noise and remain unclustered. Points (1,7) and (4,-2) fall out of our frame of interest as being useless in terms of clustering.</li>
+				<li>Points that have neighbors are then evaluated to see whether they pass the minimum points threshold. In this example, if we had passed through a minimum points threshold of two, then points (-8,6) and (-9,4) can formally be grouped together as a cluster. If we had a minimum points threshold of three, then all four data points in this set would be considered superfluous noise.</li>
+				<li>Repeat this process on remaining un-visited data points.</li>
+			</ol>
+			<p>At the end of this process, you will have your entire dataset established as either within clusters or as unrelated noise. Hopefully, as you can tell by walking through the toy example, DBSCAN performance is highly dependent on the threshold hyperparameters you choose a priori. This means that you may have to run DBSCAN a couple of times with different hyperparameter options to get an understanding of how they influence overall performance.</p>
+			<p>One great thing to notice about DBSCAN is that it does away with concepts of centroids that we saw in both k-means and a centroid-focused implementation of hierarchical clustering. This feature allows DBSCAN to work better for complex datasets, since most data in the wild is not shaped like clean blobs.</p>
+			<h3 id="_idParaDest-63"><a id="_idTextAnchor064"/>Exercise 9: Evaluating the Impact of Neighborhood Radius Size</h3>
+			<p>For this exercise, we will work in reverse of what we have typically seen in previous examples, by first seeing the packaged implementation of DBSCAN in scikit-learn, and then implementing it on our own. This is done on purpose to fully explore how different neighborhood radius sizes drastically impact DBSCAN performance. </p>
+			<p>By completing this exercise, you will become familiar with how tuning neighborhood radius size can change how well DBSCAN performs. It is important to understand these facets of DBSCAN, as they can save you time in the future by troubleshooting your clustering algorithms efficiently. </p>
+			<ol>
+				<li value="1">Generate some dummy data:<p class="snippet">from sklearn.cluster import DBSCAN</p><p class="snippet">from sklearn.datasets import make_blobs</p><p class="snippet">import matplotlib.pyplot as plt</p><p class="snippet">%matplotlib inline</p><p class="snippet"># Generate a random cluster dataset to experiment on. X = coordinate points, #y = cluster labels (not needed)</p><p class="snippet">X, y = make_blobs(n_samples=1000, centers=8, n_features=2, random_state=800)</p><p class="snippet"># Visualize the data</p><p class="snippet">plt.scatter(X[:,0], X[:,1])</p><p class="snippet">plt.show()</p><p>The output is as follows:</p><div class="IMG---Figure" id="_idContainer074"><img alt="Figure 3.5: Visualized Toy Data Example&#13;&#10;" src="image/C12626_03_05.jpg"/></div><h6>Figure 3.5: Visualized Toy Data Example</h6></li>
+				<li>After plotting the dummy data for this toy problem, you will see that the dataset has two features and approximately seven to eight clusters. To implement DBSCAN using scikit-learn, you will need to instantiate a new scikit-learn class:<p class="snippet">db = DBSCAN(eps=0.5, min_samples=10, metric='euclidean')</p><p>Our example DBSCAN instance is stored in the <strong class="inline">db</strong> variable, and our hyperparameters are passed through on creation. For the sake of this example, you can see that the neighborhood radius (<strong class="inline">eps</strong>) is set to 0.5, while the minimum number of points is set to 10. To keep in line with our past chapters, we will once again be using Euclidean distance as our distance metric. </p></li>
+				<li>Let's set up a loop that allows us to explore potential neighborhood radius size options interactively:<p class="snippet">eps = [0.2,0.7]</p><p class="snippet">for ep in eps:</p><p class="snippet">    db = DBSCAN(eps=ep, min_samples=10, metric='euclidean')</p><p class="snippet">    plt.scatter(X[:,0], X[:,1], c=db.fit_predict(X))</p><p class="snippet">    plt.title('Toy Problem with eps: ' + str(ep))</p><p class="snippet">    plt.show()</p><p>The preceding code results in the following two plots:</p></li>
+			</ol>
+			<div>
+				<div class="IMG---Figure" id="_idContainer075">
+					<img alt="Figure: 3.6: Resulting plots&#13;&#10;" src="image/C12626_03_06.jpg"/>
+				</div>
+			</div>
+			<h6>Figure: 3.6: Resulting plots</h6>
+			<p>As you can see from the plots, setting our neighborhood size too small will cause everything to be seen as random noise (purple points). Bumping our neighborhood size up a little bit allows us to form clusters that make more sense. Try recreating the preceding plots and experiment with varying <strong class="inline">eps</strong> sizes.</p>
+			<h3 id="_idParaDest-64"><a id="_idTextAnchor065"/>DBSCAN Attributes – Neighborhood Radius</h3>
+			<p>In <em class="italics">Exercise 9</em>, <em class="italics">Evaluating the Impact of Neighborhood Radius Size,</em> you saw how impactful setting the proper neighborhood radius is on the performance of your DBSCAN implementation. If your neighborhood is too small, then you will run into issues where all the data is left unclustered. If you set your neighborhood too large, then all of the data will similarly be grouped together into one cluster and not provide any value. If you explored the preceding exercise further with your own <strong class="inline">eps</strong> sizes, you may have noticed that it is very difficult to land on great clustering using only the neighborhood size. This is where a minimum points threshold comes in handy. We will visit that topic later.</p>
+			<p>To go deeper into the neighborhood concept of DBSCAN, let's take a deeper look at the <strong class="inline">eps</strong> hyperparameter you pass at instantiation time. <strong class="inline">eps</strong> stands for epsilon and is the distance that your algorithm will look within when searching for neighbors. This epsilon value is converted to a radius that sweeps around any given data point in a circular manner to serve as a neighborhood:</p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer076">
+					<img alt="Figure 3.7: Visualization of neighborhood radius where red circle is the neighborhood&#13;&#10;" src="image/C12626_03_07.jpg"/>
+				</div>
+			</div>
+			<h6>Figure 3.7: Visualization of neighborhood radius where red circle is the neighborhood</h6>
+			<p>In this instance, there will be four neighbors of the center point.</p>
+			<p>One key aspect to notice here is that the shape formed by your neighborhood search is a circle in two dimensions, and a sphere in three dimensions. This may impact the performance of your model simply based on how the data is structured. Once again, blobs may seem like an intuitive structure to find – this may not always be the case. Fortunately, DBSCAN is well equipped to handle this dilemma of clusters that you may be interested in, yet that do not fit the explicit blob structure:</p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer077">
+					<img alt="Figure 3.8: Impact of varying neighborhood radius size&#13;&#10;" src="image/C12626_03_08.jpg"/>
+				</div>
+			</div>
+			<h6>Figure 3.8: Impact of varying neighborhood radius size</h6>
+			<p>On the left, the data point will be classified as random noise. On the right, the data point has multiple neighbors and could be its own cluster.</p>
+			<h3 id="_idParaDest-65">Activity<a id="_idTextAnchor066"/> 4: Implement DBSCAN from Scratch</h3>
+			<p>Using a generated two-dimensional dataset during an interview, you are asked to create the DBSCAN algorithm from scratch. To do this, you will need to code the intuition behind neighborhood searches and have a recursive call that adds neighbors. </p>
+			<p>Given what you've learned about DBSCAN and distance metrics from prior chapters, build an implementation of DBSCAN from scratch in Python. You are free to use NumPy and SciPy to evaluate distances here.</p>
+			<p>These steps will help you complete the activity:</p>
+			<ol>
+				<li value="1">Generate a random cluster dataset</li>
+				<li>Visualize the data</li>
+				<li>Create functions from scratch that allow you to call DBSCAN on a dataset</li>
+				<li>Use your created DBSCAN implementation to find clusters in the generated dataset. Feel free to use hyperparameters as you see fit, tuning them based on their performance</li>
+				<li>Visualize the clustering performance of your DBSCAN implementation from scratch</li>
+			</ol>
+			<p>The desired outcome of this exercise is for you to understand how DBSCAN works from the ground up before you use the fully packaged implementation in scikit-learn. Taking this approach to any machine learning algorithm from scratch is important, as it helps you "earn" the ability to use easier implementations, while still being able to discuss DBSCAN in depth in the future:</p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer078">
+					<img alt="Figure 3.9: Expected outcome&#13;&#10;" src="image/C12626_03_09.jpg"/>
+				</div>
+			</div>
+			<h6>Figure 3.9: Expected outcome</h6>
+			<h4>Note</h4>
+			<p class="callout">Solution for this activity can be found on page 316.</p>
+			<h3 id="_idParaDest-66"><a id="_idTextAnchor067"/>DBSCAN Attributes – Minimum Points</h3>
+			<p>The other core component to a successful implementation of DBSCAN beyond the neighborhood radius is the minimum number of points required to justify membership within a cluster. As mentioned earlier, it is more obvious that this lower bound<a id="_idTextAnchor068"/> benefits your algorithm when it comes to sparser datasets. That's not to say it is a useless parameter when you have very dense data, however – while having single data points randomly interspersed through your feature space can be easily bucketed as noise, it becomes more of a grey area when we have random patches of two to three, for example. Should these data points be their own cluster, or should they also be categorized as noise? Minimum points thresholding helps solve this problem. </p>
+			<p>In the scikit-learn implementation of DBSCAN, this hyperparameter is seen in the <strong class="inline">min_samples</strong> field passed on DBSCAN instance creation. This field is very valuable to play with in tandem with the neighborhood radius size hyperparameter to fully round out your density-based clustering approach:</p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer079">
+					<img alt="Figure 3.10: Minimum points threshold deciding whether a group of data points is noise or a cluster&#13;&#10;" src="image/C12626_03_10.jpg"/>
+				</div>
+			</div>
+			<h6>Figure 3.10: Minimum points threshold deciding whether a group of data points is noise or a cluster</h6>
+			<p>On the right, if minimum points threshold is 10 points, it will classify data in this neighborhood as noise.</p>
+			<p>In real-world scenarios, you can see minimum points being highly impactful when you have truly large amounts of data. Going back to the wine-clustering example, if your store was actually a large wine warehouse, you could have thousands of individual wines with only one or two bottles that can easily be viewed as their own cluster. This may be helpful depending on your use case; however, it is important to keep in mind the subjective magnitudes that come with your data. If you have millions of data points, then random noise can easily be seen as hundreds or even thousands of random one-off sales. However, if your data is on the scale of hundreds or thousands, single data points can be seen as random noise.</p>
+			<h3 id="_idParaDest-67"><a id="_idTextAnchor069"/>Exercise 10: Evaluating the Impact of Minimum Points Threshold</h3>
+			<p>Similar to our <em class="italics">Exercise 9, Evaluating the Impact of Neighborhood Radius Size</em>, where we explored the value of setting a proper neighborhood radius size, we will repeat the exercise, but instead will change the minimum points threshold on a variety of datasets. </p>
+			<p>Using our current implementation of DBSCAN, we can easily tune the minimum points threshold. Tune this hyperparameter and see how it performs on generated data.</p>
+			<p>By tuning the minimum points threshold for DBSCAN, you will understand how it can affect the quality of your clustering predictions.</p>
+			<p>Once again, let's start with randomly generated data: </p>
+			<ol>
+				<li value="1">Generate a random cluster dataset, as follows:<p class="snippet">from sklearn.cluster import DBSCAN</p><p class="snippet">from sklearn.datasets import make_blobs</p><p class="snippet">import matplotlib.pyplot as plt</p><p class="snippet">%matplotlib inline</p><p class="snippet">X, y = make_blobs(n_samples=1000, centers=8, n_features=2, random_state=800)</p></li>
+				<li>Visualize the data as follows:<p class="snippet"># Visualize the data</p><p class="snippet">plt.scatter(X[:,0], X[:,1])</p><p class="snippet">plt.show()</p><div class="IMG---Figure" id="_idContainer080"><img alt="Figure 3.11: Plot of generated data&#13;&#10;" src="image/C12626_03_11.jpg"/></div><h6>Figure 3.11: Plot of generated data</h6></li>
+				<li>With the same plotted data as before, let's grab one of the better performing neighborhood radius sizes from <em class="italics">Exercise 1</em>, <em class="italics">Evaluating the Impact of Neighborhood Radius Size</em> – <strong class="inline">eps</strong> = 0.7:<p class="snippet">db = DBSCAN(eps=0.7, min_samples=10, metric='euclidean')</p><h4>Note</h4><p class="callout"><strong class="inline">eps</strong> is a tunable hyperparameter. However, earlier in the same line, we establish that 0.7 comes from previous experimentation, leading us to <strong class="inline">eps = 0.7</strong> as the optimal value.</p></li>
+				<li>After instantiating the DBSCAN clustering algorithm, let's treat the <strong class="inline">min_samples</strong> hyperparameter as the variable we wish to tune. We can cycle through a loop to find which minimum number of points works best for our use case:<p class="snippet">num_samples = [10,19,20]</p><p class="snippet">for min_num in num_samples:</p><p class="snippet">    db = DBSCAN(eps=0.7, min_samples=min_num, metric='euclidean')</p><p class="snippet">    plt.scatter(X[:,0], X[:,1], c=db.fit_predict(X))</p><p class="snippet">    plt.title('Toy Problem with Minimum Points: ' + str(min_num))</p><p class="snippet">    plt.show()</p><p>Looking at the first plot generated, we can see where we ended if you followed <em class="italics">Exercise 1</em>,<em class="italics"> Evaluating the Impact of Neighborhood Radius Size</em> exactly, using 10 minimum points to mark the threshold for cluster membership:</p></li>
+			</ol>
+			<div>
+				<div class="IMG---Figure" id="_idContainer081">
+					<img alt="Figure 3.12: Plot of Toy problem with a minimum of 10 points&#13;&#10;" src="image/C12626_03_12.jpg"/>
+				</div>
+			</div>
+			<h6>Figure 3.12: Plot of Toy problem with a minimum of 10 points</h6>
+			<p>The remaining two hyperparameter options can be seen to greatly impact the performance of your DBSCAN clustering algorithm, and show how a shift in one number can greatly influence performance:</p>
+			<div>
+				<div class="IMG---Figure" id="_idContainer082">
+					<img alt="Figure 3.13: Plots of the Toy problem&#13;&#10;" src="image/C12626_03_13.jpg"/>
+				</div>
+			</div>
+			<h6>Figure 3.13: Plots of the Toy problem</h6>
+			<p>As you can see, simply changing the number of minimum points from 19 to 20 adds an additional (incorrect!) cluster to our feature space. Given what you've learned about minimum points through this exercise, you can now tweak both epsilon and minimum points thresholding in your scikit-learn implementation to achieve the optimal number of clusters.</p>
+			<h4>Note</h4>
+			<p class="callout">In our original generation of the data, we created eight clusters. This points out that small changes in minimum points can add entire new clusters that we know shouldn't be there.</p>
+			<h3 id="_idParaDest-68">Activity 5: C<a id="_idTextAnchor070"/>omparing DBSCAN with k-means and Hierarchical Clustering</h3>
+			<p>You are managing store inventory and have received a large shipment of wine, but the brand labels fell off the bottles during transit. Fortunately, your supplier provided you with the chemical readings for each bottle along with their respective serial numbers. Unfortunately, you aren't able to open each bottle of wine and taste test the difference – you must find a way to group the unlabeled bottles back together according to their chemical readings! You know from the order list that you ordered three different types of wine and are given only two wine attributes to group the wine types back together.</p>
+			<p>In <em class="italics">Chapter 2</em>, <em class="italics">Hierarchical Clustering</em> we were able to see how k-means and hierarchical clustering performed on the wine dataset. In our best case scenario, we were able to achieve a silhouette score of 0.59. Using scikit-learn's implementation of DBSCAN, let's see if we can get even better clustering.</p>
+			<p>These steps will help you complete the activity:</p>
+			<ol>
+				<li value="1">Import the necessary packages</li>
+				<li>Load the wine dataset and check what the data looks like</li>
+				<li>Visualize the data</li>
+				<li>Generate clusters using k-means, agglomerative clustering, and DBSCAN</li>
+				<li>Evaluate a few different options for DSBSCAN hyperparameters and their effect on the silhouette score</li>
+				<li>Generate the final clusters based on the highest silhouette score </li>
+				<li>Visualize clusters generated using each of the three methods<h4>Note</h4><p class="callout">We have downloaded this dataset from <a href="https://archive.ics.uci.edu/ml/datasets/wine"><span class="Hyperlink">https://archive.ics.uci.edu/ml/datasets/wine</span></a>. You can access it at <a href="https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/tree/master/Lesson03/Activity05"><span class="Hyperlink">https://github.com/TrainingByPackt/Applied-Unsupervised-Learning-with-Python/tree/master/Lesson03/Activity05</span></a>.</p><p class="callout">UCI Machine Learning Repository [<a href="http://archive.ics.uci.edu/ml"><span class="Hyperlink">http://archive.ics.uci.edu/ml</span></a>]. Irvine, CA: University of California, School of Information and Computer Science.</p></li>
+			</ol>
+			<p>By completing this activity, you will be recreating a full workflow of a clustering problem. You have already made yourself familiar with the data in <em class="italics">Chapter 2</em>, <em class="italics">Hierarchical Clustering</em>, and, by the end of this activity, you will have performed model selection to find the best model and hyperparameters for your dataset. You will have silhouette scores of the wine dataset for each type of clustering.</p>
+			<h4>Note</h4>
+			<p class="callout">The solution for this activity can be found on page 319.</p>
+			<h2 id="_idParaDest-69"><a id="_idTextAnchor071"/>DBSCAN Versus k-means and Hierarchical Clustering</h2>
+			<p>Now that you've reached an understanding of how DBSCAN is implemented and how many different hyperparameters you can tweak to drive performance, let's survey how it compares to the clustering methods we covered in <em class="italics">Chapter 1</em>, <em class="italics">Introduction to Clustering</em> and <em class="italics">Chapter 2</em>, <em class="italics">Hierarchical Clustering</em>. </p>
+			<p>You may have noticed in <em class="italics">Activity 5</em>, <em class="italics">Comparing DBSCAN with k-means and Hierarchical Clustering,</em> that DBSCAN can be a bit finnicky when it comes to finding the optimal clusters via silhouette score. This is a downside of the neighborhood approach – k-means and hierarchical clustering really excel when you have some idea regarding the number of clusters in your data. In most cases, this number is low enough that you can iteratively try a few different numbers and see how it performs. DBSCAN, instead, takes a more bottom-up approach by working with your hyperparameters and finding the clusters it views as important. In practice, it is helpful to consider DBSCAN when the first two options fail, simply because of the amount of tweaking needed to get it to work properly. That being said, when your DBSCAN implementation is working correctly, it will often immensely outperform k-means and hierarchical clustering. (In practice, this often happens with highly intertwined, yet still discrete data, such as a feature space containing two half-moons). </p>
+			<p>Compared to k-means and hierarchical clustering, DBSCAN can be seen as being potentially more efficient, since it only has to look at each data point once. Instead of multiple iterations of finding new centroids and evaluating where their nearest neighbors are, once a point has been assigned to a cluster in DBSCAN, it does not change cluster membership. The other key difference that DBSCAN and hierarchical clustering both share, compared to k-means, is not needing to explicitly pass a number of clusters expected at the time of creation. This can be extremely helpful when you have no external guidance on how to break your dataset down. </p>
+			<h2 id="_idParaDest-70"><a id="_idTextAnchor072"/>Summary</h2>
+			<p>DBSCAN takes an interesting approach to clustering compared to k-means and hierarchical clustering. While hierarchical clustering can, in some aspects, be seen as an extension of the nearest neighbors approach seen in k-means, DBSCAN approaches the problem of finding neighbors by applying a notion of density. This can prove extremely beneficial when it comes to highly complex data that is intertwined in a complex fashion. While DBSCAN is very powerful, it is not infallible and can be seen as potentially overkill, depending on what your original data looks like. </p>
+			<p>Combined with k-means and hierarchical clustering, however, DBSCAN completes a strong toolbox when it comes to the unsupervised learning task of clustering your data. When faced with any problem in this space, it is worthwhile to compare the performance of each method and see which performs best.</p>
+			<p>With clustering explored, we will now move onto another key piece of rounding out your skills in unsupervised learning: dimensionality reduction. Through smart reduction of dimensions, we can make clustering easier to understand and communicate to stakeholders. Dimensionality reduction is also key to creating all types of machine learning models in the most efficient manner possible.</p>
+		</div>
+	</body></html>

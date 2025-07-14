@@ -1,0 +1,825 @@
+<html><head></head><body>
+  <div id="sbo-rt-content"><div class="chapter" title="Chapter 6. Classification II – Sentiment Analysis"><div class="titlepage"><div><div><h1 class="title"><a id="ch06"/>Chapter 6. Classification II – Sentiment Analysis</h1></div></div></div><p>For companies, it is vital to closely monitor the public reception of key events, such as product launches or press releases. With its real-time access and easy accessibility of user-generated content on Twitter, it is now possible to do <a id="id310" class="indexterm"/>sentiment classification of tweets. Sometimes also called <a id="id311" class="indexterm"/>opinion mining, it is an active field of research, in which several companies are already selling such services. As this shows that there obviously exists a market, we have motivation to use our classification muscles built in the last chapter, to build our own home-grown sentiment classifier.</p><div class="section" title="Sketching our roadmap"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec40"/>Sketching our roadmap</h1></div></div></div><p>Sentiment analysis<a id="id312" class="indexterm"/> of tweets is particularly hard, because of Twitter's size limitation of 140 characters. This leads to a special syntax, creative abbreviations, and seldom well-formed sentences. The typical approach of analyzing sentences, aggregating their sentiment information per paragraph, and then calculating the overall sentiment of a document does not work here.</p><p>Clearly, we will not try to build a state-of-the-art sentiment classifier. Instead, we want to:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Use this scenario as a vehicle to introduce yet <a id="id313" class="indexterm"/>another classification algorithm, <span class="strong"><strong>Naïve Bayes</strong></span></li><li class="listitem" style="list-style-type: disc">Explain how <span class="strong"><strong>Part Of Speech</strong></span> (<span class="strong"><strong>POS</strong></span>)<a id="id314" class="indexterm"/> tagging works and how it can help us</li><li class="listitem" style="list-style-type: disc">Show some more tricks from the scikit-learn toolbox that come in handy from time to time</li></ul></div></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Fetching the Twitter data"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec41"/>Fetching the Twitter data</h1></div></div></div><p>Naturally, we<a id="id315" class="indexterm"/> need tweets and their corresponding<a id="id316" class="indexterm"/> labels that tell whether a tweet is containing a positive, negative, or neutral sentiment. In this chapter, we will use the corpus from Niek Sanders, who has done an awesome job of manually labeling more than 5,000 tweets and has granted us permission to use it in this chapter.</p><p>To comply with Twitter's terms of services, we will not provide any data from Twitter nor show any real tweets in this chapter. Instead, we can use Sander's hand-labeled data, which contains the tweet IDs and their hand-labeled sentiment, and use his script, <code class="literal">install.py</code>, to fetch the corresponding Twitter data. As the script is playing nice with Twitter's servers, it will take quite some time to download all the data for more than 5,000 tweets. So it is a good idea to start it right away.</p><p>The data comes with four sentiment labels:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; X, Y = load_sanders_data()</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; classes = np.unique(Y)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; for c in classes: print("#%s: %i" % (c, sum(Y==c)))</strong></span>
+<span class="strong"><strong>#irrelevant: 490</strong></span>
+<span class="strong"><strong>#negative: 487</strong></span>
+<span class="strong"><strong>#neutral: 1952</strong></span>
+<span class="strong"><strong>#positive: 433</strong></span>
+</pre></div><p>Inside <code class="literal">load_sanders_data()</code>, we are treating irrelevant and neutral labels together as neutral and drop ping all non-English tweets, resulting in 3,362 tweets.</p><p>In case you get different counts here, it is because, in the meantime, tweets might have been deleted or set to be private. In that case, you might also get slightly different numbers and graphs than the ones shown in the upcoming sections.</p></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Introducing the Naïve Bayes classifier"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec42"/>Introducing the Naïve Bayes classifier</h1></div></div></div><p>Naïve Bayes<a id="id317" class="indexterm"/> is probably one of the most elegant machine learning <a id="id318" class="indexterm"/>algorithms out there that is of practical use. And despite its name, it is not that naïve when you look at its classification performance. It proves to be quite robust to irrelevant features, which it kindly ignores. It learns fast and predicts equally so. It does not require lots of storage. So, why is it then called naïve?</p><p>The <span class="emphasis"><em>Naïve</em></span> was added to account for one assumption that is required for Naïve Bayes to work optimally. The assumption is that the features do not impact each other. This, however, is rarely the<a id="id319" class="indexterm"/> case for real-world applications. Nevertheless, it still returns very good accuracy in practice even when the independence assumption does not hold.</p><div class="section" title="Getting to know the Bayes' theorem"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec47"/>Getting to know the Bayes' theorem</h2></div></div></div><p>At its core, Naïve Bayes classification is nothing more than keeping track of which feature gives evidence to which<a id="id320" class="indexterm"/> class. The way the features are designed determines the model that is used to learn. The so-called Bernoulli model only cares about Boolean features: whether a word occurs only once or multiple times in a tweet does not matter. In contrast, the Multinomial model uses word counts as features. For the sake of simplicity, we will use the Bernoulli model to explain how to use Naïve Bayes for sentiment analysis. We will then use the Multinomial model later on to set up and tune our real-world classifiers.</p><p>Let's assume the following meanings for the variables that we will use to explain Naïve Bayes:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Variable</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Meaning</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<div class="mediaobject"><img src="images/2772OS_06_08.jpg" alt="Getting to know the Bayes' theorem"/></div>
+</td><td style="text-align: left" valign="top">
+<p>This is the class of a tweet (positive or negative)</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<div class="mediaobject"><img src="images/2772OS_06_09.jpg" alt="Getting to know the Bayes' theorem"/></div>
+</td><td style="text-align: left" valign="top">
+<p>The word "awesome" occurs at least once in the tweet</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<div class="mediaobject"><img src="images/2772OS_06_10.jpg" alt="Getting to know the Bayes' theorem"/></div>
+</td><td style="text-align: left" valign="top">
+<p>The word "crazy" occurs at least once in the tweet</p>
+</td></tr></tbody></table></div><p>During training, we learned the Naïve Bayes model, which is the probability for a class <span class="inlinemediaobject"><img src="images/2772OS_06_08.jpg" alt="Getting to know the Bayes' theorem"/></span> when we already know features <span class="inlinemediaobject"><img src="images/2772OS_06_09.jpg" alt="Getting to know the Bayes' theorem"/></span> and <span class="inlinemediaobject"><img src="images/2772OS_06_10.jpg" alt="Getting to know the Bayes' theorem"/></span>. This probability is written as <span class="inlinemediaobject"><img src="images/2772OS_06_11.jpg" alt="Getting to know the Bayes' theorem"/></span>.</p><p>Since we cannot estimate <span class="inlinemediaobject"><img src="images/2772OS_06_11.jpg" alt="Getting to know the Bayes' theorem"/></span> directly, we apply a trick, which was found out by Bayes:</p><div class="mediaobject"><img src="images/2772OS_06_12.jpg" alt="Getting to know the Bayes' theorem"/></div><p>If we<a id="id321" class="indexterm"/> substitute <span class="inlinemediaobject"><img src="images/2772OS_06_13.jpg" alt="Getting to know the Bayes' theorem"/></span> with the probability of both words "awesome" and "crazy", and think of <span class="inlinemediaobject"><img src="images/2772OS_06_14.jpg" alt="Getting to know the Bayes' theorem"/></span> as being our class <span class="inlinemediaobject"><img src="images/2772OS_06_08.jpg" alt="Getting to know the Bayes' theorem"/></span>, we arrive at the relationship that helps us to later retrieve the probability for the data instance belonging to the specified class:</p><div class="mediaobject"><img src="images/2772OS_06_17.jpg" alt="Getting to know the Bayes' theorem"/></div><p>This allows us to express <span class="inlinemediaobject"><img src="images/2772OS_06_11.jpg" alt="Getting to know the Bayes' theorem"/></span> by means of the other probabilities:</p><div class="mediaobject"><img src="images/2772OS_06_18.jpg" alt="Getting to know the Bayes' theorem"/></div><p>We could also describe this as follows:</p><div class="mediaobject"><img src="images/2772OS_06_19.jpg" alt="Getting to know the Bayes' theorem"/></div><p>The <span class="emphasis"><em>prior</em></span> and the <span class="emphasis"><em>evidence</em></span> are easily determined:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><span class="inlinemediaobject"><img src="images/2772OS_06_20.jpg" alt="Getting to know the Bayes' theorem"/></span> is the<a id="id322" class="indexterm"/> prior probability of class <span class="inlinemediaobject"><img src="images/2772OS_06_08.jpg" alt="Getting to know the Bayes' theorem"/></span> without knowing about the data. We can estimate this quantity by simply calculating the fraction of all training data instances belonging to that particular class.
+</li><li class="listitem" style="list-style-type: disc"><span class="inlinemediaobject"><img src="images/2772OS_06_21.jpg" alt="Getting to know the Bayes' theorem"/></span> is the evidence or the probability of features <span class="inlinemediaobject"><img src="images/2772OS_06_09.jpg" alt="Getting to know the Bayes' theorem"/></span> and <span class="inlinemediaobject"><img src="images/2772OS_06_10.jpg" alt="Getting to know the Bayes' theorem"/></span>.
+</li></ul></div><p>The tricky part is the calculation of the likelihood <span class="inlinemediaobject"><img src="images/2772OS_06_22.jpg" alt="Getting to know the Bayes' theorem"/></span>. It is the value describing how likely it is to see feature values <span class="inlinemediaobject"><img src="images/2772OS_06_09.jpg" alt="Getting to know the Bayes' theorem"/></span> and <span class="inlinemediaobject"><img src="images/2772OS_06_10.jpg" alt="Getting to know the Bayes' theorem"/></span> if we know that the class of the data instance is <span class="inlinemediaobject"><img src="images/2772OS_06_08.jpg" alt="Getting to know the Bayes' theorem"/></span>. To estimate this, we need to do some thinking.</p></div><div class="section" title="Being naïve"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec48"/>Being naïve</h2></div></div></div><p>From<a id="id323" class="indexterm"/> probability theory, we also know the following relationship:</p><div class="mediaobject"><img src="images/2772OS_06_23.jpg" alt="Being naïve"/></div><p>This alone, however, does not help much, since we treat one difficult problem (estimating <span class="inlinemediaobject"><img src="images/2772OS_06_22.jpg" alt="Being naïve"/></span>) with another one (estimating <span class="inlinemediaobject"><img src="images/2772OS_06_24.jpg" alt="Being naïve"/></span>).</p><p>However, if <a id="id324" class="indexterm"/>we naïvely assume that <span class="inlinemediaobject"><img src="images/2772OS_06_09.jpg" alt="Being naïve"/></span> and <span class="inlinemediaobject"><img src="images/2772OS_06_10.jpg" alt="Being naïve"/></span> are independent from each other, <span class="inlinemediaobject"><img src="images/2772OS_06_24.jpg" alt="Being naïve"/></span> simplifies to <span class="inlinemediaobject"><img src="images/2772OS_06_25.jpg" alt="Being naïve"/></span> and we can write it as follows:</p><div class="mediaobject"><img src="images/2772OS_06_26.jpg" alt="Being naïve"/></div><p>Putting everything together, we get the quite manageable formula:</p><div class="mediaobject"><img src="images/2772OS_06_27.jpg" alt="Being naïve"/></div><p>The interesting thing is that although it is not theoretically correct to simply tweak our assumptions when we are in the mood to do so, in this case, it proves to work astonishingly well in real-world applications.</p></div><div class="section" title="Using Naïve Bayes to classify"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec49"/>Using Naïve Bayes to classify</h2></div></div></div><p>Given a new<a id="id325" class="indexterm"/> tweet, the only part left is to simply calculate the probabilities:</p><div class="mediaobject"><img src="images/2772OS_06_28.jpg" alt="Using Naïve Bayes to classify"/></div><div class="mediaobject"><img src="images/2772OS_06_29.jpg" alt="Using Naïve Bayes to classify"/></div><p>Then choose the class <span class="inlinemediaobject"><img src="images/2772OS_06_30.jpg" alt="Using Naïve Bayes to classify"/></span> having higher probability.</p><p>As for both<a id="id326" class="indexterm"/> classes the denominator, <span class="inlinemediaobject"><img src="images/2772OS_06_21.jpg" alt="Using Naïve Bayes to classify"/></span>, is the same, we can simply ignore it without changing the winner class.</p><p>Note, however, that we don't calculate any real probabilities any more. Instead, we are estimating which class is more likely, given the evidence. This is another reason why Naïve Bayes is so robust: It is not so much interested in the real probabilities, but only in the information, which class is more likely. In short, we can write:</p><div class="mediaobject"><img src="images/2772OS_06_31.jpg" alt="Using Naïve Bayes to classify"/></div><p>This is simply telling that we are calculating the part after <a id="id327" class="indexterm"/>
+<span class="emphasis"><em>argmax</em></span> for all classes of <span class="inlinemediaobject"><img src="images/2772OS_06_08.jpg" alt="Using Naïve Bayes to classify"/></span> (<span class="emphasis"><em>pos</em></span> and <span class="emphasis"><em>neg</em></span> in our case) and returning the class that results in the highest value.</p><p>But, for the following example, let's stick to real probabilities and do some calculations to see how Naïve Bayes works. For the sake of simplicity, we will assume that Twitter allows only for the two aforementioned words, "awesome" and "crazy", and that we had already manually classified a handful of tweets:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Tweet</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Class</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>awesome</p>
+</td><td style="text-align: left" valign="top">
+<p>Positive tweet</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>awesome</p>
+</td><td style="text-align: left" valign="top">
+<p>Positive tweet</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>awesome crazy</p>
+</td><td style="text-align: left" valign="top">
+<p>Positive tweet</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>crazy</p>
+</td><td style="text-align: left" valign="top">
+<p>Positive tweet</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>crazy</p>
+</td><td style="text-align: left" valign="top">
+<p>Negative tweet</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>crazy</p>
+</td><td style="text-align: left" valign="top">
+<p>Negative tweet</p>
+</td></tr></tbody></table></div><p>In this example, we have the tweet "crazy" both in a positive and negative tweet to emulate some <a id="id328" class="indexterm"/>ambiguities you will often find in the real world (for example, "being soccer crazy" versus "a crazy idiot").</p><p>In this case, we have six total tweets, out of which four are positive and two negative, which results in the following priors:</p><div class="mediaobject"><img src="images/2772OS_06_32.jpg" alt="Using Naïve Bayes to classify"/></div><div class="mediaobject"><img src="images/2772OS_06_33.jpg" alt="Using Naïve Bayes to classify"/></div><p>This means, without knowing anything about the tweet itself, it would be wise to assume the tweet to be positive.</p><p>A still missing piece is the calculation of <span class="inlinemediaobject"><img src="images/2772OS_06_34.jpg" alt="Using Naïve Bayes to classify"/></span> and <span class="inlinemediaobject"><img src="images/2772OS_06_25.jpg" alt="Using Naïve Bayes to classify"/></span>, which are the probabilities for the two features <span class="inlinemediaobject"><img src="images/2772OS_06_09.jpg" alt="Using Naïve Bayes to classify"/></span> and <span class="inlinemediaobject"><img src="images/2772OS_06_10.jpg" alt="Using Naïve Bayes to classify"/></span> conditioned in class <span class="inlinemediaobject"><img src="images/2772OS_06_08.jpg" alt="Using Naïve Bayes to classify"/></span>.</p><p>This is calculated as the number of tweets, in which we have seen the concrete feature divided by the number of tweets that have been labeled with the class of <span class="inlinemediaobject"><img src="images/2772OS_06_08.jpg" alt="Using Naïve Bayes to classify"/></span>. Let's say we want to know the probability of seeing "awesome" occurring in a tweet, knowing that its class is positive, we will have:</p><div class="mediaobject"><img src="images/2772OS_06_35.jpg" alt="Using Naïve Bayes to classify"/></div><p>Because out <a id="id329" class="indexterm"/>of the four positive tweets three contained the word "awesome". Obviously, the probability for not having "awesome" in a positive tweet is its inverse:</p><div class="mediaobject"><img src="images/2772OS_06_36.jpg" alt="Using Naïve Bayes to classify"/></div><p>Similarly, for the rest (omitting the case that a word is not occurring in a tweet):</p><div class="mediaobject"><img src="images/2772OS_06_37.jpg" alt="Using Naïve Bayes to classify"/></div><div class="mediaobject"><img src="images/2772OS_06_38.jpg" alt="Using Naïve Bayes to classify"/></div><div class="mediaobject"><img src="images/2772OS_06_39.jpg" alt="Using Naïve Bayes to classify"/></div><p>For the sake of completeness, we will also compute the evidence so that we can see real probabilities in the following example tweets. For two concrete values of <span class="inlinemediaobject"><img src="images/2772OS_06_09.jpg" alt="Using Naïve Bayes to classify"/></span> and <span class="inlinemediaobject"><img src="images/2772OS_06_10.jpg" alt="Using Naïve Bayes to classify"/></span>, we can calculate the evidence as follows:</p><div class="mediaobject"><img src="images/2772OS_06_40.jpg" alt="Using Naïve Bayes to classify"/></div><div class="mediaobject"><img src="images/2772OS_06_41.jpg" alt="Using Naïve Bayes to classify"/></div><p>This leads <a id="id330" class="indexterm"/>to the following values:</p><div class="mediaobject"><img src="images/2772OS_06_42.jpg" alt="Using Naïve Bayes to classify"/></div><div class="mediaobject"><img src="images/2772OS_06_43.jpg" alt="Using Naïve Bayes to classify"/></div><div class="mediaobject"><img src="images/2772OS_06_44.jpg" alt="Using Naïve Bayes to classify"/></div><p>Now we have all the data to classify new tweets. The only work left is to parse the tweet and featurize it:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Tweet</p>
+</th><th style="text-align: left" valign="bottom">
+<span class="inlinemediaobject"><img src="images/2772OS_06_09.jpg" alt="Using Naïve Bayes to classify"/></span>
+</th><th style="text-align: left" valign="bottom">
+<span class="inlinemediaobject"><img src="images/2772OS_06_10.jpg" alt="Using Naïve Bayes to classify"/></span>
+</th><th style="text-align: left" valign="bottom">
+<p>Class probabilities</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Classification</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>"awesome"</p>
+</td><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<div class="mediaobject"><img src="images/2772OS_06_47.jpg" alt="Using Naïve Bayes to classify"/></div>
+<div class="mediaobject"><img src="images/2772OS_06_48.jpg" alt="Using Naïve Bayes to classify"/></div>
+</td><td style="text-align: left" valign="top">
+<p>Positive</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>"crazy"</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<div class="mediaobject"><img src="images/2772OS_06_49.jpg" alt="Using Naïve Bayes to classify"/></div>
+<div class="mediaobject"><img src="images/2772OS_06_50.jpg" alt="Using Naïve Bayes to classify"/></div>
+</td><td style="text-align: left" valign="top">
+<p>Negative</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>"awesome crazy"</p>
+</td><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<div class="mediaobject"><img src="images/2772OS_06_45.jpg" alt="Using Naïve Bayes to classify"/></div>
+<div class="mediaobject"><img src="images/2772OS_06_46.jpg" alt="Using Naïve Bayes to classify"/></div>
+</td><td style="text-align: left" valign="top">
+<p>Positive</p>
+</td></tr></tbody></table></div><p>So far, so good. The <a id="id331" class="indexterm"/>classification of trivial tweets seems to assign correct labels to the tweets. The question remains, however, how we should treat words that did not occur in our training corpus. After all, with the preceding formula, new words will always be assigned a probability of zero.</p></div><div class="section" title="Accounting for unseen words and other oddities"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec50"/>Accounting for unseen words and other oddities</h2></div></div></div><p>When we <a id="id332" class="indexterm"/>calculated the probabilities earlier, we actually cheated ourselves. We were not calculating the real probabilities, but only rough approximations by means of the fractions. We assumed that the training corpus will tell us the whole truth about the real probabilities. It did not. A corpus of only six tweets obviously cannot give us all the information about every tweet that has ever been written. For example, there certainly are tweets containing the word "text" in them. It is only that we have never seen them. Apparently, our approximation is very rough and we should account for that. This is often done in practice with the so-called <a id="id333" class="indexterm"/>
+<span class="strong"><strong>add-one smoothing</strong></span>.</p><div class="note" title="Note" style=""><div class="inner"><h3 class="title"><a id="tip11"/>Tip</h3><p>Add-one smoothing is sometimes also referred to as <a id="id334" class="indexterm"/>
+<span class="strong"><strong>additive smoothing</strong></span> or <span class="strong"><strong>Laplace smoothing</strong></span>. Note that <a id="id335" class="indexterm"/>Laplace smoothing has nothing to do with Laplacian smoothing, which is related to the smoothing of polygon meshes. If we do not smooth by <code class="literal">1</code> but by an adjustable parameter <code class="literal">alpha&lt;0</code>, it is called Lidstone smoothing.</p></div></div><p>It is a very<a id="id336" class="indexterm"/> simple technique that adds one to all feature occurrences. It has the underlying assumption that even if we have not seen a given word in the whole corpus, there is still a chance that it is just that our sample of tweets happened to not include that word. So, with add-one smoothing we pretend that we have seen every occurrence once more than we actually did. That means that instead of calculating <span class="inlinemediaobject"><img src="images/2772OS_06_54.jpg" alt="Accounting for unseen words and other oddities"/></span>, we now do <span class="inlinemediaobject"><img src="images/2772OS_06_55.jpg" alt="Accounting for unseen words and other oddities"/></span>.</p><p>Why do we add 2 in the denominator? Because we have two features: the occurrence of "awesome" and "crazy". Since we add 1 for each feature, we have to make sure that the end result is again a probability. And indeed, we get 1 as the total probability:</p><div class="mediaobject"><img src="images/2772OS_06_56.jpg" alt="Accounting for unseen words and other oddities"/></div></div><div class="section" title="Accounting for arithmetic underflows"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec51"/>Accounting for arithmetic underflows</h2></div></div></div><p>There is yet<a id="id337" class="indexterm"/> another road block. In reality, we work with probabilities much smaller than the ones we have dealt with in the toy example. Typically, we also have many more than only two features, which we multiply with each other. This will quickly lead to the point where the accuracy provided by NumPy does not suffice any more:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; import numpy as np</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; np.set_printoptions(precision=20) # tell numpy to print out more digits (default is 8)</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; np.array([2.48E-324])</strong></span>
+<span class="strong"><strong>array([ 4.94065645841246544177e-324])</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; np.array([2.47E-324])</strong></span>
+<span class="strong"><strong>array([ 0.])</strong></span>
+</pre></div><p>So, how probable<a id="id338" class="indexterm"/> is it that we will ever hit a number like <code class="literal">2.47E-324</code>? To answer this, we just need to imagine a likelihood for the conditional probabilities of 0.0001, and then multiply 65 of them together (meaning that we have 65 low probable feature values) and you've been hit by the arithmetic underflow:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; x = 0.00001</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; x**64 # still fine</strong></span>
+<span class="strong"><strong>1e-320</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; x**65 # ouch</strong></span>
+<span class="strong"><strong>0.0</strong></span>
+</pre></div><p>A float in Python is typically implemented using double in C. To find out whether this is the case for your platform you can check it as follows:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; import sys</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; sys.float_info</strong></span>
+<span class="strong"><strong>sys.float_info(max=1.7976931348623157e+308, max_exp=1024, max_10_exp=308, min=2.2250738585072014e-308, min_exp=-1021, min_10_exp=-307, dig=15, mant_dig=53, epsilon=2.220446049250313e-16, radix=2, rounds=1)</strong></span>
+</pre></div><p>To mitigate this, one could switch to math libraries such as <a id="id339" class="indexterm"/>
+<code class="literal">mpmath</code> (<a class="ulink" href="http://code.google.com/p/mpmath/">http://code.google.com/p/mpmath/</a>) that allow for arbitrary accuracy. However, they are not fast enough to work as a NumPy replacement.</p><p>Fortunately, there is a better way to take care of this, and it has to do with a nice relationship that we might still remember from school:</p><div class="mediaobject"><img src="images/2772OS_06_58.jpg" alt="Accounting for arithmetic underflows"/></div><p>If we apply it to our case, we get the following:</p><div class="mediaobject"><img src="images/2772OS_06_59.jpg" alt="Accounting for arithmetic underflows"/></div><p>As the probabilities are in the interval between 0 and 1, the log of the probabilities lies in the interval -∞ and 0. Don't be<a id="id340" class="indexterm"/> bothered with that. Higher numbers are still a stronger indicator for the correct class—it is only that they are negative now.</p><div class="mediaobject"><img src="images/2772OS_06_01.jpg" alt="Accounting for arithmetic underflows"/></div><p>There is one caveat though: we actually don't have the log in the formula's nominator (the part above the fraction). We only have the product of the probabilities. In our case, luckily, we are not interested in the actual value of the probabilities. We simply want to know which class has the highest posterior probability. We are lucky, because if we find that <span class="inlinemediaobject"><img src="images/2772OS_06_60.jpg" alt="Accounting for arithmetic underflows"/></span>, then we will always also have <span class="inlinemediaobject"><img src="images/2772OS_06_61.jpg" alt="Accounting for arithmetic underflows"/></span>.</p><p>A quick look at the preceding graph shows that the curve is monotonically increasing, that is, it never goes down, when we go from left to right. So let's stick this into the aforementioned formula:</p><div class="mediaobject"><img src="images/2772OS_06_61a.jpg" alt="Accounting for arithmetic underflows"/></div><p>This will finally retrieve the formula for two features that will give us the best class also for the real-world data that we will see in practice:</p><div class="mediaobject"><img src="images/2772OS_06_62.jpg" alt="Accounting for arithmetic underflows"/></div><p>Of course, we will not be very successful with only two features, so, let's rewrite it to allow for an arbitrary number of features:</p><div class="mediaobject"><img src="images/2772OS_06_63.jpg" alt="Accounting for arithmetic underflows"/></div><p>There we <a id="id341" class="indexterm"/>are, ready to use our first classifier from the scikit-learn toolkit.</p><p>As mentioned earlier, we just learned the Bernoulli model of Naïve Bayes. Instead of having Boolean features, we can also use the number of word occurrences, also known as the Multinomial model. As this provides more information, and often also results in better performance, we will use this for our real-world data. Note, however, that the underlying formulas change a bit. However, no worries, as the general idea how Naïve Bayes works, is still the same.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Creating our first classifier and tuning it"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec43"/>Creating our first classifier and tuning it</h1></div></div></div><p>The Naïve Bayes classifiers<a id="id342" class="indexterm"/> resides in the <code class="literal">sklearn.naive_bayes</code> package. There are different kinds of Naïve Bayes classifiers:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">GaussianNB</code>: This<a id="id343" class="indexterm"/> classifier assumes the <a id="id344" class="indexterm"/>features to be normally distributed (Gaussian). One use case for it could be the classification of sex given the height and width of a person. In our case, we are given tweet texts from which we extract word counts. These are clearly not Gaussian distributed.</li><li class="listitem" style="list-style-type: disc"><code class="literal">MultinomialNB</code>: This<a id="id345" class="indexterm"/> classifier assumes<a id="id346" class="indexterm"/> the features to be occurrence counts, which is our case going forward, since we will be using word counts in the tweets as features. In practice, this classifier also works well with TF-IDF vectors.</li><li class="listitem" style="list-style-type: disc"><code class="literal">BernoulliNB</code>: This <a id="id347" class="indexterm"/>classifier is similar to<a id="id348" class="indexterm"/> <code class="literal">MultinomialNB</code>, but more suited when using binary word occurrences and not word counts.</li></ul></div><p>As we will mainly look at the word occurrences, for our purpose the <code class="literal">MultinomialNB</code> classifier is best suited.</p><div class="section" title="Solving an easy problem first"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec52"/>Solving an easy problem first</h2></div></div></div><p>As we have<a id="id349" class="indexterm"/> seen, when we looked at our tweet data, the tweets are not only positive or negative. The majority of tweets actually do not contain any sentiment, but are neutral or irrelevant, containing, for instance, raw information (for example, "New book: Building Machine Learning … http://link"). This leads to four classes. To not complicate the task too much, let's only focus on the positive and negative tweets for now.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; # first create a Boolean list having true for tweets</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; # that are either positive or negative</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; pos_neg_idx = np.logical_or(Y=="positive", Y=="negative")</strong></span>
+
+<span class="strong"><strong>&gt;&gt;&gt; # now use that index to filter the data and the labels</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; X = X[pos_neg_idx]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; Y = Y[pos_neg_idx]</strong></span>
+
+<span class="strong"><strong>&gt;&gt;&gt; # finally convert the labels themselves into Boolean</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; Y = Y=="positive"</strong></span>
+</pre></div><p>Now, we have in <code class="literal">X</code> the raw tweet texts and in <code class="literal">Y</code> the binary classification, <code class="literal">0</code> for negative and <code class="literal">1</code> for positive tweets.</p><p>We just said that we will use word occurrence counts as features. We will not use them in their raw form, though. Instead, we will use our power horse <code class="literal">TfidfVectorizer</code> to convert the raw tweet text into TF-IDF feature values, which we then use together with the labels to train our first classifier. For convenience, we will use the <code class="literal">Pipeline</code> class, which allows us to hook the vectorizer and the classifier together and provides the same interface:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>from sklearn.feature_extraction.text import TfidfVectorizer</strong></span>
+<span class="strong"><strong>from sklearn.naive_bayes import MultinomialNB</strong></span>
+<span class="strong"><strong>from sklearn.pipeline import Pipeline</strong></span>
+
+<span class="strong"><strong>def create_ngram_model():</strong></span>
+<span class="strong"><strong>    tfidf_ngrams = TfidfVectorizer(ngram_range=(1, 3), analyzer="word", binary=False)</strong></span>
+<span class="strong"><strong>    clf = MultinomialNB()</strong></span>
+<span class="strong"><strong>    return Pipeline([('vect', tfidf_ngrams), ('clf', clf)])</strong></span>
+</pre></div><p>The <code class="literal">Pipeline</code> instance <a id="id350" class="indexterm"/>returned by <code class="literal">create_ngram_model()</code> can now be used to fit and predict as if we had a normal classifier.</p><p>Since we do not have that much data, we should do cross-validation. This time, however, we will not use <code class="literal">KFold</code>, which partitions the data in consecutive folds, but instead, we use <code class="literal">ShuffleSplit</code>. It shuffles the data for us, but does not prevent the same data instance to be in multiple folds. For each fold, then, we keep track of the area under the Precision-Recall curve and for accuracy.</p><p>To keep our experimentation agile, let's wrap <a id="id351" class="indexterm"/>everything together in a <code class="literal">train_model()</code>function, which takes a function as a parameter that creates the classifier.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>from sklearn.metrics import precision_recall_curve, auc</strong></span>
+<span class="strong"><strong>from sklearn.cross_validation import ShuffleSplit</strong></span>
+
+<span class="strong"><strong>def train_model(clf_factory, X, Y):</strong></span>
+<span class="strong"><strong>    # setting random_state to get deterministic behavior</strong></span>
+<span class="strong"><strong>    cv = ShuffleSplit(n=len(X), n_iter=10, test_size=0.3, random_state=0)</strong></span>
+
+<span class="strong"><strong>    scores = []</strong></span>
+<span class="strong"><strong>    pr_scores = []</strong></span>
+
+<span class="strong"><strong>    for train, test in cv:</strong></span>
+<span class="strong"><strong>        X_train, y_train = X[train], Y[train]</strong></span>
+<span class="strong"><strong>        X_test, y_test = X[test], Y[test]</strong></span>
+
+<span class="strong"><strong>        clf = clf_factory()</strong></span>
+<span class="strong"><strong>        clf.fit(X_train, y_train)</strong></span>
+
+<span class="strong"><strong>        train_score = clf.score(X_train, y_train)</strong></span>
+<span class="strong"><strong>        test_score = clf.score(X_test, y_test)</strong></span>
+
+<span class="strong"><strong>        scores.append(test_score)</strong></span>
+<span class="strong"><strong>        proba = clf.predict_proba(X_test)</strong></span>
+
+<span class="strong"><strong>        precision, recall, pr_thresholds = precision_recall_curve(y_test, proba[:,1])</strong></span>
+
+<span class="strong"><strong>        pr_scores.append(auc(recall, precision))</strong></span>
+
+<span class="strong"><strong>        summary = (np.mean(scores), np.std(scores),</strong></span>
+<span class="strong"><strong>np.mean(pr_scores), np.std(pr_scores))</strong></span>
+<span class="strong"><strong>        print("%.3f\t%.3f\t%.3f\t%.3f" % summary)</strong></span>
+</pre></div><p>Putting everything together, we can train our first model:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; X, Y = load_sanders_data()</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; pos_neg_idx = np.logical_or(Y=="positive", Y=="negative")</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; X = X[pos_neg_idx]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; Y = Y[pos_neg_idx]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; Y = Y=="positive"</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; train_model(create_ngram_model, X, Y)</strong></span>
+<span class="strong"><strong>0.788   0.024   0.882   0.036</strong></span>
+</pre></div><p>With our first try <a id="id352" class="indexterm"/>using Naïve Bayes on vectorized TF-IDF trigram features, we get an accuracy of 78.8 percent and an average P/R AUC of 88.2 percent. Looking at the P/R chart of the median (the train/test split that is performing most similar to the average), it shows a much more encouraging behavior than the plots we have seen in the previous chapter.</p><div class="mediaobject"><img src="images/2772OS_06_02.jpg" alt="Solving an easy problem first"/></div><p>For a start, the<a id="id353" class="indexterm"/> results are quite encouraging. They get even more impressive when we realize that 100 percent accuracy is probably never achievable in a sentiment classification task. For some tweets, even humans often do not really agree on the same classification label.</p></div><div class="section" title="Using all classes"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec53"/>Using all classes</h2></div></div></div><p>Once again, we <a id="id354" class="indexterm"/>simplified our task a bit, since we used only positive or negative tweets. That means, we assumed a perfect classifier that upfront classified whether the tweet contains a sentiment and forwarded that to our Naïve Bayes classifier.</p><p>So, how well do we perform if we also classify whether a tweet contains any sentiment at all? To find that out, let's first write a convenience function that returns a modified class array providing a list of sentiments that we would like to interpret as positive:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>def tweak_labels(Y, pos_sent_list):</strong></span>
+<span class="strong"><strong>    pos = Y==pos_sent_list[0]</strong></span>
+<span class="strong"><strong>    for sent_label in pos_sent_list[1:]:</strong></span>
+<span class="strong"><strong>        pos |= Y==sent_label</strong></span>
+
+<span class="strong"><strong>    Y = np.zeros(Y.shape[0])</strong></span>
+<span class="strong"><strong>    Y[pos] = 1</strong></span>
+<span class="strong"><strong>    Y = Y.astype(int)</strong></span>
+
+<span class="strong"><strong>return Y</strong></span>
+</pre></div><p>Note that we are talking <a id="id355" class="indexterm"/>about two different positives now. The sentiment of a tweet can be positive, which is to be distinguished from the class of the training data. If, for example, we want to find out how good we can separate tweets having sentiment from neutral ones, we could do:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; Y = tweak_labels(Y, ["positive", "negative"])</strong></span>
+</pre></div><p>In <code class="literal">Y</code> we have now <code class="literal">1</code> (positive class) for all tweets that are either positive or negative and <code class="literal">0</code> (negative class) for neutral and irrelevant ones.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; train_model(create_ngram_model, X, Y, plot=True)</strong></span>
+<span class="strong"><strong>0.750   0.012   0.659   0.023</strong></span>
+</pre></div><p>Have a look at the following plot:</p><div class="mediaobject"><img src="images/2772OS_06_03.jpg" alt="Using all classes"/></div><p>As expected, P/R AUC drops considerably, being only 66 percent now. The accuracy is still high, but that is only due to the fact that we have a highly imbalanced dataset. Out of 3,362 total tweets, only 920 are either positive or negative, which is about 27 percent. This means, if we create a classifier that always classifies a tweet as not containing any sentiment, we will already have an accuracy of 73 percent. This is another case to always look at precision and recall if the training and test data is unbalanced.</p><p>So, how will the Naïve Bayes classifier <a id="id356" class="indexterm"/>perform on classifying positive tweets versus the rest and negative tweets versus the rest? One word: bad.</p><div class="informalexample"><pre class="programlisting">== Pos vs. rest ==
+0.873   0.009   0.305   0.026
+== Neg vs. rest ==
+0.861   0.006   0.497   0.026</pre></div><p>Pretty unusable if you ask me. Looking at the P/R curves in the following plots, we will also find no usable precision/recall trade-off, as we were able to do in the last chapter:</p><div class="mediaobject"><img src="images/2772OS_06_04a.jpg" alt="Using all classes"/></div><div class="mediaobject"><img src="images/2772OS_06_04b.jpg" alt="Using all classes"/></div></div><div class="section" title="Tuning the classifier's parameters"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec54"/>Tuning the classifier's parameters</h2></div></div></div><p>Certainly, we have<a id="id357" class="indexterm"/> not explored the current setup enough and should investigate more. There are roughly two areas, where we can play with the knobs: <code class="literal">TfidfVectorizer</code> and <code class="literal">MultinomialNB</code>. As we have no real intuition in which area we should explore, let's try to distribute the parameters' values.</p><p>We will see the <a id="id358" class="indexterm"/>
+<code class="literal">TfidfVectorizer</code> parameter first:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Using different settings for NGrams:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">unigrams (1,1)</li><li class="listitem" style="list-style-type: disc">unigrams and bigrams (1,2)</li><li class="listitem" style="list-style-type: disc">unigrams, bigrams, and trigrams (1,3)</li></ul></div></li><li class="listitem" style="list-style-type: disc">Playing with <code class="literal">min_df</code>: 1 or 2</li><li class="listitem" style="list-style-type: disc">Exploring the impact of IDF within TF-IDF using <code class="literal">use_idf</code> and <code class="literal">smooth_idf</code>: <code class="literal">False</code> or <code class="literal">True</code></li><li class="listitem" style="list-style-type: disc">Whether to remove stop words or not, by setting <code class="literal">stop_words</code> to <code class="literal">english</code> or <code class="literal">None</code></li><li class="listitem" style="list-style-type: disc">Whether to use the logarithm of the word counts (<code class="literal">sublinear_tf</code>)</li><li class="listitem" style="list-style-type: disc">Whether to track word counts or simply track whether words occur or not, by setting <code class="literal">binary</code> to <code class="literal">True</code> or <code class="literal">False</code></li></ul></div><p>Now we will see the <a id="id359" class="indexterm"/>
+<code class="literal">MultinomialNB</code> classifier:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Which smoothing method to use by setting <code class="literal">alpha</code>:<div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc">Add-one or Laplace smoothing: 1</li><li class="listitem" style="list-style-type: disc">Lidstone smoothing: 0.01, 0.05, 0.1, or 0.5</li><li class="listitem" style="list-style-type: disc">No smoothing: 0</li></ul></div></li></ul></div><p>A simple approach could be to train a classifier for all those reasonable exploration values, while keeping the other parameters constant and check the classifier's results. As we do not know whether those parameters affect each other, doing it right will require that we train a classifier for every possible combination of all parameter values. Obviously, this is too tedious for us.</p><p>Because this kind of parameter exploration occurs frequently in machine learning tasks, scikit-learn has a dedicated class for it, called<a id="id360" class="indexterm"/> <code class="literal">GridSearchCV</code>. It takes an estimator (instance with a classifier-like interface), which will be the <code class="literal">Pipeline</code> instance in our case, and a dictionary of parameters with their potential values.</p><p>
+<code class="literal">GridSearchCV</code> expects the<a id="id361" class="indexterm"/> dictionary's keys to obey a certain format so that it is able to set the parameters of the correct estimator. The format is as follows:</p><div class="informalexample"><pre class="programlisting">&lt;estimator&gt;__&lt;subestimator&gt;__...__&lt;param_name&gt;</pre></div><p>For example, if we want to specify the desired values to explore for the <code class="literal">min_df</code> parameter of <code class="literal">TfidfVectorizer</code> (named <code class="literal">vect</code> in the <code class="literal">Pipeline</code> description), we would have to say:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>param_grid={"vect__ngram_range"=[(1, 1), (1, 2), (1, 3)]}</strong></span>
+</pre></div><p>This will tell <code class="literal">GridSearchCV</code> to try out unigrams to trigrams as parameter values for the <code class="literal">ngram_range</code> parameter of <code class="literal">TfidfVectorizer</code>.</p><p>Then, it trains the estimator with all possible parameter value combinations. Here, we make sure that it trains on random samples of the training data using <code class="literal">ShuffleSplit</code>, which generates an iterator of random train/test splits. Finally, it provides the best estimator in the form of the member variable, <code class="literal">best_estimator_</code>.</p><p>As we want to compare the returned best classifier with our current best one, we need to evaluate it in the same way. Therefore, we can pass the <code class="literal">ShuffleSplit</code> instance using the <code class="literal">cv</code> parameter (therefore, <code class="literal">CV</code> in <code class="literal">GridSearchCV</code>).</p><p>The last missing piece is to define how <code class="literal">GridSearchCV</code> should determine the best estimator. This can be done by providing the desired score function to (surprise!) the <code class="literal">score_func</code> parameter. We can either write one ourselves, or pick one from the <code class="literal">sklearn.metrics</code> package. We should certainly not take <code class="literal">metric.accuracy</code> because of our class imbalance (we have a lot less tweets containing sentiment than neutral ones). Instead, we want to have good precision and recall on both classes, tweets with sentiment and tweets without positive or negative opinions. One metric that combines both precision and recall is the so-called <a id="id362" class="indexterm"/>
+<span class="strong"><strong>F-measure</strong></span>, which is implemented as <code class="literal">metrics.f1_score</code>:</p><div class="mediaobject"><img src="images/2772OS_06_64.jpg" alt="Tuning the classifier's parameters"/></div><p>After putting everything together, we get the following code:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>from sklearn.grid_search import GridSearchCV</strong></span>
+<span class="strong"><strong>from sklearn.metrics import f1_score</strong></span>
+
+<span class="strong"><strong>def grid_search_model(clf_factory, X, Y):</strong></span>
+<span class="strong"><strong>    cv = ShuffleSplit(</strong></span>
+<span class="strong"><strong>        n=len(X), n_iter=10, test_size=0.3,random_state=0)</strong></span>
+
+<span class="strong"><strong>    param_grid = dict(vect__ngram_range=[(1, 1), (1, 2), (1, 3)],</strong></span>
+<span class="strong"><strong>        vect__min_df=[1, 2],</strong></span>
+<span class="strong"><strong>        vect__stop_words=[None, "english"],</strong></span>
+<span class="strong"><strong>        vect__smooth_idf=[False, True],</strong></span>
+<span class="strong"><strong>        vect__use_idf=[False, True],</strong></span>
+<span class="strong"><strong>        vect__sublinear_tf=[False, True],</strong></span>
+<span class="strong"><strong>        vect__binary=[False, True],</strong></span>
+<span class="strong"><strong>        clf__alpha=[0, 0.01, 0.05, 0.1, 0.5, 1],</strong></span>
+<span class="strong"><strong>        )</strong></span>
+
+<span class="strong"><strong>    grid_search = GridSearchCV(clf_factory(),</strong></span>
+<span class="strong"><strong>        param_grid=param_grid,</strong></span>
+<span class="strong"><strong>        cv=cv,</strong></span>
+<span class="strong"><strong>        score_func=f1_score,</strong></span>
+<span class="strong"><strong>        verbose=10)</strong></span>
+<span class="strong"><strong>    grid_search.fit(X, Y) </strong></span>
+
+<span class="strong"><strong>    return grid_search.best_estimator_</strong></span>
+</pre></div><p>We have to <a id="id363" class="indexterm"/>be patient while executing this:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>clf = grid_search_model(create_ngram_model, X, Y)</strong></span>
+<span class="strong"><strong>print(clf)</strong></span>
+</pre></div><p>Since we have just requested a parameter, sweep over <span class="inlinemediaobject"><img src="images/2772OS_06_65.jpg" alt="Tuning the classifier's parameters"/></span> parameter combinations, each being trained on 10 folds:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>... waiting some hours  ...</strong></span>
+<span class="strong"><strong>Pipeline(clf=MultinomialNB(</strong></span>
+<span class="strong"><strong>alpha=0.01, class_weight=None, fit_prior=True),</strong></span>
+<span class="strong"><strong>clf__alpha=0.01, </strong></span>
+<span class="strong"><strong>clf__class_weight=None, </strong></span>
+<span class="strong"><strong>clf__fit_prior=True,</strong></span>
+<span class="strong"><strong>vect=TfidfVectorizer(</strong></span>
+<span class="strong"><strong>analyzer=word, binary=False,</strong></span>
+<span class="strong"><strong>   charset=utf-8, charset_error=strict, </strong></span>
+<span class="strong"><strong>dtype=&lt;type 'long'&gt;,input=content,</strong></span>
+<span class="strong"><strong>lowercase=True, max_df=1.0,</strong></span>
+<span class="strong"><strong>max_features=None, max_n=None,</strong></span>
+<span class="strong"><strong>min_df=1, min_n=None, ngram_range=(1, 2),</strong></span>
+<span class="strong"><strong>norm=l2, preprocessor=None, smooth_idf=False,</strong></span>
+<span class="strong"><strong>stop_words=None,strip_accents=None, </strong></span>
+<span class="strong"><strong>sublinear_tf=True,token_pattern=(?u)\b\w\w+\b,</strong></span>
+<span class="strong"><strong>token_processor=None, tokenizer=None, </strong></span>
+<span class="strong"><strong>use_idf=False, vocabulary=None),</strong></span>
+<span class="strong"><strong>vect__analyzer=word, vect__binary=False, </strong></span>
+<span class="strong"><strong>vect__charset=utf-8,</strong></span>
+<span class="strong"><strong>vect__charset_error=strict, </strong></span>
+<span class="strong"><strong>vect__dtype=&lt;type 'long'&gt;,</strong></span>
+<span class="strong"><strong>vect__input=content, vect__lowercase=True, </strong></span>
+<span class="strong"><strong>vect__max_df=1.0,vect__max_features=None, </strong></span>
+<span class="strong"><strong>vect__max_n=None, vect__min_df=1,</strong></span>
+<span class="strong"><strong>vect__min_n=None, vect__ngram_range=(1, 2), </strong></span>
+<span class="strong"><strong>vect__norm=l2, vect__preprocessor=None, </strong></span>
+<span class="strong"><strong>vect__smooth_idf=False, vect__stop_words=None, </strong></span>
+<span class="strong"><strong>vect__strip_accents=None, vect__sublinear_tf=True,</strong></span>
+<span class="strong"><strong>vect__token_pattern=(?u)\b\w\w+\b,</strong></span>
+<span class="strong"><strong>vect__token_processor=None, vect__tokenizer=None,</strong></span>
+<span class="strong"><strong>vect__use_idf=False, vect__vocabulary=None)</strong></span>
+<span class="strong"><strong>0.795  0.007  0.702  0.028</strong></span>
+</pre></div><p>The best estimator<a id="id364" class="indexterm"/> indeed improves the P/R AUC by nearly 3.3 percent to now 70.2, with the settings shown in the previous code.</p><p>Also, the devastating results for positive tweets against the rest and negative tweets against the rest improve if we configure the vectorizer and classifier with those parameters we have just found out:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>== Pos vs. rest ==</strong></span>
+<span class="strong"><strong>0.889   0.010   0.509   0.041</strong></span>
+<span class="strong"><strong>== Neg vs. rest ==</strong></span>
+<span class="strong"><strong>0.886   0.007   0.615   0.035</strong></span>
+</pre></div><p>Have a look at the following plots:</p><div class="mediaobject"><img src="images/2772OS_06_06a.jpg" alt="Tuning the classifier's parameters"/></div><div class="mediaobject"><img src="images/2772OS_06_06b.jpg" alt="Tuning the classifier's parameters"/></div><p>Indeed, the P/R curves <a id="id365" class="indexterm"/>look much better (note that the plots are from the medium of the fold classifiers, thus, slightly diverging AUC values). Nevertheless, we probably still wouldn't use those classifiers. Time for something completely different…</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Cleaning tweets"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec44"/>Cleaning tweets</h1></div></div></div><p>New <a id="id366" class="indexterm"/>constraints<a id="id367" class="indexterm"/> lead to new forms. Twitter is no exception in this regard. Because the text has to fit into 140 characters, people naturally develop new language shortcuts to say the same in less characters. So far, we have ignored all the diverse emoticons and abbreviations. Let's see how much we can improve by taking that into account. For this endeavor, we will have to provide our own <code class="literal">preprocessor()</code> to <code class="literal">TfidfVectorizer</code>.</p><p>First, we define a range of frequent emoticons and their replacements in a dictionary. Although we can find more distinct replacements, we go with obvious positive or negative words to help the classifier:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>emo_repl = {</strong></span>
+<span class="strong"><strong>    # positive emoticons</strong></span>
+<span class="strong"><strong>    "&amp;lt;3": " good ",</strong></span>
+<span class="strong"><strong>    ":d": " good ", # :D in lower case</strong></span>
+<span class="strong"><strong>    ":dd": " good ", # :DD in lower case</strong></span>
+<span class="strong"><strong>    "8)": " good ",</strong></span>
+<span class="strong"><strong>    ":-)": " good ",</strong></span>
+<span class="strong"><strong>    ":)": " good ",</strong></span>
+<span class="strong"><strong>    ";)": " good ",</strong></span>
+<span class="strong"><strong>    "(-:": " good ",</strong></span>
+<span class="strong"><strong>    "(:": " good ",</strong></span>
+
+<span class="strong"><strong>    # negative emoticons:</strong></span>
+<span class="strong"><strong>    ":/": " bad ",</strong></span>
+<span class="strong"><strong>    ":&amp;gt;": " sad ",</strong></span>
+<span class="strong"><strong>    ":')": " sad ",</strong></span>
+<span class="strong"><strong>    ":-(": " bad ",</strong></span>
+<span class="strong"><strong>    ":(": " bad ",</strong></span>
+<span class="strong"><strong>    ":S": " bad ",</strong></span>
+<span class="strong"><strong>    ":-S": " bad ",</strong></span>
+<span class="strong"><strong>    }</strong></span>
+
+<span class="strong"><strong># make sure that e.g. :dd is replaced before :d</strong></span>
+<span class="strong"><strong>emo_repl_order = [k for (k_len,k) in reversed(sorted([(len(k),k) for k in emo_repl.keys()]))]</strong></span>
+</pre></div><p>Then, we define <a id="id368" class="indexterm"/>abbreviations as regular expressions together with their expansions (<code class="literal">\b</code> marks the word boundary):</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>re_repl = {</strong></span>
+<span class="strong"><strong>r"\br\b": "are",</strong></span>
+<span class="strong"><strong>r"\bu\b": "you",</strong></span>
+<span class="strong"><strong>r"\bhaha\b": "ha",</strong></span>
+<span class="strong"><strong>r"\bhahaha\b": "ha",</strong></span>
+<span class="strong"><strong>r"\bdon't\b": "do not",</strong></span>
+<span class="strong"><strong>r"\bdoesn't\b": "does not",</strong></span>
+<span class="strong"><strong>r"\bdidn't\b": "did not",</strong></span>
+<span class="strong"><strong>r"\bhasn't\b": "has not",</strong></span>
+<span class="strong"><strong>r"\bhaven't\b": "have not",</strong></span>
+<span class="strong"><strong>r"\bhadn't\b": "had not",</strong></span>
+<span class="strong"><strong>r"\bwon't\b": "will not",</strong></span>
+<span class="strong"><strong>r"\bwouldn't\b": "would not",</strong></span>
+<span class="strong"><strong>r"\bcan't\b": "can not",</strong></span>
+<span class="strong"><strong>r"\bcannot\b": "can not",</strong></span>
+<span class="strong"><strong>    }</strong></span>
+
+<span class="strong"><strong>def create_ngram_model(params=None):</strong></span>
+<span class="strong"><strong>    def preprocessor(tweet):</strong></span>
+<span class="strong"><strong>        tweet = tweet.lower()</strong></span>
+<span class="strong"><strong>        for k in emo_repl_order:</strong></span>
+<span class="strong"><strong>            tweet = tweet.replace(k, emo_repl[k])</strong></span>
+<span class="strong"><strong>        for r, repl in re_repl.items():</strong></span>
+<span class="strong"><strong>            tweet = re.sub(r, repl, tweet)</strong></span>
+
+<span class="strong"><strong>        return tweet</strong></span>
+
+<span class="strong"><strong>    tfidf_ngrams = TfidfVectorizer(preprocessor=preprocessor,</strong></span>
+<span class="strong"><strong>analyzer="word")</strong></span>
+<span class="strong"><strong>    # ...</strong></span>
+</pre></div><p>Certainly, there<a id="id369" class="indexterm"/> are many more abbreviations that can be used here. But already with this limited set, we get an improvement for sentiment versus not sentiment of half a point, being now 70.7 percent:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>== Pos vs. neg ==</strong></span>
+<span class="strong"><strong>0.808   0.024   0.885   0.029</strong></span>
+<span class="strong"><strong>== Pos/neg vs. irrelevant/neutral ==</strong></span>
+<span class="strong"><strong>0.793   0.010   0.685   0.024</strong></span>
+<span class="strong"><strong>== Pos vs. rest ==</strong></span>
+<span class="strong"><strong>0.890   0.011   0.517   0.041</strong></span>
+<span class="strong"><strong>== Neg vs. rest ==</strong></span>
+<span class="strong"><strong>0.886   0.006   0.624   0.033</strong></span>
+</pre></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Taking the word types into account"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec45"/>Taking the word types into account</h1></div></div></div><p>So far, our hope was<a id="id370" class="indexterm"/> that simply using the words independent of each other with the bag-of-words approach would suffice. Just from our intuition, however, neutral tweets probably contain a higher fraction of nouns, while positive or negative tweets are more colorful, requiring more adjectives and verbs. What if we use this linguistic information of the tweets as well? If we could find out how many words in a tweet were nouns, verbs, adjectives, and so on, the classifier could probably take that into account as well.</p><div class="section" title="Determining the word types"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec55"/>Determining the word types</h2></div></div></div><p>This is <a id="id371" class="indexterm"/>what part-of-speech tagging, or POS tagging, is all about. A POS tagger parses a full sentence with the goal to arrange it into a dependence tree, where each node corresponds to a word and the parent-child relationship determines which word it depends on. With this tree, it can then make more informed decisions, for example, whether the word "book" is a noun ("This is a good book.") or a verb ("Could you please book the flight?").</p><p>You might <a id="id372" class="indexterm"/>have already guessed that NLTK will play its role in this area as well. And indeed, it comes readily packaged with all sorts of parsers and taggers. The POS tagger we will use, <code class="literal">nltk.pos_tag()</code>, is actually a full blown classifier trained using manually annotated sentences from the <a id="id373" class="indexterm"/>Penn Treebank Project (<a class="ulink" href="http://www.cis.upenn.edu/~treebank">http://www.cis.upenn.edu/~treebank</a>). It takes as input a list of word tokens and outputs a list of tuples, where each element contains the part of the original sentence and its part-of-speech tag.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>&gt;&gt;&gt; import nltk</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; nltk.pos_tag(nltk.word_tokenize("This is a good book."))</strong></span>
+<span class="strong"><strong>[('This', 'DT'), ('is', 'VBZ'), ('a', 'DT'), ('good', 'JJ'), ('book', 'NN'), ('.', '.')]</strong></span>
+<span class="strong"><strong>&gt;&gt;&gt; nltk.pos_tag(nltk.word_tokenize("Could you please book the flight?"))</strong></span>
+<span class="strong"><strong>[('Could', 'MD'), ('you', 'PRP'), ('please', 'VB'), ('book', 'NN'), ('the', 'DT'), ('flight', 'NN'), ('?', '.')]</strong></span>
+</pre></div><p>The POS tag abbreviations<a id="id374" class="indexterm"/> are taken from the Penn Treebank (adapted from <a class="ulink" href="http://www.anc.org/OANC/penn.html">http://www.anc.org/OANC/penn.html</a>):</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>POS tag</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Example</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>CC</p>
+</td><td style="text-align: left" valign="top">
+<p>coordinating conjunction</p>
+</td><td style="text-align: left" valign="top">
+<p>or</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>CD</p>
+</td><td style="text-align: left" valign="top">
+<p>cardinal number</p>
+</td><td style="text-align: left" valign="top">
+<p>2, second</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>DT</p>
+</td><td style="text-align: left" valign="top">
+<p>determiner</p>
+</td><td style="text-align: left" valign="top">
+<p>the</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>EX</p>
+</td><td style="text-align: left" valign="top">
+<p>existential there</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<span class="emphasis"><em>there</em></span> are</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>FW</p>
+</td><td style="text-align: left" valign="top">
+<p>foreign word</p>
+</td><td style="text-align: left" valign="top">
+<p>kindergarten</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>IN</p>
+</td><td style="text-align: left" valign="top">
+<p>preposition/subordinating conjunction</p>
+</td><td style="text-align: left" valign="top">
+<p>on, of, like</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>JJ</p>
+</td><td style="text-align: left" valign="top">
+<p>adjective</p>
+</td><td style="text-align: left" valign="top">
+<p>cool</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>JJR</p>
+</td><td style="text-align: left" valign="top">
+<p>adjective, comparative</p>
+</td><td style="text-align: left" valign="top">
+<p>cooler</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>JJS</p>
+</td><td style="text-align: left" valign="top">
+<p>adjective, superlative</p>
+</td><td style="text-align: left" valign="top">
+<p>coolest</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>LS</p>
+</td><td style="text-align: left" valign="top">
+<p>list marker</p>
+</td><td style="text-align: left" valign="top">
+<p>1)</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>MD</p>
+</td><td style="text-align: left" valign="top">
+<p>modal</p>
+</td><td style="text-align: left" valign="top">
+<p>could, will</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>NN</p>
+</td><td style="text-align: left" valign="top">
+<p>noun, singular or mass</p>
+</td><td style="text-align: left" valign="top">
+<p>book</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>NNS</p>
+</td><td style="text-align: left" valign="top">
+<p>noun plural</p>
+</td><td style="text-align: left" valign="top">
+<p>books</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>NNP</p>
+</td><td style="text-align: left" valign="top">
+<p>proper noun, singular</p>
+</td><td style="text-align: left" valign="top">
+<p>Sean</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>NNPS</p>
+</td><td style="text-align: left" valign="top">
+<p>proper noun, plural</p>
+</td><td style="text-align: left" valign="top">
+<p>Vikings</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>PDT</p>
+</td><td style="text-align: left" valign="top">
+<p>predeterminer</p>
+</td><td style="text-align: left" valign="top">
+<p>both the boys</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>POS</p>
+</td><td style="text-align: left" valign="top">
+<p>possessive ending</p>
+</td><td style="text-align: left" valign="top">
+<p>friend's</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>PRP</p>
+</td><td style="text-align: left" valign="top">
+<p>personal pronoun</p>
+</td><td style="text-align: left" valign="top">
+<p>I, he, it</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>PRP$</p>
+</td><td style="text-align: left" valign="top">
+<p>possessive pronoun</p>
+</td><td style="text-align: left" valign="top">
+<p>my, his</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>RB</p>
+</td><td style="text-align: left" valign="top">
+<p>adverb</p>
+</td><td style="text-align: left" valign="top">
+<p>however, usually, naturally, here, good</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>RBR</p>
+</td><td style="text-align: left" valign="top">
+<p>adverb, comparative</p>
+</td><td style="text-align: left" valign="top">
+<p>better</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>RBS</p>
+</td><td style="text-align: left" valign="top">
+<p>adverb, superlative</p>
+</td><td style="text-align: left" valign="top">
+<p>best</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>RP</p>
+</td><td style="text-align: left" valign="top">
+<p>particle</p>
+</td><td style="text-align: left" valign="top">
+<p>give <span class="emphasis"><em>up</em></span>
+</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>TO</p>
+</td><td style="text-align: left" valign="top">
+<p>to</p>
+</td><td style="text-align: left" valign="top">
+<p>
+<span class="emphasis"><em>to</em></span> go, <span class="emphasis"><em>to</em></span> him</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>UH</p>
+</td><td style="text-align: left" valign="top">
+<p>interjection</p>
+</td><td style="text-align: left" valign="top">
+<p>uhhuhhuhh</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>VB</p>
+</td><td style="text-align: left" valign="top">
+<p>verb, base form</p>
+</td><td style="text-align: left" valign="top">
+<p>take</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>VBD</p>
+</td><td style="text-align: left" valign="top">
+<p>verb, past tense</p>
+</td><td style="text-align: left" valign="top">
+<p>took</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>VBG</p>
+</td><td style="text-align: left" valign="top">
+<p>verb, gerund/present participle</p>
+</td><td style="text-align: left" valign="top">
+<p>taking</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>VBN</p>
+</td><td style="text-align: left" valign="top">
+<p>verb, past participle</p>
+</td><td style="text-align: left" valign="top">
+<p>taken</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>VBP</p>
+</td><td style="text-align: left" valign="top">
+<p>verb, sing. present, non-3d</p>
+</td><td style="text-align: left" valign="top">
+<p>take</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>VBZ</p>
+</td><td style="text-align: left" valign="top">
+<p>verb, 3rd person sing. present</p>
+</td><td style="text-align: left" valign="top">
+<p>takes</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>WDT</p>
+</td><td style="text-align: left" valign="top">
+<p>wh-determiner</p>
+</td><td style="text-align: left" valign="top">
+<p>which</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>WP</p>
+</td><td style="text-align: left" valign="top">
+<p>wh-pronoun</p>
+</td><td style="text-align: left" valign="top">
+<p>who, what</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>WP$</p>
+</td><td style="text-align: left" valign="top">
+<p>possessive wh-pronoun</p>
+</td><td style="text-align: left" valign="top">
+<p>whose</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>WRB</p>
+</td><td style="text-align: left" valign="top">
+<p>wh-abverb</p>
+</td><td style="text-align: left" valign="top">
+<p>where, when</p>
+</td></tr></tbody></table></div><p>With these tags, it is<a id="id375" class="indexterm"/> pretty easy to filter the desired tags from the output of <code class="literal">pos_tag()</code>. We simply have to count all words whose tags start with <code class="literal">NN</code> for nouns, <code class="literal">VB</code> for verbs, <code class="literal">JJ</code> for adjectives, and <code class="literal">RB</code> for adverbs.</p></div><div class="section" title="Successfully cheating using SentiWordNet"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec56"/>Successfully cheating using SentiWordNet</h2></div></div></div><p>While linguistic information, as mentioned in the preceding section, will most likely help us, there is something better we can <a id="id376" class="indexterm"/>do to harvest it: SentiWordNet (<a class="ulink" href="http://sentiwordnet.isti.cnr.it">http://sentiwordnet.isti.cnr.it</a>). Simply put, it is a 13 MB file that assigns most of the English words a positive and negative value. More complicated put, for every synonym set, it records both the positive and negative sentiment values. Some examples are as follows:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>POS</p>
+</th><th style="text-align: left" valign="bottom">
+<p>ID</p>
+</th><th style="text-align: left" valign="bottom">
+<p>PosScore</p>
+</th><th style="text-align: left" valign="bottom">
+<p>NegScore</p>
+</th><th style="text-align: left" valign="bottom">
+<p>SynsetTerms</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>a</p>
+</td><td style="text-align: left" valign="top">
+<p>00311354</p>
+</td><td style="text-align: left" valign="top">
+<p>0.25</p>
+</td><td style="text-align: left" valign="top">
+<p>0.125</p>
+</td><td style="text-align: left" valign="top">
+<p>studious#1</p>
+</td><td style="text-align: left" valign="top">
+<p>Marked by care and effort; "made a studious attempt to fix the television set"</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>a</p>
+</td><td style="text-align: left" valign="top">
+<p>00311663</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>0.5</p>
+</td><td style="text-align: left" valign="top">
+<p>careless#1</p>
+</td><td style="text-align: left" valign="top">
+<p>Marked by lack of attention or consideration or forethought or thoroughness; not careful…</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>n</p>
+</td><td style="text-align: left" valign="top">
+<p>03563710</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>implant#1</p>
+</td><td style="text-align: left" valign="top">
+<p>A prosthesis placed permanently in tissue</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>v</p>
+</td><td style="text-align: left" valign="top">
+<p>00362128</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>kink#2 curve#5 curl#1</p>
+</td><td style="text-align: left" valign="top">
+<p>Form a curl, curve, or kink; "the cigar smoke curled up at the ceiling"</p>
+</td></tr></tbody></table></div><p>With the information in the <a id="id377" class="indexterm"/>
+<span class="strong"><strong>POS</strong></span> column, we will be able to distinguish between the noun "book" and the verb "book". <code class="literal">PosScore</code> and <code class="literal">NegScore</code> together will help us to determine the neutrality of the word, which is 1-PosScore-NegScore. <code class="literal">SynsetTerms</code> lists all words in the set that are synonyms. We can safely ignore the <span class="strong"><strong>ID</strong></span> and <span class="strong"><strong>Description</strong></span> columns for our purposes.</p><p>The synset terms have a number appended, because some occur multiple times in different synsets. For example, "fantasize" conveys two quite different meanings, which also leads to different scores:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>POS</p>
+</th><th style="text-align: left" valign="bottom">
+<p>ID</p>
+</th><th style="text-align: left" valign="bottom">
+<p>PosScore</p>
+</th><th style="text-align: left" valign="bottom">
+<p>NegScore</p>
+</th><th style="text-align: left" valign="bottom">
+<p>SynsetTerms</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Description</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>v</p>
+</td><td style="text-align: left" valign="top">
+<p>01636859</p>
+</td><td style="text-align: left" valign="top">
+<p>0.375</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>fantasize#2 fantasise#2</p>
+</td><td style="text-align: left" valign="top">
+<p>Portray in the mind; "he is fantasizing the ideal wife"</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>v</p>
+</td><td style="text-align: left" valign="top">
+<p>01637368</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>0.125</p>
+</td><td style="text-align: left" valign="top">
+<p>fantasy#1 fantasize#1 fantasise#1</p>
+</td><td style="text-align: left" valign="top">
+<p>Indulge in fantasies; "he is fantasizing when he says he plans to start his own company"</p>
+</td></tr></tbody></table></div><p>To find out which of the synsets to take, we will need to really understand the meaning of the tweets, which is beyond the scope of this chapter. The field of research that is focusing on this challenge is called word-sense-disambiguation. For our task, we take the easy route and simply average the scores over all the synsets, in which a term is found. For "fantasize", <code class="literal">PosScore</code> will be 0.1875 and <code class="literal">NegScore</code> will be 0.0625.</p><p>The following function, <code class="literal">load_sent_word_net()</code>, does all that for us and returns a dictionary where the keys are strings of the form <span class="emphasis"><em>word type/word</em></span>, for example, n/implant, and the values are the positive and negative scores:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>import csv, collections</strong></span>
+
+<span class="strong"><strong>def load_sent_word_net():</strong></span>
+<span class="strong"><strong>   # making our life easier by using a dictionary that</strong></span>
+<span class="strong"><strong>   # automatically creates an empty list whenever we access</strong></span>
+<span class="strong"><strong>   # a not yet existing key</strong></span>
+<span class="strong"><strong>   sent_scores = collections.defaultdict(list)</strong></span>
+
+<span class="strong"><strong>   with open(os.path.join(DATA_DIR, SentiWordNet_3.0.0_20130122.txt"), "r") as csvfile:</strong></span>
+<span class="strong"><strong>      reader = csv.reader(csvfile, delimiter='\t',</strong></span>
+<span class="strong"><strong>quotechar='"')</strong></span>
+<span class="strong"><strong>      for line in reader:</strong></span>
+<span class="strong"><strong>         if line[0].startswith("#"):</strong></span>
+<span class="strong"><strong>            continue</strong></span>
+<span class="strong"><strong>         if len(line)==1:</strong></span>
+<span class="strong"><strong>            continue</strong></span>
+
+<span class="strong"><strong>         POS, ID, PosScore, NegScore, SynsetTerms, Gloss = line</strong></span>
+<span class="strong"><strong>         if len(POS)==0 or len(ID)==0:</strong></span>
+<span class="strong"><strong>            continue</strong></span>
+<span class="strong"><strong>         for term in SynsetTerms.split(" "):</strong></span>
+<span class="strong"><strong>            # drop number at the end of every term</strong></span>
+<span class="strong"><strong>            term = term.split("#")[0] </strong></span>
+<span class="strong"><strong>            term = term.replace("-", " ").replace("_", " ")</strong></span>
+<span class="strong"><strong>            key = "%s/%s"%(POS, term.split("#")[0])</strong></span>
+<span class="strong"><strong>            sent_scores[key].append((float(PosScore), </strong></span>
+<span class="strong"><strong>float(NegScore)))</strong></span>
+
+<span class="strong"><strong>    for key, value in sent_scores.items():</strong></span>
+<span class="strong"><strong>        sent_scores[key] = np.mean(value, axis=0)</strong></span>
+
+<span class="strong"><strong>    return sent_scores</strong></span>
+</pre></div></div><div class="section" title="Our first estimator"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec57"/>Our first estimator</h2></div></div></div><p>Now, we have everything<a id="id378" class="indexterm"/> in place to create our own first vectorizer. The most convenient way to do it is to inherit it <a id="id379" class="indexterm"/>from <code class="literal">BaseEstimator</code>. It requires us to implement the following three methods:</p><div class="itemizedlist"><ul class="itemizedlist"><li class="listitem" style="list-style-type: disc"><code class="literal">get_feature_names()</code>: This<a id="id380" class="indexterm"/> returns a list of strings of the features that we will return in <code class="literal">transform()</code>.</li><li class="listitem" style="list-style-type: disc"><code class="literal">fit(document, y=None)</code>: As <a id="id381" class="indexterm"/>we are not implementing a classifier, we can ignore this one and simply return self.</li><li class="listitem" style="list-style-type: disc"><code class="literal">transform(documents)</code>: This <a id="id382" class="indexterm"/>returns <code class="literal">numpy.array()</code>, containing an array of shape (<code class="literal">len(documents), len(get_feature_names)</code>). This means, for every document in <code class="literal">documents</code>, it has to return a value for every feature name in <code class="literal">get_feature_names()</code>.</li></ul></div><p>Here is the implementation:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>sent_word_net = load_sent_word_net()</strong></span>
+
+<span class="strong"><strong>class LinguisticVectorizer(BaseEstimator):</strong></span>
+<span class="strong"><strong>    def get_feature_names(self):</strong></span>
+<span class="strong"><strong>        return np.array(['sent_neut', 'sent_pos', 'sent_neg',</strong></span>
+<span class="strong"><strong>         'nouns', 'adjectives', 'verbs', 'adverbs',</strong></span>
+<span class="strong"><strong>         'allcaps', 'exclamation', 'question', 'hashtag', 'mentioning'])</strong></span>
+
+<span class="strong"><strong>    # we don't fit here but need to return the reference</strong></span>
+<span class="strong"><strong>    # so that it can be used like fit(d).transform(d)</strong></span>
+<span class="strong"><strong>    def fit(self, documents, y=None):</strong></span>
+<span class="strong"><strong>        return self</strong></span>
+
+<span class="strong"><strong>    def _get_sentiments(self, d):</strong></span>
+<span class="strong"><strong>        sent = tuple(d.split())</strong></span>
+<span class="strong"><strong>        tagged = nltk.pos_tag(sent)</strong></span>
+
+<span class="strong"><strong>        pos_vals = []</strong></span>
+<span class="strong"><strong>        neg_vals = []</strong></span>
+
+<span class="strong"><strong>        nouns = 0.</strong></span>
+<span class="strong"><strong>        adjectives = 0.</strong></span>
+<span class="strong"><strong>        verbs = 0.</strong></span>
+<span class="strong"><strong>        adverbs = 0.</strong></span>
+
+<span class="strong"><strong>        for w,t in tagged:</strong></span>
+<span class="strong"><strong>            p, n = 0,0</strong></span>
+<span class="strong"><strong>            sent_pos_type = None</strong></span>
+<span class="strong"><strong>            if t.startswith("NN"):</strong></span>
+<span class="strong"><strong>                sent_pos_type = "n"</strong></span>
+<span class="strong"><strong>                nouns += 1</strong></span>
+<span class="strong"><strong>            elif t.startswith("JJ"):</strong></span>
+<span class="strong"><strong>                sent_pos_type = "a"</strong></span>
+<span class="strong"><strong>                adjectives += 1</strong></span>
+<span class="strong"><strong>            elif t.startswith("VB"):</strong></span>
+<span class="strong"><strong>                sent_pos_type = "v"</strong></span>
+<span class="strong"><strong>                verbs += 1</strong></span>
+<span class="strong"><strong>            elif t.startswith("RB"):</strong></span>
+<span class="strong"><strong>                sent_pos_type = "r"</strong></span>
+<span class="strong"><strong>                adverbs += 1</strong></span>
+
+<span class="strong"><strong>            if sent_pos_type is not None:</strong></span>
+<span class="strong"><strong>                sent_word = "%s/%s" % (sent_pos_type, w)</strong></span>
+
+<span class="strong"><strong>                if sent_word in sent_word_net:</strong></span>
+<span class="strong"><strong>                    p,n = sent_word_net[sent_word]</strong></span>
+
+<span class="strong"><strong>            pos_vals.append(p)</strong></span>
+<span class="strong"><strong>            neg_vals.append(n)</strong></span>
+
+<span class="strong"><strong>        l = len(sent)</strong></span>
+<span class="strong"><strong>        avg_pos_val = np.mean(pos_vals)</strong></span>
+<span class="strong"><strong>        avg_neg_val = np.mean(neg_vals)</strong></span>
+<span class="strong"><strong>        return [1-avg_pos_val-avg_neg_val, avg_pos_val, avg_neg_val,
+nouns/l, adjectives/l, verbs/l, adverbs/l]</strong></span>
+
+
+<span class="strong"><strong>    def transform(self, documents):</strong></span>
+<span class="strong"><strong>        obj_val, pos_val, neg_val, nouns, adjectives, \</strong></span>
+<span class="strong"><strong>verbs, adverbs = np.array([self._get_sentiments(d) \</strong></span>
+<span class="strong"><strong>for d in documents]).T</strong></span>
+
+<span class="strong"><strong>        allcaps = []</strong></span>
+<span class="strong"><strong>        exclamation = []</strong></span>
+<span class="strong"><strong>        question = []</strong></span>
+<span class="strong"><strong>        hashtag = []</strong></span>
+<span class="strong"><strong>        mentioning = []</strong></span>
+
+<span class="strong"><strong>        for d in documents:</strong></span>
+<span class="strong"><strong>            allcaps.append(np.sum([t.isupper() \</strong></span>
+<span class="strong"><strong>                for t in d.split() if len(t)&gt;2]))</strong></span>
+
+<span class="strong"><strong>            exclamation.append(d.count("!"))</strong></span>
+<span class="strong"><strong>            question.append(d.count("?"))</strong></span>
+<span class="strong"><strong>            hashtag.append(d.count("#"))</strong></span>
+<span class="strong"><strong>            mentioning.append(d.count("@"))</strong></span>
+
+<span class="strong"><strong>        result = np.array([obj_val, pos_val, neg_val, nouns, adjectives, verbs, adverbs, allcaps, exclamation, question, </strong></span>
+<span class="strong"><strong>hashtag, mentioning]).T</strong></span>
+
+<span class="strong"><strong>        return result</strong></span>
+</pre></div></div><div class="section" title="Putting everything together"><div class="titlepage"><div><div><h2 class="title"><a id="ch06lvl2sec58"/>Putting everything together</h2></div></div></div><p>Nevertheless, using<a id="id383" class="indexterm"/> these linguistic features in isolation without the words themselves will not take us very far. Therefore, we have to combine the <code class="literal">TfidfVectorizer</code> parameter with the linguistic features. This can be done with scikit-learn's <code class="literal">FeatureUnion</code> class. It is initialized in the same manner as <code class="literal">Pipeline</code>; however, instead of evaluating the estimators in a sequence each passing the output of the previous one to the next one, <code class="literal">FeatureUnion</code> does it in parallel and joins the output vectors afterwards.</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>def create_union_model(params=None):</strong></span>
+<span class="strong"><strong>    def preprocessor(tweet):</strong></span>
+<span class="strong"><strong>        tweet = tweet.lower()</strong></span>
+
+<span class="strong"><strong>        for k in emo_repl_order:</strong></span>
+<span class="strong"><strong>            tweet = tweet.replace(k, emo_repl[k])</strong></span>
+<span class="strong"><strong>        for r, repl in re_repl.items():</strong></span>
+<span class="strong"><strong>            tweet = re.sub(r, repl, tweet)</strong></span>
+
+<span class="strong"><strong>        return tweet.replace("-", " ").replace("_", " ")</strong></span>
+
+<span class="strong"><strong>    tfidf_ngrams = TfidfVectorizer(preprocessor=preprocessor, analyzer="word")</strong></span>
+<span class="strong"><strong>    ling_stats = LinguisticVectorizer()</strong></span>
+<span class="strong"><strong>    all_features = FeatureUnion([('ling', ling_stats), ('tfidf', tfidf_ngrams)])</strong></span>
+<span class="strong"><strong>    clf = MultinomialNB()</strong></span>
+<span class="strong"><strong>    pipeline = Pipeline([('all', all_features), ('clf', clf)])</strong></span>
+
+<span class="strong"><strong>    if params:</strong></span>
+<span class="strong"><strong>        pipeline.set_params(**params)</strong></span>
+
+<span class="strong"><strong>    return pipeline</strong></span>
+</pre></div><p>Training and <a id="id384" class="indexterm"/>testing on the combined featurizers, gives another 0.4 percent improvement on average P/R AUC for positive versus negative:</p><div class="informalexample"><pre class="programlisting">
+<span class="strong"><strong>== Pos vs. neg ==</strong></span>
+<span class="strong"><strong>0.810   0.023   0.890   0.025</strong></span>
+<span class="strong"><strong>== Pos/neg vs. irrelevant/neutral ==</strong></span>
+<span class="strong"><strong>0.791   0.007   0.691   0.022</strong></span>
+<span class="strong"><strong>== Pos vs. rest ==</strong></span>
+<span class="strong"><strong>0.890   0.011   0.529   0.035</strong></span>
+<span class="strong"><strong>== Neg vs. rest ==</strong></span>
+<span class="strong"><strong>0.883   0.007   0.617   0.033</strong></span>
+<span class="strong"><strong>time spent: 214.12578797340393</strong></span>
+</pre></div><p>With these results, we probably do not want to use the positive versus rest and negative versus rest classifiers, but instead use first the classifier determining whether the tweet contains sentiment at all (pos/neg versus irrelevant/neutral) and then, in case it does, use the positive versus negative classifier to determine the actual sentiment.</p></div></div></div>
+
+
+  <div id="sbo-rt-content"><div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch06lvl1sec46"/>Summary</h1></div></div></div><p>Congratulations for sticking with us until the end! Together we have learned how Naïve Bayes works and why it is not that naïve at all. Especially, for training sets, where we don't have enough data to learn all the niches in the class probability space, Naïve Bayes does a great job of generalizing. We learned how to apply it to tweets and that cleaning the rough tweets' texts helps a lot. Finally, we realized that a bit of "cheating" (only after we have done our fair share of work) is okay. Especially when it gives another improvement of the classifier's performance, as we have experienced with the use of <code class="literal">SentiWordNet</code>.</p><p>In the next chapter, we will look at regressions.</p></div></div>
+</body></html>

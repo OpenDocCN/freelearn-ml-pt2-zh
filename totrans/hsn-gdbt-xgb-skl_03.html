@@ -1,0 +1,373 @@
+<html><head></head><body>
+		<div id="_idContainer045">
+			<h1 id="_idParaDest-48"><em class="italic"><a id="_idTextAnchor047"/>Chapter 2</em>: Decision Trees in Depth</h1>
+			<p>In this chapter, you will gain proficiency with <strong class="bold">decision trees</strong>, the primary machine learning algorithm from which XGBoost models are built. You will also gain first-hand experience in the science and art of <strong class="bold">hyperparameter fine-tuning</strong>. Since decision trees are the foundation of XGBoost models, the skills that you learn in this chapter are essential to building robust XGBoost models going forward.</p>
+			<p>In this chapter, you will build and evaluate <strong class="bold">decision tree classifiers</strong> and <strong class="bold">decision tree regressors</strong>, visualize and analyze decision trees in terms of variance and bias, and fine-tune decision tree hyperparameters. In addition, you will apply decision trees to a case study that predicts heart disease in patients.</p>
+			<p>This chapter covers the following main topics:</p>
+			<ul>
+				<li><p>Introducing decision trees with XGBoost</p></li>
+				<li><p>Exploring decision trees</p></li>
+				<li><p>Contrasting variance and bias</p></li>
+				<li><p>Tuning decision tree hyperparameters</p></li>
+				<li><p>Predicting heart disease – a case study</p></li>
+			</ul>
+			<h1 id="_idParaDest-49"><a id="_idTextAnchor048"/>Introducing decision trees with XGBoost</h1>
+			<p>XGBoost is<a id="_idIndexMarker103"/> an <strong class="bold">ensemble method</strong>, meaning that it is composed of different <a id="_idIndexMarker104"/>machine learning models that combine to work together. The individual models that make up the ensemble in XGBoost are<a id="_idIndexMarker105"/> called <strong class="bold">base learners</strong>.</p>
+			<p>Decision trees, the most commonly used XGBoost base learners, are unique in the machine learning landscape. Instead of multiplying column values by numeric weights, as in linear regression and logistic regression (<a href="B15551_01_Final_NM_ePUB.xhtml#_idTextAnchor022"><em class="italic">Chapter 1</em></a>, <em class="italic">Machine Learning Landscape</em>), decision trees split the data by asking questions about the columns. In fact, building decision trees is like playing a game of 20 Questions.</p>
+			<p>For instance, a decision tree may have a temperature column, and that column could branch into two groups, one with temperatures above 70 degrees, and one with temperatures below 70 degrees. The next split could be based on the seasons, following one branch if it's summer and another branch otherwise. Now the data has been split into four separate groups. This process of splitting data into new groups via branching continues until the algorithm reaches a desired level of accuracy.</p>
+			<p>A decision tree can create thousands of branches until it uniquely maps each sample to the correct target in the training set. This means that the training set can have 100% accuracy. Such a model, however, will not generalize well to new data.</p>
+			<p>Decision trees are prone to overfitting the d<a id="_idTextAnchor049"/>ata. In other words, decision trees can map too closely to the training data, a problem explored later in this chapter in terms of variance and bias. Hyperparameter <a id="_idIndexMarker106"/>fine-tuning is one solution to prevent <a id="_idIndexMarker107"/>overfitting. Another solution is to aggregate the <a id="_idIndexMarker108"/>predictions of many trees, a strategy that <strong class="bold">Random Forests</strong> and XGBoost employ.</p>
+			<p>While Random Forests and XGBoost will be the focus of subsequent chapters, we now take a deep look inside decision trees.</p>
+			<h1 id="_idParaDest-50"><a id="_idTextAnchor050"/>Exploring decision trees</h1>
+			<p>Decision Trees work <a id="_idIndexMarker109"/>by splitting the data into <em class="italic">branches</em>. The branches are followed down to <em class="italic">leaves</em> where predictions are made. Understanding how branches and leaves are created is much easier with a practical example. Before going into further detail, let's build our first decision tree model.</p>
+			<h2 id="_idParaDest-51">First decision tree<a id="_idTextAnchor051"/> model</h2>
+			<p>We start by building a <a id="_idIndexMarker110"/>decision tree to predict whether someone makes over 50K US dollars using the Census dataset from <a href="B15551_01_Final_NM_ePUB.xhtml#_idTextAnchor022"><em class="italic">Chapter 1</em></a>, <em class="italic">Machine Learning Landscape</em>:</p>
+			<ol>
+				<li><p>First, open a new Jupyter Notebook and start with the following imports:</p><p class="source-code">import pandas as pd</p><p class="source-code">import numpy as np</p><p class="source-code">import warnings</p><p class="source-code">warnings.filterwarnings('ignore')</p></li>
+				<li><p>Next, open the file <strong class="source-inline">'census_cleaned.csv'</strong> that has been uploaded for you at <a href="https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter02">https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter02</a>. If you downloaded all files for this book from the Packt GitHub page, as recommended in the <em class="italic">preface</em>, you can navigate to <a href="B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047"><em class="italic">Chapter 2</em></a><em class="italic">, Decision Trees in Depth</em>, after launching Anaconda in the same way that you navigate to other chapters. Otherwise, go our GitHub page and clone the files now:</p><p class="source-code">df_census = pd.read_csv('census_cleaned.csv')</p></li>
+				<li><p>After uploading the data into a DataFrame, declare your predictor and target columns, <strong class="source-inline">X</strong> and <strong class="source-inline">y</strong>, as <a id="_idIndexMarker111"/>follows:</p><p class="source-code">X = df_census.iloc[:,:-1]</p><p class="source-code">y = df_census.iloc[:,-1]</p></li>
+				<li><p>Next, import <strong class="source-inline">train_test_split</strong> to split the data into training and tests set with <strong class="source-inline">random_state=2</strong> to ensure consistent results:</p><p class="source-code">from sklearn.model_selection import train_test_split X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=2)</p><p>As with other machine learning classifiers, when using decision trees, we initialize the model, fit it on the training set, and test it using <strong class="source-inline">accuracy_score</strong>. </p></li>
+			</ol>
+			<p>The <strong class="source-inline">accuracy_score</strong> determines the number of correct predictions divided by the total number of predictions. If 19 of 20 predictions are correct, the <strong class="source-inline">accuracy_score</strong> is 95%.</p>
+			<p>First, import the <strong class="source-inline">DecisionTreeClassifier</strong> and <strong class="source-inline">accuracy_score</strong>:</p>
+			<p class="source-code">from sklearn.tree import DecisionTreeClassifier</p>
+			<p class="source-code">from sklearn.metrics import accuracy_score</p>
+			<p>Next, we build a decision tree classifier with the standard steps:</p>
+			<ol>
+				<li value="1"><p>Initialize a machine learning model with <strong class="source-inline">random_state=2</strong> to ensure consistent results:</p><p class="source-code">clf = DecisionTreeClassifier(random_state=2)</p></li>
+				<li><p>Fit the model on the training set:</p><p class="source-code">clf.fit(X_train, y_train)</p></li>
+				<li><p>Make predictions for the test set:</p><p class="source-code">y_pred = clf.predict(X_test)</p></li>
+				<li><p>Compare <a id="_idIndexMarker112"/>predictions with the test set:</p><p class="source-code">accuracy_score(y_pred, y_test) </p><p>The <strong class="source-inline">accuracy_score</strong> is as follows:</p><p class="source-code">0.8131679154894976</p></li>
+			</ol>
+			<p>An accuracy of 81% is comparable to the accuracy of Logistic Regression from the same dataset in <a href="B15551_01_Final_NM_ePUB.xhtml#_idTextAnchor022"><em class="italic">Chapter 1</em></a><em class="italic">, Machine Learning Landscape</em>. </p>
+			<p>Now that you have seen how to build a decision tree, let's take a look inside.</p>
+			<h2 id="_idParaDest-52"><a id="_idTextAnchor052"/>Inside a decision tree</h2>
+			<p>Decision Trees come <a id="_idIndexMarker113"/>with nice visuals that reveal their inner workings. </p>
+			<p>Here is a decision tree from the Census dataset with only two splits:</p>
+			<div>
+				<div id="_idContainer035" class="IMG---Figure">
+					<img src="image/B15551_02_01.jpg" alt="Figure 2.1 – Census dataset decision tree"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.1 – Census dataset decision tree</p>
+			<p>The top of the tree is the root, the <strong class="bold">True</strong>/<strong class="bold">False</strong> arrows are branches, and the data points are nodes. At the <a id="_idIndexMarker114"/>end of the tree, the nodes are classified as leaves. Let's study the preceding diagram in depth.</p>
+			<h3>Root</h3>
+			<p>The root of the tree is <a id="_idIndexMarker115"/>at the top. The first line reads <strong class="bold">marital-status_Married-civ-spouse &lt;=5</strong>. <strong class="bold">marital-status</strong> is a binary column, so all values are <strong class="bold">0</strong> (negative) or <strong class="bold">1</strong> (positive). The first split is based on whether someone is married or not. The left side of the tree is the <strong class="bold">True</strong> branch, meaning the user is unmarried, and the right side is the <strong class="bold">False</strong> branch, meaning the user is married.</p>
+			<h3>Gini criterion</h3>
+			<p>The second line of the<a id="_idIndexMarker116"/> root reads <strong class="bold">gini=0.364</strong>. This is the error method the decision tree uses to decide how splits should be made. The goal is to find a split that leads to the lowest error. A <strong class="source-inline">Gini</strong> index of 0 means 0 errors. A gini index of 1 means<a id="_idTextAnchor053"/> all errors. A gini index of 0.5, which shows an equal distribution of elements, means the predictions are no better than random guessing. The closer to 0, the lower the error. At the root, a gini of 0.364 means the training set is imbalanced with 36.4 percent of class 1.</p>
+			<p>The equation for the gini index is as follows:</p>
+			<div>
+				<div id="_idContainer036" class="IMG---Figure">
+					<img src="image/Formula_02_001.jpg" alt="Figure 2.2 – gini index equation"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.2 – gini index equation</p>
+			<p><span lang="en-US" xml:lang="en-US"><img src="image/Formula_02_002.png" alt=""/></span>is the probability that the split results in the correct value, and c is the total number of classes: 2 in the <a id="_idIndexMarker117"/>preceding example. Another way of looking at this is that <img src="image/Formula_02_003.png" alt=""/> is the fraction of items in the set with the correct output label.</p>
+			<h3>Samples, values, class</h3>
+			<p>The root of the<a id="_idIndexMarker118"/> tree states that there are 24,420 samples. This is the total <a id="_idIndexMarker119"/>number of samples in the training set. The following line<a id="_idIndexMarker120"/> reads <strong class="bold">[18575 , 5845]</strong>. The ordering is 0 then 1, so 18,575 samples have a value of 0 (they make less than 50K) and 5,845 have a value of 1 (they make more than 50K). </p>
+			<h3>True/false nodes</h3>
+			<p>Following the<a id="_idIndexMarker121"/> first branch, you see <strong class="bold">True</strong> on the left side, and <strong class="bold">False</strong> on the <a id="_idIndexMarker122"/>right. The pattern of True – left and False – right continues thro<a id="_idTextAnchor054"/>ughout the tree. </p>
+			<p>In the left node in the second row, the split <strong class="bold">capital_gain &lt;= 7073.5</strong> is applied to subsequent nodes. The remaining information comes from the split above the previous branch. Of the 13,160 unmarried people, 12,311 have an income of less than 50K, while 849 have an <a id="_idIndexMarker123"/>income of more than 50K. The gini index, <strong class="bold">0.121</strong>, is a very <a id="_idIndexMarker124"/>good score. </p>
+			<h3>Stumps</h3>
+			<p>It's possible to have<a id="_idIndexMarker125"/> a tree with only one split. Such a tree is called a <strong class="bold">stump</strong>. Although<a id="_idIndexMarker126"/> stumps are not powerful predictors in themselves, stumps can become powerful when used as boosters, as covered in <a href="B15551_04_Final_NM_ePUB.xhtml#_idTextAnchor093"><em class="italic">Chapter 4</em></a><em class="italic">, From Gradient Boosting to XGBoost</em>.</p>
+			<h3>Leaves</h3>
+			<p>The nodes at the end <a id="_idIndexMarker127"/>of the tree are leaves. The leaves contain all final predictions.</p>
+			<p>The far-left leaf has a gini index of <strong class="bold">0.093</strong>, correctly predicting 12,304 of 12,938 cases, which is 95%. We are 95% confident that unmarried users with capital gains of less than 7,073.50 do not make more than 50K.</p>
+			<p>Other leaves may be interpreted similarly.</p>
+			<p>Now let's see where these predictions go wrong.</p>
+			<h1 id="_idParaDest-53"><a id="_idTextAnchor055"/>Contrasting variance and bias</h1>
+			<p>Imagine that you<a id="_idIndexMarker128"/> have the data points displayed in the following graph. Your task is to fit a line or curve that will allow you to make predictions for new points. </p>
+			<p>Here is a graph of random points:</p>
+			<div>
+				<div id="_idContainer039" class="IMG---Figure">
+					<img src="image/B15551_02_03.jpg" alt="Figure 2.3 – Graph of random points"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.3 – Graph of random points</p>
+			<p>One idea is to<a id="_idIndexMarker129"/> use Linear Regression, which minimizes the square of the distance between each point and the line, as shown in the following graph:</p>
+			<div>
+				<div id="_idContainer040" class="IMG---Figure">
+					<img src="image/B15551_02_04.jpg" alt="Figure 2.4 – Minimizing distance using Linear Regression"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.4 – Minimizing distance using Linear Regression</p>
+			<p>A straight line generally has high <strong class="bold">bias</strong>. In machine learning bias is a mathematical term that comes from<a id="_idIndexMarker130"/> estimating the error when applying the model to a real-life problem. The bias of the straight line is high because the predictions are restricted to the line and fail to account for changes in the data.</p>
+			<p>In many cases, a straight line is not complex enough to make accurate predictions. When this happens, we say that the machine learning model has underfit the data with high bias. </p>
+			<p>A second option is to fit the points with an eight-degree polynomial. Since there are only nine points, an eight-degree polynomial will fit the data perfectly, as you can see in the following graph:</p>
+			<div>
+				<div id="_idContainer041" class="IMG---Figure">
+					<img src="image/B15551_02_05.jpg" alt="Figure 2.5 – Eight-degree poynomial"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.5 – Eight-degree poynomial</p>
+			<p>This model has high <strong class="bold">variance</strong>. In machine learning, variance is a mathematical term indicating how much a model will change given a different set of training data. Formally, variance is the measure of the squared deviation between a random variable and its mean. Given nine <a id="_idIndexMarker131"/>different data points in the training set, the eighth-degree polynomial will be completely different, resulting in high variance.</p>
+			<p>Models with high variance often overfit the data. These models do not generalize well to new data points because they have fit the training data too closely.</p>
+			<p>In the world of big data, overfitting is a big problem. More data results in larger training sets, and machine learning models like decision trees fit the training data too well. </p>
+			<p>As a final option, consider a third-degree polynomial that fits the data points as shown in the following graph:</p>
+			<div>
+				<div id="_idContainer042" class="IMG---Figure">
+					<img src="image/B15551_02_06.jpg" alt="Figure 2.6 – Third-degree polynomial"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.6 – Third-degree polynomial</p>
+			<p>This third-degree <a id="_idIndexMarker132"/>polynomial provides a nice balance between variance and bias, following the curve generally, yet adapting to the variation. Low variance means that a different training set will not result in a curve that differs by a significant amount. Low bias indicates that the error when applying this model to a real-world situation will not be too high. In machine learning, the combination of low variance and low bias is ideal. </p>
+			<p>One of the best machine learning strategies to strike a nice balance between variance and bias is to fine-tune hyperparameters.</p>
+			<h1 id="_idParaDest-54"><a id="_idTextAnchor056"/>Tuning decision tree hyperparameters</h1>
+			<p>Hyperparameters are<a id="_idIndexMarker133"/> not the same as parameters.</p>
+			<p>In machine learning, parameters are adjusted when the model is being tuned. The weights in linear and Logistic Regression, for example, are parameters adjusted during the build phase to minimize errors. Hyperparameters, by contrast, are chosen in advance of the build phase. If no hyperparameters are selected, default values are used.</p>
+			<h2 id="_idParaDest-55"><a id="_idTextAnchor057"/>Decision Tree regressor</h2>
+			<p>The best way to learn <a id="_idIndexMarker134"/>about hyperparameters is through experimentation. Although there are theories behind the range of hyperparameters chosen, results trump theory. Different datasets see improvements with different hyperparameter values.</p>
+			<p>Before selecting hyperparameters, let's start by finding a baseline score using a <strong class="source-inline">DecisionTreeRegressor</strong> and <strong class="source-inline">cross_val_score</strong> with the following steps:</p>
+			<ol>
+				<li value="1"><p>Download the <strong class="source-inline">'bike_rentals_cleaned'</strong> dataset and split it into <strong class="source-inline">X_bikes</strong> (predictor columns) and <strong class="source-inline">y_bikes</strong> (training columns):</p><p class="source-code">df_bikes = pd.read_csv('bike_rentals_cleaned.csv')X_bikes = df_bikes.iloc[:,:-1]y_bikes = df_bikes.iloc[:,-1]</p></li>
+				<li><p>Import the <strong class="source-inline">DecisionTreeRegressor</strong> and <strong class="source-inline">cross_val_score</strong>:</p><p class="source-code">from sklearn.tree import DecisionTreeRegressor from sklearn.model_selection import cross_val_score</p></li>
+				<li><p>Initialize <strong class="source-inline">DecisionTreeRegressor</strong> and fit the model in <strong class="source-inline">cross_val_score</strong>:</p><p class="source-code">reg = DecisionTreeRegressor(random_state=2)</p><p class="source-code">scores = cross_val_score(reg, X_bikes, y_bikes, scoring='neg_mean_squared_error', cv=5)</p></li>
+				<li><p>Compute<a id="_idIndexMarker135"/> the <strong class="bold">root mean squared error</strong> (<strong class="bold">RMSE</strong>) and print the results:</p><p class="source-code">rmse = np.sqrt(-scores)</p><p class="source-code">print('RMSE mean: %0.2f' % (rmse.mean()))</p><p>The result is as follows:</p><p class="source-code">RMSE mean: 1233.36</p><p>The RMSE is <strong class="source-inline">1233.36</strong>. This is worse than the <strong class="source-inline">972.06</strong> obtained from Linear Regression in <a href="B15551_01_Final_NM_ePUB.xhtml#_idTextAnchor022"><em class="italic">Chapter 1</em></a><em class="italic">, Machine Learning Landscape</em>, and from the <strong class="source-inline">887.31</strong> obtained by XGBoost.</p></li>
+			</ol>
+			<p>Is the model overfitting the data because the variance is too high? </p>
+			<p>This question may be answered by seeing how well the decision tree makes predictions on the training set alone. The following code checks the error of the training set, before it makes predictions on the test set:</p>
+			<p class="source-code">reg = DecisionTreeRegressor()reg.fit(X_train, y_train)y_pred = reg.predict(X_train)</p>
+			<p class="source-code">from sklearn.metrics import mean_squared_error reg_mse = mean_squared_error(y_train, y_pred)reg_rmse = np.sqrt(reg_mse)reg_rmse</p>
+			<p>The result is as follows:</p>
+			<p class="source-code">0.0</p>
+			<p>A RMSE of <strong class="source-inline">0.0</strong> means<a id="_idIndexMarker136"/> that the model has perfectly fit every data point! This perfect score combined with a cross-validation error of <strong class="source-inline">1233.36</strong> is proof that the decision tree is overfitting the data with high variance. The training set fit perfectly, but the test set missed badly.</p>
+			<p>Hyperparameters may rectify the situation.</p>
+			<h2 id="_idParaDest-56"><a id="_idTextAnchor058"/>Hyperparameters in general</h2>
+			<p>Hyperparameter<a id="_idIndexMarker137"/> details for all scikit-learn models may be viewed on scikit-learn's official documentation pages.</p>
+			<p>Here is an excerpt<a id="_idIndexMarker138"/> from the DecisionTreeRegressor website (<a href="https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeRegressor.html">https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeRegressor.html</a>). </p>
+			<p class="callout-heading">Note</p>
+			<p class="callout"><em class="italic">sklearn</em> is short for <em class="italic">scikit-learn</em>.</p>
+			<div>
+				<div id="_idContainer043" class="IMG---Figure">
+					<img src="image/B15551_02_07.jpg" alt="Figure 2.7. Excerpt of DecisionTreeRegressor official documentation page"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.7. Excerpt of DecisionTreeRegressor official documentation page</p>
+			<p>The official documentation explains the meaning behind the hyperparameters. Note that <strong class="screen-inline">Parameters</strong> here is short for <em class="italic">hyperparameters</em>. When working on your own, checking the official <a id="_idIndexMarker139"/>documentation is your most reliable resource.</p>
+			<p>Let's go over the hyperparameters one at a time.</p>
+			<h3>max_depth</h3>
+			<p><strong class="source-inline">max_depth</strong> defines the<a id="_idIndexMarker140"/> depth of the tree, determined<a id="_idIndexMarker141"/> by the number of times splits are made. By default, there is no limit to <strong class="source-inline">max_depth</strong>, so there may be hundreds or thousands of splits that result in overfitting. By limiting <strong class="source-inline">max_depth</strong> to smaller numbers, variance is reduced, and the model generalizes better to new data.</p>
+			<p>How can you choose the best number for <strong class="source-inline">max_depth</strong>?</p>
+			<p>You can always try <strong class="source-inline">max_depth=1</strong>, then <strong class="source-inline">max_depth=2</strong>, then <strong class="source-inline">max_depth=3</strong>, and so on, but this process would be exhausting. Instead, you may use a wonderful tool called <strong class="source-inline">GridSearchCV</strong>.</p>
+			<h3>GridSearchCV</h3>
+			<p><strong class="source-inline">GridSearchCV</strong> searches a <a id="_idIndexMarker142"/>grid of hyperparameters<a id="_idIndexMarker143"/> using cross-validation to deliver the best results.</p>
+			<p><strong class="source-inline">GridSearchCV</strong> functions as any machine learning algorithm, meaning that it's fit on a training set, and scored on a test set. The primary difference is that <strong class="source-inline">GridSearchCV</strong> checks all hyperparameters before finalizing a model.</p>
+			<p>The key with <strong class="source-inline">GridSearchCV</strong> is to establish a dictionary of hyperparameter values. There is no correct set of values to try. One strategy is to select a smallest and largest value with evenly spaced numbers in between. Since we are trying to reduce overfitting, the general idea is to try more values on the lower side for <strong class="source-inline">max_depth</strong>.</p>
+			<p>Import <strong class="source-inline">GridSearchCV</strong> and define a list of hyperparameters for <strong class="source-inline">max_depth</strong> as follows:</p>
+			<p class="source-code">from sklearn.model_selection import GridSearchCV params = {'max_depth':[None,2,3,4,6,8,10,20]}</p>
+			<p>The <strong class="source-inline">params</strong> dictionary contains one key, <strong class="source-inline">'max_depth'</strong>, written as a string, and one value, a list of numbers that we have chosen. Note that <strong class="source-inline">None</strong> is the default, meaning that there is no limit to <strong class="source-inline">max_depth</strong>.</p>
+			<p class="callout-heading">Tip</p>
+			<p class="callout">Generally speaking, decreasing max hyperparameters and increasing min hyperparameters will reduce variation and prevent overfitting.</p>
+			<p>Next, initialize a <strong class="source-inline">DecisionTreeRegressor</strong>, and place it inside of <strong class="source-inline">GridSearchCV</strong> along with <strong class="source-inline">params</strong> and the scoring metric:</p>
+			<p class="source-code">reg = DecisionTreeRegressor(random_state=2)grid_reg = GridSearchCV(reg, params, scoring='neg_mean_squared_error', cv=5, n_jobs=-1)grid_reg.fit(X_train, y_train)</p>
+			<p>Now that <strong class="source-inline">GridSearchCV</strong> has been fit on the data, you can view the best hyperparameters as follows:</p>
+			<p class="source-code">best_params = grid_reg.best_params_print("Best params:", best_params)</p>
+			<p>The result is as follows:</p>
+			<p class="source-code">Best params: {'max_depth': 6}</p>
+			<p>As you can <a id="_idIndexMarker144"/>see, a <strong class="source-inline">max_depth</strong> value of <strong class="source-inline">6</strong> resulted in the<a id="_idIndexMarker145"/> best cross-validation score in the training set.</p>
+			<p>The training score may be displayed using the <strong class="source-inline">best_score</strong> attribute:</p>
+			<p class="source-code">best_score = np.sqrt(-grid_reg.best_score_)print("Training score: {:.3f}".format(best_score))</p>
+			<p>The score is as follows:</p>
+			<p class="source-code">Training score: 951.938</p>
+			<p>The test score may be displayed as follows:</p>
+			<p class="source-code">best_model = grid_reg.best_estimator_</p>
+			<p class="source-code">y_pred = best_model.predict(X_test) </p>
+			<p class="source-code">rmse_test = mean_squared_error(y_test, y_pred)**0.5</p>
+			<p class="source-code">print('Test score: {:.3f}'.format(rmse_test))</p>
+			<p>The score<a id="_idIndexMarker146"/> is <a id="_idIndexMarker147"/>as follows:</p>
+			<p class="source-code">Test score: 864.670</p>
+			<p>Variance has been substantially reduced.</p>
+			<h3>min_samples_leaf</h3>
+			<p><strong class="source-inline">min_samples_leaf</strong> provides <a id="_idIndexMarker148"/>a restriction<a id="_idIndexMarker149"/> by increasing the number of samples that a leaf may have. As with <strong class="source-inline">max_depth</strong>, <strong class="source-inline">min_samples_leaf</strong> is designed to reduce overfitting.</p>
+			<p>When there are no restrictions, <strong class="source-inline">min_samples_leaf=1</strong> is the default, meaning that leaves may consist of unique samples (prone to overfitting). Increasing <strong class="source-inline">min_samples_leaf</strong> reduces variance. If <strong class="source-inline">min_samples_leaf=8</strong>, all leaves must contain eight or more samples.</p>
+			<p>Testing a range of values for <strong class="source-inline">min_samples_leaf</strong> requires going through the same process as before. Instead of copying and pasting, we write a function that displays the best parameters, training score, and test score using <strong class="source-inline">GridSearchCV</strong> with <strong class="source-inline">DecisionTreeRegressor(random_state=2)</strong> assigned to <strong class="source-inline">reg</strong> as a default parameter:</p>
+			<p class="source-code">def grid_search(params, reg=DecisionTreeRegressor(random_state=2)):</p>
+			<p class="source-code">    grid_reg = GridSearchCV(reg, params,   </p>
+			<p class="source-code">    scoring='neg_mean_squared_error', cv=5, n_jobs=-1):</p>
+			<p class="source-code">    grid_reg.fit(X_train, y_train)</p>
+			<p class="source-code">       best_params = grid_reg.best_params_    print("Best params:", best_params)    best_score = np.sqrt(-grid_reg.best_score_)    print("Training score: {:.3f}".format(best_score))</p>
+			<p class="source-code">    y_pred = grid_reg.predict(X_test)    rmse_test = mean_squared_error(y_test, y_pred)**0.5</p>
+			<p class="source-code">    print('Test score: {:.3f}'.format(rmse_test))</p>
+			<p class="callout-heading">Tip</p>
+			<p class="callout">When writing your own functions, it's advantageous to include default keyword arguments. A default keyword argument is a named parameter with a default value that may be changed for later use and testing. Default keyword arguments greatly enhance the capabilities of Python.</p>
+			<p>When choosing the range of hyperparameters, it's helpful to know the size of the training set on which the model is built. Pandas comes with a nice method, <strong class="source-inline">.shape</strong>, that returns the <a id="_idIndexMarker150"/>rows and columns of<a id="_idIndexMarker151"/> the data:</p>
+			<p class="source-code">X_train.shape</p>
+			<p>The rows and columns of data are as follows:</p>
+			<p class="source-code">(548, 12)</p>
+			<p>Since the training set has <strong class="source-inline">548</strong> rows, this helps determine reasonable values for <strong class="source-inline">min_samples_leaf</strong>. Let's try <strong class="source-inline">[1, 2, 4, 6, 8, 10, 20, 30]</strong> as the input of our <strong class="source-inline">grid_search</strong>:</p>
+			<p class="source-code">grid_search(params={'min_samples_leaf':[1, 2, 4, 6, 8, 10, 20, 30]})</p>
+			<p>The score is as follows:</p>
+			<p class="source-code">Best params: {'min_samples_leaf': 8}</p>
+			<p class="source-code">Training score: 896.083</p>
+			<p class="source-code">Test score: 855.620</p>
+			<p>Since the test score is better than the training score, variance has been reduced.</p>
+			<p>What happens when we put <strong class="source-inline">min_samples_leaf</strong> and <strong class="source-inline">max_depth</strong> together? Let's see:</p>
+			<p class="source-code">grid_search(params={'max_depth':[None,2,3,4,6,8,10,20],'min_samples_leaf':[1,2,4,6,8,10,20,30]})</p>
+			<p>The score is as follows:</p>
+			<p class="source-code">Best params: {'max_depth': 6, 'min_samples_leaf': 2}</p>
+			<p class="source-code">Training score: 870.396</p>
+			<p class="source-code">Test score: 913.000</p>
+			<p>The result may be a surprise. Even though the training score has improved, the test score has not. <strong class="source-inline">min_samples_leaf</strong> has decreased from <strong class="source-inline">8</strong> to <strong class="source-inline">2</strong>, while <strong class="source-inline">max_depth</strong> has remained the same.</p>
+			<p class="callout-heading">Tip</p>
+			<p class="callout">This is a valuable lesson in hyperparameter tuning: Hyperparameters should not be chosen in isolation.</p>
+			<p>As for reducing<a id="_idIndexMarker152"/> variance in the preceding<a id="_idIndexMarker153"/> example, limiting <strong class="source-inline">min_samples_leaf</strong> to values greater than three may help:</p>
+			<p class="source-code">grid_search(params={'max_depth':[6,7,8,9,10],'min_samples_leaf':[3,5,7,9]})</p>
+			<p>The score is as follows:</p>
+			<p class="source-code">Best params: {'max_depth': 9, 'min_samples_leaf': 7}</p>
+			<p class="source-code">Training score: 888.905</p>
+			<p class="source-code">Test score: 878.538</p>
+			<p>As you can see, the test score has improved.</p>
+			<p>We will now explore the remaining decision tree hyperparameters without individual testing.</p>
+			<h3>max_leaf_nodes</h3>
+			<p><strong class="source-inline">max_leaf_nodes</strong> is<a id="_idIndexMarker154"/> similar <a id="_idIndexMarker155"/>to <strong class="source-inline">min_samples_leaf</strong>. Instead of specifying the number of samples per leaf, it specifies the total number of leaves. So, <strong class="source-inline">max_leaf_nodes=10</strong> means that the model cannot have more than 10 leaves. It could have fewer.</p>
+			<h3>max_features</h3>
+			<p><strong class="source-inline">max_features</strong> is an <a id="_idIndexMarker156"/>effective hyperparameter for<a id="_idIndexMarker157"/> reducing variance. Instead of considering every possible feature for a split, it chooses from a select number of features each round.</p>
+			<p>It's standard to see <strong class="source-inline">max_features</strong> with the following options:</p>
+			<ul>
+				<li><p><strong class="source-inline">'auto'</strong> is the default, which provides no limitations.</p></li>
+				<li><p><strong class="source-inline">'sqrt'</strong> is the square root of the total number of features.</p></li>
+				<li><p><strong class="source-inline">'log2'</strong> is the log of the total number of features in base 2. 32 columns resolves to 5 since 2 ^5 = 32.</p></li>
+			</ul>
+			<h3>min_samples_split</h3>
+			<p>Another<a id="_idIndexMarker158"/> splitting technique is <strong class="source-inline">min_samples_split</strong>. As the <a id="_idIndexMarker159"/>name indicates, <strong class="source-inline">min_samples_split</strong> provides a limit to the number of samples required before a split can be made. The default is <strong class="source-inline">2</strong>, since two samples may be split into one sample each, ending as single leaves. If the limit is increased to <strong class="source-inline">5</strong>, no further splits are permitted for nodes with five samples or fewer.</p>
+			<h3>splitter</h3>
+			<p>There are two <a id="_idIndexMarker160"/>options for <strong class="source-inline">splitter</strong>, <strong class="source-inline">'random'</strong> and <strong class="source-inline">'best'</strong>. Splitter <a id="_idIndexMarker161"/>tells the model how to select the feature to split each branch. The <strong class="source-inline">'best'</strong> option, the default, selects the feature that results in the greatest gain of information. The <strong class="source-inline">'random'</strong> option, by contrast, selects the split randomly.</p>
+			<p>Changing <strong class="source-inline">splitter</strong> to <strong class="source-inline">'random'</strong> is a great way to prevent overfitting and diversify trees.</p>
+			<h3>criterion</h3>
+			<p>The <strong class="source-inline">criterion</strong> for splitting<a id="_idIndexMarker162"/> decision tree regressors and <a id="_idIndexMarker163"/>classifiers are different. The <strong class="source-inline">criterion</strong> provides the method the machine learning model uses to determine how splits should be made. It's the scoring method for splits. For each possible split, the <strong class="source-inline">criterion</strong> calculates a number for a possible split and compares it to other options. The split with the best score wins.</p>
+			<p>The options for decision tree regressors are <strong class="source-inline">mse</strong> (mean squared error), <strong class="source-inline">friedman_mse</strong>, (which includes Friedman's adjustment), and <strong class="source-inline">mae</strong> (mean absolute error). The default is <strong class="source-inline">mse</strong>.  </p>
+			<p>For classifiers, <strong class="source-inline">gini</strong>, which<a id="_idIndexMarker164"/> was described earlier, and <strong class="source-inline">entropy</strong> usually give similar results.</p>
+			<h4>min_impurity_decrease</h4>
+			<p>Previously <a id="_idIndexMarker165"/>known<a id="_idIndexMarker166"/> as <strong class="source-inline">min_impurity_split</strong>, <strong class="source-inline">min_impurity_decrease</strong> results in a split when the impurity is greater than or equal to this value.</p>
+			<p><em class="italic">Impurity</em> is a measure of how pure the predictions are for every node. A tree with 100% accuracy would have an impurity of 0.0. A tree with 80% accuracy would have an impurity of 0.20.</p>
+			<p>Impurity is an important idea in Decision Trees. Throughout the tree-building process, impurity should continually decrease. Splits that result in the greatest decrease of impurity are chosen for each node.</p>
+			<p>The default value is <strong class="source-inline">0.0</strong>. This number can be increased so that trees stop building when a certain threshold is reached.</p>
+			<h4>min_weight_fraction_leaf</h4>
+			<p><strong class="source-inline">min_weight_fraction_leaf</strong> is the <a id="_idIndexMarker167"/>minimum weighted fraction of the total weights required to<a id="_idIndexMarker168"/> be a leaf. According to the documentation, <em class="italic">Samples have equal weight when sample_weight is not provided</em>.</p>
+			<p>For practical purposes, <strong class="source-inline">min_weight_fraction_leaf</strong> is another hyperparameter that redu<a id="_idTextAnchor059"/>ces variance and prevents overfitting. The default is 0.0. Assuming equal weights, a restriction of 1%, 0.01, would require at least 5 of the 500 samples to be a leaf. </p>
+			<h4>ccp_alpha</h4>
+			<p>The <strong class="source-inline">ccp_alpha</strong> hyperparameter <a id="_idIndexMarker169"/>will not be discussed here, as it is designed for pruning after the<a id="_idIndexMarker170"/> tree has been built. For a full discussion, check out minimal cost complexity pruning: <a href="https://scikit-learn.org/stable/modules/tree.html#minimal-cost-complexity-pruning">https://scikit-learn.org/stable/modules/tree.html#minimal-cost-complexity-pruning</a>.</p>
+			<h2 id="_idParaDest-57"><a id="_idTextAnchor060"/>Putting it all together</h2>
+			<p>When fine-tuning hyperparameters, several factors come into play:</p>
+			<ul>
+				<li><p>The amount of time allotted</p></li>
+				<li><p>The number of hyperparameters</p></li>
+				<li><p>The number of decimal places of accuracy desired</p></li>
+			</ul>
+			<p>The time spent, number of hyperparameters fine-tuned, and accuracy desired depend on you, the dataset, and the project at hand. Since hyperparameters are interrelated, it's not required to modify them all. Fine-tuning a smaller range may lead to better results.</p>
+			<p>Now that you understand the fundamentals of decision trees and decision tree hyperparameters, it's time to apply what you have learned.</p>
+			<p class="callout-heading">Tip</p>
+			<p class="callout">There are too many decision tree hyperparameters to consistently use them all. In my experience, <strong class="source-inline">max_depth</strong>, <strong class="source-inline">max_features</strong>, <strong class="source-inline">min_samples_leaf</strong>, <strong class="source-inline">max_leaf_nodes</strong>, <strong class="source-inline">min_impurity_decrease</strong>, and <strong class="source-inline">min_samples_split</strong> are often sufficient.</p>
+			<h1 id="_idParaDest-58"><a id="_idTextAnchor061"/>Predicting heart disease – a case study</h1>
+			<p>You have been <a id="_idIndexMarker171"/>asked by a hospital to use machine learning to predict heart disease. Your job is to develop a model and highlight two to three important features that doctors and nurses can focus on to improve patient health.</p>
+			<p>You decide to use a decision tree classifier with fine-tuned hyperparameters. After the model has been built, you will interpret results using <strong class="source-inline">feature_importances_</strong>, an attribute that <a id="_idIndexMarker172"/>determines the most important features in predicting heart disease.</p>
+			<h2 id="_idParaDest-59"><a id="_idTextAnchor062"/>Heart Disease dataset</h2>
+			<p>The Heart Disease <a id="_idIndexMarker173"/>dataset has been uploaded to GitHub as <strong class="source-inline">heart_disease.csv</strong>. This is a slight modification to the original Heart Disease dataset (<a href="https://archive.ics.uci.edu/ml/datasets/Heart+Disease">https://archive.ics.uci.edu/ml/datasets/Heart+Disease</a>) provided by the UCI Machine Learning Repository (<a href="https://archive.ics.uci.edu/ml/index.php">https://archive.ics.uci.edu/ml/index.php</a>) with null values cleaned up for your convenience.</p>
+			<p>Upload the file and display the first five rows as follows:</p>
+			<p class="source-code">df_heart = pd.read_csv('heart_disease.csv')df_heart.head()</p>
+			<p>The preceding code produces the following table:</p>
+			<div>
+				<div id="_idContainer044" class="IMG---Figure">
+					<img src="image/B15551_02_08.jpg" alt="Figure 2.8 – heart_disease.csv output"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 2.8 – heart_disease.csv output</p>
+			<p>The target column, conveniently labeled '<strong class="source-inline">target</strong>' is binary, with <strong class="source-inline">1</strong> indicating that the patient has heart disease and <strong class="source-inline">0</strong> indicating that they do not.</p>
+			<p>Here are the meanings of the predictor columns, taken from the data source linked previously:</p>
+			<ul>
+				<li><p><strong class="source-inline">age</strong>: Age in years</p></li>
+				<li><p><strong class="source-inline">sex</strong>: Sex (<strong class="source-inline">1</strong> = male; <strong class="source-inline">0</strong> = female)</p></li>
+				<li><p><strong class="source-inline">cp</strong>: Chest pain type (<strong class="source-inline">1</strong> = typical angina, <strong class="source-inline">2</strong> = atypical angina, <strong class="source-inline">3</strong> = non-anginal pain, <strong class="source-inline">4</strong> = asymptomatic)</p></li>
+				<li><p><strong class="source-inline">trestbps</strong>: <a id="_idTextAnchor063"/>Resting blood pressure (in mm Hg on admission to the hospital)</p></li>
+				<li><p><strong class="source-inline">chol</strong>: Serum cholesterol in mg/dl 6 fbs: (fasting blood sugar &gt; 120 mg/dl) (<strong class="source-inline">1</strong> = true; <strong class="source-inline">0</strong> = false)</p></li>
+				<li><p><strong class="source-inline">fbs</strong>: Fasting blood sugar &gt; 120 mg/dl (<strong class="source-inline">1</strong> = true; <strong class="source-inline">0</strong> = false)</p></li>
+				<li><p><strong class="source-inline">restecg</strong>: Resting electrocardiographic results (<strong class="source-inline">0</strong> = normal, <strong class="source-inline">1</strong> = having ST-T wave abnormality (T wave inversions and/or ST elevation or depression of &gt; 0.05 mV), <strong class="source-inline">2</strong> = showing <a id="_idIndexMarker174"/>probable or definite left ventricular hypertrophy by Estes' criteria)</p></li>
+				<li><p><strong class="source-inline">thalach</strong>: Maximum heart rate achieved</p></li>
+				<li><p><strong class="source-inline">exang</strong>: Exercise induced angina (<strong class="source-inline">1</strong> = yes; <strong class="source-inline">0</strong> = no)</p></li>
+				<li><p><strong class="source-inline">oldpeak</strong>: ST depression induced by exercise relative to rest</p></li>
+				<li><p><strong class="source-inline">slope</strong>: The slope of the peak exercise ST segment (<strong class="source-inline">1</strong> = upsloping, <strong class="source-inline">2</strong> = flat, <strong class="source-inline">3</strong> = downsloping)</p></li>
+				<li><p><strong class="source-inline">ca</strong>: Number of major vessels (0-3) colored by fluoroscopy</p></li>
+				<li><p><strong class="source-inline">thal</strong>: <strong class="source-inline">3</strong> = normal; <strong class="source-inline">6</strong> = fixed defect; <strong class="source-inline">7</strong> = reversible defect</p></li>
+			</ul>
+			<p>Split the data into training and test sets in preparation for machine learning:</p>
+			<p class="source-code">X = df_heart.iloc[:,:-1]y = df_heart.iloc[:,-1]from sklearn.model_selection import train_test_split X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=2)</p>
+			<p>You are now ready to make predictions.</p>
+			<h2 id="_idParaDest-60"><a id="_idTextAnchor064"/>Decision Tree classifier</h2>
+			<p>Before implementing<a id="_idIndexMarker175"/> hyperparameters, it's helpful to have a baseline model for comparison.</p>
+			<p>Use <strong class="source-inline">cross_val_score</strong> with a <strong class="source-inline">DecisionTreeClassifier</strong> as follows:</p>
+			<p class="source-code">model = DecisionTreeClassifier(random_state=2)</p>
+			<p class="source-code">scores = cross_val_score(model, X, y, cv=5)</p>
+			<p class="source-code">print('Accuracy:', np.round(scores, 2))</p>
+			<p class="source-code">print('Accuracy mean: %0.2f' % (scores.mean()))</p>
+			<p class="source-code">Accuracy: [0.74 0.85 0.77 0.73 0.7 ]</p>
+			<p>The result is as follows:</p>
+			<p class="source-code">Accuracy mean: 0.76</p>
+			<p>The initial accuracy is 76%. Let's see what gains can be made with hyperparameter fine-tuning.</p>
+			<h3>RandomizedSearch CLF function</h3>
+			<p>When fine-tuning<a id="_idIndexMarker176"/> many hyperparameters, <strong class="source-inline">GridSearchCV</strong> can take too much time. The scikit-learn library provides <strong class="source-inline">RandomizedSearchCV</strong> as a wonderful alternative. <strong class="source-inline">RandomizedSearchCV</strong> works in the same way as <strong class="source-inline">GridSearchCV</strong>, but instead of trying all hyperparameters, it tries a random number of combinations. It's not meant to be exhaustive. It's meant to find the best combinations in limited time.</p>
+			<p>Here's a function that uses <strong class="source-inline">RandomizedSearchCV</strong> to return the best model along with the scores. The inputs are <strong class="source-inline">params</strong> (a dictionary of hyperparameters to test), <strong class="source-inline">runs </strong>(number of hyperparameter combinations to check), and <strong class="source-inline">DecisionTreeClassifier</strong>:</p>
+			<p class="source-code">def <strong class="bold">randomized_search_clf</strong>(params, runs=20, clf=DecisionTreeClassifier(random_state=2)):    rand_clf = RandomizedSearchCV(clf, params, n_iter=runs,    cv=5, n_jobs=-1, random_state=2)    rand_clf.fit(X_train, y_train)</p>
+			<p class="source-code">    best_model = rand_clf.best_estimator_</p>
+			<p class="source-code">    best_score = rand_clf.best_score_  </p>
+			<p class="source-code">    print("Training score: {:.3f}".format(best_score))</p>
+			<p class="source-code">    y_pred = best_model.predict(X_test)</p>
+			<p class="source-code">    accuracy = accuracy_score(y_test, y_pred)</p>
+			<p class="source-code">    print('Test score: {:.3f}'.format(accuracy))</p>
+			<p class="source-code">    return best_model</p>
+			<p>Now,<a id="_idTextAnchor065"/> let's pick a <a id="_idIndexMarker177"/>range of hyperparameters. </p>
+			<h2 id="_idParaDest-61"><a id="_idTextAnchor066"/>Choosing hyperparameters</h2>
+			<p>There is no single<a id="_idIndexMarker178"/> correct approach for choosing hyperparameters. Experimentation is the name of the game. Here is an initial list, placed inside the <strong class="source-inline">randomized_search_clf</strong> function. These numbers have been chosen with the aim of reducing variance and trying an expansive range:</p>
+			<p class="source-code">randomized_search_clf(params={'criterion':['entropy', 'gini'],'splitter':['random', 'best'], 'min_weight_fraction_leaf':[0.0, 0.0025, 0.005, 0.0075, 0.01],'min_samples_split':[2, 3, 4, 5, 6, 8, 10],'min_samples_leaf':[1, 0.01, 0.02, 0.03, 0.04],'min_impurity_decrease':[0.0, 0.0005, 0.005, 0.05, 0.10, 0.15, 0.2],'max_leaf_nodes':[10, 15, 20, 25, 30, 35, 40, 45, 50, None],'max_features':['auto', 0.95, 0.90, 0.85, 0.80, 0.75, 0.70],'max_depth':[None, 2,4,6,8],'min_weight_fraction_leaf':[0.0, 0.0025, 0.005, 0.0075, 0.01, 0.05]})</p>
+			<p class="source-code"><strong class="bold">Training score: 0.798</strong></p>
+			<p class="source-code"><strong class="bold">Test score: 0.855</strong></p>
+			<p class="source-code">DecisionTreeClassifier(class_weight=None, criterion='entropy', max_depth=8, max_features=0.8, max_leaf_nodes=45, min_impurity_decrease=0.0, min_impurity_split=None, min_samples_leaf=0.04, min_samples_split=10,min_weight_fraction_leaf=0.05, presort=False, random_state=2, splitter='best')</p>
+			<p>This is a definite<a id="_idIndexMarker179"/> improvement, and the model generalizes well on the test set. Let's see if we can do better by narrowing the range.</p>
+			<h2 id="_idParaDest-62"><a id="_idTextAnchor067"/>Narrowing the range</h2>
+			<p>Narrowing the<a id="_idIndexMarker180"/> range is one strategy to improve hyperparameters. </p>
+			<p>As an example, using a baseline of <strong class="source-inline">max_depth=8</strong> chosen from the best model, we may narrow the range to from <strong class="source-inline">7</strong> to <strong class="source-inline">9</strong>.</p>
+			<p>Another strategy is to stop checking hyperparameters whose defaults are working fine. <strong class="source-inline">entropy</strong>, for instance, is not recommended over <strong class="source-inline">'gini'</strong> as the differences are very slight. <strong class="source-inline">min_impurity_split</strong> and <strong class="source-inline">min_impurity_decrease</strong> may also be left at their defaults.</p>
+			<p>Here is a new hyperparameter range with an increase of <strong class="source-inline">100</strong> runs:</p>
+			<p class="source-code">randomized_search_clf(params={'max_depth':[None, 6, 7],'max_features':['auto', 0.78], 'max_leaf_nodes':[45, None], 'min_samples_leaf':[1, 0.035, 0.04, 0.045, 0.05],'min_samples_split':[2, 9, 10],'min_weight_fraction_leaf': [0.0, 0.05, 0.06, 0.07],}, runs=100)</p>
+			<p class="source-code"><strong class="bold">Training score: 0.802</strong></p>
+			<p class="source-code"><strong class="bold">Test score: 0.868</strong></p>
+			<p class="source-code">DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=7,max_features=0.78, max_leaf_nodes=45, min_impurity_decrease=0.0, min_impurity_split=None, min_samples_leaf=0.045, min_samples_split=9, min_weight_fraction_leaf=0.06, presort=False, random_state=2, splitter='best')</p>
+			<p>This model is more accurate in the training and test score. </p>
+			<p>For a proper baseline of comparison, however, it's essential to put the new model into <strong class="source-inline">cross_val_clf</strong>. This may be achieved by copying and pasting the preceding model:</p>
+			<p class="source-code">model = DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=7, max_features=0.78, max_leaf_nodes=45, min_impurity_decrease=0.0, min_impurity_split=None, min_samples_leaf=0.045, min_samples_split=9, min_weight_fraction_leaf=0.06, presort=False, random_state=2, splitter='best')</p>
+			<p class="source-code">scores = cross_val_score(model, X, y, cv=5)</p>
+			<p class="source-code">print('Accuracy:', np.round(scores, 2))</p>
+			<p class="source-code">print('Accuracy mean: %0.2f' % (scores.mean()))</p>
+			<p class="source-code">Accuracy: [0.82 0.9  0.8  0.8  0.78]</p>
+			<p>The result is as follows:</p>
+			<p class="source-code">Accuracy mean: 0.82</p>
+			<p>This is six percentage<a id="_idIndexMarker181"/> points higher than the default model. When it comes to predicting heart disease, more accuracy can save lives.</p>
+			<h2 id="_idParaDest-63"><a id="_idTextAnchor068"/>feature_importances_</h2>
+			<p>The final piece of the<a id="_idIndexMarker182"/> puzzle is to communicate the most important features of the machine learning model. Decision trees come with a nice attribute, <strong class="source-inline">feature_importances_</strong>, that does exactly this.</p>
+			<p>First, we need to finalize the best model. Our function returned the best model, but it has not been saved.</p>
+			<p>When testing, it's important not to mix and match training and test sets. After a final model has been selected, however, fitting the model on the entire dataset can be beneficial. Why? Because the goal is to test the model on data that has never been seen and fitting the model on the entire dataset may lead to additional gains in accuracy.</p>
+			<p>Let's define the model using the best hyperparameters and fit it on the entire dataset:</p>
+			<p class="source-code">best_clf = DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=9,max_features=0.8, max_leaf_nodes=47,min_impurity_decrease=0.0, min_impurity_split=None,min_samples_leaf=1, min_samples_split=8,min_weight_fraction_leaf=0.05, presort=False,random_state=2, splitter='best')</p>
+			<p class="source-code">best_clf.fit(X, y)</p>
+			<p>In order to determine the most important features, we can run the <strong class="source-inline">feature_importances_</strong> attribute on <strong class="source-inline">best_clf</strong>:</p>
+			<p class="source-code">best_clf.feature_importances_</p>
+			<p class="source-code">array([0.04826754, 0.04081653, 0.48409586, 0.00568635, 0.        , 0., 0., 0.00859483, 0., 0.02690379, 0., 0.18069065, 0.20494446])</p>
+			<p>It's not easy to interpret these results. The following code zips the columns along with the most important <a id="_idIndexMarker183"/>features into a dictionary before displaying them in reverse order for a clean output that is easy to interpret:</p>
+			<p class="source-code">feature_dict = dict(zip(X.columns, best_clf.feature_importances_))</p>
+			<p class="source-code"># Import operator import operator</p>
+			<p class="source-code">Sort dict by values (as list of tuples)sorted(feature_dict.items(), key=operator.itemgetter(1), reverse=True)[0:3]</p>
+			<p class="source-code">[('cp', 0.4840958610240171),</p>
+			<p class="source-code"> ('thal', 0.20494445570568706),</p>
+			<p class="source-code"> ('ca', 0.18069065321397942)]</p>
+			<p>The three most important features are as follows: </p>
+			<ul>
+				<li><p><strong class="source-inline">'cp'</strong>: Chest pain type (<strong class="source-inline">1</strong> = typical angina, <strong class="source-inline">2</strong> = atypical angina, <strong class="source-inline">3</strong> = non-anginal pain, <strong class="source-inline">4</strong> = asymptomatic)</p></li>
+				<li><p><strong class="source-inline">'thalach'</strong>: Maximum heart rate achieved</p></li>
+				<li><p><strong class="source-inline">'ca'</strong>: Number of major vessels (0-3) colored by fluoroscopy</p></li>
+			</ul>
+			<p>These numbers may be interpreted as their explanation of variance, so <strong class="source-inline">'cp'</strong> accounts for 48% of the variance, which is more than <strong class="source-inline">'thal'</strong> and <strong class="source-inline">'ca'</strong> combined.</p>
+			<p>You can tell the doctors and nurses that your model predicts if the patient has a heart disease with 82% accuracy <a id="_idIndexMarker184"/>using chest pain, maximum heart rate, and fluoroscopy as the three most important characteristics.</p>
+			<h1 id="_idParaDest-64"><a id="_idTextAnchor069"/>Summary</h1>
+			<p>In this chapter, you have taken a big leap toward mastering XGBoost by examining decision trees, the primary XGBoost base learners. You built decision tree regressors and classifiers by fine-tuning hyperparameters with <strong class="source-inline">GridSearchCV</strong> and <strong class="source-inline">RandomizedSearchCV</strong>. You visualized decision trees and analyzed their errors and accuracy in terms of variance and bias. Furthermore, you learned about an indispensable tool, <strong class="source-inline">feature_importances_</strong>, which is used to communicate the most important features of your model that is also an attribute of XGBoost.</p>
+			<p>In the next chapter, you will learn how to build Random Forests, our first ensemble method and a rival of XGBoost. The applications of Random Forests are important for comprehending the difference between bagging and boosting, generating machine learning models comparable to XGBoost, and learning about the limitations of Random Forests that facilitated the development of XGBoost in the first place.</p>
+		</div>
+	</body></html>

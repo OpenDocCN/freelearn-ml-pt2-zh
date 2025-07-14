@@ -1,0 +1,518 @@
+<html><head></head><body><div id="sbo-rt-content"><div id="_idContainer148">
+			<h1 id="_idParaDest-169"><a id="_idTextAnchor168"/>Chapter 9: Scaling Your Training Jobs </h1>
+			<p>In the four previous chapters, you learned how to train models with built-in algorithms, frameworks, or your own code.</p>
+			<p>In this chapter, you'll learn how to scale training jobs, allowing them to train on larger datasets while keeping training time and cost under control. We'll start by discussing when and how to take scaling decisions, thanks to monitoring information and simple guidelines. You'll also see how to collect profiling information with <strong class="bold">Amazon</strong> <strong class="bold">SageMaker Debugger</strong>, in order to understand how efficient your training jobs are. Then, we'll look at several key techniques for scaling: <strong class="bold">pipe mode</strong>, <strong class="bold">distributed training</strong>, <strong class="bold">data parallelism</strong>, and <strong class="bold">model parallelism</strong>. After that, we'll launch a large training job on the large <strong class="bold">ImageNet</strong> dataset and see how to scale it. Finally, we'll discuss storage alternatives to <strong class="bold">S3</strong> for large-scale training, namely <strong class="bold">Amazon</strong> <strong class="bold">EFS</strong> and <strong class="bold">Amazon</strong> <strong class="bold">FSx for Lustre</strong>.</p>
+			<p>We'll cover the following topics:</p>
+			<ul>
+				<li>Understanding when and how to scale</li>
+				<li>Monitoring and profiling training jobs with Amazon SageMaker Debugger</li>
+				<li>Streaming datasets with pipe mode</li>
+				<li>Distributing training jobs</li>
+				<li>Scaling an image classification model on ImageNet</li>
+				<li>Training with data and model parallelism</li>
+				<li>Using other storage services</li>
+			</ul>
+			<h1 id="_idParaDest-170"><a id="_idTextAnchor169"/>Technical requirements</h1>
+			<p>You will need an AWS account to run the examples included in this chapter. If you haven't got one already, please point your browser at <a href="https://aws.amazon.com/getting-started/">https://aws.amazon.com/getting-started/</a> to create it. You should also familiarize yourself with the AWS Free Tier (<a href="https://aws.amazon.com/free/">https://aws.amazon.com/free/</a>), which lets you use many AWS services for free within certain usage limits.</p>
+			<p>You will need to install and configure the AWS <strong class="bold">Command Line Interface</strong> (<strong class="bold">CLI</strong>) for your account (<a href="https://aws.amazon.com/cli/">https://aws.amazon.com/cli/</a>).</p>
+			<p>You will need a working <strong class="bold">Python</strong> 3.x environment. Installing the <strong class="bold">Anaconda</strong> distribution (<a href="https://www.anaconda.com/">https://www.anaconda.com/</a>) is not mandatory but strongly encouraged as it includes many projects that we will need (<strong class="bold">Jupyter</strong>, <strong class="source-inline">pandas</strong>, <strong class="source-inline">numpy</strong>, and more).</p>
+			<p>Code examples included in this book are available on GitHub at <a href="https://github.com/PacktPublishing/Learn-Amazon-SageMaker-second-edition">https://github.com/PacktPublishing/Learn-Amazon-SageMaker-second-edition</a>. You will need to install a Git client to access them (<a href="https://git-scm.com/">https://git-scm.com/</a>). </p>
+			<h1 id="_idParaDest-171"><a id="_idTextAnchor170"/>Understanding when and how to scale</h1>
+			<p>Before we <a id="_idIndexMarker917"/>dive into scaling techniques, let's first discuss the monitoring information that we should consider when deciding whether we need to scale, and how we should do it.</p>
+			<h2 id="_idParaDest-172"><a id="_idTextAnchor171"/>Understanding what scaling means</h2>
+			<p>The training log tells us how long the job lasted. In itself, this isn't really useful. How long is <em class="italic">too long</em>? This feels very subjective, doesn't it? Furthermore, even when training on the same dataset <a id="_idIndexMarker918"/>and infrastructure, changing a single hyperparameter can significantly impact training time. Batch size is one example of this, and there are many more.</p>
+			<p>When we're concerned about training time, I think we're really trying to answer three questions:</p>
+			<ul>
+				<li>Is the training time compatible with our business requirements?</li>
+				<li>Are we making good use of the infrastructure we're paying for? Did we underprovision or overprovision?</li>
+				<li>Could we train faster without spending more money?</li>
+			</ul>
+			<h2 id="_idParaDest-173"><a id="_idTextAnchor172"/>Adapting training time to business requirements</h2>
+			<p>Ask yourself this question—what would be the direct impact on your business if your training job ran twice as fast? In many cases, the honest answer should be <em class="italic">none</em>. There is no clear business <a id="_idIndexMarker919"/>metric that would be improved. </p>
+			<p>Sure, some companies run training jobs that last days, even weeks—think autonomous driving or life sciences. For them, any significant reduction in training time means that they get results much faster, analyze them, and launch the next iteration. </p>
+			<p>Some other companies want the freshest models possible, and they retrain every hour. Of course, training time needs to be kept under control to make the deadline. </p>
+			<p>In both types of companies, scaling is vital. For everyone else, things are not so clear. If your company trains a production model every week or every month, does it really matter whether training reaches the same level of accuracy 30 minutes sooner? Probably not.</p>
+			<p>Some people would certainly object that they need to train a lot of models all of the time. I'm afraid this is a fallacy. As SageMaker lets you create on-demand infrastructure whenever you need it, training activities will not be capacity-bound. This is the case when you work with physical infrastructure, but not with cloud infrastructure. Even if you need to train 1,000 <strong class="bold">XGBoost</strong> jobs every day, does it really matter whether each individual job takes 5 minutes instead of 6? Probably not.</p>
+			<p>Some would retort that "the faster you train, the less it costs." Again, this is a fallacy. The cost of a SageMaker training job is the training time in seconds multiplied by the cost of the instance type and by the number of instances. If you pick a larger instance type, training time will most probably decrease. Will it decrease enough to offset the increased instance cost? Maybe, maybe not. Some training workloads will make good use of the extra infrastructure, and some won't. The only way to know is to run tests and make data-driven decisions.</p>
+			<h2 id="_idParaDest-174"><a id="_idTextAnchor173"/>Right-sizing training infrastructure</h2>
+			<p>SageMaker <a id="_idIndexMarker920"/>supports a long list of instance types, which <a id="_idIndexMarker921"/>looks like a very nice candy store (<a href="https://aws.amazon.com/sagemaker/pricing/instance-types">https://aws.amazon.com/sagemaker/pricing/instance-types</a>). All you have to do is call an API to fire up an 8 GPU EC2 instance – more powerful than any server your company would have allowed you to buy. Caveat emptor – don't forget the "pricing" part of the URL!</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">If the words "EC2 instance" don't mean much to you, I would definitely recommend reading a bit <a id="_idIndexMarker922"/>about <strong class="bold">Amazon</strong> <strong class="bold">EC2</strong> at <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html">https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/concepts.html</a>.</p>
+			<p>Granted, cloud infrastructure doesn't require you to pay a lot of money upfront to buy and host servers. Still, the AWS bill will come at the end of the month. Hence, even using cost <a id="_idIndexMarker923"/>optimization techniques such as <strong class="bold">Managed Spot Training</strong> (which we'll discuss in the next chapter), it's critical that you right-size your training infrastructure.</p>
+			<p>My advice is always the same:</p>
+			<ul>
+				<li>Identify business requirements that depend on training time.</li>
+				<li>Start with the smallest reasonable amount of infrastructure.</li>
+				<li>Measure technical metrics and cost.</li>
+				<li>If business requirements are met, did you overprovision? There are two possible answers:<p>a) <strong class="bold">Yes</strong>: Scale down and repeat.</p><p>b) <strong class="bold">No</strong>: You're done. </p></li>
+				<li>If business requirements are not met, identify bottlenecks.</li>
+				<li>Run some tests on scaling up (larger instance type) and scaling out (more instances).</li>
+				<li>Measure technical metrics and costs.</li>
+				<li>Implement the best solution for your business context.</li>
+				<li>Repeat.</li>
+			</ul>
+			<p>Of course, this <a id="_idIndexMarker924"/>process is as good as the people who take part in it. Be critical! "Too slow" is not a data point—it's an opinion.</p>
+			<h2 id="_idParaDest-175"><a id="_idTextAnchor174"/>Deciding when to scale</h2>
+			<p>When it <a id="_idIndexMarker925"/>comes to monitoring information, you can rely on three sources: the training log, <strong class="bold">Amazon</strong> <strong class="bold">CloudWatch</strong> metrics, and the profiling capability in <strong class="bold">Amazon</strong> <strong class="bold">SageMaker Debugger</strong>.</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">If "CloudWatch" doesn't mean much to you, I would definitely recommend reading a bit about it at <a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/">https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/</a>.</p>
+			<p>The training log shows you the total training time and the number of samples per second. As discussed in the previous section, total training time is not a very useful metric. Unless you have very strict deadlines, it's best to ignore it. The number of samples per second is more interesting. You can use it to compare your training job to benchmarks available in research papers or blog posts. If someone has managed to train the same model twice as fast on the same GPU, you should be able to do the same. When you get close to that number, you'll also know that there's not a lot of room for improvement and that other scaling techniques should be considered.</p>
+			<p>CloudWatch gives you coarse-grained infrastructure metrics with a 1-minute resolution. For simple training jobs, these metrics are all you need to check if your training makes efficient use of the underlying infrastructure and identify potential bottlenecks.</p>
+			<p>For more complex jobs (distributed training, custom code, and so on), SageMaker Debugger gives you fine-grained, near real-time infrastructure and Python metrics, with a resolution as low as 100 milliseconds. This information will let you drill down and identify complex performance and scaling problems.</p>
+			<h2 id="_idParaDest-176"><a id="_idTextAnchor175"/>Deciding how to scale</h2>
+			<p>As mentioned earlier, you can either scale up (move to a bigger instance) or scale out (use several instances for distributed training). Let's look at the pros and cons.</p>
+			<h3>Scaling up</h3>
+			<p>Scaling up <a id="_idIndexMarker926"/>is simple. You just need to change the instance type. Monitoring stays the same, and there's only one training log to read. Last but not least, training on a single instance is predictable and very often delivers the best accuracy, as there's only one set of model parameters to learn and update.</p>
+			<p>On the downside, your algorithm may not be compute-intensive and parallel enough to benefit from the extra computing power. Extra vCPUs and GPUs are only useful if they're put to work. Your network and storage layers must also be fast enough to keep them busy at all times, which may require <a id="_idIndexMarker927"/>using alternatives to S3, generating some extra engineering work. Even if you don't hit any of these problems, there comes a <a id="_idIndexMarker928"/>point where there simply isn't a bigger instance you can use!</p>
+			<h3>Scaling up with multi-GPU instances</h3>
+			<p>As tempting as multi-GPU instances are, they create specific challenges. An <strong class="bold">NVIDIA</strong> V100 GPU has 5,120 cores and 640 tensor cores. It takes a lot of CPU and I/O power to keep them 100% busy, and adding more GPUs on the same instance only increases that pressure. You may quickly get to a point <a id="_idIndexMarker929"/>where GPUs are stalled, wasting time <a id="_idIndexMarker930"/>and money on under-utilized infrastructure. Reducing network and storage latency helps, which is why monster instances such as <strong class="source-inline">ml.g4dn.16xlarge</strong> and <strong class="source-inline">ml.p3dn.24xlarge</strong> support 100-Gbit networking and ultra-fast SSD NVMe local storage. Still, that level of performance comes at a price, and you need to make sure it's really worth it.</p>
+			<p>You should keep in mind that bigger isn't always better. Inter-GPU communication, no matter how fast, introduces some overhead that could kill the performance of smaller training jobs. Here too, you should experiment and find the sweetest spot.</p>
+			<p>In my experience, getting great performance with multi-GPU instances takes some work. Unless the model is too large to fit on a single GPU or the algorithm doesn't support distributed training, I'd recommend trying first to scale out on single-GPU instances.</p>
+			<h3>Scaling out</h3>
+			<p>Scaling out <a id="_idIndexMarker931"/>lets you distribute large datasets to a cluster of training instances. Even if your training job doesn't scale linearly, you'll get a noticeable speedup compared to single-instance training. You can use plenty of smaller instances that only process a subset of your dataset, which helps to keep costs under control.</p>
+			<p>On the downside, datasets need to be prepared in a format that can be efficiently distributed across training clusters. As distributed training is pretty chatty, network I/O can also become a bottleneck. Still, the main problem is usually accuracy, which is often lower than for single-instance training, as each instance works with its own set of model parameters. This can <a id="_idIndexMarker932"/>be alleviated by asking training instances to synchronize their work periodically, but this is a costly operation that impacts training time.</p>
+			<p>If you think that scaling is harder than it seems, you're right. Let's try to put all of these notions into practice with a first simple example.</p>
+			<h2 id="_idParaDest-177"><a id="_idTextAnchor176"/>Scaling a BlazingText training job</h2>
+			<p>In <a href="B17705_06_Final_JM_ePub.xhtml#_idTextAnchor108"><em class="italic">Chapter 6</em></a>, <em class="italic">Training Natural Language Processing Models</em>, we used <strong class="bold">BlazingText</strong> and the <a id="_idIndexMarker933"/>Amazon reviews dataset to train <a id="_idIndexMarker934"/>a sentiment analysis model. At the time, we only trained it on 100,000 reviews. This time, we'll train it on the full dataset: 1.8 million reviews (151 million words). </p>
+			<p>Reusing our SageMaker Processing notebook, we process the full dataset on an <strong class="source-inline">ml.c5.9xlarge</strong> instance, store results in S3, and feed them to our training job. The size of the training set has grown to a respectable 720 MB. </p>
+			<p>To give BlazingText extra work, we apply the following hyperparameters to increase the complexity of the word vectors the job will learn:</p>
+			<p class="source-code">bt.set_hyperparameters(mode='supervised', vector_dim=300, word_ngrams=3, epochs=50)</p>
+			<p>We train on a single <strong class="source-inline">ml.c5.2xlarge</strong> instance. It has 8 vCPU and 16 GB of RAM and uses <strong class="bold">EBS</strong> network storage (the <strong class="source-inline">gp2</strong> class, which is SSD-based).</p>
+			<p>The job runs for 2,109 seconds (a little more than 35 minutes), peaking at 4.84 million words per second. Let's take a look at the CloudWatch metrics:</p>
+			<ol>
+				<li>Starting from the <strong class="bold">Experiments and trials</strong> panel in <strong class="bold">SageMaker Studio</strong>, we locate the training job and right-click on <strong class="bold">Open in trial details</strong>.</li>
+				<li>Then, we select the <strong class="bold">AWS settings</strong> tab. Scrolling down, we see a link named <strong class="bold">View instance metrics</strong>. Clicking on it takes us directly to the CloudWatch metrics for our training job. </li>
+				<li>Let's select <strong class="source-inline">CPUUtilization</strong> and <strong class="source-inline">MemoryUtilization</strong> in <strong class="bold">All metrics</strong> and visualize them as shown in the next screenshot:</li>
+			</ol>
+			<div>
+				<div id="_idContainer134" class="IMG---Figure">
+					<img src="Images/B17705_09_1.jpg" alt="Figure 9.1 – Viewing CloudWatch metrics&#13;&#10;" width="1190" height="585"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.1 – Viewing CloudWatch metrics</p>
+			<p>On the right-hand Y-axis, memory utilization is stable at 20%, so we definitely don't need more RAM.</p>
+			<p>Still on the <a id="_idIndexMarker935"/>right-hand Y-axis, disk utilization is about 3% during the training, going up to 12% when the model is saved. We allocated way too much storage to this instance. By default, SageMaker instances get 30 GB of Amazon EBS storage, so how much money did we waste here? The EBS cost for SageMaker in <strong class="source-inline">eu-west-1</strong> is $0.154 per GB-month, so 30 GB for 2,117 seconds costs 0.154*30*(2109/(24*30*3600)) = $0.00376. That's a silly low amount, but if you train thousands of jobs per month, it will add up. Even if this saves us $10 a year, we should save that! This can easily be done by setting the <strong class="source-inline">volume_size</strong> parameter in all estimators.</p>
+			<p>On the left-hand Y-axis, we see that the CPU utilization plateaus around 790%, very close to the maximum value of 800% (8 vCPUs at 100% usage). This job is obviously compute-bound. </p>
+			<p>So, what are our options? If BlazingText supported distributed training in supervised mode (it doesn't), we could have considered scaling out with smaller <strong class="source-inline">ml.c5.xlarge</strong> instances (4 vCPUs and 8 GB of RAM). That's more than enough RAM, and adding capacity in small chunks is good practice. This is what right-sizing <a id="_idIndexMarker936"/>is all about: not too much, not too little—it should be just right.</p>
+			<p>Anyway, our only choice here is to scale up. Looking at the list of available instances, we could try <strong class="source-inline">ml.c5.4xlarge</strong>. As BlazingText supports single-GPU acceleration, <strong class="source-inline">ml.p3.2xlarge</strong> (1 NVIDIA V100 GPU) is also an option. </p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">At the time of writing, the cost-effective <strong class="source-inline">ml.g4dn.xlarge</strong> is unfortunately not supported by BlazingText.</p>
+			<p>Let's try both and compare training times and costs.</p>
+			<div>
+				<div id="_idContainer135" class="IMG---Figure">
+					<img src="Images/011.jpg" alt="" width="1640" height="929"/>
+				</div>
+			</div>
+			<p>The <strong class="source-inline">ml.c5.4xlarge</strong> instance provides a nice speedup for a moderate price increase. Interestingly, the job is still compute-bound, so I decided to try the even larger <strong class="source-inline">ml.c5.9xlarge</strong> instance (36 vCPUs) for good measure, but the speedup was large enough to offset the increased cost.</p>
+			<p>The GPU instance is almost 3x faster, as BlazingText has been optimized to utilize thousands of cores. It's also about 3x more expensive, which could be acceptable if minimizing training time was very important.</p>
+			<p>This simple <a id="_idIndexMarker937"/>example shows you that right-sizing your training infrastructure is not black magic. By following simple rules, looking at a few metrics, and using common sense, you can find the right instance size for your project.</p>
+			<p>Now, let's introduce the monitoring and profiling capability in Amazon SageMaker Debugger, which will give us even more information on the performance of our training jobs.</p>
+			<h1 id="_idParaDest-178"><a id="_idTextAnchor177"/>Monitoring and profiling training jobs with Amazon SageMaker Debugger</h1>
+			<p>SageMaker Debugger includes a monitoring and profiling capability that lets us collect infrastructure <a id="_idIndexMarker938"/>and code <a id="_idIndexMarker939"/>performance information <a id="_idIndexMarker940"/>at much <a id="_idIndexMarker941"/>lower time resolution than CloudWatch (as often as every 100 milliseconds). It also allows us to configure and trigger built-in or custom rules that watch for unwanted conditions in our training jobs.</p>
+			<p>Profiling is very easy to use, and in fact, it's on by default! You may have noticed a line such as this one in your training log:</p>
+			<p class="source-code"><strong class="bold">2021-06-14 08:45:30 Starting - Launching requested ML instancesProfilerReport-1623660327: InProgress</strong></p>
+			<p>This tells <a id="_idIndexMarker942"/>us that SageMaker <a id="_idIndexMarker943"/>is automatically <a id="_idIndexMarker944"/>running a profiling job, in parallel with our training job. The role of the profiling job is to collect <a id="_idIndexMarker945"/>data points that we can then display in SageMaker Studio, in order to visualize metrics and understand potential performance issues.</p>
+			<h2 id="_idParaDest-179"><a id="_idTextAnchor178"/>Viewing monitoring and profiling information in SageMaker Studio</h2>
+			<p>Let's go <a id="_idIndexMarker946"/>back to the <strong class="bold">Experiments and trials</strong> view <a id="_idIndexMarker947"/>and locate the BlazingText training job we just ran on an <strong class="source-inline">ml.p3.2xlarge</strong> instance. We right-click on it and select <strong class="bold">Open Debugger for insights</strong> this time. This opens a new tab, visible in the next screenshot:</p>
+			<div>
+				<div id="_idContainer136" class="IMG---Figure">
+					<img src="Images/B17705_09_2.jpg" alt="Figure 9.2 – Viewing monitoring and profiling information&#13;&#10;" width="863" height="550"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.2 – Viewing monitoring and profiling information</p>
+			<p>At the <a id="_idIndexMarker948"/>top, we can see that monitoring <a id="_idIndexMarker949"/>is indeed on by default and that profiling isn't. Expanding the <strong class="bold">Resource utilization summary</strong> item in the <strong class="bold">Overview</strong> tab, we see a summary of infrastructure metrics, as shown in the next screenshot:</p>
+			<div>
+				<div id="_idContainer137" class="IMG---Figure">
+					<img src="Images/B17705_09_3.jpg" alt="Figure 9.3 – Viewing utilization summary&#13;&#10;" width="547" height="230"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.3 – Viewing utilization summary</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">P50, p95, and p99 are percentiles. If you're not familiar with this concept, you can find more information at <a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_concepts.html#Percentiles">https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch_concepts.html#Percentiles</a>.</p>
+			<p>Moving on to the <strong class="bold">Nodes</strong> tab, we see metrics graphed over time for each instance in the training <a id="_idIndexMarker950"/>cluster. Here, our job involved a <a id="_idIndexMarker951"/>single instance named <strong class="source-inline">algo-1</strong>. For example, you can see its GPU utilization in the next screenshot:</p>
+			<div>
+				<div id="_idContainer138" class="IMG---Figure">
+					<img src="Images/B17705_09_4.jpg" alt="Figure 9.4 – Viewing GPU utilization over time&#13;&#10;" width="1119" height="291"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.4 – Viewing GPU utilization over time</p>
+			<p>We also get a very nice view of system utilization over time, with one line per vCPU and GPU, as shown in the next screenshot:</p>
+			<div>
+				<div id="_idContainer139" class="IMG---Figure">
+					<img src="Images/B17705_09_5.jpg" alt="Figure 9.5 – Viewing system utilization over time&#13;&#10;" width="1252" height="179"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.5 – Viewing system utilization over time</p>
+			<p>All this information is updated in near-real-time while your training job is running. Just launch a training job, open this view, and, after a few minutes, the graphs will show up and get updated.</p>
+			<p>Now, let's see how we can enable detailed profiling information in our training jobs.</p>
+			<h2 id="_idParaDest-180"><a id="_idTextAnchor179"/>Enabling profiling in SageMaker Debugger</h2>
+			<p>Profiling collects framework metrics (<strong class="bold">TensorFlow</strong>, <strong class="bold">PyTorch</strong>, <strong class="bold">Apache</strong> <strong class="bold">MXNet</strong>, and XGBoost), data <a id="_idIndexMarker952"/>loader metrics, and Python metrics. For the latter, we can use <strong class="bold">CProfile</strong> or <strong class="bold">Pyinstrument</strong>.</p>
+			<p>Profiling can be configured in the estimator (which is the option we'll use). You can also enable it manually in SageMaker Studio on a running job (see the slider in <em class="italic">Figure 9.2</em>).</p>
+			<p>Let's reuse our TensorFlow/Keras example from <a href="B17705_06_Final_JM_ePub.xhtml#_idTextAnchor108"><em class="italic">Chapter 6</em></a>, <em class="italic">Training Computer Vision Models</em>, and collect all profiling information every 100 milliseconds:</p>
+			<ol>
+				<li value="1">First, we create a <strong class="source-inline">FrameworkProfile</strong> object containing default settings for the profiling, data loading, and Python configurations. For each one of these, we could specify precise time ranges or step ranges for data collection:<p class="source-code">from sagemaker.debugger import FrameworkProfile, DetailedProfilingConfig, DataloaderProfilingConfig, PythonProfilingConfig, PythonProfiler</p><p class="source-code">framework_profile_params = FrameworkProfile(</p><p class="source-code"> detailed_profiling_config=DetailedProfilingConfig(), </p><p class="source-code"> dataloader_profiling_config=DataloaderProfilingConfig(),</p><p class="source-code"> python_profiling_config=PythonProfilingConfig(</p><p class="source-code">   python_profiler=PythonProfiler.PYINSTRUMENT)</p><p class="source-code">)</p></li>
+				<li>Then, we create a <strong class="source-inline">ProfilerConfig</strong> object that sets framework parameters and the time interval for data collection:<p class="source-code">from sagemaker.debugger import ProfilerConfig </p><p class="source-code">profiler_config = ProfilerConfig(</p><p class="source-code">    system_monitor_interval_millis=100,</p><p class="source-code">    framework_profile_params=framework_profile_params)</p></li>
+				<li>Finally, we pass this configuration to our estimator, and train as usual:<p class="source-code">tf_estimator = TensorFlow(</p><p class="source-code">    entry_point='fmnist.py',</p><p class="source-code">    . . .                        </p><p class="source-code">    profiler_config=profiler_config)</p></li>
+				<li>As <a id="_idIndexMarker953"/>the training job runs, profiling data is automatically collected and saved in a default location in S3 (you can define a custom path with the <strong class="source-inline">s3_output_path</strong> parameter in <strong class="source-inline">ProfilingConfig</strong>). We could also use the <strong class="source-inline">smdebug</strong> <strong class="bold">SDK</strong> (<a href="https://github.com/awslabs/sagemaker-debugger">https://github.com/awslabs/sagemaker-debugger</a>) to load and inspect profiling data.</li>
+				<li>Shortly after the training job completes, we see summary information in the <strong class="bold">Overview</strong> tab, as shown in the next screenshot: <div id="_idContainer140" class="IMG---Figure"><img src="Images/B17705_09_6.jpg" alt="Figure 9.6 – Viewing profiling information&#13;&#10;" width="794" height="533"/></div><p class="figure-caption">Figure 9.6 – Viewing profiling information</p></li>
+				<li>We <a id="_idIndexMarker954"/>can also download a detailed report in HTML format (see the button in <em class="italic">Figure 9.2</em>). For example, it tells us which are the most expensive GPU operators. Unsurprisingly, we see our <strong class="source-inline">fmnist_model</strong> function and the TensorFlow operator for 2D convolution, as visible in the next screenshot:</li>
+			</ol>
+			<div>
+				<div id="_idContainer141" class="IMG---Figure">
+					<img src="Images/B17705_09_7.jpg" alt="Figure 9.7 – Viewing the profiling report&#13;&#10;" width="697" height="309"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.7 – Viewing the profiling report</p>
+			<p>The report also contains information on built-in rules that have been triggered during training, warning us about conditions such as low GPU usage, CPU bottlenecks, and more. These rules have default settings that can be customized if needed. We'll cover rules <a id="_idIndexMarker955"/>in more details in the next chapter when we'll discuss how to use SageMaker Debugger to debug training jobs. </p>
+			<p>For now, let's look at some common scaling issues for training jobs, and how we could address them. In the process, we'll mention several SageMaker features that will be covered in the rest of this chapter.</p>
+			<h2 id="_idParaDest-181"><a id="_idTextAnchor180"/>Solving training challenges</h2>
+			<p>We will <a id="_idIndexMarker956"/>dive into the challenges, and their solutions, as follows:</p>
+			<p> <em class="italic">I need lots of storage on training instances.</em></p>
+			<p>As discussed in the previous example, most SageMaker training instances use EBS volumes, and you can set their size in the estimator. The maximum size of an EBS volume is 16 TB, so you should have more than enough. If your algorithm needs lots of temporary storage for intermediate results, this is the way to go.</p>
+			<p><em class="italic">My dataset is very large, and it takes a long time to copy it to training instances.</em></p>
+			<p>Define "long"! If you're looking for a quick fix, you can use instance types with high network performance. For example, <strong class="source-inline">ml.g4dn</strong> and <strong class="source-inline">ml.p3dn</strong> instances support the <strong class="bold">Elastic Fabric Adapter</strong> (https://aws.amazon.com/hpc/efa), and can go all the way to 100 Gbit/s.</p>
+			<p>If that's <a id="_idIndexMarker957"/>not enough, and if you're training on a single instance, you should use pipe mode, which streams data from S3 instead of copying it. </p>
+			<p>If training is distributed, you can switch the <strong class="bold">distribution policy</strong> from <strong class="source-inline">FullyReplicated</strong> to <strong class="source-inline">ShardedbyS3Key</strong>, which <a id="_idIndexMarker958"/>will only distribute a fraction of the dataset to each instance. This can be combined with pipe mode for extra performance.</p>
+			<p><em class="italic">My dataset is very large, and it doesn't fit in RAM.</em> </p>
+			<p>If you want to stick to a single instance, a quick way to solve the problem is to scale up. The <strong class="source-inline">ml.r5d.24xlarge</strong> and <strong class="source-inline">ml.p3dn.24xlarge</strong> instances have 768 GB of RAM! If distributed training is an option, then you should configure it and apply data parallelism.</p>
+			<p><em class="italic">CPU utilization is low.</em></p>
+			<p>Assuming <a id="_idIndexMarker959"/>you haven't overprovisioned, the most likely cause is I/O latency (network or storage). The CPU is stalled because it's waiting for data to be fetched from wherever it's stored.</p>
+			<p>The first thing you should review is the data format. As discussed in previous chapters, there's no <a id="_idIndexMarker960"/>escaping <strong class="bold">RecordIO</strong> or <strong class="bold">TFRecord</strong> files. If you're using other formats (CSV, individual images, and so on), you <a id="_idIndexMarker961"/>should start there before tweaking the infrastructure.</p>
+			<p>If data is copied from S3 to an EBS volume, you can try using an instance with more EBS bandwidth. Numbers <a id="_idIndexMarker962"/>are available at the following location:</p>
+			<p><a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-optimized.html">https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-optimized.html</a> </p>
+			<p>You can also switch to an instance type with local NVMe storage (g4dn and p3dn). If the problem persists, you should review the code that reads data and passes it to the training algorithm. It probably needs more parallelism.</p>
+			<p>If data is streamed from S3 with pipe mode, it's unlikely that you've hit the maximum transfer speed of 25 GB/s, but it's worth checking the instance metric in CloudWatch. If you're sure <a id="_idIndexMarker963"/>that nothing else could be the cause, you should move to other <a id="_idIndexMarker964"/>file storage services, such as <strong class="bold">Amazon</strong> <strong class="bold">EFS</strong> and <strong class="bold">Amazon</strong> <strong class="bold">FSx for Lustre</strong>. </p>
+			<p><em class="italic">GPU memory utilization is low.</em></p>
+			<p>The GPU doesn't receive enough data from the CPU. You need to increase batch size until memory utilization is close to 100%. If you increase it too much, you'll get an angry <strong class="source-inline">out of memory</strong> error message, such as this one:</p>
+			<p class="source-code">/opt/brazil-pkg-cache/packages/MXNetECL/MXNetECL-v1.4.1.1457.0/AL2012/generic-flavor/src/src/storage/./pooled_storage_manager.h:151: cudaMalloc failed: out of memory</p>
+			<p>When working with a multi-GPU instance in a data-parallel configuration, you should multiply the batch size passed to the estimator by the number of GPUs present in an instance. </p>
+			<p>When increasing batch size, you have to factor in the number of training samples available. For example, the <strong class="bold">Pascal</strong> VOC dataset that we used for Semantic Segmentation in <a href="B17705_05_Final_JM_ePub.xhtml#_idTextAnchor091"><em class="italic">Chapter 5</em></a>, <em class="italic">Training Computer Vision Models</em>, only has 1,464 samples, so it would probably not make sense to increase batch size above 64 or 128.</p>
+			<p>Finally, batch size has an important effect on job convergence. Very large batches may slow it down, so you may want to increase the learning rate accordingly.</p>
+			<p>Sometimes, you'll simply have to accept that GPU memory utilization is low!</p>
+			<p><em class="italic">GPU utilization is low.</em></p>
+			<p>Maybe your <a id="_idIndexMarker965"/>model is simply not large enough to keep the GPU really busy. You should try scaling down on a smaller GPU.</p>
+			<p>If you're working with a large model, the GPU is probably stalled because the CPU can't feed it fast enough. If you're in control of the data loading code, you should try to add more parallelism, such as additional threads for data loading and preprocessing. If you're not, you should try a larger instance type with more vCPUs. Hopefully, they can be put to good use by the data-loading code.</p>
+			<p>If there's enough parallelism in the data loading code, then slow I/O is likely to be responsible. You should look for a faster alternative (NVMe, EFS, or FSx for Lustre).</p>
+			<p><em class="italic">GPU utilization is high</em>.</p>
+			<p>That's a good place to be! You're efficiently using the infrastructure that you're paying for. As discussed in the previous example, you can try scaling up (more vCPUs or more GPUs), or <a id="_idIndexMarker966"/>scaling out (more instances). Combining both can work for highly parallel workloads such as deep learning.</p>
+			<p>Now we know a little more about scaling jobs, let's learn about more SageMaker features, starting with pipe mode.</p>
+			<h1 id="_idParaDest-182"><a id="_idTextAnchor181"/>Streaming datasets with pipe mode</h1>
+			<p>The default <a id="_idIndexMarker967"/>setting of estimators is to copy the dataset <a id="_idIndexMarker968"/>to training instances, which is known as <strong class="bold">file mode</strong>. Instead, <strong class="bold">pipe mode</strong> streams it <a id="_idIndexMarker969"/>directly from S3. The name <a id="_idIndexMarker970"/>of the feature comes <a id="_idIndexMarker971"/>from its use of <strong class="bold">Unix</strong> <strong class="bold">named pipes</strong> (also <a id="_idIndexMarker972"/>known as <strong class="bold">FIFOs</strong>): at the beginning of each epoch, one pipe is created per input channel.</p>
+			<p>Pipe mode removes the need to copy any data to training instances. Obviously, training jobs start quicker. They generally run faster too, as pipe mode is highly optimized. Another benefit is that you won't have to provision any storage for the dataset on training instances. </p>
+			<p>Cutting on training time and storage means that you'll save money. The larger the dataset, the <a id="_idIndexMarker973"/>more you'll save. You can find benchmarks at the following link:</p>
+			<p><a href="https://aws.amazon.com/blogs/machine-learning/accelerate-model-training-using-faster-pipe-mode-on-amazon-sagemaker/">https://aws.amazon.com/blogs/machine-learning/accelerate-model-training-using-faster-pipe-mode-on-amazon-sagemaker/</a></p>
+			<p>In practice, you can start experimenting with pipe mode for datasets in the hundreds of megabytes and beyond. In fact, this feature enables you to work with infinitely large datasets. As storage and RAM requirements are no longer coupled to the size of the dataset, there's no practical limit on the amount of data that your algorithm can crunch. Training on petabyte-scale datasets becomes possible.</p>
+			<h2 id="_idParaDest-183"><a id="_idTextAnchor182"/>Using pipe mode with built-in algorithms</h2>
+			<p>The prime <a id="_idIndexMarker974"/>candidates for pipe mode are built-in algorithms, as most of them support it natively: </p>
+			<ul>
+				<li><strong class="bold">Linear Learner</strong>, <strong class="bold">k-Means</strong>, <strong class="bold">k-Nearest Neighbors</strong>, <strong class="bold">Principal Component Analysis</strong>, <strong class="bold">Random Cut Forest</strong>, and <strong class="bold">Neural Topic Modeling</strong>: RecordIO-wrapped protobuf or CSV data</li>
+				<li><strong class="bold">Factorization Machines</strong>, <strong class="bold">Latent Dirichlet Allocation</strong>: RecordIO-wrapped protobuf data</li>
+				<li><strong class="bold">BlazingText</strong> (supervised mode): Augmented manifest</li>
+				<li><strong class="bold">Image Classification</strong> or <strong class="bold">Object Detection</strong>: RecordIO-wrapped protobuf data or augmented manifest</li>
+				<li><strong class="bold">Semantic segmentation</strong>: Augmented manifest.</li>
+			</ul>
+			<p>You should <a id="_idIndexMarker975"/>already be familiar with <strong class="bold">RecordIO-wrapped protobuf</strong>. If not, please revisit <em class="italic">Chapters 4</em> and <em class="italic">5</em>, where we covered it in detail. With RecordIO, you can easily split the input dataset into multiple files (100 MB seems to be a sweet spot). This makes it possible to work with an unlimited amount of data, regardless of maximum file size, and it can increase I/O performance. The <strong class="source-inline">im2rec</strong> tool has an option to generate multiple list files (<strong class="source-inline">--chunks</strong>). If you have existing list files, you can of course split them yourself.</p>
+			<p>We looked <a id="_idIndexMarker976"/>at the <strong class="bold">augmented manifest</strong> format when we discussed datasets annotated by <strong class="bold">SageMaker</strong> <strong class="bold">Ground Truth</strong> in <a href="B17705_05_Final_JM_ePub.xhtml#_idTextAnchor091"><em class="italic">Chapter 5</em></a>, <em class="italic">Training Computer Vision Models</em>. For computer <a id="_idIndexMarker977"/>vision algorithms, this <strong class="bold">JSON Lines</strong> file contains <a id="_idIndexMarker978"/>the location of images in S3 and their labeling information. You can learn more at the following link:</p>
+			<p><a href="https://docs.aws.amazon.com/sagemaker/latest/dg/augmented-manifest.html">https://docs.aws.amazon.com/sagemaker/latest/dg/augmented-manifest.html</a> </p>
+			<h2 id="_idParaDest-184"><a id="_idTextAnchor183"/>Using pipe mode with other algorithms and frameworks</h2>
+			<p>TensorFlow <a id="_idIndexMarker979"/>supports pipe mode thanks to the <strong class="source-inline">PipeModeDataset</strong> class implemented by AWS. Here are some useful resources:</p>
+			<ul>
+				<li><a href="https://github.com/aws/sagemaker-tensorflow-extensions">https://github.com/aws/sagemaker-tensorflow-extensions</a></li>
+				<li><a href="https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk/tensorflow_script_mode_pipe_mode">https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-python-sdk/tensorflow_script_mode_pipe_mode</a> </li>
+				<li><a href="mailto:https://medium.com/@julsimon/making-amazon-sagemaker-and-tensorflow-work-for-you-893365184233">https://medium.com/@julsimon/making-amazon-sagemaker-and-tensorflow-work-for-you-893365184233</a></li>
+			</ul>
+			<p>For other <a id="_idIndexMarker980"/>frameworks and for your own custom code, it's still possible to implement pipe mode inside the training container. A Python example is available at the following link:</p>
+			<p><a href="https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/pipe_bring_your_own">https://github.com/awslabs/amazon-sagemaker-examples/tree/master/advanced_functionality/pipe_bring_your_own</a></p>
+			<h2 id="_idParaDest-185"><a id="_idTextAnchor184"/>Simplifying data loading with MLIO</h2>
+			<p><strong class="bold">MLIO</strong> (https://github.com/awslabs/ml-io) is an AWS open source project that lets you load data <a id="_idIndexMarker981"/>stored in memory, on local storage, or in S3 with pipe mode. The data can then be converted into different popular formats.</p>
+			<p>Here are the high-level features:</p>
+			<ul>
+				<li><strong class="bold">Input formats</strong>: <strong class="bold">CSV</strong>, <strong class="bold">Parquet</strong>, RecordIO-protobuf, <strong class="bold">JPEG</strong>, <strong class="bold">PNG</strong></li>
+				<li><strong class="bold">Conversion formats</strong>: NumPy arrays, SciPy matrices, <strong class="bold">Pandas</strong> <strong class="bold">DataFrames</strong>, TensorFlow tensors, PyTorch tensors, Apache MXNet arrays, and <strong class="bold">Apache</strong> <strong class="bold">Arrow</strong></li>
+				<li>API available in Python and <strong class="bold">C++</strong></li>
+			</ul>
+			<p>Now, let's run some examples with pipe mode.</p>
+			<h2 id="_idParaDest-186"><a id="_idTextAnchor185"/>Training factorization machines with pipe mode</h2>
+			<p>We're going <a id="_idIndexMarker982"/>to revisit the example we <a id="_idIndexMarker983"/>used in <a href="B17705_04_Final_JM_ePub.xhtml#_idTextAnchor069"><em class="italic">Chapter 4</em></a>, <em class="italic">Training Machine Learning Models</em>, where we trained a recommendation <a id="_idIndexMarker984"/>model on the <strong class="bold">MovieLens</strong> dataset. At the time, we used a small version of the dataset, limited to 100,000 reviews. This time, we'll go for the largest version:</p>
+			<ol>
+				<li value="1">We download and extract the dataset:<p class="source-code">%%sh</p><p class="source-code">wget http://files.grouplens.org/datasets/movielens/ml-25m.zip</p><p class="source-code">unzip ml-25m.zip</p></li>
+				<li>This dataset includes 25,000,095 reviews, from 162,541 users, on 62,423 movies. Unlike the 100k version, movies are not numbered sequentially. The last movie ID is 209,171, which needlessly increases the number of features. The alternative <a id="_idIndexMarker985"/>would be to renumber <a id="_idIndexMarker986"/>movies, but let's not do that here:<p class="source-code">num_users=162541</p><p class="source-code">num_movies=62423</p><p class="source-code">num_ratings=25000095</p><p class="source-code">max_movieid=209171</p><p class="source-code">num_features=num_users+max_movieid</p></li>
+				<li>Just like in <a href="B17705_04_Final_JM_ePub.xhtml#_idTextAnchor069"><em class="italic">Chapter 4</em></a><em class="italic">, Training Machine Learning Models</em> we load the dataset into a sparse matrix (<strong class="source-inline">lil_matrix</strong> from SciPy), split it for training and testing, and convert both datasets into RecordIO-wrapped protobuf. Given the size of the dataset, this could take 45 minutes on a small Studio instance. Then, we upload the datasets to S3.</li>
+				<li>Next, we configure the two input channels, and we set their input mode to pipe mode instead of file mode:<p class="source-code">From sagemaker import TrainingInput</p><p class="source-code">s3_train_data = TrainingInput (</p><p class="source-code">    train_data,                                </p><p class="source-code">    content_type='application/x-recordio-protobuf',</p><p class="source-code">    input_mode='Pipe')</p><p class="source-code">s3_test_data = TrainingInput (</p><p class="source-code">   test_data,                                        </p><p class="source-code">   content_type='application/x-recordio-protobuf',                                           </p><p class="source-code">   input_mode='Pipe')</p></li>
+				<li>We then <a id="_idIndexMarker987"/>configure the estimator, and train as usual on an <strong class="source-inline">ml.c5.xlarge</strong> instance (4 vCPUs, 8 GB RAM, $0.23 per <a id="_idIndexMarker988"/>hour in <strong class="source-inline">eu-west-1</strong>). </li>
+			</ol>
+			<p>Looking at the training log, we see the following:</p>
+			<p class="source-code"><strong class="bold">2021-06-14 15:02:08 Downloading - Downloading input data</strong></p>
+			<p class="source-code"><strong class="bold">2021-06-14 15:02:08 Training - Downloading the training image...</strong></p>
+			<p>As expected, no time was spent copying the dataset. The same step in file mode takes 66 seconds. Even with a modest 1.5 GB dataset, pipe mode already makes sense. As datasets get bigger, this advantage will only increase!</p>
+			<p>Now, let's move on to distributed training.</p>
+			<h1 id="_idParaDest-187"><a id="_idTextAnchor186"/>Distributing training jobs</h1>
+			<p>Distributed training <a id="_idIndexMarker989"/>lets you scale training jobs by running them on a cluster of CPU or GPU instances. It <a id="_idIndexMarker990"/>can be used to solve two different problems: very large datasets, and very large models.</p>
+			<h2 id="_idParaDest-188"><a id="_idTextAnchor187"/>Understanding data parallelism and model parallelism</h2>
+			<p>Some datasets are too large to be trained in a reasonable amount of time on a single CPU or GPU. Using a technique called <em class="italic">data parallelism</em>, we can distribute data across the training cluster. The full model is still loaded on each CPU/GPU, which only receive an equal share of the dataset, not the full dataset. In theory, this should speed up training linearly <a id="_idIndexMarker991"/>according to the number of CPU/GPUs involved, and as you can guess, the reality is often different.</p>
+			<p>Believe it or not, some state-of-the-art-deep learning models are too large to fit on a single GPU. Using a technique called <em class="italic">model parallelism</em>, we can split it, and distribute the layers <a id="_idIndexMarker992"/>across a cluster of GPUs. Hence, training batches will flow across several GPUs to be processed by all layers.</p>
+			<p>Now, let's see where we can use distributed training in SageMaker.</p>
+			<h2 id="_idParaDest-189"><a id="_idTextAnchor188"/>Distributing training for built-in algorithms</h2>
+			<p>Data parallelism <a id="_idIndexMarker993"/>is available for almost all built-in algorithms (semantic segmentation and LDA are notable exceptions). As they are implemented with Apache MXNet, they automatically use its native distributed training mechanism.</p>
+			<h2 id="_idParaDest-190"><a id="_idTextAnchor189"/>Distributing training for built-in frameworks</h2>
+			<p>TensorFlow, PyTorch, Apache MXNet, and <strong class="bold">Hugging Face</strong> have native data parallelism mechanisms, and <a id="_idIndexMarker994"/>they're supported on SageMaker. <strong class="bold">Horovod</strong> (<a href="https://github.com/horovod/horovod">https://github.com/horovod/horovod</a>) is available too.</p>
+			<p>For TensorFlow, PyTorch, and Hugging Face, you can also use the newer <strong class="bold">SageMaker Distributed Data Parallel Library</strong> and <strong class="bold">SageMaker Model Parallel Library</strong>. Both will be covered later in this chapter.</p>
+			<p>Distributed training often requires framework-specific changes to your training code. You can find more information in the framework documentation (for example <a href="https://www.tensorflow.org/guide/distributed_training">https://www.tensorflow.org/guide/distributed_training</a>), and in sample notebooks hosted at <a href="https://github.com/awslabs/amazon-sagemaker-examples">https://github.com/awslabs/amazon-sagemaker-examples</a>:</p>
+			<ul>
+				<li><strong class="bold">TensorFlow</strong>: <p>a) <strong class="source-inline">sagemaker-python-sdk/tensorflow_script_mode_horovod</strong></p><p>b) <strong class="source-inline">advanced_functionality/distributed_tensorflow_mask_rcnn</strong></p></li>
+				<li><strong class="bold">Keras</strong>: <strong class="source-inline">sagemaker-python-sdk/keras_script_mode_pipe_mode_horovod</strong></li>
+				<li><strong class="bold">PyTorch</strong>: <strong class="source-inline">sagemaker-python-sdk/pytorch_horovod_mnist</strong></li>
+			</ul>
+			<p>Each framework has its peculiarities, yet everything we discussed in the previous sections <a id="_idIndexMarker995"/>stands true. If you want to make the most of your infrastructure, you need to pay attention to batch size, synchronization, and so on. Experiment, monitor, analyze, and iterate!</p>
+			<h2 id="_idParaDest-191"><a id="_idTextAnchor190"/>Distributing training for custom containers</h2>
+			<p>If you're training with your own custom container, you have to implement your own distributed <a id="_idIndexMarker996"/>training mechanism. Let's face it, this is going to be a lot of work. SageMaker only helps to provide the name of cluster instances and the name of the container network interface. They are available inside the container in the <strong class="source-inline">/opt/ml/input/config/resourceconfig.json</strong> file. </p>
+			<p>You can find more information at the following link:</p>
+			<p><a href="https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-training-algo-running-container.html">https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-training-algo-running-container.html</a></p>
+			<p>It's time for a distributed training example!</p>
+			<h1 id="_idParaDest-192"><a id="_idTextAnchor191"/>Scaling an image classification model on ImageNet</h1>
+			<p>In <a href="B17705_05_Final_JM_ePub.xhtml#_idTextAnchor091"><em class="italic">Chapter 5</em></a>, <em class="italic">Training Computer Vision Models</em>, we trained the image classification algorithm <a id="_idIndexMarker997"/>on a small dataset with dog <a id="_idIndexMarker998"/>and cat images (25,000 training images). This time, let's go for something a little bigger. </p>
+			<p>We're going to train a ResNet-50 network <a id="_idIndexMarker999"/>from scratch on the <strong class="bold">ImageNet</strong> dataset – the reference dataset for many computer vision applications (<a href="http://www.image-net.org">http://www.image-net.org</a>). The 2012 version contains 1,281,167 training images (140 GB) and 50,000 validation images (6.4 GB) from 1,000 classes. </p>
+			<p>If you want to experiment at a smaller scale, you can work with 5-10% of the dataset. Final accuracy won't be as good, but it doesn't matter for our purposes.</p>
+			<h2 id="_idParaDest-193"><a id="_idTextAnchor192"/>Preparing the ImageNet dataset</h2>
+			<p>This requires <a id="_idIndexMarker1000"/>a lot of storage – the dataset is 150 GB, so please make sure you have at least 500 GB available to store it in ZIP and processed formats. You're also going to need a lot of bandwidth and a lot of patience to download it. I used an EC2 instance running <strong class="bold">Amazon</strong> <strong class="bold">Linux 2</strong> in the <strong class="source-inline">us-east-1</strong> region, and my download took <em class="italic">five days</em>.</p>
+			<ol>
+				<li value="1">Visit the ImageNet website, register to download the dataset, and accept the conditions. You'll get a username and an access key allowing you to download the dataset.</li>
+				<li>One of the TensorFlow repositories includes a great script that will download the dataset and extract it. Using <strong class="source-inline">nohup</strong> is essential so that the process continues running even if your session is terminated:<p class="source-code"><strong class="bold">$ git clone https://github.com/tensorflow/models.git</strong></p><p class="source-code"><strong class="bold">$ export IMAGENET_USERNAME=YOUR_USERNAME</strong></p><p class="source-code"><strong class="bold">$ export IMAGENET_ACCESS_KEY=YOUR_ACCESS_KEY</strong></p><p class="source-code"><strong class="bold">$ cd models/research/inception/inception/data</strong></p><p class="source-code"><strong class="bold">$ mv imagenet_2012_validation_synset_labels.txt synsets.txt</strong></p><p class="source-code"><strong class="bold">$ nohup bash download_imagenet.sh . synsets.txt &gt;&amp; download.log &amp;</strong></p></li>
+				<li>Once this is over (again, downloading will take days), the <strong class="source-inline">imagenet/train</strong> directory contains the training dataset (one folder per class). The <strong class="source-inline">imagenet/validation</strong> directory contains 50,000 images in the same folder. We can use a simple script to organize it with one folder per class:<p class="source-code"><strong class="bold">$ wget https://raw.githubusercontent.com/juliensimon/aws/master/mxnet/imagenet/build_validation_tree.sh</strong></p><p class="source-code"><strong class="bold">$ chmod 755 build_validation_tree.sh</strong></p><p class="source-code"><strong class="bold">$ cd imagenet/validation</strong></p><p class="source-code"><strong class="bold">$ ../../build_validation_tree.sh</strong></p><p class="source-code"><strong class="bold">$ cd ../..</strong></p></li>
+				<li>We're going to build RecordIO files with the <strong class="source-inline">im2rec</strong> tool present in the Apache MXNet repository. Let's install dependencies, and fetch <strong class="source-inline">im2rec</strong>:<p class="source-code"><strong class="bold">$ sudo yum -y install python-devel python-pip opencv opencv-devel opencv-python</strong></p><p class="source-code"><strong class="bold">$ pip3 install mxnet opencv-python –user</strong></p><p class="source-code"><strong class="bold">$ wget https://raw.githubusercontent.com/apache/incubator-mxnet/master/tools/im2rec.py</strong></p></li>
+				<li>In the <strong class="source-inline">imagenet</strong> directory, we run <strong class="source-inline">im2rec</strong> twice – once to build the list files, and once <a id="_idIndexMarker1001"/>to build the RecordIO files. We create RecordIO files that are approximately 1 GB each (we'll see why that matters in a second). We also resize the smaller dimension of images to <strong class="source-inline">224</strong> so that the algorithm won't have to do it:<p class="source-code"><strong class="bold">$ cd imagenet</strong></p><p class="source-code"><strong class="bold">$ python3 ../im2rec.py --list --chunks 6 --recursive val validation</strong></p><p class="source-code"><strong class="bold">$ python3 ../im2rec.py --num-thread 16 --resize 224 val_ validation</strong></p><p class="source-code"><strong class="bold">$ python3 ../im2rec.py --list --chunks 140 --recursive train train</strong></p><p class="source-code"><strong class="bold">$ python3 ../im2rec.py --num-thread 16 --resize 224 train_ train</strong></p></li>
+				<li>Finally, we sync the dataset to S3:<p class="source-code"><strong class="bold">$ mkdir -p input/train input/validation</strong></p><p class="source-code"><strong class="bold">$ mv train_*.rec input/train</strong></p><p class="source-code"><strong class="bold">$ mv val_*.rec input/validation</strong></p><p class="source-code"><strong class="bold">$ aws s3 sync input s3://sagemaker-us-east-1-123456789012/imagenet-split/input/</strong></p></li>
+			</ol>
+			<p>The dataset <a id="_idIndexMarker1002"/>is now ready for training.</p>
+			<h2 id="_idParaDest-194"><a id="_idTextAnchor193"/>Defining our training job</h2>
+			<p>Now that the <a id="_idIndexMarker1003"/>dataset is ready, we need to think about the configuration of our training job. Specifically, we need to come up with the following:</p>
+			<ul>
+				<li>An input configuration, defining the location and the properties of the dataset</li>
+				<li>Infrastructure requirements to run the training job</li>
+				<li>Hyperparameters to configure the algorithm</li>
+			</ul>
+			<p>Let's look at each one of these items in detail.</p>
+			<h3>Defining the input configuration</h3>
+			<p>Given the size of the dataset, pipe mode sounds like a great idea. Out of curiosity, I tried training <a id="_idIndexMarker1004"/>in file mode. Even with a 100 Gbit/s network interface, it took almost 25 minutes to copy the dataset from S3 to local storage. Pipe mode it is!</p>
+			<p>You may wonder why we took care of splitting the dataset into multiple files. Here's why:</p>
+			<ul>
+				<li>In general, multiple files create opportunities for more parallelism, making it easier to write fast data loading and processing code.</li>
+				<li>We can shuffle the files at the beginning of each epoch, removing any potential bias caused by the order of samples.</li>
+				<li>It makes it very easy to work with a fraction of the dataset.</li>
+			</ul>
+			<p>Now that <a id="_idIndexMarker1005"/>we've defined the input configuration, what about infrastructure requirements? </p>
+			<h3>Defining infrastructure requirements</h3>
+			<p>ImageNet is <a id="_idIndexMarker1006"/>a large and complex dataset that requires a lot of training to reach good accuracy. </p>
+			<p>A quick test shows that a single <strong class="source-inline">ml.p3.2xlarge</strong> instance with the batch size set to 128 will crunch through the dataset at about 335 images per second. As we have about 1,281,167 images, we can expect one epoch to last about 3,824 seconds (about 1 hour and 4 minutes).</p>
+			<p>Assuming that we need to train for 150 epochs to get decent accuracy, we're looking at a job that should last (3,824/3,600)*150 = 158 hours (about 6.5 days). This is probably not acceptable from a business perspective. For the record, at $3.825 per instance per hour in <strong class="source-inline">us-east-1</strong>, that job would cost about $573.</p>
+			<p>Let's try to speed up our job with <strong class="source-inline">ml.p3dn.24xlarge</strong> instances. Each one hosts eight NVIDIA V100s with 32 GB of GPU memory (twice the amount available on other <strong class="source-inline">p3</strong> instances). They also have 96 <strong class="bold">Intel</strong> <strong class="bold">Skylake</strong> cores, 768 GB of RAM, and 1.8 TB of local NVMe storage. Although we're not going to use it here, the latter is a fantastic storage option for long-running, large-scale jobs. Last but not least, this instance type has 100 Gbit/s networking, a great feature for streaming data from S3 and for inter-instance communication. </p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">At $35.894 per hour per instance in <strong class="source-inline">us-east-1</strong>, you may not want to try this at home or even at work without getting permission. Your service quotas probably don't let you run that much infrastructure anyway, and you would have to get in touch with AWS Support first.</p>
+			<p class="callout">In the next chapter, we're going to talk about <em class="italic">managed spot training</em> – a great way to slash training costs. We'll revisit the ImageNet example once we've covered this topic, so you definitely should refrain from training right now!</p>
+			<h2 id="_idParaDest-195"><a id="_idTextAnchor194"/>Training on ImageNet</h2>
+			<p>Let's <a id="_idIndexMarker1007"/>configure the training job:</p>
+			<ol>
+				<li value="1">We configure pipe mode on both input channels. The files of the training channel are shuffled for extra randomness:<p class="source-code">prefix = 'imagenet-split'</p><p class="source-code">s3_train_path = </p><p class="source-code">'s3://{}/{}/input/training/'.format(bucket, prefix)</p><p class="source-code">s3_val_path = </p><p class="source-code">'s3://{}/{}/input/validation/'.format(bucket, prefix)</p><p class="source-code">s3_output = </p><p class="source-code">'s3://{}/{}/output/'.format(bucket, prefix)</p><p class="source-code">from sagemaker import TrainingInput</p><p class="source-code">from sagemaker.session import ShuffleConfig</p><p class="source-code">train_data = TrainingInput(</p><p class="source-code">   s3_train_path</p><p class="source-code">   shuffle_config=ShuffleConfig(59),</p><p class="source-code">   content_type='application/x-recordio',</p><p class="source-code">   input_mode='Pipe')</p><p class="source-code">validation_data = TrainingInput(</p><p class="source-code">   s3_val_path,</p><p class="source-code">   content_type='application/x-recordio', </p><p class="source-code">   input_mode='Pipe')</p><p class="source-code">s3_channels = {'train': train_data, </p><p class="source-code">               'validation': validation_data}</p></li>
+				<li>To begin with, we configure the <strong class="source-inline">Estimator</strong> module with a single <strong class="source-inline">ml.p3dn.24xlarge</strong> instance:<p class="source-code">from sagemaker import image_uris</p><p class="source-code">region_name = boto3.Session().region_name</p><p class="source-code">container = image_uris.retrieve(</p><p class="source-code">    'image-classification', region)</p><p class="source-code">ic = sagemaker.estimator.Estimator(</p><p class="source-code">     container,</p><p class="source-code">     role= sagemaker.get_execution_role(),</p><p class="source-code">     instance_count=1,                                 </p><p class="source-code">     instance_type='ml.p3dn.24xlarge',</p><p class="source-code">     output_path=s3_output)</p></li>
+				<li>We <a id="_idIndexMarker1008"/>set hyperparameters, starting with a reasonable batch size of 1,024, and we launch training:<p class="source-code">ic.set_hyperparameters(</p><p class="source-code">    num_layers=50,                 </p><p class="source-code">    use_pretrained_model=0,        </p><p class="source-code">    num_classes=1000,              </p><p class="source-code">    num_training_samples=1281167,</p><p class="source-code">    mini_batch_size=1024,</p><p class="source-code">    epochs=2,</p><p class="source-code">    kv_store='dist_sync',</p><p class="source-code">    top_k=3)         </p></li>
+			</ol>
+			<h2 id="_idParaDest-196"><a id="_idTextAnchor195"/>Updating batch size</h2>
+			<p>Time per epochs is 727 seconds. For 150 epochs, this translates into 30.3 hours of training (1.25 days), and a cost of $1,087. The good news is that we're going 5x faster. The bad news is <a id="_idIndexMarker1009"/>that cost has gone up 2x. Let's start scaling this.</p>
+			<p>Looking at total GPU utilization in CloudWatch, we see that it doesn't exceed 300%. That is, 37.5% on each GPU. This probably means that our batch size is too low to keep the GPUs fully busy. Let's bump it to (1,024/0.375)=2730, rounded up to 2,736 to be divisible by 8:</p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">Depending on algorithm versions, <strong class="bold">CUDA</strong> versions, the number of instances involved, and so on, your mileage may vary. Reduce batch size a bit if you get <strong class="source-inline">out of memory</strong> errors.</p>
+			<p class="source-code">ic.set_hyperparameters(</p>
+			<p class="source-code">    num_layers=50,                 </p>
+			<p class="source-code">    use_pretrained_model=0,        </p>
+			<p class="source-code">    num_classes=1000,              </p>
+			<p class="source-code">    num_training_samples=1281167,</p>
+			<p class="source-code">    mini_batch_size=2736,         # &lt;--------</p>
+			<p class="source-code">    epochs=2,</p>
+			<p class="source-code">    kv_store='dist_sync',</p>
+			<p class="source-code">    top_k=3)         </p>
+			<p>Training again, an epoch now lasts 758 seconds. It looks like maxing out GPU memory usage didn't make a big difference this time. Maybe it's offset by the cost of synchronizing gradients? Anyway, keeping GPU cores as busy as possible is good practice.</p>
+			<h2 id="_idParaDest-197"><a id="_idTextAnchor196"/>Adding more instances</h2>
+			<p>Now, let's <a id="_idIndexMarker1010"/>add a second instance to scale out the training job:</p>
+			<p class="source-code">ic = sagemaker.estimator.Estimator(</p>
+			<p class="source-code">    container,</p>
+			<p class="source-code">    role,</p>
+			<p class="source-code">    instance_count=2,                 # &lt;--------</p>
+			<p class="source-code">    instance_type='ml.p3dn.24xlarge',</p>
+			<p class="source-code">    output_path=s3_output)</p>
+			<p>Time for epoch is now 378 seconds! For 150 epochs, this translates to 15.75 hours of training, and a cost of $1,221. Compared to our initial job, this is 2x faster and 3x cheaper!</p>
+			<p>How about four instances? Let's see if we can we keep scaling:</p>
+			<p class="source-code">ic = sagemaker.estimator.Estimator(</p>
+			<p class="source-code">    container,</p>
+			<p class="source-code">    role,</p>
+			<p class="source-code">    instance_count=4,                 # &lt;--------</p>
+			<p class="source-code">    instance_type='ml.p3dn.24xlarge',</p>
+			<p class="source-code">    output_path=s3_output)</p>
+			<p>Time for epoch is now 198 seconds! For 150 epochs, this translates to 8.25 hours of training, and a cost of $1,279. We sped up 2x again, with a marginal cost increase.</p>
+			<p>Now, shall we train eight instances? Of course! Who wouldn't want to train on 64 GPUs, 327K CUDA cores, and 2 TB (!) of GPU RAM:</p>
+			<p class="source-code">ic = sagemaker.estimator.Estimator(</p>
+			<p class="source-code">    container,</p>
+			<p class="source-code">    role,</p>
+			<p class="source-code">    instance_count=8,                 # &lt;--------</p>
+			<p class="source-code">    instance_type='ml.p3dn.24xlarge',</p>
+			<p class="source-code">    output_path=s3_output)</p>
+			<p>Time for <a id="_idIndexMarker1011"/>epoch is now 99 seconds. For 150 epochs, this translates into 4.12 hours of training, and a cost of $1,277. We sped up 2x <em class="italic">again</em>, at no cost increase.</p>
+			<h2 id="_idParaDest-198"><a id="_idTextAnchor197"/>Summing things up</h2>
+			<p>For 2x the initial cost, we've accelerated our training job 38x, thanks to pipe mode, distributed <a id="_idIndexMarker1012"/>training, and state-of-the-art GPU instances. </p>
+			<div>
+				<div id="_idContainer142" class="IMG---Figure">
+					<img src="Images/02.jpg" alt="Fig 9.8 Outcome of the training jobs&#13;&#10;" width="1352" height="598"/>
+				</div>
+			</div>
+			<p class="figure-caption">Fig 9.8 Outcome of the training jobs</p>
+			<p>Not bad at all! Saving days on your training jobs helps you iterate faster, get to a high-quality model quicker, and get to production sooner. I'm pretty sure this would easily offset the extra cost. Still, in the next chapter, we'll see how we can slash training costs massively with managed spot training.</p>
+			<p>Now that we're familiar with distributed training, let's take a look at two new SageMaker libraries for data parallelism and model parallelism.</p>
+			<h1 id="_idParaDest-199"><a id="_idTextAnchor198"/>Training with the SageMaker data and model parallel libraries</h1>
+			<p>These two <a id="_idIndexMarker1013"/>libraries were introduced <a id="_idIndexMarker1014"/>in late 2020, and significantly improve the performance of large-scale training jobs.</p>
+			<p>The <strong class="bold">SageMaker</strong> <strong class="bold">Distributed Data Parallel</strong> (<strong class="bold">DDP</strong>) library implements a very efficient distribution of <a id="_idIndexMarker1015"/>computation on GPU clusters. It optimizes network communication by eliminating inter-GPU communication, maximizing the amount of time and resources they spend on training. You can learn more at the following link:</p>
+			<p><a href="https://aws.amazon.com/blogs/aws/managed-data-parallelism-in-amazon-sagemaker-simplifies-training-on-large-datasets/">https://aws.amazon.com/blogs/aws/managed-data-parallelism-in-amazon-sagemaker-simplifies-training-on-large-datasets/</a></p>
+			<p>DDP is available for TensorFlow, PyTorch, and Hugging Face. The first two require minor modifications to the training code, but the last one doesn't. As DDP only makes sense for large, long-running training jobs, available instance sizes are <strong class="source-inline">ml.p3.16xlarge</strong>, <strong class="source-inline">ml.p3dn24dnxlarge</strong>, and <strong class="source-inline">ml.p4d.24xlarge</strong>.</p>
+			<p>The <strong class="bold">SageMaker</strong> <strong class="bold">Distributed Model Parallel</strong> (<strong class="bold">DMP</strong>) library solves a different problem. Some <a id="_idIndexMarker1016"/>large deep learning models are simply too bulky to fit inside the memory of a single GPU. Others barely fit, forcing you to work with very small batch sizes, and slowing down your training jobs. DMP solves this problem by automatically partitioning models across a cluster of GPUs and orchestrating the flow of data through these different partitions. You can learn more at the following link:</p>
+			<p><a href="https://aws.amazon.com/blogs/aws/amazon-sagemaker-simplifies-training-deep-learning-models-with-billions-of-parameters/">https://aws.amazon.com/blogs/aws/amazon-sagemaker-simplifies-training-deep-learning-models-with-billions-of-parameters/</a></p>
+			<p>DMP is available for TensorFlow, PyTorch, and Hugging Face. Again, the first two require small modifications to the training code, and the last one doesn't, as the Hugging Face <strong class="source-inline">Trainer</strong> API fully supports DMP.</p>
+			<p>Let's give both a try by revisiting our TensorFlow and Hugging Face examples from <a href="B17705_07_Final_JM_ePub.xhtml#_idTextAnchor130"><em class="italic">Chapter 7</em></a>, <em class="italic">Extending Machine Learning Services Using Built-In Frameworks</em>.</p>
+			<h2 id="_idParaDest-200"><a id="_idTextAnchor199"/>Training on TensorFlow with SageMaker DDP</h2>
+			<p>Our initial <a id="_idIndexMarker1017"/>code used the high-level Keras API: <strong class="source-inline">compile()</strong>, <strong class="source-inline">fit()</strong>, and so on. In order to implement DDP, we need to rewrite <a id="_idIndexMarker1018"/>this code to use <strong class="source-inline">tf.GradientTape()</strong>, and to implement a custom training loop. It's not as difficult as it sounds, so let's get to work:</p>
+			<ol>
+				<li value="1">First, we need to import and initialize DDP:<p class="source-code">import smdistributed.dataparallel.tensorflow as sdp</p><p class="source-code">sdp.init()</p></li>
+				<li>Then, we retrieve the list of GPUs present on an instance, and we assign them a local DDP rank, which is just an integer identifier. We also allow memory growth, a TensorFlow feature required by DDP:<p class="source-code">gpus = tf.config.experimental.</p><p class="source-code">            list_physical_devices('GPU')</p><p class="source-code">if gpus:</p><p class="source-code">    tf.config.experimental.set_visible_devices(</p><p class="source-code">        gpus[sdp.local_rank()], 'GPU')</p><p class="source-code">for gpu in gpus:</p><p class="source-code">    tf.config.experimental.set_memory_growth(</p><p class="source-code">        gpu, True)</p></li>
+				<li>As recommended by the documentation, we increase the batch size and the learning rate according to the number of GPUs present in the training cluster. This is very important for job accuracy:<p class="source-code">batch_size = args.batch_size*sdp.size()</p><p class="source-code">lr         = args.learning_rate*sdp.size()</p></li>
+				<li>We then create a loss function and an optimizer. Labels have been one-hot encoded during preprocessing, so we use <strong class="source-inline">CategoricalCrossentropy</strong>, not <strong class="source-inline">SparseCategoricalCrossentropy</strong>. We also initialize model and optimizer variables on all GPUs:<p class="source-code">loss = tf.losses.CategoricalCrossentropy()</p><p class="source-code">opt = tf.optimizers.Adam(lr)</p><p class="source-code">sdp.broadcast_variables(model.variables, root_rank=0)</p><p class="source-code">sdp.broadcast_variables(opt.variables(), root_rank=0)</p></li>
+				<li>Next, we need <a id="_idIndexMarker1019"/>to write a <strong class="source-inline">training_step()</strong> function, and decorate it with <strong class="source-inline">@tf.function</strong> so that DDP recognizes it. As its name implies, this function is responsible for running a training <a id="_idIndexMarker1020"/>step on each GPU in the training cluster: predict a batch, compute loss, compute gradients, and apply them. It's based on the <strong class="source-inline">tf.GradientTape()</strong> API, which we simply wrap with <strong class="source-inline">sdp.DistributedGradientTape()</strong>. At the end of each training step, we use <strong class="source-inline">sdp.oob_allreduce()</strong> to compute the average loss, using values coming from all GPUs:<p class="source-code">@tf.function</p><p class="source-code">def training_step(images, labels):</p><p class="source-code">    with tf.GradientTape() as tape:</p><p class="source-code">        probs = model(images, training=True)</p><p class="source-code">        loss_value = loss(labels, probs)</p><p class="source-code">    tape = sdp.DistributedGradientTape(tape)</p><p class="source-code">    grads = tape.gradient(</p><p class="source-code">        loss_value, model.trainable_variables)</p><p class="source-code">    opt.apply_gradients(</p><p class="source-code">        zip(grads, model.trainable_variables))</p><p class="source-code">    loss_value = sdp.oob_allreduce(loss_value)</p><p class="source-code">    return loss_value</p></li>
+				<li>Next, we <a id="_idIndexMarker1021"/>write the training loop. There's <a id="_idIndexMarker1022"/>nothing particular about it. To avoid log pollution, we only print out messages from the master GPU (rank 0):<p class="source-code">steps = len(train)//batch_size</p><p class="source-code">for e in range(epochs):</p><p class="source-code">    if sdp.rank() == 0:</p><p class="source-code">        print("Start epoch %d" % (e))</p><p class="source-code">    for batch, (images, labels) in </p><p class="source-code">    enumerate(train.take(steps)):</p><p class="source-code">        loss_value = training_step(images, labels)</p><p class="source-code">        if batch%10 == 0 and sdp.rank() == 0:</p><p class="source-code">            print("Step #%d\tLoss: %.6f" </p><p class="source-code">                  % (batch, loss_value))</p></li>
+				<li>Finally, we save the model on GPU #0 only:<p class="source-code">if sdp.rank() == 0:</p><p class="source-code">    model.save(os.path.join(model_dir, '1'))</p></li>
+				<li>Moving to our notebook, we configure this job with two <strong class="source-inline">ml.p3.16xlarge</strong> instances, and we enable data parallelism with an additional parameter in the estimator:<p class="source-code">from sagemaker.tensorflow import TensorFlow</p><p class="source-code">tf_estimator = TensorFlow(</p><p class="source-code">    . . .</p><p class="source-code">    instance_count=2, </p><p class="source-code">    instance_type='ml.p3.16xlarge',</p><p class="source-code">    hyperparameters={'epochs': 10, </p><p class="source-code">        'learning-rate': 0.0001, 'batch-size': 32},</p><p class="source-code">    distribution={'smdistributed': </p><p class="source-code">        {'dataparallel': {'enabled': True}}}</p><p class="source-code">)</p></li>
+				<li>We train <a id="_idIndexMarker1023"/>as usual, and we see steps <a id="_idIndexMarker1024"/>going by in the training log:<p class="source-code"><strong class="bold">[1,0]&lt;stdout&gt;:Step #0#011Loss: 2.306620</strong></p><p class="source-code"><strong class="bold">[1,0]&lt;stdout&gt;:Step #10#011Loss: 1.185689</strong></p><p class="source-code"><strong class="bold">[1,0]&lt;stdout&gt;:Step #20#011Loss: 0.909270</strong></p><p class="source-code"><strong class="bold">[1,0]&lt;stdout&gt;:Step #30#011Loss: 0.839223</strong></p><p class="source-code"><strong class="bold">[1,0]&lt;stdout&gt;:Step #40#011Loss: 0.772756</strong></p><p class="source-code"><strong class="bold">[1,0]&lt;stdout&gt;:Step #50#011Loss: 0.678521</strong></p><p class="source-code"><strong class="bold">. . .</strong></p></li>
+			</ol>
+			<p>As you can see, it's not really difficult to scale training jobs with SageMaker DDP, especially if your training code already uses low-level APIs. We used TensorFlow here, and the process for PyTorch is very similar.</p>
+			<p>Now, let's see how we can train large Hugging Face models with both libraries. Indeed, state-of-the-art NLP models are getting larger and more complex all the time, and they're good candidates for data parallelism and model parallelism.</p>
+			<h2 id="_idParaDest-201"><a id="_idTextAnchor200"/>Training on Hugging Face with SageMaker DDP</h2>
+			<p>As the <a id="_idIndexMarker1025"/>Hugging Face <strong class="source-inline">Trainer</strong> API fully <a id="_idIndexMarker1026"/>supports DDP, we don't need to change anything in our training script. Woohoo. All it takes is an extra parameter in the estimator. Set the instance type and instance count, and you're good to go: </p>
+			<p class="source-code">huggingface_estimator = HuggingFace(</p>
+			<p class="source-code">   . . . </p>
+			<p class="source-code">   distribution={'smdistributed': </p>
+			<p class="source-code">                    {'dataparallel':{'enabled': True}}</p>
+			<p class="source-code">                }</p>
+			<p class="source-code">)</p>
+			<h2 id="_idParaDest-202"><a id="_idTextAnchor201"/>Training on Hugging Face with SageMaker DMP</h2>
+			<p>Adding <a id="_idIndexMarker1027"/>DMP is not difficult either. Our Hugging <a id="_idIndexMarker1028"/>Face example uses a <strong class="bold">DistilBERT</strong> model that is about 250 MB. That's small enough to fit on a single GPU, but let's try to train with DMP anyway: </p>
+			<ol>
+				<li value="1">First, we need to configure <strong class="bold">MPI</strong> (<a href="https://www.open-mpi.org">https://www.open-mpi.org</a>) settings, as it's used for GPU communication. You should set <strong class="source-inline">processes_per_host</strong> to a value lower or equal to the number of GPUs on a training instance. Here, I'll use an <strong class="source-inline">ml.p3dn.24xlarge</strong> instance with 8 NVIDIA V100 GPUs:<p class="source-code">mpi_options = {</p><p class="source-code">   'enabled' : True,</p><p class="source-code">   'processes_per_host' : 8</p><p class="source-code">}</p></li>
+				<li>Then, we configure DMP options. Here, I set the most important ones – the number of model partitions that we want (<strong class="source-inline">partitions</strong>), and how many times they should be replicated for increased parallelism (<strong class="source-inline">microbatches</strong>). In other words, our model will be split in four, each split will be duplicated, and these eight splits will each run on a different GPU. You can find more information on all parameters at the following link:<p><a href="https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_general.html">https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_general.html</a></p><p class="source-code">smp_options = {</p><p class="source-code">    'enabled': True,</p><p class="source-code">    'parameters": {</p><p class="source-code">        'microbatches': 2,</p><p class="source-code">        'partitions': 4</p><p class="source-code">    }</p><p class="source-code">}</p></li>
+				<li>Finally, we <a id="_idIndexMarker1029"/>configure our estimator <a id="_idIndexMarker1030"/>and train as usual:<p class="source-code">huggingface_estimator = HuggingFace(</p><p class="source-code">    . . .</p><p class="source-code">    instance_type='ml.p3dn.24xlarge',</p><p class="source-code">    instance_count=1,</p><p class="source-code">    distribution={'smdistributed': </p><p class="source-code">        {'modelparallel': smp_options},</p><p class="source-code">         'mpi': mpi_options}</p><p class="source-code">)</p><p>You can find additional examples here:</p><ul><li>TensorFlow and PyTorch</li><li><a href="https://github.com/aws/amazon-sagemaker-examples/tree/master/training/distributed_training">https://github.com/aws/amazon-sagemaker-examples/tree/master/training/distributed_training</a></li><li>Hugging Face: <a href="https://github.com/huggingface/notebooks/tree/master/sagemaker">https://github.com/huggingface/notebooks/tree/master/sagemaker</a></li></ul></li>
+			</ol>
+			<p>To close this chapter, let's now look at storage options you should consider for very large-scale, high-performance training jobs.</p>
+			<h1 id="_idParaDest-203"><a id="_idTextAnchor202"/>Using other storage services</h1>
+			<p>So far, we've used S3 to store training data. At a large scale, throughput and latency can become a bottleneck, making it necessary to consider other <a id="_idIndexMarker1031"/>storage services: </p>
+			<ul>
+				<li><strong class="bold">Amazon</strong> <strong class="bold">Elastic File System</strong> (<strong class="bold">EFS</strong>): <a href="https://aws.amazon.com/efs">https://aws.amazon.com/efs</a></li>
+				<li><strong class="bold">Amazon</strong> <strong class="bold">FSx for Lustre</strong>: <a href="https://aws.amazon.com/fsx/lustre">https://aws.amazon.com/fsx/lustre</a>. <p class="callout-heading">Note</p><p class="callout">This section <a id="_idIndexMarker1032"/>requires a little bit of AWS <a id="_idIndexMarker1033"/>knowledge on VPCs, subnets, and security groups. If you're not familiar at all with these, I'd recommend reading the following:</p><p class="callout"><a href="https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Subnets.html">https://docs.aws.amazon.com/vpc/latest/userguide/VPC_Subnets.html</a></p><p class="callout"><a href="https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html">https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html</a></p></li>
+			</ul>
+			<h2 id="_idParaDest-204"><a id="_idTextAnchor203"/>Working with SageMaker and Amazon EFS</h2>
+			<p>EFS is a <a id="_idIndexMarker1034"/>managed storage service compatible with <strong class="bold">NFS</strong> v4. It lets you create volumes that can be attached to EC2 instances <a id="_idIndexMarker1035"/>and SageMaker instances. This is a convenient way to share data, and you can use it to scale I/O for large training jobs.</p>
+			<p>By default, files <a id="_idIndexMarker1036"/>are stored in the <strong class="bold">Standard</strong> class. You can enable a <a id="_idIndexMarker1037"/>life cycle policy that automatically moves files that haven't been accessed for a certain time to the <strong class="bold">Infrequent Access</strong>, which is slower but more cost-effective. </p>
+			<p>You can pick one of two throughput modes:</p>
+			<ul>
+				<li><strong class="bold">Bursting throughput</strong>: Burst credits are accumulated over time, and burst capacity <a id="_idIndexMarker1038"/>depends on the size of the filesystem: 100 MB/s, plus an extra 100 MB/s for each TB of storage.</li>
+				<li><strong class="bold">Provisioned throughput</strong>: You <a id="_idIndexMarker1039"/>set the expected throughput, from 1 to 1,024 MB/s.</li>
+			</ul>
+			<p>You can also pick one of two performance modes:</p>
+			<ul>
+				<li><strong class="bold">General purpose</strong>: This <a id="_idIndexMarker1040"/>is fine for most applications.</li>
+				<li><strong class="bold">Max I/O</strong>: This is <a id="_idIndexMarker1041"/>the one to use if tens or hundreds of instances are accessing the volume. Throughput will be maximized at the expense of latency.</li>
+			</ul>
+			<p>Let's create an 8 GB EFS volume. Then, we'll mount it on an EC2 instance to copy the <strong class="bold">Pascal VOC</strong> dataset that we previously prepared, and we'll train an object detection job. To keep costs reasonable, we won't scale the job, but the overall process would be exactly the same at any scale.</p>
+			<h3>Provisioning an EFS volume</h3>
+			<p>The EFS console <a id="_idIndexMarker1042"/>makes it extremely simple to create a volume. You can find detailed instructions at <a href="https://docs.aws.amazon.com/efs/latest/ug/getting-started.html">https://docs.aws.amazon.com/efs/latest/ug/getting-started.html</a>:</p>
+			<ol>
+				<li value="1">We set the volume name to <strong class="source-inline">sagemaker-demo</strong>.</li>
+				<li>We select our default VPC, and use <strong class="bold">Regional</strong> availability.</li>
+				<li>We create the volume. Once it's ready, you should see something similar to the following screenshot:</li>
+			</ol>
+			<div>
+				<div id="_idContainer143" class="IMG---Figure">
+					<img src="Images/B17705_09_8.jpg" alt="Figure 9.9– Creating an EFS volume&#13;&#10;" width="617" height="375"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.9– Creating an EFS volume</p>
+			<p>The EFS volume <a id="_idIndexMarker1043"/>is ready to receive data. We're now going to create a new EC2 instance, mount the EFS volume, and copy the dataset.</p>
+			<h3>Creating an EC2 instance</h3>
+			<p>As EFS volumes <a id="_idIndexMarker1044"/>live inside a VPC, they can only be accessed by instances located in the same VPC. These instances must also have a <em class="italic">security group</em> that allows inbound NFS traffic: </p>
+			<ol>
+				<li value="1">In the VPC console (<a href="https://console.aws.amazon.com/vpc/#vpcs:sort=VpcId">https://console.aws.amazon.com/vpc/#vpcs:sort=VpcId</a>), we write down the ID of our default VPC. For me, it's <strong class="source-inline">vpc-def884bb</strong>.</li>
+				<li>Still in the VPC console, we move to the <strong class="bold">Subnets</strong> section (<a href="https://console.aws.amazon.com/vpc/#subnets:sort=SubnetId">https://console.aws.amazon.com/vpc/#subnets:sort=SubnetId</a>). We write down the subnet IDs and the availability zone for all subnets hosted in the default VPC.<p>For me, they look like what's shown in the next screenshot:</p><div id="_idContainer144" class="IMG---Figure"><img src="Images/B17705_09_9.jpg" alt="Figure 9.10 – Viewing subnets for the default VPC&#13;&#10;" width="568" height="146"/></div><p class="figure-caption">Figure 9.10 – Viewing subnets for the default VPC</p></li>
+				<li>Moving <a id="_idIndexMarker1045"/>to the EC2 console, we create an EC2 instance. We select the Amazon Linux 2 image and a <strong class="source-inline">t2.micro</strong> instance size.</li>
+				<li>Next, we set <strong class="bold">Network</strong> to the default VPC, and <strong class="bold">Subnet</strong> to the subnet hosted in the <strong class="source-inline">eu-west-1a</strong> <strong class="bold">Availability Zone</strong>. We also assign it the security group we just created, <strong class="bold">IAM role</strong> to a role with appropriate S3 permissions, and <strong class="bold">File Systems</strong> to the EFS filesystem that we just created. We also make sure to tick the box that automatically creates and attaches the required security groups.</li>
+				<li>In the next screens, we leave storage and tags as they are, and we attach a security group that allows incoming <strong class="source-inline">ssh</strong>. Finally, we launch instance creation.</li>
+			</ol>
+			<h3>Accessing an EFS volume</h3>
+			<p>Once the <a id="_idIndexMarker1046"/>instance is ready, we can <strong class="source-inline">ssh</strong> to it:</p>
+			<ol>
+				<li value="1">We see that the EFS volume has been automatically mounted:<p class="source-code"><strong class="bold">[ec2-user]$ mount|grep efs</strong></p><p class="source-code"><strong class="bold">127.0.0.1:/ on /mnt/efs/fs1 type nfs4</strong></p></li>
+				<li>We move to that location, and sync our PascalVOC dataset from S3. As the filesystem is mounted as <strong class="source-inline">root</strong>, we need to use <strong class="source-inline">sudo</strong>.<p class="source-code"><strong class="bold">[ec2-user] cd /mnt/efs/fs1</strong></p><p class="source-code"><strong class="bold">[ec2-user] sudo aws s3 sync s3://sagemaker-ap-northeast-2-123456789012/pascalvoc/input input</strong></p></li>
+			</ol>
+			<p>Job done. We can log out and shut down or terminate the instance, as we won't need it anymore.</p>
+			<p>Now, let's train with this dataset.</p>
+			<h3>Training an object detection model with EFS</h3>
+			<p>The training <a id="_idIndexMarker1047"/>process is identical, except for the <a id="_idIndexMarker1048"/>location of the input data:</p>
+			<ol>
+				<li value="1">Instead of using the <strong class="source-inline">TrainingInput</strong> object to define input channels, we use the <strong class="source-inline">FileSystemInput</strong> object, passing the identifier of our EFS volume and the absolute data path inside the volume:<p class="source-code">from sagemaker.inputs import FileSystemInput</p><p class="source-code">efs_train_data = FileSystemInput(</p><p class="source-code">                 file_system_id='fs-fe36ef34',</p><p class="source-code">                 file_system_type='EFS',</p><p class="source-code">                 directory_path='/input/train')</p><p class="source-code">efs_validation_data = FileSystemInput(</p><p class="source-code">                      file_system_id='fs-fe36ef34',</p><p class="source-code">                      file_system_type='EFS',</p><p class="source-code">                      directory_path='/input/validation')</p><p class="source-code">data_channels = {'train': efs_train_data, </p><p class="source-code">                 'validation': efs_validation_data}</p></li>
+				<li>We configure the <strong class="source-inline">Estimator</strong> module, passing the list of subnets for the VPC hosting the EFS volume. SageMaker will launch training instances there so that they may mount the EFS volume. We also need to pass a security group allowing NFS traffic. We can reuse the one that was automatically created for our EC2 instance (not the one allowing ssh access) – it's visible in the <strong class="bold">Security</strong> tab in the instance details, as shown in the next screenshot:<div id="_idContainer145" class="IMG---Figure"><img src="Images/B17705_09_10.jpg" alt="Figure 9.11 – Viewing security groups&#13;&#10;" width="392" height="370"/></div><p class="figure-caption">Figure 9.11 – Viewing security groups</p><p>The subnet <a id="_idIndexMarker1049"/>and security group IDs are <a id="_idIndexMarker1050"/>passed to the <strong class="source-inline">Estimator</strong> module like so:</p><p class="source-code">from sagemaker import image_uris</p><p class="source-code">container = image_uris.retrieve('object-detection', </p><p class="source-code">                                region)</p><p class="source-code">od = sagemaker.estimator.Estimator(</p><p class="source-code">     container,</p><p class="source-code">     role=sagemaker.get_execution_role(),</p><p class="source-code">     instance_count=1,                                         </p><p class="source-code">     instance_type='ml.p3.2xlarge',                                         </p><p class="source-code">     output_path=s3_output_location,</p><p class="source-code">     subnets=['subnet-63715206','subnet-cbf5bdbc',</p><p class="source-code">              'subnet-59395b00'],                                        </p><p class="source-code">     security_group_ids=['sg-0aa0a1c297a49e911']</p><p class="source-code">)</p></li>
+				<li>For testing purposes, we only train for one epoch. Business as usual, although, this time, data is loaded from our EFS volume.</li>
+			</ol>
+			<p>Once training <a id="_idIndexMarker1051"/>is complete, you may <a id="_idIndexMarker1052"/>delete the EFS volume in the EFS console to avoid unnecessary costs.</p>
+			<p>Now, let's see how we can use another storage service – Amazon FSx for Lustre.</p>
+			<h2 id="_idParaDest-205"><a id="_idTextAnchor204"/>Working with SageMaker and Amazon FSx for Lustre</h2>
+			<p>Very large-scale <a id="_idIndexMarker1053"/>workloads require high throughput and low latency <a id="_idIndexMarker1054"/>storage – two qualities that Amazon FSx for <a id="_idIndexMarker1055"/>Lustre possesses. As the name implies, this <a id="_idIndexMarker1056"/>service is based on the Lustre filesystem (<a href="http://lustre.org">http://lustre.org</a>), a popular <a id="_idIndexMarker1057"/>open source choice for <strong class="bold">HPC</strong> applications.</p>
+			<p>The smallest <a id="_idIndexMarker1058"/>filesystem you can create is 1.2 TB (like I said, "very large-scale"). We can pick one of two deployment options for FSx filesystems:</p>
+			<ul>
+				<li><strong class="bold">Persistent</strong>: This <a id="_idIndexMarker1059"/>should be used for long-term storage that requires high availability.</li>
+				<li><strong class="bold">Scratch</strong>: Data <a id="_idIndexMarker1060"/>is not replicated, and it won't persist if a file server fails. In exchange, we get high burst throughput, making this is a good choice for spiky, short-term jobs.</li>
+			</ul>
+			<p>Optionally, a filesystem can be backed by an S3 bucket. Objects are automatically copied from S3 to FSx when they're first accessed.</p>
+			<p>Just like for EFS, a filesystem lives inside a VPC, and we'll need a security group allowing inbound Lustre traffic (ports 988 and 1,021-2,023). You can create this in the EC2 console, and it should be similar to the following screenshot:</p>
+			<div>
+				<div id="_idContainer146" class="IMG---Figure">
+					<img src="Images/B17705_09_11.jpg" alt="Figure 9.12 – Creating a security group for FSx for Lustre&#13;&#10;" width="555" height="325"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.12 – Creating a security group for FSx for Lustre</p>
+			<p>Let's create the filesystem:</p>
+			<ol>
+				<li value="1">In the FSx console, we create a filesystem named <strong class="source-inline">sagemaker-demo</strong>, and we select the <strong class="bold">Scratch</strong> deployment type.</li>
+				<li>We set storage capacity to 1.2 TB.</li>
+				<li>In the <strong class="bold">Network &amp; security</strong> section, we choose to host in the <strong class="source-inline">eu-west-1a</strong> subnet of the default VPC, and we assign it to the security group we just created.</li>
+				<li>In the <strong class="bold">Data repository integration</strong> section, we set the import bucket (<strong class="source-inline">s3://sagemaker-eu-west-1-123456789012</strong>) and the prefix (<strong class="source-inline">pascalvoc</strong>).</li>
+				<li>On the <a id="_idIndexMarker1061"/>next screen, we review our choices, as shown in the following screenshot, and we create the filesystem. <p>After a <a id="_idIndexMarker1062"/>few minutes, the filesystem <a id="_idIndexMarker1063"/>is in service, as <a id="_idIndexMarker1064"/>shown in the following screenshot:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer147" class="IMG---Figure">
+					<img src="Images/B17705_09_12.jpg" alt="Figure 9.13 – Creating an FSx volume&#13;&#10;" width="1101" height="336"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.13 – Creating an FSx volume</p>
+			<p>As the filesystem is backed by an S3 bucket, we don't need to populate it. We can proceed directly to training.</p>
+			<h3>Training an object detection model with FSx for Lustre</h3>
+			<p>Now, we will <a id="_idIndexMarker1065"/>train the model using <a id="_idIndexMarker1066"/>FSx as follows:</p>
+			<ol>
+				<li value="1">Similar to what we just did with EFS, we define input channels with <strong class="source-inline">FileSystemInput</strong>. One difference is that the directory path must start with the name of the filesystem mount point. You can find it as <strong class="bold">Mount name</strong> in the FSx console:<p class="source-code">from sagemaker.inputs import FileSystemInput</p><p class="source-code">fsx_train_data = FileSystemInput(</p><p class="source-code">  file_system_id='fs-07914cf5a60649dc8',</p><p class="source-code">  file_system_type='FSxLustre',                            </p><p class="source-code">  directory_path='/bmgbtbmv/pascalvoc/input/train')</p><p class="source-code">fsx_validation_data = FileSystemInput(</p><p class="source-code">  file_system_id='fs-07914cf5a60649dc8',</p><p class="source-code">  file_system_type='FSxLustre',                            </p><p class="source-code">  directory_path='/bmgbtbmv/pascalvoc/input/validation')</p><p class="source-code">data_channels = {'train': fsx_train_data, </p><p class="source-code">                 'validation': fsx_validation_data }</p></li>
+				<li>All other steps are identical. Don't forget to update the name of the security group passed to the <strong class="source-inline">Estimator</strong> module. </li>
+				<li>When we're done training, we delete the FSx filesystem in the console.</li>
+			</ol>
+			<p>This concludes <a id="_idIndexMarker1067"/>our exploration <a id="_idIndexMarker1068"/>of storage options for SageMaker. Summing things up, here are my recommendations:</p>
+			<ul>
+				<li>First, you should use RecordIO or TFRecord data as much as possible. They're convenient to move around, faster to train on, and they work with both file mode and pipe mode.</li>
+				<li>For development and small-scale production, file mode is completely fine. Your primary focus should always be your machine learning problem, not useless optimization. Even at a small scale, EFS can be an interesting option for collaboration, as it makes it easy to share datasets and notebooks.</li>
+				<li>If you train with built-in algorithms, pipe mode is a no-brainer, and you should use it at every opportunity. If you train with frameworks or your own code, implementing pipe mode will take some work, and is probably not worth the engineering effort unless you're working at a significant scale (hundreds of gigabytes or more). </li>
+				<li>If you have large, distributed workloads with tens of instances or more, EFS in Performance Mode is worth trying. Don't go near the mind-blowing FSx for Lustre unless you have insane workloads.</li>
+			</ul>
+			<h1 id="_idParaDest-206"><a id="_idTextAnchor205"/>Summary</h1>
+			<p>In this chapter, you learned how and when to scale training jobs. You saw that it definitely takes some careful analysis and experimentation to find the best setup: scaling up versus scaling out, CPU versus GPU versus multi-GPU, and so on. This should help you to make the right decisions for your own workloads and avoid costly mistakes.</p>
+			<p>You also learned how to achieve significant speedup with techniques such as distributed training, data parallelism, model parallelism, RecordIO, and pipe mode. Finally, you learned how to set Amazon EFS and Amazon FSx for Lustre for large-scale training jobs.</p>
+			<p>In the next chapter, we'll cover advanced features for hyperparameter optimization, cost optimization, model debugging, and more.</p>
+		</div>
+	</div></body></html>

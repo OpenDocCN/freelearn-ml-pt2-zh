@@ -1,0 +1,2082 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Classifying Fraudulent Transactions</h1>
+                </header>
+            
+            <article>
+                
+<p class="NormalPACKT">In this chapter, we will attempt to classify fraudulent transactions in a dataset concerning credit card transactions from European card holders that occurred during September 2013. The main problem in this dataset is the extremely small number of fraudulent transactions, compared to the dataset's size. These types of datasets are called unbalanced, as there are unequal percentages of each label. We will try to create ensembles that can classify our particular dataset, which contains a small number of fraudulent transactions.</p>
+<p class="NormalPACKT">In this chapter we will cover the following topics:</p>
+<ul>
+<li>Getting familiar with the dataset</li>
+<li>Exploratory analysis</li>
+<li>Voting</li>
+<li>Stacking</li>
+<li>Bagging</li>
+<li>Boosting</li>
+<li>Using random forests</li>
+<li>Comparative analysis of ensembles</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>You will require basic knowledge of machine learning techniques and algorithms. Furthermore, a knowledge of python conventions and syntax is required. Finally, familiarity with the NumPy library will greatly help the reader to understand some custom algorithm implementations.</p>
+<p>The code files of this chapter can be found on GitHub:</p>
+<p><a href="https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter09">https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter09</a></p>
+<p>Check out the following video to see the Code in Action: <a href="http://bit.ly/2ShwarF">http://bit.ly/2ShwarF</a><a href="http://bit.ly/2ShwarF">.</a></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting familiar with the dataset</h1>
+                </header>
+            
+            <article>
+                
+<p class="NormalPACKT">The dataset was originally utilized in the PhD thesis of Andrea Dal Pozzolo, <a href="http://di.ulb.ac.be/map/adalpozz/pdf/Dalpozzolo2015PhD.pdf">Adaptive Machine learning for credit card fraud detection</a> ULB MLG, and has since been released by its authors for public use <span>(</span><a href="http://www.ulb.ac.be/di/map/adalpozz/data/creditcard.Rdata">www.ulb.ac.be/di/map/adalpozz/data/creditcard.Rdata</a><span>). The dataset contains more than 284,000 instances, but only 492 instances of fraud (almost 0.17%).</span><br/></p>
+<p><span>Its targ</span>et class value is<span> </span><span>0 </span><span>if the transaction was not a fraud, and</span> <span>1 </span><span>if it was. The dataset's features are a number of principal components, as the dataset has been transformed using</span> <strong>Principle Components Analysis</strong> <span>(</span><strong>PCA</strong><span>), in order to retain the confidentiality of the data. The dataset's</span> features <span>are comprised of 28 PCA components, as well as the transaction’s amount and the time elapsed from the first transaction in the dataset. Descriptive statistics about the dataset are provided as follows:</span></p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Feature</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Time</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V1</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V2</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V3</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V4</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>count</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>mean</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>94,813.86</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.17E-15</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>3.42E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-1.37E-15</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>2.09E-15</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>std</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>47,488.15</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.96</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.65</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.52</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.42</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>min</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.00</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-56.41</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-72.72</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-48.33</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-5.68</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>max</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>172,792.00</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>2.45</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>22.06</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>9.38</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>16.88</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Feature</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V5</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V6</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V7</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V8</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V9</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>count</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>mean</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>9.60E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.49E-15</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-5.56E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.18E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-2.41E-15</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>std</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.38</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.33</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.24</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.19</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.10</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>min</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-113.74</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-26.16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-43.56</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-73.22</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-13.43</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>max</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>34.80</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>73.30</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>120.59</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>20.01</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>15.59</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"><strong>Feature</strong></td>
+<td class="CDPAlignCenter CDPAlign"><strong>V10</strong></td>
+<td class="CDPAlignCenter CDPAlign"><strong>V11</strong></td>
+<td class="CDPAlignCenter CDPAlign"><strong>V12</strong></td>
+<td class="CDPAlignCenter CDPAlign"><strong>V13</strong></td>
+<td class="CDPAlignCenter CDPAlign"><strong>V14</strong></td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>count</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>mean</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>2.24E-15</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.67E-15</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-1.25E-15</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>8.18E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.21E-15</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>std</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.09</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.02</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.00</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.00</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.96</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>min</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-24.59</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-4.80</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-18.68</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-5.79</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-19.21</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>max</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>23.75</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>12.02</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>7.85</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>7.13</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>10.53</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Feature</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V15</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V16</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V17</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V18</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V19</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>count</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>mean</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>4.91E-15</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.44E-15</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-3.80E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>9.57E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.04E-15</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>std</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.92</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.88</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.85</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.84</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.81</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>min</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-4.50</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-14.13</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-25.16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-9.50</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-7.21</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>max</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>8.88</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>17.32</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>9.25</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>5.04</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>5.59</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Feature</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V20</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V21</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V22</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V23</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V24</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>count</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>mean</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>6.41E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.66E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-3.44E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>2.58E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>4.47E-15</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>std</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.77</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.73</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.73</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.62</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.61</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>min</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-54.50</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-34.83</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-10.93</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-44.81</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-2.84</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>max</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>39.42</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>27.20</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>10.50</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>22.53</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>4.58</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Feature</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V25</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V26</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V27</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>V28</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Amount</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>count</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>284,807</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>mean</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>5.34E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>1.69E-15</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-3.67E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-1.22E-16</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>88.34962</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>std</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.52</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.48</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.40</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.33</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>250.12</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>min</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-10.30</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-2.60</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-22.57</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>-15.43</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.00</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>max</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>7.52</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>3.52</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>31.61</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>33.85</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>25,691.16</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="packt_figref CDPAlignCenter CDPAlign"><span>Descriptive statistics of the credit card transaction dataset</span></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Exploratory analysis</h1>
+                </header>
+            
+            <article>
+                
+<p class="NormalPACKT">One important characteristic of the dataset is that there are no missing values, as it is indicated by the count statistic. All features have the same number of values. Another important aspect is that most features are normalized. This is due to the PCA applied to the data. PCA normalizes the data before decomposing it into principal components. The only two features not normalized are the <strong>Time</strong> and <strong>Amount</strong> features. The following histogram for each feature is depicted:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-620 image-border" src="assets/d2650536-5a54-41da-a4de-3ece14168987.png" style="width:84.33em;height:41.67em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">Histograms for the dataset's features</div>
+<p>It is interesting to examine more closely the <strong>Time</strong> and <strong>Amount</strong> of each transaction. In the <strong>Time</strong> histogram, we notice a sudden drop in transaction frequency between 75,000 and 125,000 seconds after the first transaction (around 13 hours). This is probably due to daily time cycles (for example, during the night, when most stores are closed). The histogram for each transaction's amount is provided as follows in the logarithmic scale. It is evident that most transactions concern small amounts, with the average being almost €88.00:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-651 image-border" src="assets/4a7a51a9-e8e5-4a22-99a5-91c40bea7ca9.png" style="width:27.67em;height:21.50em;"/></p>
+<div class="CDPAlignCenter CDPAlign packt_figref">Histogram for amount, logarithmic scale for <em>y</em>-axis</div>
+<p>In order to avoid problems with uneven distribution of weights between features, we will standardize the features <strong>Amount</strong> and <strong>Time</strong>. Algorithms that employ distance metrics for example (such as <span>K-Nearest Neighbors</span><span>), can under perform when features are not scaled correctly. The standardized features' histograms are provided as follows. Note that standardization transforms the variables in order to have a mean value close to 0 and standard deviation of 1:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-652 image-border" src="assets/eb30b820-bc32-49e7-bc9b-1d80402ae12c.png" style="width:26.83em;height:20.00em;"/></p>
+<div class="mce-root packt_figref CDPAlignCenter CDPAlign">Standardized amount histogram</div>
+<p>The following plot depicts the histogram for standardized time. We can see that it does not affect the drop in transactions during the night time:</p>
+<div class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-653 image-border" src="assets/0be32d14-cf53-4fd0-9cd8-b49d1b786ece.png" style="width:30.83em;height:23.00em;"/></div>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span><span>S</span></span>tandardized time histogram</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Evaluation methods</h1>
+                </header>
+            
+            <article>
+                
+<p><span>As our dataset is highly skewed (that is, it has a high degree of class imbalance), we cannot utilize accuracy in order to evaluate our models. This is due to the fact that by classifying all instances as non-frauds, we can achieve an accuracy of 99.82%. Certainly, this number does not represent an acceptable performance, as we are unable to detect any fraudulent transactions. Thus, in order to evaluate our models, we will use recall (the percentage of frauds we detected) and F1 score, a weighted average between recall and precision (a measure of how many of the transactions predicted as fraudulent were indeed fraudulent).</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Voting</h1>
+                </header>
+            
+            <article>
+                
+<p><span>In this section, we will try to classify the dataset by using voting ensembles. For our initial ensemble, we will utilize a Naive Bayes classifier, a logistic regression, and a decision tree. This will be implemented in two parts, first by testing each base learner itself and then combining the base learners into an ensemble.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Testing the base learners</h1>
+                </header>
+            
+            <article>
+                
+<p>To test the base learners, we will benchmark the base learners by themselves, which will help us gauge how well they perform on their own. In order to do so, first, we l<span>oad the libraries and dataset and then split the data with 70% in the train set and 30% in the test set. We use <kbd>pandas</kbd> in order to easily import the CSV. Our goal is to train and evaluate each individual base learner before we train and evaluate the ensemble as a whole:</span></p>
+<pre># --- SECTION 1 ---<br/># Libraries and data loading<br/>import numpy as np<br/>import pandas as pd<br/><br/>from sklearn.tree import DecisionTreeClassifier<br/>from sklearn.linear_model import LogisticRegression<br/>from sklearn.naive_bayes import GaussianNB<br/>from sklearn.model_selection import train_test_split<br/>from sklearn import metrics<br/><br/>np.random.seed(123456)<br/>data = pd.read_csv('creditcard.csv')<br/>data.Time = (data.Time-data.Time.min())/data.Time.std()<br/>data.Amount = (data.Amount-data.Amount.mean())/data.Amount.std()<br/><br/># Train-Test slpit of 70%-30%<br/>x_train, x_test, y_train, y_test = train_test_split(<br/>data.drop('Class', axis=1).values, data.Class.values, test_size=0.3)</pre>
+<p>After loading the libraries and data, we train each classifier and print the required metrics from the <kbd>sklearn.metrics</kbd> package. F1 score is implemented by the <kbd>f1_score</kbd> function and recall is implemented by the <kbd>recall_score</kbd> function. The decision tree is restricted to a maximum depth of three (<kbd>max_depth=3</kbd>), in order to avoid overfitting:</p>
+<pre># --- SECTION 2 ---<br/># Base learners evaluation<br/>base_classifiers = [('DT', DecisionTreeClassifier(max_depth=3)),<br/>                    ('NB', GaussianNB()),<br/>                    ('LR', LogisticRegression())]<br/><br/>for bc in base_classifiers:<br/> lr = bc[1]<br/> lr.fit(x_train, y_train)<br/><br/> predictions = lr.predict(x_test)<br/> print(bc[0]+' f1', metrics.f1_score(y_test, predictions))<br/> print(bc[0]+' recall', metrics.recall_score(y_test, predictions)) </pre>
+<p class="NormalPACKT">The results are depicted in the following table. As is evident, the decision tree outperforms the other three learners. Naive Bayes has a higher recall score, but its F1 score is considerably worse, compared to the decision tree:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Learner</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Decision Tree</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.770</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.713</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Naive Bayes</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.107</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.824</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Logistic Regression</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.751</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.632</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p> </p>
+<p class="NormalPACKT">We can also experiment with the number of features present in the dataset. By plotting their correlation to the target, we can filter out features that present low correlation to the target. This table depicts each feature's correlation to the target: </p>
+<p class="NormalPACKT CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-654 image-border" src="assets/a82e49d0-da26-4a48-90ad-b643051f7851.png" style="width:38.42em;height:28.75em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">Correlation between each variable and the target</div>
+<p class="NormalPACKT">By filtering any feature with a lower absolute value than 0.1, we hope that the base learners will be able to better detect the fraudulent transactions, as the dataset's noise will be reduced.</p>
+<p>In order to test our theory, we repeat the experiment, but remove any columns from the DataFrame where the absolute correlation is lower than 0.1, as indicated by <kbd>fs = list(correlations[(abs(correlations)&gt;threshold)].index.values)</kbd>.</p>
+<p>Here, <kbd>fs</kbd> holds all column names with a correlation greater than the indicated threshold:</p>
+<pre># --- SECTION 3 ---<br/># Filter features according to their correlation to the target<br/>np.random.seed(123456)<br/>threshold = 0.1<br/><br/>correlations = data.corr()['Class'].drop('Class')<br/>fs = list(correlations[(abs(correlations)&gt;threshold)].index.values)<br/>fs.append('Class')<br/>data = data[fs]<br/><br/>x_train, x_test, y_train, y_test = train_test_split(data.drop('Class', axis=1).values, data.Class.values, test_size=0.3)<br/><br/>for bc in base_classifiers:<br/> lr = bc[1]<br/> lr.fit(x_train, y_train)<br/><br/> predictions = lr.predict(x_test)<br/> print(bc[0]+' f1', metrics.f1_score(y_test, predictions))<br/> print(bc[0]+' recall', metrics.recall_score(y_test, predictions))</pre>
+<p class="NormalPACKT">Again, we present the results in the following table. As we can see, the decision tree has increased its F1 score, while reducing its recall. Naive Bayes has improved on both metrics, while the logistic regression model has become considerably worse:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Learner</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Decision Tree</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.785</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.699</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Naive Bayes</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.208</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.846</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Logistic Regression</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.735</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.610</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="packt_figref CDPAlignCenter CDPAlign"><span>Performance metrics for the three base learners for the filtered dataset</span></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Optimizing the decision tree</h1>
+                </header>
+            
+            <article>
+                
+<p>We can try to optimize the tree's depth in order to maximize F1 or recall. In order to do so, we will experiment with depths in the range of <em>[3, 11]</em> on the train set.</p>
+<p>The following graph depicts the F1 score and recall for the various maximum depths, both for the original and filtered datasets:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-655 image-border" src="assets/eacb8254-b19c-4a12-be0a-cc9e23b99e35.png" style="width:36.25em;height:27.08em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">Test metrics for various tree depths</div>
+<p>Here, we observe that for a maximum depth of 5, F1 and recall are optimized for the filtered dataset. Furthermore, recall is optimized for the original dataset as well. We will continue with a maximum depth of 5 as trying to further optimize the metrics can lead to overfitting, especially since the number of instances relevant to the metrics is extremely small. Furthermore, with a maximum depth of 5, there is an improvement both in F1, as well as in recall, when the filtered dataset is used.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating the ensemble</h1>
+                </header>
+            
+            <article>
+                
+<p>We can now proceed and create the ensemble. Again, we will first evaluate the ensemble on the original dataset, and then proceed to test it on the filtered dataset. The code is similar to the previous example. First, we load the libraries and data, and create train and test splits as follows:</p>
+<pre># --- SECTION 1 ---<br/># Libraries and data loading<br/>import numpy as np<br/>import pandas as pd<br/><br/>from sklearn.ensemble import VotingClassifier<br/>from sklearn.tree import DecisionTreeClassifier<br/>from sklearn.linear_model import LogisticRegression<br/>from sklearn.naive_bayes import GaussianNB<br/>from sklearn.model_selection import train_test_split<br/>from sklearn import metrics<br/><br/>np.random.seed(123456)<br/>data = pd.read_csv('creditcard.csv')<br/>data.Time = (data.Time-data.Time.min())/data.Time.std()<br/>data.Amount = (data.Amount-data.Amount.mean())/data.Amount.std()<br/><br/># Train-Test slpit of 70%-30%<br/>x_train, x_test, y_train, y_test = train_test_split(<br/> data.drop('Class', axis=1).values, data.Class.values, test_size=0.3)</pre>
+<p>After loading the required libraries and data, we create our ensemble, and then train and evaluate it. Finally, we repeat the experiment as follows with reduced features by filtering out features with low correlations to the target variable:</p>
+<pre><br/><br/># --- SECTION 2 ---<br/># Ensemble evaluation<br/>base_classifiers = [('DT', DecisionTreeClassifier(max_depth=5)),<br/> ('NB', GaussianNB()),<br/> ('ensemble', LogisticRegression())]<br/><br/>ensemble = VotingClassifier(base_classifiers)<br/>ensemble.fit(x_train, y_train)<br/><br/>print('Voting f1', metrics.f1_score(y_test, ensemble.predict(x_test)))<br/>print('Voting recall', metrics.recall_score(y_test, ensemble.predict(x_test)))<br/><br/># --- SECTION 3 ---<br/># Filter features according to their correlation to the target<br/>np.random.seed(123456)<br/>threshold = 0.1<br/><br/>correlations = data.corr()['Class'].drop('Class')<br/>fs = list(correlations[(abs(correlations)&gt;threshold)].index.values)<br/>fs.append('Class')<br/>data = data[fs]<br/><br/>x_train, x_test, y_train, y_test = train_test_split(<br/> data.drop('Class', axis=1).values, data.Class.values, test_size=0.3)<br/><br/>ensemble = VotingClassifier(base_classifiers)<br/>ensemble.fit(x_train, y_train)<br/><br/>print('Voting f1', metrics.f1_score(y_test, ensemble.predict(x_test)))<br/>print('Voting recall', metrics.recall_score(y_test, ensemble.predict(x_test)))</pre>
+<p>The following table summarizes the results. For the original dataset, voting provides a model with a better combination of F1 and recall, compared to any single classifier.</p>
+<p>Still, the decision tree with a maximum depth of <span><span>5 </span></span>slightly outperforms it in F1 score, while Na<span><span>i</span></span>ve Bayes is able to recall a greater percentage of fraudulent transactions:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.822</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.779</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.828</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.794</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span>Voting results for both datasets</span></div>
+<p>We can try to further diversify our ensemble by also including two additional Decision Trees, with maximum depth of three and eight, respectively. This boosts the ensemble’s performance to the following numbers.</p>
+<p>Although the performance remains the same for the filtered dataset, the ensemble is able to perform better in the original dataset. Especially for the F1 metric, it is able to outperform all other dataset/model combinations:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.829</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.787</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.828</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.794</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="mce-root CDPAlignCenter CDPAlign packt_figref">Voting re<span>sults for both datasets with two additional decision trees</span></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Stacking</h1>
+                </header>
+            
+            <article>
+                
+<p>We can also try to stack the base learners, instead of using Voting. First, we will try to stack a single decision tree with depth five, a Naive Bayes classifier, and a logistic regression. As a meta-learner, we will use a logistic regression.</p>
+<p>The following code is responsible for loading the required libraries and data, training, and evaluating the ensemble on the original and filtered datasets. We first load the required libraries and data, while creating train and test splits:</p>
+<pre># --- SECTION 1 ---<br/># Libraries and data loading<br/>import numpy as np<br/>import pandas as pd <br/><br/>from stacking_classifier import Stacking<br/>from sklearn.tree import DecisionTreeClassifier<br/>from sklearn.linear_model import LogisticRegression<br/>from sklearn.naive_bayes import GaussianNB<br/>from sklearn.svm import LinearSVC<br/>from sklearn.model_selection import train_test_split<br/>from sklearn import metrics<br/><br/>np.random.seed(123456)<br/>data = pd.read_csv('creditcard.csv')<br/>data.Time = (data.Time-data.Time.min())/data.Time.std()<br/>data.Amount = (data.Amount-data.Amount.mean())/data.Amount.std()<br/><br/># Train-Test slpit of 70%-30%<br/>x_train, x_test, y_train, y_test = train_test_split(<br/> data.drop('Class', axis=1).values, data.Class.values, test_size=0.3)</pre>
+<p>After creating our train and test splits, we train and evaluate our ensemble on the original dataset, as well as a reduced-features dataset as follows:</p>
+<pre class="mce-root"># --- SECTION 2 ---<br/># Ensemble evaluation<br/>base_classifiers = [DecisionTreeClassifier(max_depth=5),<br/>                    GaussianNB(),<br/>                    LogisticRegression()]<br/>ensemble = Stacking(learner_levels=[base_classifiers, <br/>                                   [LogisticRegression()]])<br/><br/>ensemble.fit(x_train, y_train)<br/>print('Stacking f1', metrics.f1_score(y_test, ensemble.predict(x_test)))<br/>print('Stacking recall', metrics.recall_score(y_test, ensemble.predict(x_test)))<br/><br/># --- SECTION 3 ---<br/># Filter features according to their correlation to the target<br/>np.random.seed(123456)<br/>threshold = 0.1<br/>correlations = data.corr()['Class'].drop('Class')<br/>fs = list(correlations[(abs(correlations) &gt; threshold)].index.values)<br/>fs.append('Class')<br/>data = data[fs]<br/>x_train, x_test, y_train, y_test = train_test_split(data.drop('Class', axis=1).values, <br/>                                                    data.Class.values, test_size=0.3)<br/>ensemble = Stacking(learner_levels=[base_classifiers,<br/>                                   [LogisticRegression()]])<br/>ensemble.fit(x_train, y_train)<br/>print('Stacking f1', metrics.f1_score(y_test, ensemble.predict(x_test)))<br/>print('Stacking recall', metrics.recall_score(y_test, ensemble.predict(x_test)))</pre>
+<p>As it is seen in the following resultant table, the ensemble achieves a slightly better F1 score on the original dataset, but worse recall score, compared to the voting ensemble with the same base learners: </p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign" style="width: 62px">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 55px">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 45px">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign" style="width: 62px">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 55px">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 45px">
+<p>0.823</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign" style="width: 62px"/>
+<td class="CDPAlignCenter CDPAlign" style="width: 55px">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 45px">
+<p>0.750</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign" style="width: 62px">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 55px">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 45px">
+<p>0.828</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign" style="width: 62px"/>
+<td class="CDPAlignCenter CDPAlign" style="width: 55px">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign" style="width: 45px">
+<p>0.794</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="packt_figref CDPAlignCenter CDPAlign"><span>Stacking ensemble performance with three base learners</span></div>
+<p class="mce-root"/>
+<p>We can further experiment with different base learners. By adding two decision trees with maximum depths of <span><span>three and eight,</span></span> respectively (same with the second Voting setup), observe how stacking exhibits the same behavior. It outperforms on the F1 score and underperforms on the recall score for the original dataset.</p>
+<p>On the filtered dataset, the performance remains on par with Voting. Finally, we experiment with second level of base learners, consisting of a Decision Tree with depth two and a linear support vector machine, which performs worse than the five base learners' setup:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.844</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.757</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.828</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.794</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span>Performance with five base learners</span></div>
+<p>The following table depicts the results for the stacking ensemble with an additional level of base learners. As it is evident, it performs worse than the original ensemble.</p>
+<div class="packt_figref"/>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.827</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.757</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.827</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.772</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="packt_figref CDPAlignCenter CDPAlign"><span>Performance with five base learners on level 0 and two on level 1</span></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Bagging</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we will classify the dataset using bagging. As we have previously shown, decision trees with maximum depth of five are optimal thus, we will use these trees for our bagging example.</p>
+<p>W<span>e would like to optimize the ensemble's size. We will generate validation curves for the original train set by testing sizes in the range of <em>[5, 30]</em>. The actual curves are depicted here in the following graph: </span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-656 image-border" src="assets/ac802720-c0d2-49ed-88ed-6190c2a50a75.png" style="width:33.25em;height:24.83em;"/></p>
+<div class="CDPAlignCenter CDPAlign packt_figref">Validation curves for the original train set, for various ensemble sizes</div>
+<p>We observe that variance is minimized for an ensemble size of 10, thus we will utilize ensembles of size 10.</p>
+<p>The following code loads the data and libraries (<em>Section 1</em>), splits the data into train and test sets, and fits and evaluates the ensemble on the original dataset (<em>Section 2</em>) and the reduced-features dataset (<em>Section 3</em>):</p>
+<pre># --- SECTION 1 ---<br/># Libraries and data loading<br/>import numpy as np<br/>import pandas as pd<br/><br/>from sklearn.ensemble import BaggingClassifier<br/>from sklearn.tree import DecisionTreeClassifier<br/>from sklearn.model_selection import train_test_split<br/>from sklearn import metrics<br/><br/>np.random.seed(123456)<br/>data = pd.read_csv('creditcard.csv')<br/>data.Time = (data.Time-data.Time.min())/data.Time.std()<br/>data.Amount = (data.Amount-data.Amount.mean())/data.Amount.std()<br/># Train-Test slpit of 70%-30%<br/>x_train, x_test, y_train, y_test = train_test_split(<br/>                                   data.drop('Class', axis=1).values, data.Class.values, test_size=0.3)</pre>
+<p><span>After creating our train and test splits, we train and evaluate our ensemble on the original dataset, as well as a reduced-features dataset as follows:</span></p>
+<pre class="mce-root"># --- SECTION 2 ---<br/># Ensemble evaluation<br/>ensemble = BaggingClassifier(n_estimators=10,<br/>base_estimator=DecisionTreeClassifier(max_depth=5))<br/>ensemble.fit(x_train, y_train)<br/>print('Bagging f1', metrics.f1_score(y_test, ensemble.predict(x_test)))<br/>print('Bagging recall', metrics.recall_score(y_test, ensemble.predict(x_test)))<br/># --- SECTION 3 ---<br/># Filter features according to their correlation to the target<br/>np.random.seed(123456)<br/>threshold = 0.1<br/>correlations = data.corr()['Class'].drop('Class')<br/>fs = list(correlations[(abs(correlations)&gt;threshold)].index.values)<br/>fs.append('Class')<br/>data = data[fs]<br/>x_train, x_test, y_train, y_test = train_test_split(<br/>                                    data.drop('Class', axis=1).values, data.Class.values, test_size=0.3)<br/>ensemble = BaggingClassifier(n_estimators=10,<br/>base_estimator=DecisionTreeClassifier(max_depth=5))<br/>ensemble.fit(x_train, y_train)<br/><br/>print('Bagging f1', metrics.f1_score(y_test, ensemble.predict(x_test)))<br/>print('Bagging recall', metrics.recall_score(y_test, ensemble.predict(x_test)))</pre>
+<p>Using bagging ensembles with trees of a maximum depth of 5 and 10 trees per ensemble, we are able to achieve the following F1 and recall scores. It outperforms both stacking and voting in both datasets on all metrics, with one exception. The F1 score for the original dataset is slightly worse than stacking (0.843 compared to 0.844):</p>
+<div class="packt_figref"/>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.843</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.787</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.831</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.794</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span>Bagging performance for the original and filtered datasets</span></div>
+<p>Although we have concluded that a maximum depth of 5 is optimal for a single decision tree, it does restrict the diversity of each tree. By increasing the maximum depth to 8, we are able to achieve an F1 score of 0.864 and a recall score of 0.816 on the filtered dataset, the best performance up to now.</p>
+<p>Nonetheless, performance on the original dataset suffers, confirming that the features that we removed were, indeed, noise, as the trees are now able to model in-sample noise, and thus, their out-of-sample performance suffers:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.840</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.772</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.864</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.816</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p> </p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Boosting</h1>
+                </header>
+            
+            <article>
+                
+<p>As we move on, we will start to utilize generative methods. The first generative method we will experiment with is boosting. We will first try to classify the datasets using AdaBoost. As AdaBoost resamples the dataset based on misclassifications, we expect that it will be able to handle our imbalanced dataset relatively well.</p>
+<p>First, we must decide on the ensemble's size. We generate validation curves for a number of ensemble sizes depicted as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-657 image-border" src="assets/4657f347-9b54-4486-a151-250f44e7548e.png" style="width:33.33em;height:24.92em;"/></p>
+<div class="CDPAlignCenter CDPAlign packt_figref">Validation curves of various ensemble sizes for AdaBoost</div>
+<p>As we can observe, 70 base learners provide the best trade-off between bias and variance. As such, we will proceed with ensembles of size 70.</p>
+<p class="packt_figref"><span>The following code implements the training and evaluation for AdaBoost: </span></p>
+<pre># --- SECTION 1 ---<br/># Libraries and data loading<br/>import numpy as np<br/>import pandas as pd<br/>from sklearn.ensemble import AdaBoostClassifier<br/>from sklearn.model_selection import train_test_split<br/>from sklearn.utils import shuffle<br/>from sklearn import metrics<br/><br/>np.random.seed(123456)<br/>data = pd.read_csv('creditcard.csv')<br/>data.Time = (data.Time-data.Time.min())/data.Time.std()<br/>data.Amount = (data.Amount-data.Amount.mean())/data.Amount.std()<br/># Train-Test slpit of 70%-30%<br/>x_train, x_test, y_train, y_test = train_test_split(<br/> data.drop('Class', axis=1).values, data.Class.values, test_size=0.3)</pre>
+<p>We then train and evaluate our ensemble, using 70 estimators and a learning rate of 1.0:</p>
+<pre># --- SECTION 2 ---<br/># Ensemble evaluation<br/>ensemble = AdaBoostClassifier(n_estimators=70, learning_rate=1.0)<br/>ensemble.fit(x_train, y_train)<br/>print('AdaBoost f1', metrics.f1_score(y_test, ensemble.predict(x_test)))<br/>print('AdaBoost recall', metrics.recall_score(y_test, ensemble.predict(x_test)))</pre>
+<p>We reduce the number of features, by selecting only features with high correlation with respect to the target. Finally, we repeat the procedure of training and evaluating the ensemble: </p>
+<pre># --- SECTION 3 ---<br/># Filter features according to their correlation to the target<br/>np.random.seed(123456)<br/>threshold = 0.1<br/>correlations = data.corr()['Class'].drop('Class')<br/>fs = list(correlations[(abs(correlations)&gt;threshold)].index.values)<br/>fs.append('Class')<br/>data = data[fs]<br/>x_train, x_test, y_train, y_test = train_test_split(<br/> data.drop('Class', axis=1).values, data.Class.values, test_size=0.3)<br/>ensemble = AdaBoostClassifier(n_estimators=70, learning_rate=1.0)<br/>ensemble.fit(x_train, y_train)<br/>print('AdaBoost f1', metrics.f1_score(y_test, ensemble.predict(x_test)))<br/>print('AdaBoost recall', metrics.recall_score(y_test, ensemble.predict(x_test)))</pre>
+<p class="NormalPACKT">The results are depicted in the following table. As it is evident, it does not perform as well as our previous models:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.778</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.721</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.794</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.721</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span>Performance of AdaBoost</span></div>
+<p class="NormalPACKT">We can try to increase the learning rate to 1.3, which seems to improve overall performance. If we further increase it to 1.4, we notice a drop in performance. If we increase the number of base learners to 80, we notice an increase in performance for the filtered dataset, while the original dataset seems to trade recall for F1 performance:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.788</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.765</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.815</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.743</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span>Performance of AdaBoost, learning_rate=1.3</span></div>
+<div class="packt_figref"/>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>Original</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.800</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.765</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p>Filtered</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.800</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.735</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span>Performance of AdaBoost, learning_rate=1.4</span></div>
+<div class="packt_figref"/>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.805</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.757</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.805</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.743</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span>Performance of AdaBoost, learning_rate=1.4, ensemble_size=80</span></div>
+<p class="NormalPACKT">We can, in fact, observe a Pareto front of F1 and Recall, which is directly linked to the learning rate and number of base learners present in the ensemble. The front is depicted in the following graph:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-658 image-border" src="assets/b4c0bdd0-25cf-454d-8b46-f74471c4c2ab.png" style="width:34.17em;height:25.50em;"/></p>
+<div class="CDPAlignCenter CDPAlign packt_figref">Pareto front of F1 and Recall for AdaBoost</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">XGBoost</h1>
+                </header>
+            
+            <article>
+                
+<p>We will also try to classify the dataset using XGBoost. As XGBoost uses trees of a maximum depth of three, we expect that it will outperform AdaBoost without any fine-tuning. Indeed, XGBoost is able to achieve better performance in both datasets and for all metrics (as shown in the following table), compared to most previous ensembles:</p>
+<div class="mce-root packt_figref"/>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.846</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.787</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.849</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.809</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span>XGBoost out-of-the-box performance</span></div>
+<p>By increasing the maximum depth of each tree to five, the ensemble is able to perform even better, yielding the following results:</p>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.862</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.801</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.862</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.824</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="mce-root CDPAlignCenter CDPAlign packt_figref"><span>Performance with max_depth=5</span></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using random forests</h1>
+                </header>
+            
+            <article>
+                
+<p>Finally, we will employ a random forest ensemble. Once again, using validation curves, we will determine the optimal ensemble size. From the following graph, we conclude that 50 trees provide the least possible variance in our model, thus we proceed with ensemble size 50:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-659 image-border" src="assets/0a1e5ed3-be7c-4e14-a232-a87f9dc3aea7.png" style="width:34.50em;height:25.75em;"/></p>
+<div class="CDPAlignCenter CDPAlign packt_figref">Validation curves for random forest</div>
+<p>We provide the training and validation code as follows, as well as the achieved performance for both datasets. <span>The following code is responsible for loading the required libraries and data, and training and evaluating the ensemble on the original and filtered datasets. We first load the required libraries and data, while creating train and test splits:</span></p>
+<pre># --- SECTION 1 ---<br/># Libraries and data loading<br/>import numpy as np<br/>import pandas as pd<br/><br/>from sklearn.ensemble import RandomForestClassifier<br/>from sklearn.model_selection import train_test_split<br/>from sklearn.utils import shuffle<br/>from sklearn import metrics<br/><br/>np.random.seed(123456)<br/>data = pd.read_csv('creditcard.csv')<br/>data.Time = (data.Time-data.Time.min())/data.Time.std()<br/>data.Amount = (data.Amount-data.Amount.mean())/data.Amount.std()<br/>np.random.seed(123456)<br/>data = pd.read_csv('creditcard.csv')<br/>data.Time = (data.Time-data.Time.min())/data.Time.std()<br/>data.Amount = (data.Amount-data.Amount.mean())/data.Amount.std()<br/># Train-Test slpit of 70%-30%<br/>x_train, x_test, y_train, y_test = train_test_split(<br/> data.drop('Class', axis=1).values, data.Class.values, test_size=0.3)</pre>
+<p>We then train and evaluate the ensemble, both on the original dataset, as well as on the filtered dataset:</p>
+<pre># --- SECTION 2 ---<br/># Ensemble evaluation<br/>ensemble = RandomForestClassifier(n_jobs=4)<br/>ensemble.fit(x_train, y_train)<br/>print('RF f1', metrics.f1_score(y_test, ensemble.predict(x_test)))<br/>print('RF recall', metrics.recall_score(y_test, ensemble.predict(x_test)))<br/><br/># --- SECTION 3 ---<br/># Filter features according to their correlation to the target<br/>np.random.seed(123456)<br/>threshold = 0.1<br/>correlations = data.corr()['Class'].drop('Class')<br/>fs = list(correlations[(abs(correlations)&gt;threshold)].index.values)<br/>fs.append('Class')<br/>data = data[fs]<br/>x_train, x_test, y_train, y_test = train_test_split(<br/> data.drop('Class', axis=1).values, data.Class.values, test_size=0.3)<br/>ensemble = RandomForestClassifier(n_jobs=4)<br/>ensemble.fit(x_train, y_train)<br/>print('RF f1', metrics.f1_score(y_test, ensemble.predict(x_test)))<br/>print('RF recall', metrics.recall_score(y_test, ensemble.predict(x_test)))</pre>
+<div class="packt_figref"/>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.845</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.743</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.867</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.794</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="CDPAlignCenter CDPAlign packt_figref"><span>Random forest performance</span></div>
+<p class="mce-root">As our dataset is highly skewed, we can speculate that changing the criterion for a tree’s split to entropy would benefit our model. Indeed, by specifying <kbd>criterion='entropy'</kbd> in the constructor (<kbd>ensemble = RandomForestClassifier(n_jobs=4)</kbd>), we are able to increase the performance on the original dataset to an <strong>F1</strong> score of <strong>0.859</strong> and a <strong>Recall</strong> score of <strong>0.786</strong>, two of the highest scores for the original dataset:</p>
+<div class="packt_figref"/>
+<table border="1" style="border-collapse: collapse;width: 100%">
+<tbody>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Dataset</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Metric</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Value</strong></p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Original</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.859</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.787</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign">
+<p><strong>Filtered</strong></p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>F1</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.856</p>
+</td>
+</tr>
+<tr>
+<td class="CDPAlignCenter CDPAlign"/>
+<td class="CDPAlignCenter CDPAlign">
+<p>Recall</p>
+</td>
+<td class="CDPAlignCenter CDPAlign">
+<p>0.787</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="packt_figref CDPAlignCenter CDPAlign"><span>Performance with entropy as the splitting criterion</span></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Comparative analysis of ensembles</h1>
+                </header>
+            
+            <article>
+                
+<p>As we experimented with a reduced feature dataset, where we removed features without a strong correlation to the target variable, we would like to provide the final scores for the<span> </span>best parameters of each method. In the following graph, the results are depicted, sorted in ascending order. Bagging seems to be the most robust method when applied to the filtered dataset. XGBoost is the second best alternative, providing decent F1 and Recall scores when applied to the filtered dataset as well:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-660 image-border" src="assets/a127e35e-debc-4407-80ba-5b68e485ecc9.png" style="width:34.58em;height:25.83em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">F1 scores</div>
+<p>Recall scores, depicted in the following plot, show the clear advantage XGBoost has on this metric over the other methods, as it is able to outperform all others for both the original and filtered datasets:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-661 image-border" src="assets/0df8e22b-871a-4cb9-a2de-fbfc5cb1b38c.png" style="width:34.92em;height:25.33em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">Recall scores</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we explored the possibility of detecting fraudulent transactions using various ensemble learning methods. While some performed better than others, due to the dataset's nature, it is difficult to produce good results without resampling the dataset in some way (either over-sampling or under-sampling).</p>
+<p>We were able to show how to use each ensemble learning method and how to explore the possibility of fine-tuning its respective parameters in order to achieve better performance. In the next chapter, we will try to leverage ensemble learning techniques in order to predict Bitcoin prices.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

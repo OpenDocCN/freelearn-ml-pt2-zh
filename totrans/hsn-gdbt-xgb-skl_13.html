@@ -1,0 +1,379 @@
+<html><head></head><body>
+		<div id="_idContainer169">
+			<h1 id="_idParaDest-215"><em class="italic"><a id="_idTextAnchor230"/>Chapter 10</em>: XGBoost Model Deployment</h1>
+			<p>In this final chapter on XGBoost, you will put everything together and develop new techniques to build a robust machine learning model that is industry ready. Deploying models for industry is a little different than building models for research and competitions. In industry, automation is important since new data arrives frequently. More emphasis is placed on procedure, and less emphasis is placed on gaining minute percentage points by tweaking machine learning models.</p>
+			<p>Specifically, in this chapter, you will gain significant experience with <strong class="bold">one-hot encoding</strong> and <strong class="bold">sparse matrices</strong>. In addition, you will implement and customize scikit-learn transformers to automate a machine learning pipeline to make predictions on data that is mixed with <strong class="bold">categorical</strong> and <strong class="bold">numerical</strong> columns. At the end of this chapter, your machine learning pipeline will be ready for any incoming data.</p>
+			<p>In this chapter, we cover the following topics:</p>
+			<ul>
+				<li><p>Encoding mixed data</p></li>
+				<li><p>Customizing scikit-learn transformers</p></li>
+				<li><p>Finalizing an XGBoost model</p></li>
+				<li><p>Building a machine learning pipeline</p></li>
+			</ul>
+			<h1 id="_idParaDest-216"><a id="_idTextAnchor231"/>Technical requirements</h1>
+			<p>The code for this chapter may be found at <a href="https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter10">https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter10</a>.</p>
+			<h1 id="_idParaDest-217"><a id="_idTextAnchor232"/>Encoding mixed data</h1>
+			<p>Imagine that you are working for an EdTech company<a id="_idIndexMarker629"/> and your job is to predict student grades to target services aimed at bridging the tech skills gap. Your first step is to load data that contains student grades into <strong class="source-inline">pandas</strong>.</p>
+			<h2 id="_idParaDest-218"><a id="_idTextAnchor233"/>Loading data</h2>
+			<p>The Student Performance dataset, provided <a id="_idIndexMarker630"/>by your company, may be accessed by loading the <strong class="source-inline">student-por.csv</strong> file that has been imported for you.</p>
+			<p>Start by importing <strong class="source-inline">pandas</strong> and silencing warnings. Then, download the dataset and view the first five rows:</p>
+			<p class="source-code">import pandas as pd</p>
+			<p class="source-code">import warnings</p>
+			<p class="source-code">warnings.filterwarnings('ignore')</p>
+			<p class="source-code">df = pd.read_csv('student-por.csv')</p>
+			<p class="source-code">df.head()</p>
+			<p>Here is the expected output:</p>
+			<div>
+				<div id="_idContainer158" class="IMG---Figure">
+					<img src="image/B15551_10_01.jpg" alt="Figure 10.1 – The Student Performance dataset as is"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 10.1 – The Student Performance dataset as is</p>
+			<p>Welcome to the world of industry, where data does not always appear as expected.</p>
+			<p>A recommended option is to view the CSV file. This can be done in Jupyter Notebooks by locating the folder for this chapter and clicking on the <strong class="source-inline">student-por.csv</strong> file. </p>
+			<p>You should see the following:</p>
+			<div>
+				<div id="_idContainer159" class="IMG---Figure">
+					<img src="image/B15551_10_02.jpg" alt="Figure 10.2 – The Student Performance CSV file"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 10.2 – The Student Performance CSV file</p>
+			<p>As you can see in the preceding figure, the <a id="_idIndexMarker631"/>data is separated by semi-colons. CSV stands<a id="_idIndexMarker632"/> for <strong class="bold">Comma-Separated Values</strong>, not <strong class="bold">Semi-Colon-Separated Values</strong>. Fortunately, <strong class="source-inline">pandas</strong> comes with a <strong class="source-inline">sep</strong> parameter, which <a id="_idIndexMarker633"/>stands for <strong class="bold">separator</strong>, that may be set to the semi-colon, (<em class="italic">;</em>), as follows:</p>
+			<p class="source-code">df = pd.read_csv('student-por.csv', sep=';')</p>
+			<p class="source-code">df.head()</p>
+			<p>Here is the expected output:</p>
+			<div>
+				<div id="_idContainer160" class="IMG---Figure">
+					<img src="image/B15551_10_03.jpg" alt="Figure 10.3 – The Student Performance dataset "/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 10.3 – The Student Performance dataset </p>
+			<p>Now that the DataFrame looks as expected, with a mix <a id="_idIndexMarker634"/><a id="_idIndexMarker635"/>of categorical and numerical values, we must clean up the <strong class="bold">null values</strong>.</p>
+			<h2 id="_idParaDest-219"><a id="_idTextAnchor234"/>Clearing null values</h2>
+			<p>You can view all columns of null values <a id="_idIndexMarker636"/>by calling the <strong class="source-inline">.sum()</strong> method on <strong class="source-inline">df.insull()</strong>. Here is an excerpt of the results:</p>
+			<p class="source-code">df.isnull().sum()</p>
+			<p class="source-code">school        0</p>
+			<p class="source-code">sex           1</p>
+			<p class="source-code">age           1</p>
+			<p class="source-code">address       0</p>
+			<p class="source-code">…</p>
+			<p class="source-code">health        0</p>
+			<p class="source-code">absences      0</p>
+			<p class="source-code">G1            0</p>
+			<p class="source-code">G2            0</p>
+			<p class="source-code">G3            0</p>
+			<p class="source-code">dtype: int64</p>
+			<p>You can view the rows of these columns using conditional notation by placing <strong class="source-inline">df.isna().any(axis=1)</strong> inside of brackets with <strong class="source-inline">df</strong>:</p>
+			<p class="source-code">df[df.isna().any(axis=1)]</p>
+			<p>Here is the expected output:</p>
+			<div>
+				<div id="_idContainer161" class="IMG---Figure">
+					<img src="image/B15551_10_04.jpg" alt="Figure 10.4 – The Student Performance null data"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 10.4 – The Student Performance null data</p>
+			<p>It's preferable to see the null columns in the middle, which Jupyter removes by default on account of the number of <a id="_idIndexMarker637"/>columns. This is easily corrected by setting <strong class="source-inline">max columns</strong> to <strong class="source-inline">None</strong> as follows:</p>
+			<p class="source-code">pd.options.display.max_columns = None</p>
+			<p>Now, running the code again shows all the columns:</p>
+			<p class="source-code">df[df.isna().any(axis=1)]</p>
+			<p>Here is an excerpt of the expected output:</p>
+			<div>
+				<div id="_idContainer162" class="IMG---Figure">
+					<img src="image/B15551_10_05.jpg" alt="Figure 10.5 – Null data from all rows of the Student Performance dataset"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 10.5 – Null data from all rows of the Student Performance dataset</p>
+			<p>As you can see, all columns including the hidden null values under <strong class="source-inline">'guardian'</strong> are now displayed.</p>
+			<p>Numerical null values may be set to -999.0, or some other value, and XGBoost will find the best replacement for you using the <strong class="source-inline">missing</strong> hyperparameter as introduced in <a href="B15551_05_Final_NM_ePUB.xhtml#_idTextAnchor117"><em class="italic">Chapter 5</em></a>, <em class="italic">XGBoost Unveiled</em>.</p>
+			<p>Here is the code to fill the <strong class="source-inline">'age'</strong> column with <strong class="source-inline">-999.0</strong>:</p>
+			<p class="source-code">df['age'].fillna(-999.0)</p>
+			<p>Next, categorical columns may be filled by the mode. The mode is the most common occurrence in a column. Filling categorical columns with the mode may distort the resulting distribution, however, only if the number of null values is large. There are only two null values present, so our distribution will not be affected. Another option includes replacing categorical null values with the '<strong class="source-inline">unknown</strong>' string, which may become its own column after one-hot encoding. Note that XGBoost requires numerical input, so the <strong class="source-inline">missing</strong> hyperparameter cannot be directly applied to categorical columns as of 2020.</p>
+			<p>The following code converts the <strong class="source-inline">'sex'</strong> and <strong class="source-inline">'guardian'</strong> categorical columns to <strong class="source-inline">mode</strong>:</p>
+			<p class="source-code">df['sex'] = df['sex'].fillna(df['sex'].mode())</p>
+			<p class="source-code">df['guardian'] = df['guardian'].fillna(df['guardian'].mode())</p>
+			<p>Since our null values were in the first two<a id="_idIndexMarker638"/> rows, we can reveal that they have been changed using <strong class="source-inline">df.head()</strong>:</p>
+			<p class="source-code">df.head()</p>
+			<p>Here is the expected output:</p>
+			<div>
+				<div id="_idContainer163" class="IMG---Figure">
+					<img src="image/B15551_10_06.jpg" alt="Figure 10.6 – The Student Performance dataset with the null values removed (first five rows only)"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 10.6 – The Student Performance dataset with the null values removed (first five rows only)</p>
+			<p>The null values have all been cleared as expected.</p>
+			<p>Next, we will convert all categorical columns to numerical columns using one-hot encoding.</p>
+			<h2 id="_idParaDest-220"><a id="_idTextAnchor235"/>One-hot encoding</h2>
+			<p>Previously, we used <strong class="source-inline">pd.get_dummies</strong> to transform <a id="_idIndexMarker639"/>all categorical variables to numerical<a id="_idIndexMarker640"/> values of <strong class="source-inline">0</strong> and <strong class="source-inline">1</strong>, with <strong class="source-inline">0</strong> indicating absence and <strong class="source-inline">1</strong> indicating presence. While acceptable, this approach has some shortcomings.</p>
+			<p>The first shortcoming is that <strong class="source-inline">pd.get_dummies</strong> can be computationally expensive, as you may have found when waiting for code to run in previous chapters. The second shortcoming is that <strong class="source-inline">pd.get_dummies</strong> does not translate particularly well to scikit-learn's pipelines, a concept that we will explore in the next section.</p>
+			<p>A nice alternative to <strong class="source-inline">pd.get_dummies</strong> is scikit-learn's <strong class="source-inline">OneHotEncoder</strong>. Like <strong class="source-inline">pd.get_dummies</strong>, one-hot encoding transforms all categorical values to <strong class="source-inline">0</strong> and <strong class="source-inline">1</strong>, with <strong class="source-inline">0</strong> indicating absence and <strong class="source-inline">1</strong> indicating presence, but unlike <strong class="source-inline">pd.get_dummies</strong>, it is not computationally expensive. <strong class="source-inline">OneHotEncoder</strong> uses a sparse matrix instead of a dense matrix to save space and time.</p>
+			<p>Sparse matrices <a id="_idIndexMarker641"/>save space by only storing data with values that do not include 0. The same amount of information is conserved by using fewer bits.</p>
+			<p>In addition, <strong class="source-inline">OneHotEncoder</strong> is a scikit-learn transformer, which means that it's specifically designed to work in machine learning pipelines.</p>
+			<p>In past versions of scikit-learn, <strong class="source-inline">OneHotEncoder</strong> only accepted numerical input. When that was the case, an intermediate step was taken with <strong class="source-inline">LabelEncoder</strong> to first convert all categorical columns into<a id="_idIndexMarker642"/> numerical columns.</p>
+			<p>To use <strong class="source-inline">OneHotEncoder</strong> on specific columns, you may use the following steps:</p>
+			<ol>
+				<li value="1"><p>Convert all categorical columns of the <strong class="source-inline">dtype</strong> object into a list:</p><p class="source-code">categorical_columns = df.columns[df.dtypes==object].tolist()</p></li>
+				<li><p>Import and initialize <strong class="source-inline">OneHotEncoder</strong>:</p><p class="source-code">from sklearn.preprocessing import OneHotEncoder</p><p class="source-code">ohe = OneHotEncoder()</p></li>
+				<li><p>Use the <strong class="source-inline">fit_transform</strong> method on the columns:</p><p class="source-code">hot = ohe.fit_transform(df[categorical_columns])</p></li>
+				<li><p><strong class="bold">Optional</strong>: convert the one-hot encoded sparse matrix into a standard array and convert it into a DataFrame for viewing:</p><p class="source-code">hot_df = pd.DataFrame(hot.toarray())</p><p class="source-code">hot_df.head() </p><p>Here is the expected output:</p><div id="_idContainer164" class="IMG---Figure"><img src="image/B15551_10_07.jpg" alt="Figure 10.7 – DataFrame of a one-hot encoded matrix"/></div><p class="figure-caption">Figure 10.7 – DataFrame of a one-hot encoded matrix</p><p>This looks as expected, with all the values being <strong class="source-inline">0</strong> or <strong class="source-inline">1</strong>.</p></li>
+				<li><p>If you want to<a id="_idIndexMarker643"/> see what the <strong class="source-inline">hot</strong> sparse matrix actually looks like, you can <a id="_idIndexMarker644"/>print it out as follows:</p><p class="source-code">print(hot)</p><p>Here is an excerpt of the results:</p><p class="source-code">  (0, 0)		1.0</p><p class="source-code">  (0, 2)		1.0</p><p class="source-code">  (0, 5)		1.0</p><p class="source-code">  (0, 6)		1.0</p><p class="source-code">  (0, 8)		1.0</p><p class="source-code">…  </p><p class="source-code"><strong class="bold">  (648, 33)	1.0</strong></p><p class="source-code"><strong class="bold">  (648, 35)	1.0</strong></p><p class="source-code"><strong class="bold">  (648, 38)	1.0</strong></p><p class="source-code"><strong class="bold">  (648, 40)	1.0</strong></p><p class="source-code"><strong class="bold">  (648, 41)	1.0</strong></p><p>As you can see, only the values of <strong class="source-inline">0</strong> have been skipped. For instance, the 0th row and the 1st column, denoted by (<strong class="source-inline">0, 1</strong>), has a value of <strong class="source-inline">0.0</strong> in the dense matrix, but it's skipped over in the one-hot matrix.</p></li>
+			</ol>
+			<p>If you want more information about the<a id="_idIndexMarker645"/> sparse matrix, just enter the<a id="_idIndexMarker646"/> following variable:</p>
+			<p class="source-code">hot</p>
+			<p>The result is as follows:</p>
+			<p class="source-code">&lt;649x43 sparse matrix of type '&lt;class 'numpy.float64'&gt;'</p>
+			<p class="source-code">	with 11033 stored elements in Compressed Sparse Row format&gt;</p>
+			<p>This tells us that the matrix is <strong class="source-inline">649</strong> by <strong class="source-inline">43</strong>, but only <strong class="source-inline">11033</strong> values have been stored, saving a significant amount of space. Note that for text data, which has many zeros, sparse matrices are very common.</p>
+			<h2 id="_idParaDest-221"><a id="_idTextAnchor236"/>Combining a one-hot encoded matrix and numerical columns</h2>
+			<p>Now that we have a <a id="_idIndexMarker647"/>one-hot encoded<a id="_idIndexMarker648"/> sparse matrix, we must combine it with the numerical columns of the original DataFrame.</p>
+			<p>First, let's isolate the numerical columns. This may be done with the <strong class="source-inline">exclude=["object"]</strong> parameter as input for <strong class="source-inline">df.select_dtypes</strong>, which selects columns of certain types as follows:</p>
+			<p class="source-code">cold_df = df.select_dtypes(exclude=["object"])</p>
+			<p class="source-code">cold_df.head()</p>
+			<p>Here is the expected output:</p>
+			<div>
+				<div id="_idContainer165" class="IMG---Figure">
+					<img src="image/B15551_10_08.jpg" alt="Figure 10.8 – The Student Performance dataset's numerical columns"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 10.8 – The Student Performance dataset's numerical columns</p>
+			<p>These are the columns we are looking for.</p>
+			<p>For data of this size, we have a <a id="_idIndexMarker649"/>choice of <a id="_idIndexMarker650"/>converting the sparse matrix to a regular DataFame, as seen in the preceding screenshot, or converting this DataFrame into a sparse matrix. Let's pursue the latter, considering that DataFrames in industry can become enormous and saving space can be advantageous:</p>
+			<ol>
+				<li value="1"><p>To convert the <strong class="source-inline">cold_df</strong> DataFrame to a compressed sparse matrix, import <strong class="source-inline">csr_matrix</strong> from <strong class="source-inline">scipy.sparse</strong> and place the DataFrame inside, as follows:</p><p class="source-code">from scipy.sparse import csr_matrix</p><p class="source-code">cold = csr_matrix(cold_df)</p></li>
+				<li><p>Finally, stack both matrices, hot and cold, by importing and using <strong class="source-inline">hstack</strong>, which combines sparse matrices horizontally:</p><p class="source-code">from scipy.sparse import hstack</p><p class="source-code">final_sparse_matrix = hstack((hot, cold))</p></li>
+				<li><p>Verify that <strong class="source-inline">final_sparse_matrix</strong> works as expected by converting the sparse matrix into a dense matrix and by displaying the DataFrame as usual:</p><p class="source-code">final_df = pd.DataFrame(final_sparse_matrix.toarray())</p><p class="source-code">final_df.head()</p><p>Here is the expected output:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer166" class="IMG---Figure">
+					<img src="image/B15551_10_09.jpg" alt="Figure 10.9 – The DataFrame of the final sparse matrix"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 10.9 – The DataFrame of the final sparse matrix</p>
+			<p>The output is shifted to the right to<a id="_idIndexMarker651"/> show the one-hot encoded and numerical columns together.</p>
+			<p>Now that the data is<a id="_idIndexMarker652"/> ready for machine learning, let's automate the process using transformers and pipelines.</p>
+			<h1 id="_idParaDest-222"><a id="_idTextAnchor237"/>Customizing scikit-learn transformers</h1>
+			<p>Now that we have a<a id="_idIndexMarker653"/> process for transforming the DataFrame into a machine learning-ready sparse matrix, it would be advantageous to generalize the process with transformers so that it can easily be repeated for new data coming in.</p>
+			<p>Scikit-learn transformers work with machine learning algorithms by using a <strong class="source-inline">fit</strong> method, which finds model parameters, and a <strong class="source-inline">transform</strong> method, which applies these parameters to data. These methods may be combined into a single <strong class="source-inline">fit_transform</strong> method that fits and transforms data in one line of code. </p>
+			<p>When used together, various transformers, including machine learning algorithms, may work together in the same pipeline for ease of use. Data is then placed in the pipeline that is fit and transformed to achieve the desired output.</p>
+			<p>Scikit-learn comes with many great transformers, such as <strong class="source-inline">StandardScaler</strong> and <strong class="source-inline">Normalizer</strong> to standardize and normalize data, respectively, and <strong class="source-inline">SimpleImputer</strong> to convert null values. You have to be careful, however, when data contains a mix of categorical and numerical columns, as is the case here. In some cases, the scikit-learn options may not be the best options for automation. In this case, it's worth creating your own transformers to do exactly what you want.</p>
+			<h2 id="_idParaDest-223"><a id="_idTextAnchor238"/>Customizing transformers</h2>
+			<p>The key to creating your own<a id="_idIndexMarker654"/> transformers is to use scikit-learn's <strong class="source-inline">TransformerMixin</strong> as your superclass.</p>
+			<p>Here is a general code outline to create a customized transformer in scikit-learn:</p>
+			<p class="source-code">class YourClass(TransformerMixin):</p>
+			<p class="source-code">    def __init__(self):</p>
+			<p class="source-code">        None</p>
+			<p class="source-code">    def fit(self, X, y=None):</p>
+			<p class="source-code">        return self</p>
+			<p class="source-code">    def transform(self, X, y=None):</p>
+			<p class="source-code">        # insert code to transform X</p>
+			<p class="source-code">        return X</p>
+			<p>As you can see, you don't have to initialize anything, and <strong class="source-inline">fit</strong> can always return <strong class="source-inline">self</strong>. Simply put, you may place all your code for transforming the data under the <strong class="source-inline">transform</strong> method.</p>
+			<p>Now that you see how customization works generally, let's create a customized transformer to handle different kinds of null values.</p>
+			<h3>Customizing a mixed null value imputer</h3>
+			<p>Let's see how this works by creating a <a id="_idIndexMarker655"/>customized mixed null value imputer. Here, the reason for the customization is to handle different types of columns with different approaches to correcting null values. </p>
+			<p>Here are the steps:</p>
+			<ol>
+				<li value="1"><p>Import <strong class="source-inline">TransformerMixin</strong> and define a new class with <strong class="source-inline">TransformerMixin</strong> as the superclass:</p><p class="source-code">from sklearn.base import TransformerMixin </p><p class="source-code">class NullValueImputer(TransformerMixin):</p></li>
+				<li><p>Initialize the class with <strong class="source-inline">self</strong> as input. It's okay if this does nothing:</p><p class="source-code">def __init__(self):</p><p class="source-code">None</p></li>
+				<li><p>Create a <strong class="source-inline">fit</strong> method that takes <strong class="source-inline">self</strong> and <strong class="source-inline">X</strong> as input, with <strong class="source-inline">y=None</strong>, and returns <strong class="source-inline">self</strong>:</p><p class="source-code">def fit(self, X, y=None):</p><p class="source-code">return self</p></li>
+				<li><p>Create a <strong class="source-inline">transform</strong> method that takes <strong class="source-inline">self</strong> and <strong class="source-inline">X</strong> as input, with <strong class="source-inline">y=None</strong>, and transforms the data by returning a new <strong class="source-inline">X</strong>, as follows:</p><p class="source-code">def transform(self, X, y=None):</p><p>We need to handle null values separately depending on the columns. </p><p>Here are the steps to convert null<a id="_idIndexMarker656"/> values to the mode or <strong class="source-inline">-999.0</strong>, depending upon the column type:</p><p>a) Loop through the columns by converting them to a list:</p><p class="source-code">for column in X.columns.tolist():</p><p>b) Within the loop, access the columns that are strings by checking which columns are of the <strong class="source-inline">object</strong> dtype:</p><p class="source-code">    if column in X.columns[X.dtypes==object].tolist():</p><p>c) Convert the null values of the string (<strong class="source-inline">object</strong>) columns to the mode:</p><p class="source-code">        X[column] = X[column].fillna(X[column].mode())</p><p>d) Otherwise, fill the columns with <strong class="source-inline">-999.0</strong>:</p><p class="source-code">    else:</p><p class="source-code">        X[column]=X[column].fillna(-999.0)</p><p class="source-code">      return X</p></li>
+			</ol>
+			<p>In the preceding code, you may have wondered why <strong class="source-inline">y=None</strong> is used. The reason is that <strong class="source-inline">y</strong> will be needed as an input when including a machine learning algorithm in the pipeline. By setting <strong class="source-inline">y</strong> to <strong class="source-inline">None</strong>, changes will only be made to the predictor columns as expected.</p>
+			<p>Now that the customized imputer has been defined, it may be used by calling the <strong class="source-inline">fit_transform</strong> method on the data. </p>
+			<p>Let's reset the data by establishing a new DataFrame from the CSV file and transform the null values in one line of code <a id="_idIndexMarker657"/>using the customized <strong class="source-inline">NullValueImputer</strong>:</p>
+			<p class="source-code">df = pd.read_csv('student-por.csv', sep=';')</p>
+			<p class="source-code">nvi = NullValueImputer().fit_transform(df)</p>
+			<p class="source-code">nvi.head()</p>
+			<p>Here is the expected output:</p>
+			<div>
+				<div id="_idContainer167" class="IMG---Figure">
+					<img src="image/B15551_10_10.jpg" alt="Figure 10.10 – The Student Performance DataFrame after NullValueImputer()"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 10.10 – The Student Performance DataFrame after NullValueImputer()</p>
+			<p>As you can see, all null values have been cleared.</p>
+			<p>Next, let's transform the data into a one-hot encoded sparse matrix as before.</p>
+			<h3>One-hot encoding mixed data</h3>
+			<p>We will apply similar steps here<a id="_idIndexMarker658"/> to those from the previous section by creating a customized transformer to one-hot encode the categorical columns before joining them with the numerical columns as a sparse matrix (a dense matrix is also okay for a dataset of this size):</p>
+			<ol>
+				<li value="1"><p>Define a new class with <strong class="source-inline">TransformerMixin</strong> as the superclass:</p><p class="source-code">class SparseMatrix(TransformerMixin):</p></li>
+				<li><p>Initialize the class with <strong class="source-inline">self</strong> as input. It's okay if this does nothing:</p><p class="source-code">def __init__(self):</p><p class="source-code">    		None</p></li>
+				<li><p>Create a <strong class="source-inline">fit</strong> method that takes <strong class="source-inline">self</strong> and <strong class="source-inline">X</strong> as input and returns <strong class="source-inline">self</strong>:</p><p class="source-code">def fit(self, X, y=None):</p><p class="source-code">    		return self</p></li>
+				<li><p>Create a <strong class="source-inline">transform</strong> method that takes <strong class="source-inline">self</strong> and <strong class="source-inline">X</strong> as input, transforms the data, and returns a new <strong class="source-inline">X</strong>:</p><p class="source-code">def transform(self, X, y=None):</p><p>Here are the steps to<a id="_idIndexMarker659"/> complete the transformation; start by accessing only the categorical columns, which are of the <strong class="source-inline">object</strong> type, as follows:</p><p>a) Put the categorical columns in a list:</p><p class="source-code">    		categorical_columns= X.columns[X.dtypes==object].tolist()</p><p>b) Initialize <strong class="source-inline">OneHotEncoder</strong>:</p><p class="source-code">    		ohe = OneHotEncoder() </p><p>c) Transform the categorical columns with <strong class="source-inline">OneHotEncoder</strong>:</p><p class="source-code">hot = ohe.fit_transform(X[categorical_columns])</p><p>d) Create a DataFrame of numerical columns only by excluding strings:</p><p class="source-code">cold_df = X.select_dtypes(exclude=["object"])</p><p>e) Convert the numerical DataFrame into a sparse matrix:</p><p class="source-code">        	cold = csr_matrix(cold_df)</p><p>f) Combine both sparse matrices into one:</p><p class="source-code">         final_sparse_matrix = hstack((hot, cold))</p><p>g) Convert this into <a id="_idIndexMarker660"/>a <strong class="bold">Compressed Sparse Row</strong> (<strong class="bold">CSR</strong>) matrix to limit errors. Note that XGBoost requires CSR matrices, and this conversion may happen automatically depending on your version of XGBoost:</p><p class="source-code">         final_csr_matrix = final_sparse_matrix.tocsr()</p><p class="source-code">         return final_csr_matrix</p></li>
+				<li><p>Now we can transform the <strong class="source-inline">nvi</strong> data with no null values by using the powerful <strong class="source-inline">fit_transform</strong> method on <strong class="source-inline">SparseMatrix</strong>:</p><p class="source-code">sm = SparseMatrix().fit_transform(nvi)</p><p class="source-code">print(sm)</p><p>The expected output, given here, is truncated<a id="_idIndexMarker661"/> to save space:</p><p class="source-code">  (0, 0)	1.0</p><p class="source-code">  (0, 2)	1.0</p><p class="source-code">  (0, 5)	1.0</p><p class="source-code">  (0, 6)	1.0</p><p class="source-code">  (0, 8)	1.0</p><p class="source-code">  (0, 10)	1.0</p><p class="source-code">  :	:</p><p class="source-code">  (648, 53)	4.0</p><p class="source-code">  (648, 54)	5.0</p><p class="source-code">  (648, 55)	4.0</p><p class="source-code">  (648, 56)	10.0</p><p class="source-code">  (648, 57)	11.0</p><p class="source-code">  (648, 58)	11.0</p></li>
+				<li><p>You can verify that the data looks as expected by converting the sparse matrix back into a dense matrix as follows:</p><p class="source-code">sm_df = pd.DataFrame(sm.toarray())</p><p class="source-code">sm_df.head()</p><p>Here is the expected dense output:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer168" class="IMG---Figure">
+					<img src="image/B15551_10_11.jpg" alt="Figure 10.11 – The sparse matrix converted into a dense matrix"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 10.11 – The sparse matrix converted into a dense matrix</p>
+			<p>This appears correct. The figure shows a<a id="_idIndexMarker662"/> value of <strong class="source-inline">0.0</strong> for the 27th column and a value of <strong class="source-inline">1.0</strong> for the 28th column. The preceding one-hot encoded output excludes (<strong class="source-inline">0</strong>,<strong class="source-inline">27</strong>) and shows a value of <strong class="source-inline">1.0</strong> for (<strong class="source-inline">0</strong>,<strong class="source-inline">28</strong>), matching the dense output.</p>
+			<p>Now that the data has been transformed, let's combine both preprocessing steps into a single pipeline.</p>
+			<h2 id="_idParaDest-224"><a id="_idTextAnchor239"/>Preprocessing pipeline</h2>
+			<p>When building machine learning<a id="_idIndexMarker663"/> models, it's standard to start by separating the data into <strong class="source-inline">X</strong> and <strong class="source-inline">y</strong>. When thinking about a pipeline, it makes sense to transform <strong class="source-inline">X</strong>, the predictor columns, and not <strong class="source-inline">y</strong>, the target column. Furthermore, it's important to hold out a test set for later.</p>
+			<p>Before placing data into the machine learning pipeline, let's split the data into training and test sets and leave the test set behind. We start from the top as follows:</p>
+			<ol>
+				<li value="1"><p>First, read the CSV file as a DataFrame:</p><p class="source-code">df = pd.read_csv('student-por.csv', sep=';')</p><p>When choosing <strong class="source-inline">X</strong> and <strong class="source-inline">y</strong> for the Student Performance dataset, it's important to note that the last three columns all include student grades. Two potential studies are of value here: </p><p>a) Including previous grades as predictor columns </p><p>b) Not including previous grades as predictor columns</p><p>Assume that your EdTech company wants to make predictions based on socioeconomic variables, not on previous grades earned, so ignore the first two grade columns indexed as -<strong class="source-inline">2</strong> and -<strong class="source-inline">3</strong>.</p></li>
+				<li><p>Select the last column as <strong class="source-inline">y</strong>, and all columns <a id="_idIndexMarker664"/>except for the last three as <strong class="source-inline">X</strong>:</p><p class="source-code">y = df.iloc[:, -1]</p><p class="source-code">X = df.iloc[:, :-3]</p></li>
+				<li><p>Now import <strong class="source-inline">train_test_split</strong> and split <strong class="source-inline">X</strong> and <strong class="source-inline">y</strong> into a training and a test set:</p><p class="source-code">from sklearn.model_selection import train_test_split</p><p class="source-code">X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=2)</p></li>
+			</ol>
+			<p>Now let's build the pipeline using the following steps:</p>
+			<ol>
+				<li value="1"><p>First import <strong class="source-inline">Pipeline</strong> from <strong class="source-inline">sklearn.pipeline</strong>:</p><p class="source-code">from sklearn.pipeline import Pipeline</p></li>
+				<li><p>Next, assign tuples using the syntax (name, transformer) as parameters of <strong class="source-inline">Pipeline</strong> in sequence:</p><p class="source-code">data_pipeline = Pipeline([('null_imputer', NullValueImputer()), ('sparse', SparseMatrix())])</p></li>
+				<li><p>Finally, transform <strong class="source-inline">X_train</strong>, our predictor columns, by placing <strong class="source-inline">X_train</strong> inside the <strong class="source-inline">fit_transform</strong> method of <strong class="source-inline">data_pipeline</strong>:</p><p class="source-code">X_train_transformed = data_pipeline.fit_transform(X_train)</p></li>
+			</ol>
+			<p>Now you have a numerical, sparse matrix with no null values that can be used as the predictor column for machine learning.</p>
+			<p>Furthermore, you have a <a id="_idIndexMarker665"/>pipeline that may be used to transform any incoming data in one line of code! Let's now finalize an XGBoost model to make predictions.</p>
+			<h1 id="_idParaDest-225"><a id="_idTextAnchor240"/>Finalizing an XGBoost model</h1>
+			<p>It's time to build a robust XGBoost model to add to<a id="_idIndexMarker666"/> the pipeline. Go ahead and import <strong class="source-inline">XGBRegressor</strong>, <strong class="source-inline">numpy</strong>, <strong class="source-inline">GridSearchCV</strong>, <strong class="source-inline">cross_val_score</strong>, <strong class="source-inline">KFold</strong>, and <strong class="source-inline">mean_squared_error</strong> as follows:</p>
+			<p class="source-code">import numpy as np</p>
+			<p class="source-code">from sklearn.model_selection import GridSearchCV</p>
+			<p class="source-code">from sklearn.model_selection import cross_val_score, KFold</p>
+			<p class="source-code">from sklearn.metrics import mean_squared_error as MSE</p>
+			<p class="source-code">from xgboost import XGBRegressor</p>
+			<p>Now let's build the model.</p>
+			<h2 id="_idParaDest-226"><a id="_idTextAnchor241"/>First XGBoost model</h2>
+			<p>This Student Performance dataset has<a id="_idIndexMarker667"/> an interesting range of values for the predictor column, <strong class="source-inline">y_train</strong>, which can be shown as follows:</p>
+			<p class="source-code">y_train.value_counts()</p>
+			<p>The result is this:</p>
+			<p class="source-code">11    82</p>
+			<p class="source-code">10    75</p>
+			<p class="source-code">13    58</p>
+			<p class="source-code">12    53</p>
+			<p class="source-code">14    42</p>
+			<p class="source-code">15    36</p>
+			<p class="source-code">9     29</p>
+			<p class="source-code">16    27</p>
+			<p class="source-code">8     26</p>
+			<p class="source-code">17    24</p>
+			<p class="source-code">18    14</p>
+			<p class="source-code">0     10</p>
+			<p class="source-code">7      7</p>
+			<p class="source-code">19     1</p>
+			<p class="source-code">6      1</p>
+			<p class="source-code">5      1</p>
+			<p>As you can see, the values range from <strong class="source-inline">5</strong>-<strong class="source-inline">19</strong> with <strong class="source-inline">0</strong> included. </p>
+			<p>Since the target<a id="_idIndexMarker668"/> column is ordinal, meaning the values are numerically ordered, regression is preferable to classification even though the outputs are limited. After training a model via regression, the final results may be rounded to give the final predictions.</p>
+			<p>Here are the steps to score <strong class="source-inline">XGBRegressor</strong> with this dataset:</p>
+			<ol>
+				<li value="1"><p>Start by setting up cross-validation using <strong class="source-inline">KFold</strong>:</p><p class="source-code">kfold = KFold(n_splits=5, shuffle=True, random_state=2)</p></li>
+				<li><p>Now define a cross-validation function that<a id="_idIndexMarker669"/> returns the <strong class="bold">root mean squared error</strong> using <strong class="source-inline">cross_val_score</strong>:</p><p class="source-code">def cross_val(model):</p><p class="source-code">    scores = cross_val_score(model, X_train_transformed, y_train, scoring='neg_root_mean_squared_error', cv=kfold)</p><p class="source-code">    rmse = (-scores.mean())</p><p class="source-code">    return rmse</p></li>
+				<li><p>Establish a base score by calling <strong class="source-inline">cross_val</strong> with the <strong class="source-inline">XGBRegressor</strong> as input with <strong class="source-inline">missing=-999.0</strong> so that XGBoost can find the best replacement:</p><p class="source-code">cross_val(XGBRegressor(missing=-999.0))</p><p>The score is this:</p><p class="source-code">2.9702248207546296</p></li>
+			</ol>
+			<p>This is a respectable starting score. A root <a id="_idIndexMarker670"/>mean squared error of <strong class="source-inline">2.97</strong> out of 19 possibilities indicates that the grades are within a couple of points of accuracy. This is almost 15%, which is accurate within one letter grade using the American A-B-C-D-F system. In industry, you may even include a confidence interval using statistics to deliver a prediction interval, a recommended strategy that is outside the scope of this book.</p>
+			<p>Now that you have a baseline score, let's fine-tune the hyperparameters to improve the model.</p>
+			<h2 id="_idParaDest-227"><a id="_idTextAnchor242"/>Fine-tuning the XGBoost hyperparameters</h2>
+			<p>Let's start by checking <strong class="source-inline">n_estimators</strong> with early<a id="_idIndexMarker671"/> stopping. Recall that to use early stopping, we may check one test fold. Creating the test fold requires splitting <strong class="source-inline">X_train</strong> and <strong class="source-inline">y_train</strong> further:</p>
+			<ol>
+				<li value="1"><p>Here is a second <strong class="source-inline">train_test_split</strong> that may be used to create a test set for validation purposes, making sure to keep the real test set hidden for later:</p><p class="source-code">X_train_2, X_test_2, y_train_2, y_test_2 = train_test_split(X_train_transformed, y_train, random_state=2)</p></li>
+				<li><p>Now define a function that uses early stopping to return the optimal number of estimators for the regressor (see <a href="B15551_06_Final_NM_ePUB.xhtml#_idTextAnchor136"><em class="italic">Chapter 6</em></a><em class="italic">, XGBoost Hyperparameters</em>):</p><p class="source-code">def n_estimators(model):</p><p class="source-code">    eval_set = [(X_test_2, y_test_2)]</p><p class="source-code">    eval_metric="rmse"</p><p class="source-code">    model.fit(X_train_2, y_train_2, eval_metric=eval_metric, eval_set=eval_set, early_stopping_rounds=100)</p><p class="source-code">    y_pred = model.predict(X_test_2)</p><p class="source-code">    rmse = MSE(y_test_2, y_pred)**0.5</p><p class="source-code">    return rmse  </p></li>
+				<li><p>Now run the <strong class="source-inline">n_estimators</strong> function, setting<a id="_idIndexMarker672"/> to <strong class="source-inline">5000</strong> as a maximum:</p><p class="source-code">n_estimators(XGBRegressor(n_estimators=5000, missing=-999.0))</p><p>Here are the last five rows of the output:</p><p class="source-code">[128]	validation_0-rmse:3.10450</p><p class="source-code">[129]	validation_0-rmse:3.10450</p><p class="source-code">[130]	validation_0-rmse:3.10450</p><p class="source-code">[131]	validation_0-rmse:3.10450</p><p class="source-code">Stopping. Best iteration:</p><p class="source-code">[31]	validation_0-rmse:3.09336</p><p>The score is as follows:</p><p class="source-code">3.0933612343143153</p></li>
+			</ol>
+			<p>Using our default model, 31 estimators currently gives the best estimate. That will be our starting point.</p>
+			<p>Next, here is a <strong class="source-inline">grid_search</strong> function, which we have used multiple times, that searches a grid of hyperparameters and displays the best parameters and best score:</p>
+			<p class="source-code">def grid_search(params, reg=XGBRegressor(missing=-999.0)):</p>
+			<p class="source-code">    grid_reg = GridSearchCV(reg, params, scoring='neg_mean_squared_error', cv=kfold)</p>
+			<p class="source-code">    grid_reg.fit(X_train_transformed, y_train)</p>
+			<p class="source-code">    best_params = grid_reg.best_params_</p>
+			<p class="source-code">    print("Best params:", best_params)</p>
+			<p class="source-code">    best_score = np.sqrt(-grid_reg.best_score_)</p>
+			<p class="source-code">    print("Best score:", best_score)</p>
+			<p>Here are a few<a id="_idIndexMarker673"/> recommended steps for fine-tuning the model:</p>
+			<ol>
+				<li value="1"><p>Start with <strong class="source-inline">max_depth</strong> ranging from <strong class="source-inline">1</strong> to <strong class="source-inline">8</strong> while setting <strong class="source-inline">n_estimators</strong> to <strong class="source-inline">31</strong>:</p><p class="source-code">grid_search(params={'max_depth':[1, 2, 3, 4, 6, 7, 8], </p><p class="source-code">                    'n_estimators':[31]})</p><p>The result is this:</p><p class="source-code">Best params: {'max_depth': 1, 'n_estimators': 31}</p><p class="source-code">Best score: 2.6634430373079425</p></li>
+				<li><p>Narrow <strong class="source-inline">max_depth</strong> from <strong class="source-inline">1</strong> to <strong class="source-inline">3</strong> while ranging <strong class="source-inline">min_child_weight</strong> from <strong class="source-inline">1</strong> to <strong class="source-inline">5 </strong>and holding <strong class="source-inline">n_esimtators</strong> at <strong class="source-inline">31</strong>: </p><p class="source-code">grid_search(params={'max_depth':[1, 2, 3], </p><p class="source-code">                    'min_child_weight':[1,2,3,4,5], </p><p class="source-code">                    'n_estimators':[31]})</p><p>The result is this:</p><p class="source-code">Best params: {'max_depth': 1, 'min_child_weight': 1, 'n_estimators': 31}</p><p class="source-code">Best score: 2.6634430373079425</p><p>There is no improvement. </p></li>
+				<li><p>You may guarantee some changes by forcing <strong class="source-inline">min_child_weight</strong> to take on a value of <strong class="source-inline">2</strong> or <strong class="source-inline">3</strong> while including a range of <strong class="source-inline">subsample</strong> from <strong class="source-inline">0.5</strong> to <strong class="source-inline">0.9</strong>. Furthermore, increasing <strong class="source-inline">n_estimators</strong> may help by giving the model more time to learn:</p><p class="source-code">grid_search(params={'max_depth':[2],</p><p class="source-code">                    'min_child_weight':[2,3],</p><p class="source-code">                    'subsample':[0.5, 0.6, 0.7, 0.8, 0.9],</p><p class="source-code">                   'n_estimators':[31, 50]})</p><p>The result is as follows:</p><p class="source-code">Best params: {'max_depth': 1, 'min_child_weight': 2, 'n_estimators': 50, 'subsample': 0.9}</p><p class="source-code">Best score: 2.665209161229433</p><p>The score is<a id="_idIndexMarker674"/> nearly the same, but slightly worse.</p></li>
+				<li><p>Narrow <strong class="source-inline">min_child_weight</strong> and <strong class="source-inline">subsample</strong> while using a range of <strong class="source-inline">0.5</strong> to <strong class="source-inline">0.9</strong> for <strong class="source-inline">colsample_bytree</strong>:</p><p class="source-code">grid_search(params={'max_depth':[1],</p><p class="source-code">                    'min_child_weight':[1, 2, 3], </p><p class="source-code">                    'subsample':[0.6, 0.7, 0.8], </p><p class="source-code">                    'colsample_bytree':[0.5, 0.6, 0.7, 0.8, 0.9, 1],</p><p class="source-code">                   'n_estimators':[50]})</p><p>The result is this:</p><p class="source-code">Best params: {'colsample_bytree': 0.9, 'max_depth': 1, 'min_child_weight': 3, 'n_estimators': 50, 'subsample': 0.8}</p><p class="source-code">Best score: 2.659649642579931</p><p>This is the best score so far.</p></li>
+				<li><p>Holding the best current values, try ranges from <strong class="source-inline">0.6</strong> to <strong class="source-inline">1.0</strong> with <strong class="source-inline">colsample_bynode</strong> and <strong class="source-inline">colsample_bylevel</strong>:</p><p class="source-code"> grid_search(params={'max_depth':[1],</p><p class="source-code">                    'min_child_weight':[3], </p><p class="source-code">                    'subsample':[.8], </p><p class="source-code">                    'colsample_bytree':[0.9],</p><p class="source-code">                    'colsample_bylevel':[0.6, 0.7, 0.8, 0.9, 1],</p><p class="source-code">                    'colsample_bynode':[0.6, 0.7, 0.8, 0.9, 1],</p><p class="source-code">                    'n_estimators':[50]})</p><p>The result is <a id="_idIndexMarker675"/>given here:</p><p class="source-code">Best params: {'colsample_bylevel': 0.9, 'colsample_bynode': 0.8, 'colsample_bytree': 0.9, 'max_depth': 1, 'min_child_weight': 3, 'n_estimators': 50, 'subsample': 0.8}</p><p class="source-code">Best score: 2.64172735526102</p><p>The score has improved again.</p></li>
+			</ol>
+			<p>Further experimentation with the base learner to <strong class="source-inline">dart</strong> and <strong class="source-inline">gamma</strong> resulted in no new gains.</p>
+			<p>Depending on the time and the scope of the project, it could be worth tuning hyperparameters further, and even trying them all together in <strong class="source-inline">RandomizedSearch</strong>. In industry, there is a good chance that you will have access to cloud computing, where inexpensive, preemptible <strong class="bold">Virtual Machines</strong> (<strong class="bold">VMs</strong>) will allow <a id="_idIndexMarker676"/>more hyperparameter searches to find even better results. Just note that scikit-learn currently does not offer a way to stop time-consuming searches to save the best parameters before the code completes.</p>
+			<p>Now that we have a robust model, we can move forward and test the model.</p>
+			<h2 id="_idParaDest-228"><a id="_idTextAnchor243"/>Testing model</h2>
+			<p>Now that you have a <a id="_idIndexMarker677"/>potential final model, it's important to test it against the test set.</p>
+			<p>Recall that the test set was not transformed in our pipeline. Fortunately, at this point, it only takes one line of code to transform it:</p>
+			<p class="source-code">X_test_transformed = data_pipeline.fit_transform(X_test)</p>
+			<p>Now we can initialize a model with the best-tuned hyperparameters selected in the previous section, fit it on the training set, and test it against the test set that was held back:</p>
+			<p class="source-code">model = XGBRegressor(max_depth=2, min_child_weight=3, subsample=0.9, colsample_bytree=0.8, gamma=2, missing=-999.0)</p>
+			<p class="source-code">model.fit(X_train_transformed, y_train)</p>
+			<p class="source-code">y_pred = model.predict(X_test_transformed)</p>
+			<p class="source-code">rmse = MSE(y_pred, y_test)**0.5</p>
+			<p class="source-code">rmse</p>
+			<p>The score is as follows:</p>
+			<p class="source-code">2.7908972630881435</p>
+			<p>The score is a little higher, although this could be on account of the fold.</p>
+			<p>If not, our model has fit the validation set a little too closely, which can happen when fine-tuning hyperparameters and adjusting them closely to improve the validation set. The model generalizes fairly well, but it could generalize better.</p>
+			<p>For the next steps, when considering whether the score can be improved upon, the following options are available:</p>
+			<ul>
+				<li><p>Return to hyperparameter fine-tuning.</p></li>
+				<li><p>Keep the model as is.</p></li>
+				<li><p>Make a quick adjustment based on hyperparameter knowledge.</p></li>
+			</ul>
+			<p>Quickly adjusting hyperparameters is viable since the model could be overfitting. For instance, increasing <strong class="source-inline">min_child_weight</strong> and lowering <strong class="source-inline">subsample</strong> should help the model to generalize better.</p>
+			<p>Let's make that final adjustment for<a id="_idIndexMarker678"/> a final model:</p>
+			<p class="source-code">model = XGBRegressor(max_depth=1,</p>
+			<p class="source-code">                       min_child_weight=5,</p>
+			<p class="source-code">                       subsample=0.6, </p>
+			<p class="source-code">                       colsample_bytree=0.9, </p>
+			<p class="source-code">                       colsample_bylevel=0.9,</p>
+			<p class="source-code">                       colsample_bynode=0.8,</p>
+			<p class="source-code">                     n_estimators=50,</p>
+			<p class="source-code">                       missing=-999.0)</p>
+			<p class="source-code">model.fit(X_train_transformed, y_train)</p>
+			<p class="source-code">y_pred = model.predict(X_test_transformed)</p>
+			<p class="source-code">rmse = MSE(y_pred, y_test)**0.5</p>
+			<p class="source-code">rmse</p>
+			<p>The result is as follows: </p>
+			<p class="source-code">2.730601403138633</p>
+			<p>Note that the score has improved.</p>
+			<p>Also, you should absolutely not go back and forth trying to improve the hold-out test score. It is acceptable to make a<a id="_idIndexMarker679"/> few adjustments after receiving the test score, however; otherwise, you could never improve upon the first result.</p>
+			<p>Now all that remains is to complete the pipeline.</p>
+			<h1 id="_idParaDest-229"><a id="_idTextAnchor244"/>Building a machine learning pipeline</h1>
+			<p>Completing the machine learning pipeline<a id="_idIndexMarker680"/> requires adding the machine learning model to the previous pipeline. You need a machine learning tuple after <strong class="source-inline">NullValueImputer</strong> and <strong class="source-inline">SparseMatrix</strong> as follows:</p>
+			<p class="source-code">full_pipeline = Pipeline([('null_imputer', NullValueImputer()),  ('sparse', SparseMatrix()), </p>
+			<p class="source-code">('xgb', XGBRegressor(max_depth=1, min_child_weight=5, subsample=0.6, colsample_bytree=0.9, colsample_bylevel=0.9, colsample_bynode=0.8, missing=-999.0))]) </p>
+			<p>This pipeline is now complete with a machine learning model, and it can be fit on any <strong class="source-inline">X</strong>, <strong class="source-inline">y</strong> combination, as follows:</p>
+			<p class="source-code">full_pipeline.fit(X, y)</p>
+			<p>Now you can make predictions on any data whose target column is unknown:</p>
+			<p class="source-code">new_data = X_test</p>
+			<p class="source-code">full_pipeline.predict(new_data)</p>
+			<p>Here are the first few rows of the expected output:</p>
+			<p class="source-code">array([13.55908  ,  8.314051 , 11.078157 , 14.114085 , 12.2938385, 11.374797 , 13.9611025, 12.025812 , 10.80344  , 13.479145 , 13.02319  ,  9.428679 , 12.57761  , 12.405045 , 14.284043 , 8.549758 , 10.158956 ,  9.972576 , 15.502667 , 10.280028 , ...</p>
+			<p>To get realistic predictions, the data may be rounded as follows:</p>
+			<p class="source-code">np.round(full_pipeline.predict(new_data))</p>
+			<p>The expected output is given here:</p>
+			<p class="source-code">array([14.,  8., 11., 14., 12., 11., 14., 12., 11., 13., 13.,  9., 13., 12., 14.,  9., 10., 10., 16., 10., 13., 13.,  7., 12.,  7.,  8., 10., 13., 14., 12., 11., 12., 15.,  9., 11., 13., 12., 11.,  8.,</p>
+			<p class="source-code">...</p>
+			<p class="source-code">11., 13., 12., 13.,  9., 13., 10., 14., 12., 15., 15., 11., 14., 10., 14.,  9.,  9., 12., 13.,  9., 11., 14., 13., 11., 13., 13., 13., 13., 11., 13., 14., 15., 13.,  9., 10., 13.,  8.,  8., 12., 15., 14., 13., 10., 12., 13.,  9.], dtype=float32)</p>
+			<p>Finally, if new data comes through, it can be<a id="_idIndexMarker681"/> concatenated with the previous data and placed through the same pipeline for a stronger model, since the new model may be fit on more data as follows:</p>
+			<p class="source-code">new_df = pd.read_csv('student-por.csv')</p>
+			<p class="source-code">new_X = df.iloc[:, :-3]</p>
+			<p class="source-code">new_y = df.iloc[:, -1]</p>
+			<p class="source-code">new_model = full_pipeline.fit(new_X, new_y)</p>
+			<p>Now, this model may be used to make predictions on new data, as shown in the following code:</p>
+			<p class="source-code">more_new_data = X_test[:25]</p>
+			<p class="source-code">np.round(new_model.predict(more_new_data))</p>
+			<p>The expected output is as follows:</p>
+			<p class="source-code">array([14.,  8., 11., 14., 12., 11., 14., 12., 11., 13., 13.,  9., 13., 12., 14.,  9., 10., 10., 16., 10., 13., 13.,  7., 12.,  7.],</p>
+			<p class="source-code">      dtype=float32)</p>
+			<p>There is one small catch.</p>
+			<p>What if you want to make a prediction on only one row of data? If you run a single row through the pipeline, the resulting sparse matrix will not have the correct number of columns, since it will only one-hot encode categories that are present in the single row. This will result in a <em class="italic">mismatch</em> error in the data, since the machine learning model has been fit to a sparse matrix that requires more rows of data.</p>
+			<p>A simple solution is to concatenate the new row of data with enough rows of data to guarantee that the full sparse matrix is present with all possible categorical columns transformed. We have seen that this works with 25 rows from <strong class="source-inline">X_test</strong> since there were no errors. Using 20 or fewer rows from <strong class="source-inline">X_test</strong> will result in a mismatch error in this particular case.</p>
+			<p>So, if you want to make a prediction with <a id="_idIndexMarker682"/>a single row of data, concatenate the single row with the first <strong class="source-inline">25</strong> rows of <strong class="source-inline">X_test</strong> and make a prediction as follows:</p>
+			<p class="source-code">single_row = X_test[:1]</p>
+			<p class="source-code">single_row_plus = pd.concat([single_row, X_test[:25]])</p>
+			<p class="source-code">print(np.round(new_model.predict(single_row_plus))[:1])</p>
+			<p>The result is this:</p>
+			<p class="source-code">[14.]</p>
+			<p>You now know how machine learning models may be included in pipelines to transform and make predictions on new data.</p>
+			<h1 id="_idParaDest-230"><a id="_idTextAnchor245"/>Summary</h1>
+			<p>Congratulations on making it to the end of the book! This has been an extraordinary journey that began with basic machine learning and <strong class="source-inline">pandas</strong> and ended with building your own customized transformers, pipelines, and functions to deploy robust, fine-tuned XGBoost models in industry scenarios with sparse matrices to make predictions on new data.</p>
+			<p>Along the way, you have learned the story of XGBoost, from the first decision trees through random forests and gradient boosting, before discovering the mathematical details and sophistication that has made XGBoost so special. You saw time and time again that XGBoost outperforms other machine learning algorithms, and you gained essential practice in tuning XGBoost's wide-ranging hyperparameters, including <strong class="source-inline">n_estimators</strong>, <strong class="source-inline">max_depth</strong>, <strong class="source-inline">gamma</strong>, <strong class="source-inline">colsample_bylevel</strong>, <strong class="source-inline">missing</strong>, and <strong class="source-inline">scale_pos_weight</strong>.</p>
+			<p>You learned how physicists and astronomers obtained knowledge about our universe in historically important case studies, and you learned about the extensive range of XGBoost through imbalanced datasets and the application of alternative base learners. You even learned tricks of the trade from Kaggle competitions through advanced feature engineering, non-correlated ensembles, and stacking. Finally, you learned advanced automation processes for industry.</p>
+			<p>At this point, your knowledge of XGBoost is at an advanced level. You can now use XGBoost efficiently, swiftly, and powerfully to tackle the machine learning problems that will come your way. Of course, XGBoost is not perfect. If you are dealing with unstructured data such as images or text, <strong class="bold">neural networks</strong> might serve you better. For most machine learning tasks, especially those with tabular data, XGBoost will usually give you an advantage.</p>
+			<p>If you are interested in pursuing further studies with XGBoost, my personal recommendation is to enter Kaggle competitions. The reason is that Kaggle competitions consist of seasoned machine learning practitioners and competing against them will make you better. Furthermore, Kaggle competitions provide a structured machine learning environment consisting of many practitioners working on the same problem, which results in shared notebooks and forum discussions that can further boost the educational process. It's also where XGBoost first developed its extraordinary reputation with the Higgs boson competition, as outlined in this book.</p>
+			<p>You may now go confidently forward into the world of big data with XGBoost to advance research, enter competitions, and build machine learning models ready for production.</p>
+		</div>
+	</body></html>

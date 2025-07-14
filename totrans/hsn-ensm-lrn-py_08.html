@@ -1,0 +1,315 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Bagging</h1>
+                </header>
+            
+            <article>
+                
+<p>Bagging, or bootstrap aggregating, is the first generative ensemble learning technique that this book will present. It can be a useful tool to reduce variance as it creates a number of base learners by sub-sampling the original train set. In this chapter, we will discuss the statistical method on which bagging is based, bootstrapping. Next, we will present bagging, along with its strengths and weaknesses. Finally, we will implement the method in Python, as well as use the scikit-learn implementation, to solve regression and classification problems.<br/>
+The main topics covered in this chapter are as follows:</p>
+<ul>
+<li>The bootstrapping method from computational statistics</li>
+<li>How bagging works</li>
+<li>Strengths and weaknesses of bagging</li>
+<li>Implementing a custom bagging ensemble</li>
+<li>Using the scikit-learn implementation</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Technical requirements</h1>
+                </header>
+            
+            <article>
+                
+<p>You will require basic knowledge of machine learning techniques and algorithms. Furthermore, a knowledge of python conventions and syntax is required. Finally, familiarity with the NumPy library will greatly help the reader to understand some custom algorithm implementations.</p>
+<p>The code files of this chapter can be found on GitHub:</p>
+<p><a href="https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter05">https://github.com/PacktPublishing/Hands-On-Ensemble-Learning-with-Python/tree/master/Chapter05</a></p>
+<p>Check out the following video to see the Code in Action: <a href="http://bit.ly/2JKcokD">http://bit.ly/2JKcokD</a>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Bootstrapping</h1>
+                </header>
+            
+            <article>
+                
+<p>Bootstrapping is a resampling method. In statistics, resampling entails the use of many samples, generated from an original sample. In machine learning terms, the sample is our training data. The main idea is to use the original sample as the population (the whole domain of our problem) and the generated sub-samples as samples.</p>
+<p>In essence, we are simulating how a statistic would behave if we collected many samples from the original population, as shown in the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-599 image-border" src="assets/eea515ec-c607-48f5-9db1-8eb8b6159a9f.png" style="width:43.83em;height:21.67em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">A representation of how resampling works</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating bootstrap samples</h1>
+                </header>
+            
+            <article>
+                
+<p>In order to create bootstrap samples, we resample with replacement (each instance may be selected multiple times) from our original sample. This means that a single instance can be selected multiple times. Suppose we have data for 100 individuals. The data contains the weight and height of each individual. If we generate random numbers from 1 to 100 and add the corresponding data to a new dataset, we have essentially created a bootstrap sample.</p>
+<p>In Python, we can use <kbd>numpy.random.choice</kbd>to create a sub-sample of a given size. We can try to create bootstrap samples and estimates about the mean and standard deviation of the diabetes dataset. First, we load the dataset and libraries and print the statistics of our sample, as in the following example:</p>
+<pre># --- SECTION 1 ---<br/># Libraries and data loading<br/>import numpy as np<br/>import matplotlib.pyplot as plt<br/>from sklearn.datasets import load_diabetes<br/><br/>diabetes = load_diabetes()<br/><br/># --- SECTION 2 ---<br/># Print the original sample's statistics<br/>target = diabetes.target<br/><br/>print(np.mean(target))<br/>print(np.std(target))</pre>
+<p>We then create the bootstrap samples and statistics and store them in <kbd>bootstrap_stats</kbd>. We could store the whole bootstrap samples, but it is not memory-efficient to do so. Furthermore, we <span>only </span><span>care about the statistics, so it makes sense only to store them. Here, we create 10,000 bootstrap samples and statistics:</span></p>
+<pre># --- SECTION 3 ---<br/># Create the bootstrap samples and statistics<br/>bootstrap_stats = []<br/>for _ in range(10000):<br/>    bootstrap_sample = np.random.choice(target, size=len(target))<br/>    mean = np.mean(bootstrap_sample)<br/>    std = np.std(bootstrap_sample)<br/>    bootstrap_stats.append((mean, std))<br/>   <br/>bootstrap_stats = np.array(bootstrap_stats)</pre>
+<p>We can now plot the histograms of the mean and standard deviation, as well as calculate the standard error (that is, the standard deviation of the statistic's distributions) for each:</p>
+<pre># --- SECTION 4 ---<br/># plot the distributions<br/>plt.figure()<br/>plt.subplot(2,1,1)<br/>std_err = np.std(bootstrap_stats[:,0])<br/>plt.title('Mean, Std. Error: %.2f'%std_err)<br/>plt.hist(bootstrap_stats[:,0], bins=20)<br/><br/>plt.subplot(2,1,2)<br/>std_err = np.std(bootstrap_stats[:,1])<br/>plt.title('Std. Dev, Std. Error: %.2f'%std_err)<br/>plt.hist(bootstrap_stats[:,1], bins=20)<br/>plt.show()</pre>
+<p>We get the output shown in the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-600 image-border" src="assets/8114287f-2280-4cd4-8aa7-fcd3b478a8dd.png" style="width:33.33em;height:24.75em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">Bootstrap distributions for mean and standard deviation</div>
+<div>
+<p>Note that due to the inherent randomness of the process (for which instances will be selected for each bootstrap sample), the results may vary each time the procedure is executed. A higher number of bootstrap samples will help to stabilize the results. Nonetheless, it is a useful technique to calculate the standard error, confidence intervals, and other statistics without making any assumptions about the underlying distribution.</p>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Bagging</h1>
+                </header>
+            
+            <article>
+                
+<p>Bagging makes use of bootstrap samples in order to train an array of base learners. It then combines their predictions using voting. The motivation behind this method is to produce diverse base learners by diversifying the train sets. In this section, we discuss the motivation, strengths, and weaknesses of this method.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating base learners</h1>
+                </header>
+            
+            <article>
+                
+<p>Bagging applies bootstrap sampling to the train set, creating a number of <em>N</em> bootstrap samples. It then creates the same number <em>N</em> of base learners, using the same machine learning algorithm. Each base learner is trained on the corresponding train set and all base learners are combined by voting (hard voting for classification, and averaging for regression). The procedure is depicted as follows:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-601 image-border" src="assets/7a27a871-ef8e-4465-9e56-2e53afe717f4.png" style="width:36.75em;height:43.25em;"/></p>
+<div class="packt_figref CDPAlignCenter CDPAlign">Creating base learners through bagging</div>
+<div>
+<p>By using bootstrap samples with the same size as the original train set, each instance has a probability of 0.632 of appearing in any given bootstrap sample. Thus, in many cases, this type of bootstrap estimate is referred to as the 0.632 bootstrap estimate. In our case, this means that we can use the remaining 36.8% of the original train set in order to estimate the individual base learner's performance. This is called the <strong>out</strong>-<strong>of</strong>-<strong>bag score</strong>, and the 36.8% of instances are called <strong>out</strong>-<strong>of</strong>-<strong>bag instances</strong>.</p>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Strengths and weaknesses</h1>
+                </header>
+            
+            <article>
+                
+<p>Bagging is usually utilized with decision trees as its base learners, but it can be used with any machine learning algorithm. Bagging reduces variance greatly and it has been proved that it is most effective when unstable base learners are used. Unstable learners generate models with great inter-model variance, even when the respective train sets vary only slightly. Furthermore, bagging converges as the number of base learners grows. Similar to estimating a bootstrap statistic, by increasing the number of base learners, we also increase the number of bootstrap samples. Finally, bagging allows for easy parallelization, as each model is trained independently.</p>
+<p>The main disadvantage of bagging is the loss of interpretability and transparency of our models. For example, using a single decision tree allows for great interpretability, as the decision of each node is readily available. Using a bagging ensemble of 100 trees makes the individual decisions less important, while the collective predictions define the ensemble's final output.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Python implementation</h1>
+                </header>
+            
+            <article>
+                
+<p><span>To better understand the process of creating the ensemble, as well as its merits, we will implement it in Python using decision trees. In this example, we will try to classify the MNIST dataset of handwritten digits. Although we have used the cancer dataset for classification examples up until now, it contains only two classes, while the number of examples is relatively small for effective bootstrapping. The digits dataset contains a considerable number of examples and is also more complex, as there is a total of 10 classes.</span></p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Implementation</h1>
+                </header>
+            
+            <article>
+                
+<p>For this example, we will use 1500 instances as the train set, and the remaining 297 as the test set. We will generate 10 bootstrap samples, and consequently 10 decision-tree models. We will then combine the base predictions using hard voting:</p>
+<ol>
+<li>We load the libraries and data as shown in the following example:</li>
+</ol>
+<pre style="padding-left: 60px"># --- SECTION 1 ---<br/># Libraries and data loading<br/>from sklearn.datasets import load_digits<br/>from sklearn.tree import DecisionTreeClassifier<br/>from sklearn import metrics<br/>import numpy as np<br/>digits = load_digits()<br/><br/>train_size = 1500<br/>train_x, train_y = digits.data[:train_size], digits.target[:train_size]<br/>test_x, test_y = digits.data[train_size:], digits.target[train_size:]</pre>
+<ol start="2">
+<li>We then create our bootstrap samples and train the corresponding models. Note, that we do not use <kbd>np.random.choice</kbd>. Instead, we generate an array of indices with <kbd>np.random.randint(0, train_size, size=train_size)</kbd>, as this will enable us to choose both the features and the corresponding targets for each bootstrap sample. We store each base learner in the <kbd>base_learners</kbd> list, for ease of access later on:</li>
+</ol>
+<pre style="padding-left: 60px"># --- SECTION 2 ---<br/># Create our bootstrap samples and train the classifiers<br/><br/>ensemble_size = 10<br/>base_learners = []<br/><br/>for _ in range(ensemble_size):<br/> # We sample indices in order to access features and targets<br/> bootstrap_sample_indices = np.random.randint(0, train_size, size=train_size)<br/> bootstrap_x = train_x[bootstrap_sample_indices]<br/> bootstrap_y = train_y[bootstrap_sample_indices]<br/> dtree = DecisionTreeClassifier()<br/> dtree.fit(bootstrap_x, bootstrap_y)<br/> base_learners.append(dtree)</pre>
+<ol start="3">
+<li>Next, we predict the targets of the test set with each base learner and store their predictions as well as their evaluated accuracy, as shown in the following code block:</li>
+</ol>
+<pre style="padding-left: 60px"># --- SECTION 3 ---<br/># Predict with the base learners and evaluate them<br/><br/>base_predictions = []<br/>base_accuracy = []<br/>for learner in base_learners:<br/> predictions = learner.predict(test_x)<br/> base_predictions.append(predictions)<br/> acc = metrics.accuracy_score(test_y, predictions)<br/> base_accuracy.append(acc)</pre>
+<ol start="4">
+<li>Now that we have each base learner's predictions in <kbd>base_predictions</kbd>, we can combine them with hard voting, as we did in <span class="cdp-organizer-chapter-number"><a href="ad9aa66b-7b30-4779-8914-0ff58140b3e8.xhtml">Chapter 3</a>, </span><em><span class="cdp-organizer-chapter-title"><span class="cdp-organize-title-label">Voting</span></span></em>, for individual base learners. Furthermore, we evaluate the ensemble's accuracy:</li>
+</ol>
+<pre style="padding-left: 60px"># Combine the base learners' predictions <br/> <br/>ensemble_predictions = []<br/># Find the most voted class for each test instance<br/>for i in range(len(test_y)):<br/>    counts = [0 for _ in range(10)]<br/>    for learner_predictions in base_predictions:<br/>        counts[learner_predictions[i]] = counts[learner_predictions[i]]+1<br/>    # Find the class with most votes <br/>    final = np.argmax(counts)<br/>    # Add the class to the final predictions <br/>    ensemble_predictions.append(final)<br/>    <br/><br/>ensemble_acc = metrics.accuracy_score(test_y, ensemble_predictions)</pre>
+<ol start="5">
+<li>Finally, we print the accuracy of each base learner, as well as the ensemble's accuracy, sorted in ascending order:</li>
+</ol>
+<pre style="padding-left: 60px"># --- SECTION 5 ---<br/># Print the accuracies<br/>print('Base Learners:')<br/>print('-'*30)<br/>for index, acc in enumerate(sorted(base_accuracy)):<br/> print(f'Learner {index+1}: %.2f' % acc)<br/>print('-'*30)<br/>print('Bagging: %.2f' % ensemble_acc)</pre>
+<p style="padding-left: 60px">The final output is shown in the following example:</p>
+<pre class="mce-root" style="padding-left: 60px"><br/>Base Learners:<br/>------------------------------<br/>Learner 1: 0.72<br/>Learner 2: 0.72<br/>Learner 3: 0.73<br/>Learner 4: 0.73<br/>Learner 5: 0.76<br/>Learner 6: 0.76<br/>Learner 7: 0.77<br/>Learner 8: 0.77<br/>Learner 9: 0.79<br/>Learner 10: 0.79<br/>------------------------------<br/>Bagging: 0.88</pre>
+<p>It is evident that the ensemble's accuracy is almost 10% higher than the best-performing base model. This is a considerable improvement, especially if we take into account that this ensemble consists of identical base learners (considering the machine learning method used).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Parallelizing the implementation</h1>
+                </header>
+            
+            <article>
+                
+<p>We can easily parallelize our bagging implementation using <kbd>from concurrent.futures import ProcessPoolExecutor</kbd>. This executor allows the user to spawn a number of tasks to be executed and executes them in parallel processes. It only needs to be passed a target function and its parameters. In our example, we only need to create functions out of code sections (sections 2 and 3):</p>
+<pre>def create_learner(train_x, train_y):<br/> # We sample indices in order to access features and targets<br/> bootstrap_sample_indices = np.random.randint(0, train_size, size=train_size)<br/> bootstrap_x = train_x[bootstrap_sample_indices]<br/> bootstrap_y = train_y[bootstrap_sample_indices]<br/> dtree = DecisionTreeClassifier()<br/> dtree.fit(bootstrap_x, bootstrap_y)<br/> return dtree<br/><br/>def predict(learner, test_x):<br/> return learner.predict(test_x)</pre>
+<p class="NormalPACKT">Then, in the original sections 2 and 3, we modify the code as follows:</p>
+<pre># Original Section 2<br/>with ProcessPoolExecutor() as executor:<br/> futures = []<br/> for _ in range(ensemble_size):<br/> future = executor.submit(create_learner, train_x, train_y)<br/> futures.append(future)<br/><br/>for future in futures:<br/> base_learners.append(future.result())<br/><br/># Original Section 3<br/>base_predictions = []<br/> base_accuracy = []<br/> with ProcessPoolExecutor() as executor:<br/> futures = []<br/> for learner in base_learners:<br/> future = executor.submit(predict, learner, test_x)<br/> futures.append(future)<br/><br/>for future in futures:<br/> predictions = future.result()<br/> base_predictions.append(predictions)<br/> acc = metrics.accuracy_score(test_y, predictions)<br/> base_accuracy.append(acc)</pre>
+<p>The <kbd>executor</kbd> returns an object (in our case <kbd>future</kbd>), which contains the results of our function. The rest of the code remains unchanged with the exception that it is enclosed in <kbd>if __name__ == '__main__' </kbd>guard, as each new process will import the whole script. This guard prevents them from re-executing the rest of the code. As our example is small, with six processes available, we need to have at least 1,000 base learners to see any considerable speedup in the execution times. For a fully working version, <span>please refer to <kbd>'bagging_custom_parallel.py'</kbd> from the provided codebase.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using scikit-learn </h1>
+                </header>
+            
+            <article>
+                
+<p>Scikit-learn has a great implementation of bagging for both regression and classification problems. In this section, we will go through the process of using the provided implementations to create ensembles for the digits and diabetes datasets.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Bagging for classification</h1>
+                </header>
+            
+            <article>
+                
+<p>Scikit-learn's implementation of bagging lies in the <kbd>sklearn.ensemble</kbd> package. <kbd>BaggingClassifier</kbd> is the corresponding class for classification problems. It has a number of interesting parameters, allowing for greater flexibility. It can use any scikit-learn estimator by specifying it with <kbd>base_estimator</kbd>. Furthermore, <kbd>n_estimators</kbd> dictates the ensemble's size (and, consequently, the number of bootstrap samples that will be generated), while <kbd>n_jobs</kbd> dictates how many jobs (processes) will be used to train and predict with each base learner. Finally, if set to <kbd>True</kbd>, <kbd>oob_score</kbd> calculates the out-of-bag score for the base learners.</p>
+<p>Using the actual classifier is straightforward and similar to all other scikit-learn estimators. First, we load the required data and libraries, as shown in the following example:</p>
+<pre># --- SECTION 1 ---<br/># Libraries and data loading<br/>from sklearn.datasets import load_digits<br/>from sklearn.tree import DecisionTreeClassifier<br/>from sklearn.ensemble import BaggingClassifier<br/>from sklearn import metrics<br/><br/>digits = load_digits()<br/><br/>train_size = 1500<br/>train_x, train_y = digits.data[:train_size], digits.target[:train_size]<br/>test_x, test_y = digits.data[train_size:], digits.target[train_size:]</pre>
+<p class="mce-root">We then create, train, and evaluate the estimator:</p>
+<pre class="mce-root"># --- SECTION 2 ---<br/># Create the ensemble<br/>ensemble_size = 10<br/>ensemble = BaggingClassifier(base_estimator=DecisionTreeClassifier(),<br/> n_estimators=ensemble_size,<br/> oob_score=True)<br/><br/># --- SECTION 3 ---<br/># Train the ensemble<br/>ensemble.fit(train_x, train_y)<br/><br/># --- SECTION 4 ---<br/># Evaluate the ensemble<br/>ensemble_predictions = ensemble.predict(test_x)<br/><br/>ensemble_acc = metrics.accuracy_score(test_y, ensemble_predictions)<br/><br/># --- SECTION 5 ---<br/># Print the accuracy<br/>print('Bagging: %.2f' % ensemble_acc)</pre>
+<p>The final achieved accuracy is 88%, the same as our own implementation. Furthermore, we can access the out-of-bag score through <kbd>ensemble.oob_score_</kbd>, which in our case is equal to 89.6%. Generally, the out-of-bag score slightly overestimates the out-of-sample predictive capability of the ensemble, which is what we observe in this example.</p>
+<p>In our examples, we chose an <kbd>ensemble_size</kbd> of <kbd>10</kbd>. Suppose we would like to test how different ensemble sizes affect the ensemble's performance. Given that the bagging classifier accepts the size as a constructor's parameter, we can use validation curves from <span class="cdp-organizer-chapter-number"><a href="d7921006-351e-4c21-ab54-f1dc834557dc.xhtml">Chapter 2</a>, </span><span class="cdp-organizer-chapter-title"><span class="cdp-organize-title-label"><em>Getting Started with Ensemble Learning</em>, </span></span>to conduct the test. We test 1 to 39 base learners, with a step of 2. We observe an initial decrease in bias and variance. For ensembles with more than 20 base learners, there seems to be zero benefit in increasing the ensemble’s size. The results are depicted in the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="aligncenter size-full wp-image-602 image-border" src="assets/1366c425-06ba-4e76-9523-a11d125fe96f.png" style="width:34.08em;height:25.25em;"/></p>
+<div class="mce-root packt_figref CDPAlignCenter CDPAlign">Validation curves for 1 to 39 base learners</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Bagging for regression</h1>
+                </header>
+            
+            <article>
+                
+<p>For regression purposes, we will use the <kbd>BaggingRegressor</kbd> class from the same <kbd>sklearn.ensemble</kbd> package. We will also instantiate a single <kbd>DecisionTreeRegressor </kbd>to compare the results. We start by loading the libraries and data, as usual:</p>
+<pre class="mce-root"># --- SECTION 1 ---<br/> # Libraries and data loading<br/> from sklearn.datasets import load_diabetes<br/> from sklearn.tree import DecisionTreeRegressor<br/> from sklearn.ensemble import BaggingRegressor<br/> from sklearn import metrics<br/> import numpy as np<br/> diabetes = load_diabetes()<br/><br/>np.random.seed(1234)<br/><br/>train_x, train_y = diabetes.data[:400], diabetes.target[:400]<br/>test_x, test_y = diabetes.data[400:], diabetes.target[400:]</pre>
+<p class="mce-root">We instantiate the single decision tree and the ensemble. Note that we allow for a relatively deep decision tree, by specifying <kbd>max_depth=6</kbd>. This allows the creation of diverse and unstable models, which greatly benefits bagging. If we restrict the maximum depth to 2 or 3 levels, we will see that bagging does not perform better than a single model. Training and evaluating the ensemble and the model follows the standard procedure:</p>
+<pre class="mce-root"># --- SECTION 2 ---<br/># Create the ensemble and a single base learner for comparison<br/>estimator = DecisionTreeRegressor(max_depth=6)<br/>ensemble = BaggingRegressor(base_estimator=estimator,<br/>n_estimators=10)<br/><br/># --- SECTION 3 ---<br/># Train and evaluate both the ensemble and the base learner<br/>ensemble.fit(train_x, train_y)<br/>ensemble_predictions = ensemble.predict(test_x)<br/><br/>estimator.fit(train_x, train_y)<br/>single_predictions = estimator.predict(test_x)<br/><br/>ensemble_r2 = metrics.r2_score(test_y, ensemble_predictions)<br/>ensemble_mse = metrics.mean_squared_error(test_y, ensemble_predictions)<br/><br/>single_r2 = metrics.r2_score(test_y, single_predictions)<br/>single_mse = metrics.mean_squared_error(test_y, single_predictions)<br/><br/># --- SECTION 4 ---<br/># Print the metrics<br/>print('Bagging r-squared: %.2f' % ensemble_r2)<br/>print('Bagging MSE: %.2f' % ensemble_mse)<br/>print('-'*30)<br/>print('Decision Tree r-squared: %.2f' % single_r2)<br/>print('Decision Tree MSE: %.2f' % single_mse)</pre>
+<p class="mce-root">The ensemble can greatly outperform the single model, by producing both higher R-squared and lower <strong>mean squared error</strong> (<strong>MSE</strong>). As mentioned earlier, this is due to the fact that the base learners are allowed to create deep and unstable models. The actual results of the two models are provided in the following output:</p>
+<pre class="mce-root"> Bagging r-squared: 0.52<br/> Bagging MSE: 2679.12<br/> ------------------------------<br/> Decision Tree r-squared: 0.15<br/> Decision Tree MSE: 4733.35</pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we presented the main concept of creating bootstrap samples and estimating bootstrap statistics. Building on this foundation, we introduced bootstrap aggregating, or bagging, which uses a number of bootstrap samples to train many base learners that utilize the same machine learning algorithm. Later, we provided a custom implementation of bagging for classification, as well as the means to parallelize it. Finally, we showcased the use of scikit-learn's own implementation of bagging for regression and classification problems.</p>
+<p class="mce-root">The chapter can be summarized as follows. <span><strong>Bootstrap samples</strong> are created by resampling with replacement from the original dataset. The main idea is to treat the original sample as the population, and each subsample as an original sample.</span> <span>If the original dataset and the bootstrap dataset have the same size, each instance has a probability of  <strong>63.2%</strong> of being included in the bootstrap dataset (sample). </span><span>Bootstrap methods are useful for calculating statistics such as confidence intervals and standard error, <strong>without making assumptions</strong> about the underlying distribution. </span><span><strong>Bagging</strong> generates a number of bootstrap samples to train each individual base learner. </span><span>Bagging benefits <strong>unstable learners</strong>, where small variations in the train set induce great variations in the generated model. </span><span>Bagging is a suitable ensemble learning method to reduce <strong>variance</strong>.</span></p>
+<p class="mce-root"><span> </span></p>
+<p class="mce-root"><span>Bagging allows for easy <strong>parallelization</strong>, as each bootstrap sample and base learner can be generated, trained, and tested individually. </span><span>As with all ensemble learning methods, using bagging reduces the <strong>interpretability</strong> and motivation behind individual predictions.</span></p>
+<p class="mce-root"><span>In the next chapter, we will introduce the second generative method, Boosting.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

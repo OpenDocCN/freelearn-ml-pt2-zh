@@ -1,0 +1,281 @@
+<html><head></head><body>
+		<div id="_idContainer157">
+			<h1 id="_idParaDest-197"><em class="italic"><a id="_idTextAnchor211"/>Chapter 9</em>: XGBoost Kaggle Masters</h1>
+			<p>In this chapter, you will learn valuable tips and tricks from <strong class="bold">Kaggle Masters</strong> who used XGBoost to win Kaggle competitions. Although we will not enter a Kaggle competition here, the skills that you will gain can apply to building stronger machine learning models in general. Specifically, you will learn why an extra <strong class="bold">hold-out set</strong> is critical, how to <strong class="bold">feature engineer</strong> new columns of data with <strong class="bold">mean encoding</strong>, how to implement <strong class="source-inline">VotingClassifier</strong> and <strong class="source-inline">VotingRegressor</strong> to build non-correlated machine learning ensembles, and the advantages of <strong class="bold">stacking</strong> a final model.</p>
+			<p>In this chapter, we will cover the following main topics:</p>
+			<ul>
+				<li><p>Exploring Kaggle competitions</p></li>
+				<li><p>Engineering new columns of data</p></li>
+				<li><p>Building non-correlated ensembles</p></li>
+				<li><p>Stacking final models</p></li>
+			</ul>
+			<h1 id="_idParaDest-198"><a id="_idTextAnchor212"/>Technical requirements</h1>
+			<p>The code for this chapter<a id="_idIndexMarker555"/> can be found at <a href="https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter09">https://github.com/PacktPublishing/Hands-On-Gradient-Boosting-with-XGBoost-and-Scikit-learn/tree/master/Chapter09</a>.</p>
+			<h1 id="_idParaDest-199"><a id="_idTextAnchor213"/>Exploring Kaggle competitions</h1>
+			<p class="author-quote">"I used only XGBoost (tried others but none of them performed well enough to end up in my ensemble)."</p>
+			<p>– <em class="italic">Qingchen Wang, Kaggle Winner</em> </p>
+			<p>(<a href="https://www.cnblogs.com/yymn/p/4847130.html">https://www.cnblogs.com/yymn/p/4847130.html</a>)</p>
+			<p>In this section, we will investigate Kaggle competitions by looking at a brief history of Kaggle competitions, how they <a id="_idIndexMarker556"/>are structured, and the importance of a hold-out/test set as distinguished from a validation/test set.</p>
+			<h2 id="_idParaDest-200"><a id="_idTextAnchor214"/>XGBoost in Kaggle competitions</h2>
+			<p>XGBoost built its reputation as the<a id="_idIndexMarker557"/> leading machine learning algorithm on account<a id="_idIndexMarker558"/> of its unparalleled success in winning Kaggle competitions. XGBoost often appeared in winning ensembles along with deep learning<a id="_idIndexMarker559"/> models such as <strong class="bold">neural networks</strong>, in addition to winning outright. A sample list of XGBoost Kaggle competition winners appears on the <em class="italic">Distributed (Deep) Machine Learning Community</em> web page at <a href="https://github.com/dmlc/xgboost/tree/master/demo#machine-learning-challenge-winning-solutions">https://github.com/dmlc/xgboost/tree/master/demo#machine-learning-challenge-winning-solutions</a>. For a list of more XGBoost Kaggle competition winners, it's possible to sort through <em class="italic">Winning solutions of Kaggle competitions</em> (<a href="https://www.kaggle.com/sudalairajkumar/winning-solutions-of-kaggle-competitions">https://www.kaggle.com/sudalairajkumar/winning-solutions-of-kaggle-competitions</a>) to research the winning models. </p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">While XGBoost is regularly featured among the winners, other machine learning models make appearances as well.</p>
+			<p>As mentioned in <a href="B15551_05_Final_NM_ePUB.xhtml#_idTextAnchor117"><em class="italic">Chapter 5</em></a>, <em class="italic">XGBoost Unveiled</em>, Kaggle competitions are machine learning competitions where machine learning practitioners compete against one another to obtain the best possible score and win cash prizes. When XGBoost exploded onto the scene in 2014 during the <em class="italic">Higgs Boson Machine Learning Challenge</em>, it immediately jumped the leaderboard and became one of the most preferred machine learning algorithms in Kaggle competitions.</p>
+			<p>Between 2014 and 2018, XGBoost consistently outperformed the competition on tabular data—data organized in rows and columns as contrasted with unstructured data such as images or text, where neural networks had an edge. With the emergence of <strong class="bold">LightGBM</strong> in 2017, a lightning-fast Microsoft <a id="_idIndexMarker560"/>version of gradient boosting, XGBoost finally had some real competition with tabular data.</p>
+			<p>The following introductory paper, <em class="italic">LightGBM: A Highly Efficient Gradient Boosting Decision Tree</em>, written by eight authors, is recommended for an introduction to LightGBM: <a href="https://papers.nips.cc/paper/6907-lightgbm-a-highly-efficient-gradient-boosting-decision-tree.pdf">https://papers.nips.cc/paper/6907-lightgbm-a-highly-efficient-gradient-boosting-decision-tree.pdf</a>.</p>
+			<p>Implementing a great machine<a id="_idIndexMarker561"/> algorithm such as XGBoost or LightGBM in Kaggle<a id="_idIndexMarker562"/> competitions isn't enough. Similarly, fine-tuning a model's hyperparameters often isn't enough. While individual model predictions are important, it's equally important to engineer new data and to combine optimal models to attain higher scores.</p>
+			<h2 id="_idParaDest-201"><a id="_idTextAnchor215"/>The structure of Kaggle competitions</h2>
+			<p>It's worth understanding the<a id="_idIndexMarker563"/> structure of Kaggle competitions to gain insights into why techniques such as non-correlated ensemble building and stacking are widespread. Furthermore, exploring the structure of Kaggle competitions will give you confidence in entering Kaggle competitions down the road if you choose to pursue that route.</p>
+			<p class="callout-heading">Tip</p>
+			<p class="callout">Kaggle recommends <em class="italic">Housing Prices: Advanced Regression Techniques</em>, <a href="https://www.kaggle.com/c/house-prices-advanced-regression-techniques">https://www.kaggle.com/c/house-prices-advanced-regression-techniques</a>, for machine learning students looking to transition beyond the basics to advanced competitions. This is one of many knowledge-based competitions that do not offer cash prizes.</p>
+			<p>Kaggle competitions exist on the Kaggle website. Here is the website from <em class="italic">Avito Context Ad Clicks</em> from 2015 won by XGBoost user Owen Zhang: <a href="https://www.kaggle.com/c/avito-context-ad-clicks/overview">https://www.kaggle.com/c/avito-context-ad-clicks/overview</a>. Several XGBoost Kaggle competition winners, Owen Zhang included, are from 2015, indicating XGBoost's circulation before Tianqi Chin's landmark paper, <em class="italic">XGBoost: A Scalable Tree Boosting System</em> published in 2016: <a href="https://arxiv.org/pdf/1603.02754.pdf">https://arxiv.org/pdf/1603.02754.pdf</a>.</p>
+			<p>Here is the top of the <em class="italic">Avito Context Ad Clicks</em> website:</p>
+			<div>
+				<div id="_idContainer146" class="IMG---Figure">
+					<img src="image/B15551_09_01.jpg" alt="Figure 9.1 – Avito Context Ad Clicks Kaggle competition website"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.1 – Avito Context Ad Clicks Kaggle competition website</p>
+			<p>This overview page explains the competition as follows:</p>
+			<ul>
+				<li><p>Additional links next to <strong class="bold">Overview</strong> (highlighted in blue) include <strong class="bold">Data</strong>, where you access data for the competition.</p></li>
+				<li><p><strong class="bold">Notebooks</strong>, where Kagglers post solutions and starter notebooks.</p></li>
+				<li><p><strong class="bold">Discussion</strong>, where Kagglers post and answer questions.</p></li>
+				<li><p><strong class="bold">Leaderboard</strong>, where the top scores are displayed.</p></li>
+				<li><p><strong class="bold">Rules</strong>, which explains how the competition works.</p></li>
+				<li><p>Additionally, note the <strong class="bold">Late Submission</strong> link on the far-right side, which indicates that submissions are still acceptable even though the competition is over, a general Kaggle policy.</p></li>
+			</ul>
+			<p>To download the data, you<a id="_idIndexMarker564"/> need to enter the competition by signing up for a free account. The data is typically split into two datasets, <strong class="source-inline">training.csv</strong>, the training set used to build a model, and <strong class="source-inline">test.csv</strong>, the test set used to score the model. After submitting a model, you earn a score on the public leaderboard. At the competition's end, a final model is submitted against a private test set to determine the winning solution.</p>
+			<h2 id="_idParaDest-202"><a id="_idTextAnchor216"/>Hold-out sets</h2>
+			<p>It's important to make the distinction between building machine learning models for Kaggle competitions and building them on your own. Up to this point, we have split datasets into training and test sets to ensure that our models generalize well. In Kaggle competitions, however, models must be tested in a competitive environment. For that reason, data from the test set remains hidden.</p>
+			<p>Here are the differences<a id="_idIndexMarker565"/> between Kaggle's training set and test set:</p>
+			<ul>
+				<li><p><strong class="source-inline">training.csv</strong>: This is where you train and score models on your own. This training set should be split into its own training and test sets using <strong class="source-inline">train_test_split</strong> or <strong class="source-inline">cross_val_score</strong> to build models that generalize well to new data. The test sets used during training are often referred to as <strong class="bold">validation sets</strong> since they <a id="_idIndexMarker566"/>validate the models.</p></li>
+				<li><p><strong class="source-inline">test.csv</strong>: This is a separate hold-out set. You don't use the test set until you have a final model ready to test on data it has never seen before. The purpose of the hidden test set is to maintain the integrity of the competition. The test data is hidden from participants and the results are only revealed after participants submit a model. </p></li>
+			</ul>
+			<p>It's always good practice to keep a<a id="_idIndexMarker567"/> test set aside when building a model for research or industry. When a model is tested using data it has already seen, the model risks overfitting the test set, a possibility that often arises in Kaggle competitions when competitors obsess over improving their position in the public leaderboard by few thousandths of a percent. </p>
+			<p>Kaggle competitions intersect with the real world regarding this hold-out set. The purpose of building machine learning models is to make accurate predictions using unknown data. For example, if a model gives 100% accuracy on the training set, but only gives 50% accuracy on unknown data, the model is basically worthless.</p>
+			<p>This distinction, between validating models on test sets and testing models on hold-out sets, is very important. </p>
+			<p>Here is a general approach for validating and testing machine learning models on your own:</p>
+			<ol>
+				<li><p><strong class="bold">Split data into a training set and a hold-out set</strong>: Keep the hold-out set away and resist the temptation to look at it.</p></li>
+				<li><p><strong class="bold">Split the training set into a training and test set or use cross-validation</strong>: Fit new models on the training set and validate the model, going back and forth to improve scores.</p></li>
+				<li><p><strong class="bold">After obtaining a final model, test it on the hold-out set</strong>: This is the real test of the model. If the score is below expectations, return to <em class="italic">step 2</em> and repeat. Do not—and this is important—use the hold-out set as the new validation set, going back and forth adjusting hyperparameters. When this happens, the model is adjusting itself to match the hold-out set, which defeats the purpose of a hold-out set in the first place.</p></li>
+			</ol>
+			<p>In Kaggle competitions, adjusting the<a id="_idIndexMarker568"/> machine learning model too closely to the test set will not work. Kaggle often splits test sets into an additional public and private component. The public test set gives participants a chance to score their models and work on improvements, adjusting and resubmitting along the way. The private test set is not revealed until the last day of the competition. Although rankings are displayed for the public test set, competition winners are announced based on the results of the unseen test set.</p>
+			<p>Winning a Kaggle competition requires getting the best possible score on the private test set. In Kaggle competitions, every percentage point matters. The need for this kind of precision, sometimes scoffed at by the industry, has led to innovative machine learning practices to improve scores. Understanding these techniques, as presented in this chapter, can lead to stronger models and a deeper understanding of machine learning overall.</p>
+			<h1 id="_idParaDest-203"><a id="_idTextAnchor217"/>Engineering new columns</h1>
+			<p class="author-quote">"Almost always I can find open source code for what I want to do, and my time is much better spent doing research and feature engineering."</p>
+			<p>– <em class="italic">Owen Zhang, Kaggle Winner</em></p>
+			<p>(<a href="https://medium.com/kaggle-blog/profiling-top-kagglers-owen-zhang-currently-1-in-the-world-805b941dbb13">https://medium.com/kaggle-blog/profiling-top-kagglers-owen-zhang-currently-1-in-the-world-805b941dbb13</a>)</p>
+			<p>Many Kagglers and data scientists have confessed to spending considerable time on research and feature<a id="_idIndexMarker569"/> engineering. In this section, we will use <strong class="source-inline">pandas</strong> to engineer new columns of data.</p>
+			<h2 id="_idParaDest-204"><a id="_idTextAnchor218"/>What is feature engineering?</h2>
+			<p>Machine learning models are as <a id="_idIndexMarker570"/>good as the data that they train on. When data is insufficient, building a robust machine learning model is impossible.</p>
+			<p>A more revealing question is whether the data can be improved. When new data is extracted from other columns, these new columns of data are said to be <em class="italic">engineered</em>.</p>
+			<p>Feature engineering is the process of developing new columns of data from the original columns. The question is not whether you should implement feature engineering, but how much feature engineering you should implement.</p>
+			<p>Let's practice feature engineering on a dataset predicting the cab fare of <strong class="bold">Uber</strong> and <strong class="bold">Lyft</strong> rides.</p>
+			<h2 id="_idParaDest-205"><a id="_idTextAnchor219"/>Uber and Lyft data</h2>
+			<p>In addition to hosting<a id="_idIndexMarker571"/> competitions, Kaggle hosts a large number <a id="_idIndexMarker572"/>of datasets that include public datasets such <a id="_idIndexMarker573"/>as the following one, which predicts Uber and Lyft cab prices: <a href="https://www.kaggle.com/ravi72munde/uber-lyft-cab-prices">https://www.kaggle.com/ravi72munde/uber-lyft-cab-prices</a>:</p>
+			<ol>
+				<li value="1"><p>To get started, first import all the libraries and modules needed for this section and silence the warnings:</p><p class="source-code">import pandas as pd</p><p class="source-code">import numpy as np</p><p class="source-code">from sklearn.model_selection import cross_val_score</p><p class="source-code">from xgboost import XGBClassifier, XGBRFClassifier</p><p class="source-code">from sklearn.ensemble import RandomForestClassifier, StackingClassifier</p><p class="source-code">from sklearn.linear_model import LogisticRegression</p><p class="source-code">from sklearn.model_selection import train_test_split, StratifiedKFold</p><p class="source-code">from sklearn.metrics import accuracy_score</p><p class="source-code">from sklearn.ensemble import VotingClassifier</p><p class="source-code">import warnings</p><p class="source-code">warnings.filterwarnings('ignore')</p></li>
+				<li><p>Next, load the <strong class="source-inline">'cab_rides.csv'</strong> CSV file and view the first five rows. Limit <strong class="source-inline">nrows</strong> to <strong class="source-inline">10000</strong> to expedite <a id="_idIndexMarker574"/>computations. There are <a id="_idIndexMarker575"/>600,000+ rows in total:</p><p class="source-code">df = pd.read_csv('cab_rides.csv', nrows=10000)</p><p class="source-code">df.head()</p><p>Here is the expected output:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer147" class="IMG---Figure">
+					<img src="image/B15551_09_02.jpg" alt="Figure 9.2 – Cab rides dataset"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.2 – Cab rides dataset</p>
+			<p>This display reveals a wide range of columns, including categorical features and a timestamp.</p>
+			<h3>Null values</h3>
+			<p>As always, check for null values before<a id="_idIndexMarker576"/> making any computations:</p>
+			<ol>
+				<li value="1"><p>Recall that <strong class="source-inline">df.info()</strong> also provides information about column types:</p><p class="source-code">df.info()</p><p>The output is as<a id="_idIndexMarker577"/> follows:</p><p class="source-code">&lt;class 'pandas.core.frame.DataFrame'&gt;</p><p class="source-code">RangeIndex: 10000 entries, 0 to 9999</p><p class="source-code">Data columns (total 10 columns):</p><p class="source-code"> #   Column            Non-Null Count  Dtype  </p><p class="source-code">---  ------            --------------  -----  </p><p class="source-code"> 0   distance          10000 non-null  float64</p><p class="source-code"> 1   cab_type          10000 non-null  object </p><p class="source-code"> 2   time_stamp        10000 non-null  int64  </p><p class="source-code"> 3   destination       10000 non-null  object </p><p class="source-code"> 4   source            10000 non-null  object </p><p class="source-code"> 5   price             9227 non-null   float64</p><p class="source-code"> 6   surge_multiplier  10000 non-null  float64</p><p class="source-code"> 7   id                10000 non-null  object </p><p class="source-code"> 8   product_id        10000 non-null  object </p><p class="source-code"> 9   name              10000 non-null  object </p><p class="source-code">dtypes: float64(3), int64(1), object(6)</p><p class="source-code">memory usage: 781.4+ KB</p><p>As you can see from the output, null values exist in the <strong class="source-inline">price</strong> column since there are less than <strong class="source-inline">10,000</strong> non-null floats.</p></li>
+				<li><p>It's worth checking the null values to<a id="_idIndexMarker578"/> see whether more information can be gained about the data:</p><p class="source-code">df[df.isna().any(axis=1)]</p><p>Here are the first five rows of the output:</p><div id="_idContainer148" class="IMG---Figure"><img src="image/B15551_09_03.jpg" alt="Figure 9.3 – Null values in the cab rides dataset"/></div><p class="figure-caption">Figure 9.3 – Null values in the cab rides dataset</p><p>As you can see, there is nothing particularly glaring about these rows. It could be that the price of the ride was never recorded.</p></li>
+				<li><p>Since <strong class="source-inline">price</strong> is the target column, these<a id="_idIndexMarker579"/> rows can be deleted with <strong class="source-inline">dropna</strong> using the <strong class="source-inline">inplace=True</strong> parameter to ensure that drops occur within the DataFrame:</p><p class="source-code">df.dropna(inplace=True)</p></li>
+			</ol>
+			<p>You can verify that no null values are present by using <strong class="source-inline">df.na()</strong> or <strong class="source-inline">df.info()</strong> one more time.</p>
+			<h3>Feature engineering time columns</h3>
+			<p><strong class="bold">Timestamp</strong> columns<a id="_idIndexMarker580"/> often represent <strong class="bold">Unix time</strong>, which<a id="_idIndexMarker581"/> is the number of milliseconds since January 1st, 1970. Specific time data <a id="_idIndexMarker582"/>can be extracted from the timestamp column that may help predict cab fares, such as the month, hour of the day, whether it is rush hour, and so on:</p>
+			<ol>
+				<li value="1"><p>First, convert the timestamp column into a time object using <strong class="source-inline">pd.to_datetime</strong>, and then view the first five rows:</p><p class="source-code">df['date'] = pd.to_datetime(df['time_stamp'])</p><p class="source-code">df.head()</p><p>Here is the expected output:</p><div id="_idContainer149" class="IMG---Figure"><img src="image/B15551_09_04.jpg" alt="Figure 9.4 – The cab rides dataset after time_stamp conversion"/></div><p class="figure-caption">Figure 9.4 – The cab rides dataset after time_stamp conversion</p><p>Something is wrong with this data. It doesn't take much domain expertise to know that Lyft and Uber were not around in 1970. The extra decimal places are a clue that the conversion is incorrect.</p></li>
+				<li><p>After trying several multipliers to <a id="_idIndexMarker583"/>make an appropriate conversion, I discovered that <strong class="source-inline">10**6</strong> gives the appropriate results:</p><p class="source-code">df['date'] = pd.to_datetime(df['time_stamp']*(10**6))</p><p class="source-code">df.head()</p><p>Here is the expected output:</p><div id="_idContainer150" class="IMG---Figure"><img src="image/B15551_09_05.jpg" alt="Figure 9.5 – The cab rides dataset after 'date' conversion"/></div><p class="figure-caption">Figure 9.5 – The cab rides dataset after 'date' conversion</p></li>
+				<li><p>With a datetime column, you can extract new columns, such as <strong class="source-inline">month</strong>, <strong class="source-inline">hour</strong>, and <strong class="source-inline">day of week</strong>, after importing <strong class="source-inline">datetime</strong>, as follows:</p><p class="source-code">import datetime as dt</p><p class="source-code">df['month'] = df['date'].dt.month</p><p class="source-code">df['hour'] = df['date'].dt.hour</p><p class="source-code">df['dayofweek'] = df['date'].dt.dayofweek</p><p>Now, you can use these columns to feature engineer more columns, such as whether it's the weekend or rush hour. </p></li>
+				<li><p>The following function determines whether a <a id="_idIndexMarker584"/>day of the week is a weekend by checking whether <strong class="source-inline">'dayofweek'</strong> is equivalent to <strong class="source-inline">5</strong> or <strong class="source-inline">6</strong>, which represent Saturday or Sunday, according to the official documentation: <a href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.dt.weekday.html">https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.dt.weekday.html</a>:</p><p class="source-code">def weekend(row):</p><p class="source-code">    if row['dayofweek'] in [5,6]:</p><p class="source-code">        return 1</p><p class="source-code">    else:</p><p class="source-code">        return 0</p></li>
+				<li><p>Next, apply the function to the DataFrame as a new column, <strong class="source-inline">df['weekend']</strong>, as follows:</p><p class="source-code">df['weekend'] = df.apply(weekend, axis=1)</p></li>
+				<li><p>The same strategy can be implemented to create a rush hour column by seeing whether the hour is between 6–10 AM (hours <strong class="source-inline">6–10</strong>) and 3–7 PM (hours <strong class="source-inline">15–19</strong>):</p><p class="source-code">def rush_hour(row):</p><p class="source-code">    if (row['hour'] in [6,7,8,9,15,16,17,18]) &amp; </p><p class="source-code">        (row['weekend'] == 0):</p><p class="source-code">        return 1</p><p class="source-code">    else:</p><p class="source-code">        return 0</p></li>
+				<li><p>Now, apply the function to a new <strong class="source-inline">'rush_hour'</strong> column:</p><p class="source-code">df['rush_hour'] = df.apply(rush_hour, axis=1)</p></li>
+				<li><p>The last five rows show variation in the new columns, as <strong class="source-inline">df.tail()</strong> reveals:</p><p class="source-code">df.tail()</p><p>Here is an excerpt from the <a id="_idIndexMarker585"/>output revealing the new columns:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer151" class="IMG---Figure">
+					<img src="image/B15551_09_06.jpg" alt="Figure 9.6 – The last five rows of the cab rides dataset after feature engineering"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.6 – The last five rows of the cab rides dataset after feature engineering</p>
+			<p>The process of extracting and engineering new time columns can continue. </p>
+			<p class="callout-heading">Note</p>
+			<p class="callout">When engineering a lot of new columns, it's worth checking to see whether new features are strongly correlated. The correlation of data will be explored later in this chapter.</p>
+			<p>Now that you understand the practice of feature engineering time columns, let's feature engineer categorical columns.</p>
+			<h3>Feature engineering categorical columns</h3>
+			<p>Previously, we used <strong class="source-inline">pd.get_dummies</strong> to convert <a id="_idIndexMarker586"/>categorical columns into numerical columns. Scikit-learn's <strong class="source-inline">OneHotEncoder</strong> feature is another option designed to transform categorical data into 0s and 1s using sparse matrices, a technique that you will apply in <a href="B15551_10_Final_NM_ePUB.xhtml#_idTextAnchor230"><em class="italic">Chapter 10</em></a>, <em class="italic">XGBoost Model Deployment</em>. While converting categorical data into numerical data using either of these options is standard, alternatives exist.</p>
+			<p>Although 0s and 1s make sense as numerical values for categorical columns, since 0 indicates absence and 1 indicates presence, it's possible that other values may deliver better results.</p>
+			<p>One strategy would be to convert categorical columns into their frequencies, which equates to the percentage of times each category appears within the given column. So, instead of a column of categories, each category is converted into its percentage within the column.</p>
+			<p>Let's view the steps to convert categorical values into numerical values next.</p>
+			<h4>Engineering frequency columns</h4>
+			<p>To engineer a categorical <a id="_idIndexMarker587"/>column, such as <strong class="source-inline">'cab_type'</strong>, first view the number of values for each category:</p>
+			<ol>
+				<li value="1"><p> Use the <strong class="source-inline">.value_counts()</strong> method to see the frequency of types:</p><p class="source-code">df['cab_type'].value_counts()</p><p>The result is as follows:</p><p class="source-code">Uber    4654</p><p class="source-code">Lyft    4573</p><p class="source-code">Name: cab_type, dtype: int64</p></li>
+				<li><p>Use <strong class="source-inline">groupby</strong> to place the counts in a new column. <strong class="source-inline">df.groupby(column_name)</strong> is <strong class="source-inline">groupby</strong>, while <strong class="source-inline">[column_name].transform</strong> specifies the column to be transformed followed by the aggregate in parentheses:</p><p class="source-code">df['cab_freq'] = df.groupby('cab_type')['cab_type'].transform('count')</p></li>
+				<li><p>Divide the new column by the total number of rows to obtain the frequency:</p><p class="source-code">df['cab_freq'] = df['cab_freq']/len(df)</p></li>
+				<li><p>Verify that changes have been made as expected:</p><p class="source-code">df.tail()</p><p>Here is an excerpt from the <a id="_idIndexMarker588"/>output showing the new columns:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer152" class="IMG---Figure">
+					<img src="image/B15551_09_07.jpg" alt="Figure 9.7 – The cab rides dataset after engineering the frequency of cabs"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.7 – The cab rides dataset after engineering the frequency of cabs</p>
+			<p>The cab frequency now displays the expected output.</p>
+			<h3>Kaggle tip – mean encoding</h3>
+			<p>We will conclude this <a id="_idIndexMarker589"/>section with a competition-tested approach to feature engineering called <strong class="bold">mean encoding</strong> or <strong class="bold">target encoding</strong>.</p>
+			<p>Mean encoding transforms <a id="_idIndexMarker590"/>categorical columns<a id="_idIndexMarker591"/> into numerical columns based on the mean target variable. For instance, if the color orange led to seven target values of 1 and three target values of 0, the mean encoded column would be 7/10 = 0.7. Since there is data leakage while using the target values, additional regularizat<a id="_idTextAnchor220"/>ion techniques are required. </p>
+			<p><strong class="bold">Data leakage</strong> occurs when information <a id="_idIndexMarker592"/>between training and test sets, or predictor and target columns, are shared. The risk here is that the target column is being directly used to influence the predictor columns, which is generally a bad idea in machine learning. Nevertheless, mean encoding<a id="_idIndexMarker593"/> has been shown to produce outstanding results. It can work when datasets are deep, and the distribution of mean values are approximately the same for incoming data. Regularization is an<a id="_idIndexMarker594"/> extra precaution taken to reduce the possibility of overfitting.</p>
+			<p>Fortunately, scikit-learn provides <strong class="source-inline">TargetEncoder</strong> to handle mean conversions for you:</p>
+			<ol>
+				<li value="1"><p>First, import <strong class="source-inline">TargetEndoder</strong> from <strong class="source-inline">category_encoders</strong>. If this does not work, install <strong class="source-inline">category_encoders</strong> using the following code:</p><p class="source-code">pip install --upgrade category_encoders</p><p class="source-code">from category_encoders.target_encoder import TargetEncoder</p></li>
+				<li><p>Next, initialize <strong class="source-inline">encoder</strong>, as follows:</p><p class="source-code">encoder = TargetEncoder()</p></li>
+				<li><p>Finally, introduce a new column and apply mean encoding using the <strong class="source-inline">fit_transform</strong> method on the encoder. Include the column that is being changed and the target column as parameters:</p><p class="source-code">df['cab_type_mean'] = encoder.fit_transform(df['cab_type'], df['price'])</p></li>
+				<li><p>Now, verify that the changes are as expected:</p><p class="source-code">df.tail()</p><p>Here is an excerpt of the output with the new column in view:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer153" class="IMG---Figure">
+					<img src="image/B15551_09_08.jpg" alt="Figure 9.8 – The cab rides dataset after mean encoding"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.8 – The cab rides dataset after mean encoding</p>
+			<p>The far-right column, <strong class="source-inline">cab_type_mean</strong>, is as expected.</p>
+			<p>For more information on <a id="_idIndexMarker595"/>mean encoding, refer to this Kaggle study: <a href="https://www.kaggle.com/vprokopev/mean-likelihood-encodings-a-comprehensive-study">https://www.kaggle.com/vprokopev/mean-likelihood-encodings-a-comprehensive-study</a>.</p>
+			<p>The idea here is not to say that mean<a id="_idIndexMarker596"/> encoding is better than one-hot encoding, but rather that mean encoding is a proven technique that has done <a id="_idIndexMarker597"/>well in Kaggle competitions and may be worth implementing to try and improve scores. </p>
+			<h3>More feature engineering</h3>
+			<p>There is no reason to stop <a id="_idIndexMarker598"/>here. More feature engineering may include statistical measures on other columns using <strong class="source-inline">groupby</strong> and additional encoders. Other categorical columns, such as the destination and arrival columns, may be converted to latitude and longitude and then to new measures of distance, such as the taxicab distance or the <strong class="bold">Vincenty</strong> distance, which<a id="_idIndexMarker599"/> takes spherical geometry into account.</p>
+			<p>In Kaggle competitions, participants may engineer thousands of new columns hoping to gain a few extra decimal places of accuracy. If you have a high number of engineered columns, you can select the most significant ones using <strong class="source-inline">.feature_importances_</strong>, as outlined in <a href="B15551_02_Final_NM_ePUB.xhtml#_idTextAnchor047"><em class="italic">Chapter 2</em></a>, <em class="italic">Decision Trees in Depth</em>. You can also eliminate highly correlated columns (explained in the next section, <em class="italic">Building non-correlated ensembles</em>).</p>
+			<p>For this particular cab rides dataset, there is an additional CSV file that includes the weather. But what if there wasn't a weather file? You could always research the weather data from the provided dates and include the weather data on your own.</p>
+			<p>Feature engineering is an essential skill for any data scientist to build robust models. The strategies covered here are <a id="_idIndexMarker600"/>only a fraction of the options that exist. Feature engineering involves research, experimentation, domain expertise, standardizing columns, feedback on the machine learning performance of new columns, and narrowing down the final columns at the end.</p>
+			<p>Now that you understand the various strategies for feature engineering, let's move on to building non-correlated ensembles.</p>
+			<h1 id="_idParaDest-206"><a id="_idTextAnchor221"/>Building non-correlated ensembles</h1>
+			<p class="author-quote">"In our final model, we had XGBoost as an ensemble model, which included 20 XGBoost models, 5 random forests, 6 randomized decision tree models, 3 regularized greedy forests, 3 logistic regression models, 5 ANN models, 3 elastic net models and 1 SVM model."</p>
+			<p>– <em class="italic">Song, Kaggle Winner</em></p>
+			<p>(<a href="https://hunch243.rssing.com/chan-68612493/all_p1.html">https://hunch243.rssing.com/chan-68612493/all_p1.html</a>)</p>
+			<p>The winning models of Kaggle <a id="_idIndexMarker601"/>competitions are rarely individual models; they are almost always ensembles. By ensembles, I do not mean boosting or bagging models, such as random forests or XGBoost, but pure ensembles that include any distinct models, including XGBoost, random forests, and others.</p>
+			<p>In this section, we will combine machine learning models into non-correlated ensembles to gain accuracy and reduce overfitting.</p>
+			<h2 id="_idParaDest-207"><a id="_idTextAnchor222"/>Range of models</h2>
+			<p>The Wisconsin <a id="_idIndexMarker602"/>Breast Cancer dataset, used to predict whether a patient has breast cancer, has 569 rows and 30 columns, and can be viewed at <a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html?highlight=load_breast_cancer">https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html?highlight=load_breast_cancer</a>.</p>
+			<p>Here are the steps to prepare and<a id="_idIndexMarker603"/> score the dataset using several classifiers:</p>
+			<ol>
+				<li value="1"><p>Import the <strong class="source-inline">load_breast_cancer</strong> dataset from scikit-learn so that we can quickly start building models:</p><p class="source-code">from sklearn.datasets import load_breast_cancer</p></li>
+				<li><p>Assign the predictor columns to <strong class="source-inline">X</strong> and the target column to <strong class="source-inline">y</strong> by setting the <strong class="source-inline">return_X_y=True</strong> parameter:</p><p class="source-code">X, y = load_breast_cancer(return_X_y=True)</p></li>
+				<li><p>Prepare 5-fold cross-validation using <strong class="source-inline">StratifiedKFold</strong> for consistency:</p><p class="source-code">kfold = StratifiedKFold(n_splits=5)</p></li>
+				<li><p>Now, build a simple classification function that takes a model as input and returns the mean cross-validation score as output:</p><p class="source-code">def classification_model(model):</p><p class="source-code">    scores = cross_val_score(model, X, y, cv=kfold)</p><p class="source-code">    return scores.mean()</p></li>
+				<li><p>Get the scores of several default classifiers, including XGBoost, along with its alternative base learners, a random forest, and logistic regression:</p><p>a) Score with<a id="_idIndexMarker604"/> XGBoost:</p><p class="source-code">classification_model(XGBClassifier())</p><p>The score is as follows:</p><p class="source-code">0.9771619313771154</p><p>b) Score with <strong class="source-inline">gblinear</strong>:</p><p class="source-code">classification_model(XGBClassifier(booster='gblinear'))</p><p>The score is as follows:</p><p class="source-code">0.5782952957615277</p><p>c) Score with <strong class="source-inline">dart</strong>:</p><p class="source-code">classification_model(XGBClassifier(booster='dart', one_drop=True))</p><p>The score is as follows:</p><p class="source-code">0.9736376339077782</p><p>Note that for the dart booster, we set <strong class="source-inline">one_drop=True</strong> to ensure that trees are actually dropped.</p><p>d) Score with <strong class="source-inline">RandomForestClassifier</strong>:</p><p class="source-code">classification_model(RandomForestClassifier(random_state=2))</p><p>The score is as follows:</p><p class="source-code">0.9666356155876418</p><p>e) Score with <strong class="source-inline">LogisticRegression</strong>:</p><p class="source-code">classification_model(LogisticRegression(max_iter=10000))</p><p>The score is as follows:</p><p class="source-code">0.9490451793199813</p></li>
+			</ol>
+			<p>Most models perform respectably, with the XGBoost classifier obtaining the highest score. The <strong class="source-inline">gblinear</strong> base learner did not perform particularly well, however, so we will not use it going forward.</p>
+			<p>In practice, each of these <a id="_idIndexMarker605"/>models should be tuned. Since we have already covered hyperparameter tuning in multiple chapters, that option is not pursued here. Nevertheless, knowledge of hyperparameters can give confidence in trying a quick model with some adjusted values. For instance, as done in the following code, lowering <strong class="source-inline">max_depth</strong> to <strong class="source-inline">2</strong>, increasing <strong class="source-inline">n_estimators</strong> to <strong class="source-inline">500</strong>, and making sure that <strong class="source-inline">learning_rate</strong> is set to <strong class="source-inline">0.1</strong> may be attempted on XGBoost:</p>
+			<p class="source-code">classification_model(XGBClassifier(max_depth=2, n_estimators=500, learning_rate=0.1))</p>
+			<p>The score is as follows:</p>
+			<p class="source-code">0.9701133364384411</p>
+			<p>This is a very good score. Although it's not the highest, it may be of value in our ensemble.</p>
+			<p>Now that we have a variety of models, let's learn about the correlations between them.</p>
+			<h2 id="_idParaDest-208"><a id="_idTextAnchor223"/>Correlation</h2>
+			<p>The purpose of this section is <a id="_idIndexMarker606"/>not to select all models for the ensemble, but rather to select the non-correlated models.</p>
+			<p>First, let's understand what <strong class="bold">correlation</strong> represents.</p>
+			<p>Correlation is a statistical<a id="_idIndexMarker607"/> measure between <strong class="source-inline">-1</strong> and <strong class="source-inline">1</strong> that indicates the strength of the linear relationship between two sets of points. A correlation of <strong class="source-inline">1</strong> is a perfectly straight line, while a correlation of <strong class="source-inline">0</strong> shows no linear relationship whatsoever.</p>
+			<p>Some visuals on correlation should make things clear. The following visuals are taken from Wikipedia's <em class="italic">Correlation and Dependence</em> page at <a href="https://en.wikipedia.org/wiki/Correlation_and_dependence">https://en.wikipedia.org/wiki/Correlation_and_dependence</a>:</p>
+			<ul>
+				<li><p>Scatter plots with listed<a id="_idIndexMarker608"/> correlations look as follows:</p></li>
+			</ul>
+			<div>
+				<div id="_idContainer154" class="IMG---Figure">
+					<img src="image/B15551_09_09.jpg" alt="Figure 9.9 – Listed Correlations"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.9 – Listed Correlations</p>
+			<p class="callout-heading">License information</p>
+			<p class="callout">By DenisBoigelot, the original uploader was Imagecreator – own work, CC0, <a href="https://commons.wikimedia.org/w/index.php?curid=15165296">https://commons.wikimedia.org/w/index.php?curid=15165296</a>.</p>
+			<ul>
+				<li><p>Anscombe's quartet – four scatter<a id="_idIndexMarker609"/> plots with a correlation of <strong class="bold">0.816</strong> – looks as follows:</p></li>
+			</ul>
+			<div>
+				<div id="_idContainer155" class="IMG---Figure">
+					<img src="image/B15551_09_10.jpg" alt="Figure 9.10 – Correlation of 0.816"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.10 – Correlation of 0.816</p>
+			<p class="callout-heading">License information</p>
+			<p class="callout">By Anscombe.svg: Schutz (label using subscripts): Avenue – Anscombe.svg, CC BY-SA 3.0, <a href="https://commons.wikimedia.org/w/index.php?curid=9838454">https://commons.wikimedia.org/w/index.php?curid=9838454</a></p>
+			<p>The first example shows that the higher the<a id="_idIndexMarker610"/> correlation, the closer the dots generally are to a straight line. The second example shows that data points of the same<a id="_idIndexMarker611"/> correlation can differ widely. In other words, correlation provides valuable information, but it doesn't tell the whole story.</p>
+			<p>Now that you understand what correlation means, let's apply correlation to building machine learning ensembles.</p>
+			<h2 id="_idParaDest-209"><a id="_idTextAnchor224"/>Correlation in machine learning ensembles</h2>
+			<p>Now we choose which models to<a id="_idIndexMarker612"/> include in our ensemble.</p>
+			<p>A high correlation between <a id="_idIndexMarker613"/>machine learning models is undesirable in an ensemble.But why?</p>
+			<p>Consider the case of two classifiers with 1,000 predictions each. If these classifiers all make the same predictions, no new information is gained from the second classifier, making it superfluous. </p>
+			<p>Using a <em class="italic">majority rules</em> implementation, a prediction is only wrong if the majority of classifiers get it wrong. It's desirable, therefore, to have a diversity of models that score well but give different predictions. If most models give the same predictions, the correlation is high, and there is little value in adding the new model to the ensemble. Finding differences in predictions where a strong model may be wrong gives the ensemble the chance to produce better results. Predictions will be different when the models are non-correlated.</p>
+			<p>To compute correlations between machine learning models, we first need data points to compare. The different data points that machine learning models produce are their predictions. After obtaining predictions, we concatenate them into a DataFrame, and then apply the <strong class="source-inline">.corr</strong> method to obtain all correlations at once.</p>
+			<p>Here are the steps to find correlations between machine learning models:</p>
+			<ol>
+				<li value="1"><p>Define a function that returns predictions for each machine learning model:</p><p class="source-code">def y_pred(model):</p><p class="source-code">    model.fit(X_train, y_train)</p><p class="source-code">    y_pred = model.predict(X_test)</p><p class="source-code">    score = accuracy_score(y_pred, y_test)</p><p class="source-code">    print(score)</p><p class="source-code">    return y_pred</p></li>
+				<li><p>Prepare the data for one-fold predictions using <strong class="source-inline">train_test_split</strong>:</p><p class="source-code">X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=2)</p></li>
+				<li><p>Obtain the predictions <a id="_idIndexMarker614"/>of all classifier candidates using the previously defined function:</p><p>a) <strong class="source-inline">XGBClassifier</strong> uses the following:</p><p class="source-code">y_pred_gbtree = y_pred(XGBClassifier())</p><p>The accuracy score is as follows:</p><p class="source-code">0.951048951048951</p><p>b) <strong class="source-inline">XGBClassifier</strong> with <strong class="source-inline">dart</strong> uses the following: </p><p class="source-code">y_pred_dart = y_pred(XGBClassifier(booster='dart', one_drop=True))</p><p>The accuracy <a id="_idIndexMarker615"/>score is as follows:</p><p class="source-code">0.951048951048951</p><p>c) <strong class="source-inline">RandomForestClassifier</strong> uses the following:</p><p class="source-code">y_pred_forest = y_pred(RandomForestClassifier())</p><p>The accuracy score is as follows:</p><p class="source-code">0.9370629370629371</p><p>d) <strong class="source-inline">LogisticRegression</strong> uses the following:</p><p class="source-code">y_pred_logistic = y_pred(LogisticRegression(max_iter=10000))</p><p>The accuracy score is as follows:</p><p class="source-code">0.9370629370629371</p><p class="callout-heading">Note </p><p class="callout"><strong class="source-inline">max_iter</strong> is increased in <strong class="source-inline">LogisticRegression</strong> to prevent warnings (and potentially gain accuracy).</p><p>e) <strong class="source-inline">Tuned XGBClassifier</strong> uses the following:</p><p class="source-code">y_pred_xgb = y_pred(XGBClassifier(max_depth=2, n_estimators=500, learning_rate=0.1))</p><p>The accuracy score is as follows:</p><p class="source-code">0.965034965034965</p></li>
+				<li><p>Concatenate the predictions into<a id="_idIndexMarker616"/> a new DataFrame using <strong class="source-inline">np.c</strong> (the <strong class="source-inline">c</strong> is short for concatenation):</p><p class="source-code">df_pred = pd.DataFrame(data= np.c_[y_pred_gbtree, y_pred_dart, y_pred_forest, y_pred_logistic, y_pred_xgb], columns=['gbtree', 'dart','forest', 'logistic', 'xgb'])</p></li>
+				<li><p>Run correlations on the<a id="_idIndexMarker617"/> DataFrame using the <strong class="source-inline">.corr()</strong> method:</p><p class="source-code">df_pred.corr()</p><p>You should see the following output:</p></li>
+			</ol>
+			<div>
+				<div id="_idContainer156" class="IMG---Figure">
+					<img src="image/B15551_09_11.jpg" alt="Figure 9.11 – Correlations between various machine learning models"/>
+				</div>
+			</div>
+			<p class="figure-caption">Figure 9.11 – Correlations between various machine learning models</p>
+			<p>As you can see, all correlations on the diagonal are <strong class="source-inline">1.0</strong> because the correlation between the model and itself must be perfectly linear. All other values are reasonably high.</p>
+			<p>There is no clear cut-off to obtain a<a id="_idIndexMarker618"/> non-correlated threshold. It ultimately depends on the values of correlation and the number of models to choose from. For this example, we<a id="_idIndexMarker619"/> could pick the next two least correlated models with our best model, <strong class="source-inline">xgb</strong>, which are the random forest and logistic regression.</p>
+			<p>Now that we have chosen our models, we will combine them into a single ensemble using the <strong class="source-inline">VotingClassifier</strong> ensemble, introduced next.</p>
+			<h2 id="_idParaDest-210"><a id="_idTextAnchor225"/>The VotingClassifier ensemble</h2>
+			<p>Scikit-learn's <strong class="source-inline">VotingClassifier</strong> ensemble is <a id="_idIndexMarker620"/>designed to combine multiple classification models and select the output for each prediction using majority rules. Note that scikit-learn also comes with <strong class="source-inline">VotingRegressor</strong>, which combines multiple regression models by taking the average of each one.</p>
+			<p>Here are the steps to create an ensemble in scikit-learn:</p>
+			<ol>
+				<li value="1"><p>Initialize an empty list:</p><p class="source-code">estimators = []</p></li>
+				<li><p>Initialize the first model:</p><p class="source-code">logistic_model = LogisticRegression(max_iter=10000)</p></li>
+				<li><p>Append the model to the list as a tuple in the form <strong class="source-inline">(model_name, model)</strong>:</p><p class="source-code">estimators.append(('logistic', logistic_model))</p></li>
+				<li><p>Repeat <em class="italic">steps 2</em> and <em class="italic">3</em> as many times as desired:</p><p class="source-code">xgb_model = XGBClassifier(max_depth=2, n_estimators=500, learning_rate=0.1)</p><p class="source-code">estimators.append(('xgb', xgb_model))</p><p class="source-code">rf_model = RandomForestClassifier(random_state=2)</p><p class="source-code">estimators.append(('rf', rf_model))</p></li>
+				<li><p>Initialize <strong class="source-inline">VotingClassifier</strong> (or <strong class="source-inline">VotingRegressor</strong>) using the list of models as input:</p><p class="source-code">ensemble = VotingClassifier(estimators)</p></li>
+				<li><p>Score the classifier using <strong class="source-inline">cross_val_score</strong>:</p><p class="source-code">scores = cross_val_score(ensemble, X, y, cv=kfold)</p><p class="source-code">print(scores.mean())</p><p>The score is as follows:</p><p class="source-code">0.9754075454122031</p></li>
+			</ol>
+			<p>As you can see, the score has improved.</p>
+			<p>Now that you understand the<a id="_idIndexMarker621"/> purpose and technique of building non-correlated machine learning ensembles, let's move on to a similar but potentially advantageous technique called stacking.</p>
+			<h1 id="_idParaDest-211"><a id="_idTextAnchor226"/>Stacking models</h1>
+			<p class="author-quote">"For stacking and boosting I use xgboost, again primarily due to familiarity and its proven results."</p>
+			<p>– <em class="italic">David Austin, Kaggle Winner</em></p>
+			<p>(<a href="https://www.pyimagesearch.com/2018/03/26/interview-david-austin-1st-place-25000-kaggles-popular-competition/">https://www.pyimagesearch.com/2018/03/26/interview-david-austin-1st-place-25000-kaggles-popular-competition/</a>)</p>
+			<p>In this final section, we will <a id="_idIndexMarker622"/>examine one of the most powerful tricks frequently used by Kaggle winners, called stacking.</p>
+			<h2 id="_idParaDest-212"><a id="_idTextAnchor227"/>What is stacking?</h2>
+			<p>Stacking combines machine learning <a id="_idIndexMarker623"/>models at two different levels: the base level, whose models make predictions on all the data, and the meta level, which takes the predictions of the base models as input and uses them to generate final predictions.</p>
+			<p>In other words, the final model in stacking does not take the original data as input, but rather takes the predictions of the base machine learning models as input.</p>
+			<p>Stacked models have found huge success in Kaggle competitions. Most Kaggle competitions have merger deadlines, where individuals and teams can join together. These mergers can lead to greater success as teams rather than individuals because competitors can build larger ensembles and stack their models together.</p>
+			<p>Note that stacking is distinct from<a id="_idIndexMarker624"/> a standard ensemble on account of the meta-model that combines predictions at the end. Since the meta-model takes predictive values as the input, it's generally advised to use a simple meta-model, such as linear regression for regression and logistic regression for classification.</p>
+			<p>Now that you have an idea of what stacking is, let's apply stacking with scikit-learn.</p>
+			<h2 id="_idParaDest-213"><a id="_idTextAnchor228"/>Stacking in scikit-learn</h2>
+			<p>Fortunately, scikit-learn comes with<a id="_idIndexMarker625"/> a stacking regressor and classifier that makes<a id="_idIndexMarker626"/> the process fairly straightforward. The general idea is very similar to the ensemble model in the last section. A variety of base models are chosen, and then linear regression or logistic regression is chosen for the meta-model.</p>
+			<p>Here are the steps to use stacking with scikit-learn:</p>
+			<ol>
+				<li value="1"><p>Create an empty list of base models:</p><p class="source-code">base_models = []</p></li>
+				<li><p>Append all base models to the base model list as tuples using the syntax <strong class="source-inline">(name, model)</strong>:</p><p class="source-code">base_models.append(('lr', LogisticRegression()))</p><p class="source-code">base_models.append(('xgb', XGBClassifier()))</p><p class="source-code">base_models.append(('rf', RandomForestClassifier(random_state=2)))</p><p>More models may be chosen when stacking since there are no majority rules limitations and linear weights adjust more easily to new data. An optimal approach is to use non-correlation as loose a guideline and to experiment with different combinations.</p></li>
+				<li><p>Choose a meta model, preferably linear regression for regression and logistic regression for classification:</p><p class="source-code">meta_model = LogisticRegression()</p></li>
+				<li><p>Initialize <strong class="source-inline">StackingClassifier</strong> (or <strong class="source-inline">StackingRegressor</strong>) using <strong class="source-inline">base_models</strong> for <strong class="source-inline">estimators</strong> and <strong class="source-inline">meta_model</strong> for <strong class="source-inline">final_estimator</strong>:</p><p class="source-code">clf = StackingClassifier(estimators=base_models, final_estimator=meta_model)</p></li>
+				<li><p>Validate the<a id="_idIndexMarker627"/> stacked model using <strong class="source-inline">cross_val_score</strong> or any other scoring method:</p><p class="source-code">scores = cross_val_score(clf, X, y, cv=kfold)</p><p class="source-code">print(scores.mean())</p><p>The score is as follows:</p><p class="source-code">0.9789318428815401</p></li>
+			</ol>
+			<p>This is the strongest result yet.</p>
+			<p>As you can see, stacking is an incredibly <a id="_idIndexMarker628"/>powerful method and outperformed the non-correlated ensemble from the previous section.</p>
+			<h1 id="_idParaDest-214"><a id="_idTextAnchor229"/>Summary</h1>
+			<p>In this chapter, you learned some of the well-tested tips and tricks from the winners of Kaggle competitions. In addition to exploring Kaggle competitions and understanding the importance of a hold-out set, you gained essential practice in feature engineering time columns, feature engineering categorical columns, mean encoding, building non-correlated ensembles, and stacking. These advanced techniques are widespread among elite Kagglers, and they can give you an edge when developing machine learning models for research, competition, and industry.</p>
+			<p>In the next and final chapter, we will shift gears from the competitive world to the tech world, where we will build an XGBoost model from beginning to end using transformers and pipelines to complete a model ready for industry deployment.</p>
+		</div>
+	</body></html>
