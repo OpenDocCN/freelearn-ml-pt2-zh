@@ -1362,6 +1362,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 任务只运行了22轮，这意味着触发了**早停**。从训练日志中看到，第12轮实际上是最佳的，**均方根误差**（**RMSE**）为2.43126：
 - en: '[PRE32]'
   id: totrans-198
   prefs:
@@ -1373,6 +1374,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 部署仍然只需要一行代码：
 - en: '[PRE33]'
   id: totrans-200
   prefs:
@@ -1385,6 +1387,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 一旦模型部署完成，我们再次使用`predict()` API发送一个CSV样本：
 - en: '[PRE34]'
   id: totrans-202
   prefs:
@@ -1396,6 +1399,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 结果告诉我们，这套房子应该值23,754美元：
 - en: '[PRE35]'
   id: totrans-204
   prefs:
@@ -1407,6 +1411,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 最后，当我们完成任务时，删除端点：
 - en: '[PRE36]'
   id: totrans-206
   prefs:
@@ -1419,62 +1424,74 @@
   id: totrans-207
   prefs: []
   type: TYPE_NORMAL
+  zh: 如你所见，SageMaker的工作流程非常简单，使我们能够快速地尝试不同的算法，而无需重写所有代码。
 - en: Let's move on to the Factorization Machines algorithm. In the process, we will
     learn about the highly efficient RecordIO-wrapped protobuf format.
   id: totrans-208
   prefs: []
   type: TYPE_NORMAL
+  zh: 让我们继续讲解因式分解机算法。在这个过程中，我们将了解高效的RecordIO封装protobuf格式。
 - en: Recommendation with Factorization Machines
   id: totrans-209
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用因式分解机进行推荐
 - en: Factorization Machines is a generalization of linear models ([https://www.csie.ntu.edu.tw/~b97053/paper/Rendle2010FM.pdf](https://www.csie.ntu.edu.tw/~b97053/paper/Rendle2010FM.pdf)).
     It's well-suited for high-dimension sparse datasets, such as user-item interaction
     matrices for recommendation.
   id: totrans-210
   prefs: []
   type: TYPE_NORMAL
+  zh: 因式分解机是线性模型的广义化（[https://www.csie.ntu.edu.tw/~b97053/paper/Rendle2010FM.pdf](https://www.csie.ntu.edu.tw/~b97053/paper/Rendle2010FM.pdf)）。它非常适合高维稀疏数据集，如推荐系统中的用户-物品交互矩阵。
 - en: In this example, we're going to train a recommendation model based on the **MovieLens**
     dataset ([https://grouplens.org/datasets/movielens/](https://grouplens.org/datasets/movielens/)).
   id: totrans-211
   prefs: []
   type: TYPE_NORMAL
+  zh: 在这个示例中，我们将基于**MovieLens**数据集训练一个推荐模型（[https://grouplens.org/datasets/movielens/](https://grouplens.org/datasets/movielens/)）。
 - en: The dataset exists in several versions. To minimize training times, we'll use
     the 100k version. It contains 100,000 ratings (integer values from 1 to 5) assigned
     by 943 users to 1,682 movies. The dataset is already split for training and validation.
   id: totrans-212
   prefs: []
   type: TYPE_NORMAL
+  zh: 该数据集有多个版本。为了减少训练时间，我们将使用100k版本。它包含943个用户对1,682部电影的100,000条评分（评分值从1到5）。数据集已经划分为训练集和验证集。
 - en: As you know by now, training and deploying with SageMaker is very simple. Most
     of the code will be identical to the two previous examples, which is great! This
     lets us focus on understanding and preparing data.
   id: totrans-213
   prefs: []
   type: TYPE_NORMAL
+  zh: 正如你现在所知道的，使用SageMaker进行训练和部署非常简单。大部分代码将与之前的两个示例完全相同，这很棒！这样我们可以专注于理解和准备数据。
 - en: Understanding sparse datasets
   id: totrans-214
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 理解稀疏数据集
 - en: 'Imagine building a matrix to store this dataset. It would have 943 lines (one
     per user) and 1,682 columns (one per movie). Cells would store the ratings. The
     following diagram shows a basic example:'
   id: totrans-215
   prefs: []
   type: TYPE_NORMAL
+  zh: 想象构建一个矩阵来存储这个数据集。它会有943行（每行代表一个用户）和1,682列（每列代表一部电影）。单元格中存储评分。下图展示了一个基本的示例：
 - en: '![Figure 4.2 – Sparse matrix'
   id: totrans-216
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 4.2 – 稀疏矩阵'
 - en: '](img/B17705_04_2.jpg)'
   id: totrans-217
   prefs: []
   type: TYPE_NORMAL
+  zh: '](img/B17705_04_2.jpg)'
 - en: Figure 4.2 – Sparse matrix
   id: totrans-218
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.2 – 稀疏矩阵
 - en: Hence, the matrix would have 943*1,682=1,586,126 cells. However, as only 100,000
     ratings are present, 93.69% of cells would be empty. Storing our dataset this
     way would be extremely inefficient. It would needlessly consume RAM, storage,
@@ -1482,29 +1499,35 @@
   id: totrans-219
   prefs: []
   type: TYPE_NORMAL
+  zh: 因此，矩阵将有943*1,682=1,586,126个单元格。然而，由于只有100,000条评分，93.69%的单元格将是空的。以这种方式存储数据集将非常低效，浪费RAM、存储和网络带宽来存储和传输大量零值！
 - en: 'In fact, things are much worse, as the algorithm expects the input dataset
     to look like in the following diagram:'
   id: totrans-220
   prefs: []
   type: TYPE_NORMAL
+  zh: 事实上，情况更糟，因为算法希望输入数据集看起来像下图所示：
 - en: '![Figure 4.3 – Sparse matrix'
   id: totrans-221
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图 4.3 – 稀疏矩阵'
 - en: '](img/B17705_04_3.jpg)'
   id: totrans-222
   prefs: []
   type: TYPE_NORMAL
+  zh: '](img/B17705_04_3.jpg)'
 - en: Figure 4.3 – Sparse matrix
   id: totrans-223
   prefs: []
   type: TYPE_NORMAL
+  zh: 图 4.3 – 稀疏矩阵
 - en: 'Why do we need to store data this way? The answer is simple: Factorization
     Machines is a **supervised learning** algorithm, so we need to train it on labeled
     samples.'
   id: totrans-224
   prefs: []
   type: TYPE_NORMAL
+  zh: 为什么我们需要以这种方式存储数据？答案很简单：因式分解机是一个**监督学习**算法，所以我们需要用带标签的样本来训练它。
 - en: Looking at the preceding diagram, we see that each line represents a movie review.
     The matrix on the left stores its one-hot encoded features (users and movies),
     and the vector on the right stores its label. For instance, the last line tells
@@ -1512,6 +1535,7 @@
   id: totrans-225
   prefs: []
   type: TYPE_NORMAL
+  zh: 从前面的图示可以看到，每一行代表一个电影评分。左边的矩阵存储它的独热编码特征（用户和电影），而右边的向量存储它的标签。例如，最后一行告诉我们，用户4给电影5打了“5”分。
 - en: The size of this matrix is 100,000 lines by 2,625 columns (943 movies plus 1,682
     movies). The total number of cells is 262,500,000, which are only 0.076% full
     (200,000 / 262,500,000). If we used a 32-bit value for each cell, we would need
@@ -1520,6 +1544,8 @@
   id: totrans-226
   prefs: []
   type: TYPE_NORMAL
+  zh: 这个矩阵的大小是 100,000 行和 2,625 列（943 部电影加 1,682 部电影）。总共有 262,500,000 个单元格，其中只有 0.076%
+    被填充（200,000 / 262,500,000）。如果我们为每个单元格使用一个 32 位的值，我们需要接近一 GB 的内存来存储这个矩阵。这非常低效，但仍然可以管理。
 - en: 'Just for fun, let''s do the same exercise for the largest version of MovieLens,
     which has 25 million ratings, 62,000 movies, and 162,000 users. The matrix would
     have 25 million lines and 224,000 columns, for a total of 5,600,000,000,000 cells.
@@ -1530,17 +1556,22 @@
   id: totrans-227
   prefs: []
   type: TYPE_NORMAL
+  zh: 为了好玩，让我们以 MovieLens 的最大版本为例，它有 2500 万条评分，62,000 部电影和 162,000 名用户。这个矩阵将有 2500
+    万行和 224,000 列，总共 5,600,000,000,000 个单元格。是的，这是 5.6 万亿个单元格，尽管它们有 99.999% 是空的，但我们仍然需要超过
+    20 TB 的内存来存储它们。哎呀。如果这还不够糟糕，想想推荐模型，它们有数百万的用户和产品：这些数字令人咋舌！
 - en: Instead of using a plain matrix, we'll use a `SciPy` has exactly the object
     we need, named `lil_matrix` ([https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.lil_matrix.html](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.lil_matrix.html)).
     This will help us to get rid of all these nasty zeros.
   id: totrans-228
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们不会使用普通的矩阵，而是使用一个 `SciPy` 提供的对象，名为 `lil_matrix` （[https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.lil_matrix.html](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.lil_matrix.html)）。这将帮助我们去除所有这些讨厌的零。
 - en: Understanding protobuf and RecordIO
   id: totrans-229
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 理解 protobuf 和 RecordIO
 - en: So how will we pass this sparse matrix to the SageMaker algorithm? As you would
     expect, we're going to serialize the object and store it in S3\. We're not going
     to use Python serialization, however. Instead, we're going to use `protobuf` ([https://developers.google.com/protocol-buffers/](https://developers.google.com/protocol-buffers/)),
@@ -1548,6 +1579,8 @@
   id: totrans-230
   prefs: []
   type: TYPE_NORMAL
+  zh: 那么，我们如何将这个稀疏矩阵传递给 SageMaker 算法呢？正如你所预期的，我们将序列化这个对象并将其存储在 S3 中。但我们不会使用 Python
+    的序列化方法。相反，我们将使用 `protobuf` （[https://developers.google.com/protocol-buffers/](https://developers.google.com/protocol-buffers/)），这是一种流行且高效的序列化机制。
 - en: 'In addition, we''re going to store the protobuf-encoded data in a record format
     called **RecordIO** ([https://mxnet.apache.org/api/faq/recordio/](https://mxnet.apache.org/api/faq/recordio/)).
     Our dataset will be stored as a sequence of records in a single file. This has
@@ -1555,41 +1588,49 @@
   id: totrans-231
   prefs: []
   type: TYPE_NORMAL
+  zh: 此外，我们将把 protobuf 编码的数据存储在一种名为 **RecordIO** 的记录格式中（[https://mxnet.apache.org/api/faq/recordio/](https://mxnet.apache.org/api/faq/recordio/)）。我们的数据集将作为一系列记录存储在单个文件中。这有以下几个好处：
 - en: 'A single file is easier to move around: who wants to deal with thousands of
     individual files that can get lost or corrupted?'
   id: totrans-232
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 单个文件更容易移动：谁想处理成千上万的单独文件，这些文件可能会丢失或损坏呢？
 - en: A sequential file is faster to read, which makes the training process more efficient.
   id: totrans-233
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 顺序文件读取速度更快，这使得训练过程更加高效。
 - en: A sequence of records is easy to split for distributed training.
   id: totrans-234
   prefs:
   - PREF_UL
   type: TYPE_NORMAL
+  zh: 一系列记录便于分割用于分布式训练。
 - en: Don't worry if you're not familiar with protobuf and RecordIO. The SageMaker
     SDK includes utility functions that hide their complexity.
   id: totrans-235
   prefs: []
   type: TYPE_NORMAL
+  zh: 如果你不熟悉 protobuf 和 RecordIO，不用担心。SageMaker SDK 包含隐藏其复杂性的实用函数。
 - en: Building a Factorization Machines model on MovieLens
   id: totrans-236
   prefs:
   - PREF_H3
   type: TYPE_NORMAL
+  zh: 在 MovieLens 上构建因式分解机模型
 - en: 'We will begin building the model using the following steps:'
   id: totrans-237
   prefs: []
   type: TYPE_NORMAL
+  zh: 我们将按照以下步骤开始构建模型：
 - en: 'In a Jupyter notebook, we first download and extract the MovieLens dataset:'
   id: totrans-238
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在 Jupyter notebook 中，我们首先下载并提取 MovieLens 数据集：
 - en: '[PRE37]'
   id: totrans-239
   prefs:
@@ -1602,6 +1643,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 由于数据集是按用户 ID 排序的，我们进行了一次洗牌作为预防措施。然后，我们查看前几行：
 - en: '[PRE38]'
   id: totrans-241
   prefs:
@@ -1614,6 +1656,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 我们看到了四列：用户 ID、电影 ID、评分和时间戳（我们将在模型中忽略时间戳）：
 - en: '[PRE39]'
   id: totrans-243
   prefs:
@@ -1625,6 +1668,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们定义了大小常数：
 - en: '[PRE40]'
   id: totrans-245
   prefs:
@@ -1639,6 +1683,8 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在，让我们编写一个函数，将数据集加载到稀疏矩阵中。根据之前的解释，我们逐行遍历数据集。在 X 矩阵中，我们将相应的用户和电影列设置为 `1`。我们还将评分存储在
+    Y 向量中：
 - en: '[PRE41]'
   id: totrans-247
   prefs:
@@ -1650,6 +1696,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，我们处理训练集和测试集：
 - en: '[PRE42]'
   id: totrans-249
   prefs:
@@ -1661,6 +1708,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们检查形状是否符合预期：
 - en: '[PRE43]'
   id: totrans-251
   prefs:
@@ -1672,6 +1720,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 这将显示数据集的形状：
 - en: '[PRE44]'
   id: totrans-253
   prefs:
@@ -1687,6 +1736,9 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 现在，让我们编写一个函数，将数据集转换为 RecordIO 封装的 `protobuf` 格式，并将其上传到 S3 桶中。我们首先使用 `io.BytesIO()`
+    创建一个内存中的二进制流。然后，我们使用至关重要的 `write_spmatrix_to_sparse_tensor()` 函数，将样本矩阵和标签向量以 `protobuf`
+    格式写入该缓冲区。最后，我们使用 `boto3` 将缓冲区上传到 S3：
 - en: '[PRE45]'
   id: totrans-255
   prefs:
@@ -1700,11 +1752,14 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如果我们的数据存储在 `numpy` 数组中，而不是 `lilmatrix`，我们将使用 `write_numpy_to_dense_tensor()`
+    函数。它的效果是一样的。
 - en: 'We apply this function to both datasets, and we store their S3 paths:'
   id: totrans-257
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们将此函数应用于两个数据集，并存储它们的 S3 路径：
 - en: '[PRE46]'
   id: totrans-258
   prefs:
@@ -1718,6 +1773,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在终端查看 S3 桶时，我们看到训练数据集仅占用 5.5 MB。稀疏矩阵、protobuf 和 RecordIO 的结合取得了效果：
 - en: '[PRE47]'
   id: totrans-260
   prefs:
@@ -1730,6 +1786,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 接下来的过程是 SageMaker 的常规操作。我们找到分解机容器的名称，配置 `Estimator` 函数，并设置超参数：
 - en: '[PRE48]'
   id: totrans-262
   prefs:
@@ -1744,6 +1801,9 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 查阅文档（[https://docs.aws.amazon.com/sagemaker/latest/dg/fact-machines-hyperparameters.html](https://docs.aws.amazon.com/sagemaker/latest/dg/fact-machines-hyperparameters.html)），我们看到所需的超参数为
+    `feature_dim`、`predictor_type` 和 `num_factors`。`epochs` 的默认设置为 `1`，这感觉有点低，因此我们将其设置为
+    `10`。
 - en: 'We then launch the training job. Did you notice that we didn''t configure training
     inputs? We''re simply passing the location of the two `protobuf` files. As `protobuf`
     is the default format for Factorization Machines (as well as other built-in algorithms),
@@ -1752,6 +1812,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，我们启动训练作业。你有没有注意到我们没有配置训练输入？我们只是传递了两个 `protobuf` 文件的位置。由于 `protobuf` 是分解机（以及其他内置算法）的默认格式，我们可以省略这一步：
 - en: '[PRE49]'
   id: totrans-265
   prefs:
@@ -1763,6 +1824,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 作业完成后，我们将模型部署到实时端点：
 - en: '[PRE50]'
   id: totrans-267
   prefs:
@@ -1777,6 +1839,8 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们现在将以 JSON 格式（https://docs.aws.amazon.com/sagemaker/latest/dg/fact-machines.html#fm-inputoutput）将样本发送到端点。为此，我们编写一个自定义序列化器，将输入数据转换为
+    JSON。由于我们将内容类型设置为 `'application/json'`，默认的 JSON 反序列化器将自动使用：
 - en: '[PRE51]'
   id: totrans-269
   prefs:
@@ -1788,6 +1852,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们发送测试集的前三个样本进行预测：
 - en: '[PRE52]'
   id: totrans-271
   prefs:
@@ -1799,6 +1864,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 预测结果如下：
 - en: '[PRE53]'
   id: totrans-273
   prefs:
@@ -1814,11 +1880,13 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 使用这个模型，我们可以填充推荐矩阵中的所有空白单元。对于每个用户，我们只需预测所有电影的评分，并存储，例如，排名前 50 的电影。这些信息将存储在后台，前端应用程序中将显示相应的元数据（如标题、类型等）。
 - en: 'Finally, we delete the endpoint:'
   id: totrans-275
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 最后，我们删除端点：
 - en: '[PRE54]'
   id: totrans-276
   prefs:
@@ -1830,23 +1898,27 @@
   id: totrans-277
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我们仅使用了监督学习算法。在接下来的部分，我们将转向使用主成分分析进行无监督学习。
 - en: Using Principal Component Analysis
   id: totrans-278
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用主成分分析
 - en: '`protobuf` dataset built in the Factorization Machines example. Its 2,625 columns
     are a good candidate for dimensionality reduction! We will use PCA by taking the
     following steps:'
   id: totrans-279
   prefs: []
   type: TYPE_NORMAL
+  zh: 在因子分解机示例中建立的`protobuf`数据集。它的2,625列非常适合降维！我们将采用PCA，步骤如下：
 - en: 'Starting from the processed dataset, we configure `Estimator` for PCA. By now,
     you should (almost) be able to do this with your eyes closed:'
   id: totrans-280
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 从处理过的数据集开始，我们为PCA配置`Estimator`。现在，你应该（几乎）可以闭着眼睛做到这一点：
 - en: '[PRE55]'
   id: totrans-281
   prefs:
@@ -1859,6 +1931,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，我们设置超参数。必需的是初始特征数、计算主成分的数量以及批处理大小：
 - en: '[PRE56]'
   id: totrans-283
   prefs:
@@ -1870,6 +1943,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们训练并部署模型：
 - en: '[PRE57]'
   id: totrans-285
   prefs:
@@ -1882,6 +1956,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，我们预测第一个测试样本，使用与前一个示例相同的序列化代码：
 - en: '[PRE58]'
   id: totrans-287
   prefs:
@@ -1895,6 +1970,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 这将打印出测试样本的64个主要成分。在实际生活中，我们通常会使用这个模型处理数据集，保存结果，并用它们来训练回归模型：
 - en: '[PRE59]'
   id: totrans-289
   prefs:
@@ -1906,11 +1982,13 @@
   id: totrans-290
   prefs: []
   type: TYPE_NORMAL
+  zh: 当你完成时别忘了删除端点。接着，让我们运行另一个无监督学习的例子来结束这一章节！
 - en: Detecting anomalies with Random Cut Forest
   id: totrans-291
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
+  zh: 使用随机森林检测异常
 - en: '**Random Cut Forest** (**RCF**) is an unsupervised learning algorithm for anomaly
     detection ([https://proceedings.mlr.press/v48/guha16.pdf](https://proceedings.mlr.press/v48/guha16.pdf)).
     We''re going to apply it to a subset of the household electric power consumption
@@ -1920,12 +1998,15 @@
   id: totrans-292
   prefs: []
   type: TYPE_NORMAL
+  zh: '**随机森林** (**RCF**) 是一种用于异常检测的无监督学习算法（[https://proceedings.mlr.press/v48/guha16.pdf](https://proceedings.mlr.press/v48/guha16.pdf)）。我们将把它应用于家庭电力消耗数据集的一个子集（[https://archive.ics.uci.edu/ml/](https://archive.ics.uci.edu/ml/)），该数据集可在本书的
+    GitHub 仓库中获取。数据在接近一年的时间内按小时聚合（大约不到8,000个值）：'
 - en: 'In a Jupyter notebook, we load the dataset with `pandas`, and we display the
     first few lines:'
   id: totrans-293
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 在Jupyter笔记本中，我们使用`pandas`加载数据集，并显示前几行：
 - en: '[PRE60]'
   id: totrans-294
   prefs:
@@ -1938,27 +2019,32 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如下截图所示，数据集有三列 - 每小时时间戳、功耗值（以千瓦时计算）、客户ID：
 - en: '![Figure 4.4 – Viewing the columns'
   id: totrans-296
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 4.4 – 查看列'
 - en: '](img/B17705_04_4.jpg)'
   id: totrans-297
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](img/B17705_04_4.jpg)'
 - en: Figure 4.4 – Viewing the columns
   id: totrans-298
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 4.4 – 查看列
 - en: 'Using `matplotlib`, we plot the dataset to get a quick idea of what it looks
     like:'
   id: totrans-299
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 使用`matplotlib`，我们绘制数据集以快速了解其外观：
 - en: '[PRE61]'
   id: totrans-300
   prefs:
@@ -1971,21 +2057,25 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 下图显示了绘图结果。我们看到三个时间序列对应于三个不同的客户：
 - en: '![Figure 4.5 – Viewing the dataset'
   id: totrans-302
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 4.5 – 查看数据集'
 - en: '](img/B17705_04_5.jpg)'
   id: totrans-303
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](img/B17705_04_5.jpg)'
 - en: Figure 4.5 – Viewing the dataset
   id: totrans-304
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 4.5 – 查看数据集
 - en: 'There are two issues with this dataset. First, it contains several time series:
     RCF can only train a model on a single series. Second, RCF requires `pandas` –
     we only keep the `"client_12"` time series, we multiply its values by 100, and
@@ -1994,6 +2084,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 这个数据集存在两个问题。首先，它包含多个时间序列：RCF只能在单个序列上训练模型。其次，RCF需要`pandas` - 我们只保留了`"client_12"`时间序列，将其值乘以100，并转换为整数类型：
 - en: '[PRE62]'
   id: totrans-306
   prefs:
@@ -2005,21 +2096,25 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 下图显示了转换后数据集的前几行：
 - en: '![Figure 4.6 – The values of the first lines'
   id: totrans-308
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 4.6 – 第一行的值'
 - en: '](img/B17705_04_6.jpg)'
   id: totrans-309
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](img/B17705_04_6.jpg)'
 - en: Figure 4.6 – The values of the first lines
   id: totrans-310
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 4.6 – 第一行的值
 - en: We plot it again to check that it looks as expected. Note the large drop right
     after step 2000, highlighted by a box in the following screenshot. This is clearly
     an anomaly, and hopefully, our model will catch it:![Figure 4.7 – Viewing a single
@@ -2028,22 +2123,27 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们再次绘制它以检查它的预期外观。请注意在第2000步后的大幅下降，这在下图的框中得到了突出显示。这显然是一个异常，希望我们的模型能够捕捉到它：![图
+    4.7 – 查看单个时间序列
 - en: '](img/B17705_04_7.jpg)'
   id: totrans-312
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](img/B17705_04_7.jpg)'
 - en: Figure 4.7 – Viewing a single time series
   id: totrans-313
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 4.7 – 查看单一时间序列
 - en: 'As in the previous examples, we save the dataset to a CSV file, which we upload
     to S3:'
   id: totrans-314
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 与前面的示例一样，我们将数据集保存到 CSV 文件中，并上传到 S3：
 - en: '[PRE63]'
   id: totrans-315
   prefs:
@@ -2056,6 +2156,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，我们定义 `label_size=1`）。即使训练通道从未包含标签，我们仍然需要告诉 RCF。
 - en: 'Second, the only `ShardedByS3Key`. This policy splits the dataset across the
     different instances in the training cluster, instead of sending them a full copy.
     We won''t run distributed training here, but we need to set that policy nonetheless:'
@@ -2063,6 +2164,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 其次，唯一的 `ShardedByS3Key`。该策略将数据集跨训练集群中的不同实例进行拆分，而不是发送完整副本。我们不会在这里运行分布式训练，但仍然需要设置该策略：
 - en: '[PRE64]'
   id: totrans-318
   prefs:
@@ -2075,6 +2177,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 其余部分照常：训练并部署！我们再次重用前面示例中的代码，几乎没有改变：
 - en: '[PRE65]'
   id: totrans-320
   prefs:
@@ -2088,6 +2191,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 几分钟后，模型已被部署。我们将输入的时间序列转换为 Python 列表，然后发送到端点进行预测。我们分别使用 CSV 和 JSON 进行序列化和反序列化：
 - en: '[PRE66]'
   id: totrans-322
   prefs:
@@ -2100,6 +2204,7 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 响应包含时间序列中每个值的异常分数。它看起来是这样的：
 - en: '[PRE67]'
   id: totrans-324
   prefs:
@@ -2112,6 +2217,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 然后，我们将此响应转换为 Python 列表，并计算其均值和标准差：
 - en: '[PRE68]'
   id: totrans-326
   prefs:
@@ -2126,6 +2232,7 @@
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们绘制时间序列的一个子集以及相应的分数。让我们集中关注 "[2000:2500]" 区间，因为这是我们看到大幅下降的地方。我们还绘制了代表均值加三倍标准差（得分分布的99.7%）的线——任何大大超过该线的得分都可能是异常：
 - en: '[PRE69]'
   id: totrans-328
   prefs:
@@ -2137,53 +2244,63 @@
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 下降在以下图表中显而易见：
 - en: '![Figure 4.8 – Zooming in on an anomaly'
   id: totrans-330
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 4.8 – 聚焦于异常'
 - en: '](img/B17705_04_8.jpg)'
   id: totrans-331
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](img/B17705_04_8.jpg)'
 - en: Figure 4.8 – Zooming in on an anomaly
   id: totrans-332
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 4.8 – 聚焦于异常
 - en: 'As you can see on the following score plot, its score is sky high! Beyond a
     doubt, this value is an anomaly:'
   id: totrans-333
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 如下图所示，其得分非常高！毫无疑问，这个值是一个异常：
 - en: '![Figure 4.9 – Viewing anomaly scores'
   id: totrans-334
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '![图 4.9 – 查看异常分数'
 - en: '](img/B17705_04_9.jpg)'
   id: totrans-335
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: '](img/B17705_04_9.jpg)'
 - en: Figure 4.9 – Viewing anomaly scores
   id: totrans-336
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 图 4.9 – 查看异常分数
 - en: Exploring other intervals of the time series, we could certainly find more.
     Who said machine learning wasn't fun?
   id: totrans-337
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
+  zh: 探索时间序列的其他区间，我们肯定能找到更多。谁说机器学习不有趣？
 - en: 'Finally, we delete the endpoint:'
   id: totrans-338
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 最后，我们删除端点：
 - en: '[PRE70]'
   id: totrans-339
   prefs:
@@ -2197,22 +2314,28 @@
   id: totrans-340
   prefs: []
   type: TYPE_NORMAL
+  zh: 经过五个完整示例后，你现在应该对内置算法、SageMaker 工作流以及 SDK 有了熟悉。为了更深入地掌握这些主题，我建议你尝试自己的数据集，并运行
+    [https://github.com/awslabs/amazon-sagemaker-examples/tree/master/introduction_to_amazon_algorithms](https://github.com/awslabs/amazon-sagemaker-examples/tree/master/introduction_to_amazon_algorithms)
+    中的其他示例。
 - en: Summary
   id: totrans-341
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 总结
 - en: As you can see, built-in algorithms are a great way to quickly train and deploy
     models without having to write any machine learning code.
   id: totrans-342
   prefs: []
   type: TYPE_NORMAL
+  zh: 如你所见，内置算法是快速训练和部署模型的好方法，无需编写任何机器学习代码。
 - en: In this chapter, you learned about the SageMaker workflow, and how to implement
     it with a handful of APIs from the SageMaker SDK, without ever worrying about
     infrastructure.
   id: totrans-343
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，你了解了 SageMaker 工作流，并学习了如何通过 SageMaker SDK 中的一些 API 实现它，而无需担心基础设施。
 - en: 'You learned how to work with data in CSV and RecordIO-wrapped protobuf format,
     the latter being the preferred format for large-scale training on bulky datasets.
     You also learned how to build models with important algorithms for supervised
