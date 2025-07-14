@@ -1,10 +1,14 @@
 - en: 6\. t-Distributed Stochastic Neighbor Embedding
+  id: totrans-0
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 6\. t-分布随机邻域嵌入
 - en: Overview
+  id: totrans-1
   prefs: []
   type: TYPE_NORMAL
+  zh: 概述
 - en: In this chapter, we will discuss **Stochastic Neighbor Embedding** (**SNE**)
     and **t-Distributed Stochastic Neighbor Embedding** (**t-SNE**) as a means of
     visualizing high-dimensional datasets. We will implement t-SNE models in scikit-learn
@@ -14,12 +18,16 @@
     in prior chapters. By the end of this chapter, we will be able to find clusters
     in high-dimensional data, such as user-level information or images in a low-dimensional
     space.
+  id: totrans-2
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将讨论**随机邻域嵌入**（**SNE**）和**t-分布随机邻域嵌入**（**t-SNE**）作为可视化高维数据集的一种方法。我们将实现t-SNE模型并解释t-SNE的局限性。能够将高维信息提取到低维空间将有助于可视化和探索性分析，同时也能与我们在前几章中探讨的聚类算法相结合。到本章结束时，我们将能够在低维空间中找到高维数据的聚类，例如用户级别信息或图像。
 - en: Introduction
+  id: totrans-3
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 介绍
 - en: So far, we have described a number of different methods for reducing the dimensionality
     of a dataset as a means of cleaning the data, reducing its size for computational
     efficiency, or for extracting the most important information available within
@@ -31,8 +39,11 @@
     0 through 9\. Each image is 28 x 28 pixels in size, providing 784 individual dimensions
     or features. If we were to reduce these 784 dimensions down to 2 or 3 for visualization
     purposes, we would lose almost all the available information.
+  id: totrans-4
   prefs: []
   type: TYPE_NORMAL
+  zh: 到目前为止，我们已经描述了多种不同的方法来减少数据集的维度，作为清洗数据、减少计算效率所需的大小或提取数据集中最重要信息的手段。虽然我们已经展示了许多减少高维数据集的方法，但在许多情况下，我们无法将维度的数量减少到可以可视化的大小，也就是二维或三维，而不会过度降低数据质量。考虑我们之前在本书中使用的MNIST数据集，这是一个包含数字0到9的手写数字图像的集合。每个图像的大小为28
+    x 28像素，提供784个独立的维度或特征。如果我们将这784个维度减少到2或3个以便进行可视化，我们几乎会失去所有可用的信息。
 - en: In this chapter, we will discuss SNE and t-SNE as means of visualizing high-dimensional
     datasets. These techniques are extremely helpful in unsupervised learning and
     the design of machine learning systems because being able to visualize data is
@@ -41,12 +52,16 @@
     used to visualize cancerous cell nuclei that have over 30 characteristics of interest,
     whereas data from documents can have over thousands of dimensions, sometimes even
     after applying techniques such as PCA.
+  id: totrans-5
   prefs: []
   type: TYPE_NORMAL
+  zh: 在本章中，我们将讨论SNE和t-SNE作为可视化高维数据集的一种手段。这些技术在无监督学习和机器学习系统设计中非常有用，因为能够可视化数据是一件强大的事情。能够可视化数据可以探索关系、识别群体并验证结果。t-SNE技术已被用于可视化癌细胞核，这些细胞核具有超过30个特征，而文档中的数据可能具有上千维，有时即使在应用了像PCA这样的技术后也是如此。
 - en: The MNIST Dataset
+  id: totrans-6
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: MNIST 数据集
 - en: 'Now, we will explore SNE and t-SNE using the MNIST dataset provided with the
     accompanying source code as the basis of our practical examples. Before we continue,
     we will quickly review MNIST and the data that is within it. The complete MNIST
@@ -61,33 +76,52 @@
     dimensions, they can be visualized even after dimensionality reduction because
     they can be represented as an image. *Figure 6.1* shows a sample of the MNIST
     dataset:'
+  id: totrans-7
   prefs: []
   type: TYPE_NORMAL
+  zh: 现在，我们将使用附带源代码提供的MNIST数据集作为实际示例，探索SNE和t-SNE。在继续之前，我们将快速回顾一下MNIST及其中的数据。完整的MNIST数据集包含60,000个训练样本和10,000个测试样本，这些样本是手写数字0到9，表示为黑白（或灰度）图像，大小为28
+    x 28像素（即784个维度或特征），每个数字类别的样本数量相等。由于数据集的大小和数据质量，MNIST已经成为机器学习中最具代表性的数据集之一，通常被作为许多机器学习研究论文中的参考数据集。与其他数据集相比，使用MNIST探索SNE和t-SNE的一个优势是，虽然样本包含大量维度，但即使在降维后，仍然可以将其可视化，因为它们可以表示为图像。*图6.1*展示了MNIST数据集的一个样本：
 - en: '![Figure 6.1: MNIST data sample'
+  id: totrans-8
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图6.1：MNIST数据样本'
 - en: '](img/B15923_06_01.jpg)'
+  id: totrans-9
   prefs: []
   type: TYPE_NORMAL
+  zh: '](img/B15923_06_01.jpg)'
 - en: 'Figure 6.1: MNIST data sample'
+  id: totrans-10
   prefs: []
   type: TYPE_NORMAL
+  zh: 图6.1：MNIST数据样本
 - en: 'The following figure shows the same sample reduced to 30 components using PCA:'
+  id: totrans-11
   prefs: []
   type: TYPE_NORMAL
+  zh: 下图展示了通过PCA将相同样本降至30个主成分：
 - en: '![Figure 6.2: MNIST reduced using PCA to 30 components'
+  id: totrans-12
   prefs: []
   type: TYPE_NORMAL
+  zh: '![图6.2：通过PCA将MNIST数据集降至30个主成分'
 - en: '](img/B15923_06_02.jpg)'
+  id: totrans-13
   prefs: []
   type: TYPE_NORMAL
+  zh: '](img/B15923_06_02.jpg)'
 - en: 'Figure 6.2: MNIST reduced using PCA to 30 components'
+  id: totrans-14
   prefs: []
   type: TYPE_NORMAL
+  zh: 图6.2：通过PCA将MNIST数据集降至30个主成分
 - en: Stochastic Neighbor Embedding (SNE)
+  id: totrans-15
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
+  zh: 随机邻居嵌入（SNE）
 - en: 'SNE is one of a number of different methods that fall within the category of
     **manifold learning**, which aims to describe high-dimensional spaces within low-dimensional
     manifolds or bounded areas. At first thought, this seems like an impossible task;
@@ -96,48 +130,61 @@
     you will see how this is possible. Don''t worry – we will not be covering the
     mathematical details of this process in great depth as it is outside of the scope
     of this chapter. Constructing an SNE can be divided into the following steps:'
+  id: totrans-16
   prefs: []
   type: TYPE_NORMAL
+  zh: SNE是多种**流形学习**方法中的一种，旨在描述低维流形或有界区域中的高维空间。乍一看，这似乎是一个不可能完成的任务；如果我们有一个至少包含30个特征的数据集，如何合理地在二维空间中表示数据呢？随着我们逐步推导SNE的过程，希望你能够看到这是如何可能的。别担心——我们不会在这一章中深入探讨这个过程的数学细节，因为那超出了本章的范围。构建SNE可以分为以下几个步骤：
 - en: Convert the distances between datapoints in the high-dimensional space into
     conditional probabilities. Say we had two points, *x*i and *x*j, in a high-dimensional
     space and we wanted to determine the probability (*p*i|j) that *x*j would be picked
     as a neighbor of *x*i. To define this probability, we use a Gaussian curve. By
     doing this, we see that the probability is high for nearby points, while it is
     very low for distant points.
+  id: totrans-17
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 将高维空间中数据点之间的距离转换为条件概率。假设我们有两个点，*x*i和*x*j，位于高维空间中，并且我们想要确定*x*j作为*x*i邻居的概率（*p*i|j）。为了定义这个概率，我们使用高斯曲线。这样，我们可以看到，对于附近的点，概率较高，而对于远离的点，概率非常低。
 - en: We need to determine the width of the Gaussian curve as this controls the rate
     of probability selection. A wide curve would suggest that many neighboring points
     are far away, while a narrow curve suggests that they are tightly compacted.
+  id: totrans-18
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 我们需要确定高斯曲线的宽度，因为它控制着概率选择的速率。宽曲线意味着许多邻近点相距较远，而窄曲线则意味着它们紧密地聚集在一起。
 - en: Once we project the data into the low-dimensional space, we can also determine
     the corresponding probability (*q*i|j) between the corresponding low-dimensional
     data, *y*i and *y*j.
+  id: totrans-19
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
+  zh: 一旦我们将数据投影到低维空间，我们还可以确定相应低维数据之间的概率（*q*i|j），即*y*i和*y*j之间的概率。
 - en: 'What SNE aims to do is position the data in the lower dimensions to minimize
     the differences between *p*i|j and *q*i|j over all the datapoints using a cost
     function (C). This is known as the **Kullback-Leibler** (**KL**) divergence:![Figure
     6.3: KL divergence'
+  id: totrans-20
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '](img/B15923_06_03.jpg)'
+  id: totrans-21
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.3: KL divergence'
+  id: totrans-22
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-23
   prefs: []
   type: TYPE_NORMAL
 - en: For Python code to construct a Gaussian distribution, please refer to the `GaussianDist.ipynb`
     Jupyter notebook at [https://packt.live/2UMVubU](https://packt.live/2UMVubU).
+  id: totrans-24
   prefs: []
   type: TYPE_NORMAL
 - en: When Gaussian distribution is used in SNE, it reduces the dimensions of data
@@ -149,12 +196,15 @@
     is relatively stable for the values of perplexity between 5 and 50\. In practice,
     going through a process of trial and error using perplexity values within this
     range is recommended.
+  id: totrans-25
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-26
   prefs: []
   type: TYPE_NORMAL
 - en: Perplexity is covered in detail later in this chapter.
+  id: totrans-27
   prefs: []
   type: TYPE_NORMAL
 - en: SNE provides an effective way of visualizing high-dimensional data in a low-dimensional
@@ -167,9 +217,11 @@
     very far away within the low-dimensional space. Essentially, we are trying to
     balance being able to visualize close points while not losing information provided
     by points that are further away.
+  id: totrans-28
   prefs: []
   type: TYPE_NORMAL
 - en: t-Distributed SNE
+  id: totrans-29
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -179,6 +231,7 @@
     is a probability distribution much like Gaussian and is used when we have a small
     sample size and unknown population standard deviation. It is often used in the
     Student's t-test.
+  id: totrans-30
   prefs: []
   type: TYPE_NORMAL
 - en: The modified KL cost function considers the pairwise distances in the low-dimensional
@@ -188,13 +241,16 @@
     the higher dimensions is still represented as such in the lower dimensions. This
     combination of different distributions in the respective spaces allows for the
     faithful representation of datapoints separated by small and moderate distances.
+  id: totrans-31
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-32
   prefs: []
   type: TYPE_NORMAL
 - en: For some example code regarding how to reproduce the Student's t-distribution
     in Python, please refer to the Jupyter notebook at [https://packt.live/2UMVubU](https://packt.live/2UMVubU).
+  id: totrans-33
   prefs: []
   type: TYPE_NORMAL
 - en: Thankfully, we don't need to worry about implementing t-SNE manually because
@@ -202,9 +258,11 @@
     What we need to remember is that both SNE and t-SNE determine the probability
     of two points being neighbors in both high- and low-dimensionality spaces and
     aim to minimize the difference in the probability between the two spaces.
+  id: totrans-34
   prefs: []
   type: TYPE_NORMAL
 - en: 'Exercise 6.01: t-SNE MNIST'
+  id: totrans-35
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -213,78 +271,100 @@
     earlier, using MNIST allows us to visualize the high-dimensional space in a way
     that is not possible in other datasets, such as the Boston Housing Price or Iris
     dataset. Perform the following steps:'
+  id: totrans-36
   prefs: []
   type: TYPE_NORMAL
 - en: 'For this exercise, import `pickle`, `numpy`, `PCA`, and `TSNE` from scikit-learn,
     as well as `matplotlib`:'
+  id: totrans-37
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE0]'
+  id: totrans-38
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE0]'
 - en: 'Load and visualize the MNIST dataset that is provided with the accompanying
     source code:'
+  id: totrans-39
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE1]'
+  id: totrans-40
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE1]'
 - en: 'The output is as follows:'
+  id: totrans-41
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.4: Output after loading the dataset'
+  id: totrans-42
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_04.jpg)'
+  id: totrans-43
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.4: Output after loading the dataset'
+  id: totrans-44
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: This demonstrates that MNIST has been successfully loaded.
+  id: totrans-45
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: In this exercise, we will use PCA on the dataset to extract the first 30 components.
+  id: totrans-46
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE2]'
+  id: totrans-47
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE2]'
 - en: 'Visualize the effect of reducing the dataset to 30 components. To do this,
     we must transform the dataset into the lower-dimensional space and then use the
     `inverse_transform` method to return the data to its original size for plotting.
     We will, of course, need to reshape the data before and after the transform process:'
+  id: totrans-48
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE3]'
+  id: totrans-49
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE3]'
 - en: 'The output is as follows:'
+  id: totrans-50
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.5: Visualizing the effect of reducing the dataset'
+  id: totrans-51
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_05.jpg)'
+  id: totrans-52
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.5: Visualizing the effect of reducing the dataset'
+  id: totrans-53
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -293,6 +373,7 @@
     It is interesting to note, however, that the number four (4) seems to have been
     the most visually affected by this process. Perhaps much of the discarded information
     from the PCA process contained information specific to the samples of four (4).
+  id: totrans-54
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -302,26 +383,33 @@
     that specify that we are embedding the 30 dimensions into two for visualization
     using a perplexity of 30, a learning rate of 200, and 1,000 iterations. We will
     specify a `random_state` value of 0 and set `verbose` to 1:'
+  id: totrans-55
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE4]'
+  id: totrans-56
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE4]'
 - en: 'The output is as follows:'
+  id: totrans-57
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.6: Applying t-SNE to PCA-transformed data'
+  id: totrans-58
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_06.jpg)'
+  id: totrans-59
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.6: Applying t-SNE to PCA-transformed data'
+  id: totrans-60
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -342,6 +430,7 @@
     plot of the data, so you just need the default value of `2`. Now, `n_iter` is
     the maximum number of iterations of gradient descent. `perplexity` is the number
     of neighbors to use when visualizing the data.
+  id: totrans-61
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -360,10 +449,12 @@
     training. This can provide more confidence that a change in performance is due
     to the considered change to the model or training; for example, the architecture
     of the neural network.
+  id: totrans-62
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-63
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -373,36 +464,45 @@
     so that you get the same result. Random differences in execution, while being
     ideal for producing sequences of random numbers, would be a nightmare in terms
     of automating tasks and debugging problems.
+  id: totrans-64
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '`verbose` is the verbosity level of the model and describes the amount of information
     that''s printed to the screen during the model fitting process. A value of 0 indicates
     no output, while 1 or greater indicates increasing levels of detail in the output.'
+  id: totrans-65
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Use t-SNE to transform the decomposed dataset of MNIST:'
+  id: totrans-66
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE5]'
+  id: totrans-67
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE5]'
 - en: 'The output is as follows:'
+  id: totrans-68
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.7: Transforming the decomposed dataset'
+  id: totrans-69
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_07.jpg)'
+  id: totrans-70
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.7: Transforming the decomposed dataset'
+  id: totrans-71
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -412,51 +512,66 @@
     probabilities of being neighbors for the data in batches of 10\. At the end of
     the process, it provides a mean standard deviation value of `304.9988` with KL
     divergence after 250 and 1,000 iterations of gradient descent.
+  id: totrans-72
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Now, visualize the number of dimensions in the returned dataset:'
+  id: totrans-73
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE6]'
+  id: totrans-74
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE6]'
 - en: 'The output is as follows:'
+  id: totrans-75
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '[PRE7]'
+  id: totrans-76
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE7]'
 - en: We have successfully reduced the 784 dimensions down to 2 for visualization,
     so what does it look like?
+  id: totrans-77
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Create a scatter plot of the two-dimensional data produced by the model:'
+  id: totrans-78
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE8]'
+  id: totrans-79
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE8]'
 - en: 'The output is as follows:'
+  id: totrans-80
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.8: 2D representation of MNIST (no labels)'
+  id: totrans-81
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_08.jpg)'
+  id: totrans-82
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.8: 2D representation of MNIST (no labels)'
+  id: totrans-83
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -466,31 +581,39 @@
     separated from other clusters by some white space. There also seem to be about
     nine different groups of data. All these observations suggest that there is a
     relationship within and between the individual clusters.
+  id: totrans-84
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Plot the two-dimensional data that's been grouped by the corresponding image
     labels and use markers to separate the individual labels.
+  id: totrans-85
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE9]'
+  id: totrans-86
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE9]'
 - en: 'The output is as follows:'
+  id: totrans-87
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.9: 2D representation of MNIST with labels'
+  id: totrans-88
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_09.jpg)'
+  id: totrans-89
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.9: 2D representation of MNIST with labels'
+  id: totrans-90
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -504,18 +627,22 @@
     the two clusters somewhat overlap. This makes sense if we look at the number nine
     and number four PCA images we extracted from *Step 4* of *Exercise 6.01*, *t-SNE
     MNIST*:'
+  id: totrans-91
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.10: PCA images of nine'
+  id: totrans-92
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_10.jpg)'
+  id: totrans-93
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.10: PCA images of nine'
+  id: totrans-94
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -523,18 +650,22 @@
     in the shape of the number four. Looking at the image that follows, we can see
     from the four on the left-hand side that the two vertical lines almost join, while
     the four on the right-hand side has the two lines parallel:'
+  id: totrans-95
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.11: Shape of number four'
+  id: totrans-96
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_11.jpg)'
+  id: totrans-97
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.11: Shape of number four'
+  id: totrans-98
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
@@ -544,95 +675,123 @@
     learning sense but represent samples that may have more in common with other clusters
     than their own. Let's take a look at an example; there are a number of samples
     of the number three that are quite far from the correct cluster.
+  id: totrans-99
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Get the index of all the number threes in the dataset:'
+  id: totrans-100
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE10]'
+  id: totrans-101
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE10]'
 - en: 'The output is as follows:'
+  id: totrans-102
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '[PRE11]'
+  id: totrans-103
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE11]'
 - en: 'Find the threes that were plotted with an `x` value of less than 0:'
+  id: totrans-104
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE12]'
+  id: totrans-105
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE12]'
 - en: 'The output is as follows:'
+  id: totrans-106
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.12: The threes with an x value less than zero'
+  id: totrans-107
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_12.jpg)'
+  id: totrans-108
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.12: The threes with an x value less than zero'
+  id: totrans-109
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Display the coordinates to find one that is reasonably far from the three cluster:'
+  id: totrans-110
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE13]'
+  id: totrans-111
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE13]'
 - en: 'The output is as follows:'
+  id: totrans-112
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.13: Coordinates away from the three cluster'
+  id: totrans-113
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_13.jpg)'
+  id: totrans-114
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.13: Coordinates away from the three cluster'
+  id: totrans-115
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: Choose a sample with a reasonably high negative value as an `x` coordinate.
     In this example, we will select the second sample, which is sample `11`.
+  id: totrans-116
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE14]'
+  id: totrans-117
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE14]'
 - en: 'The output is as follows:'
+  id: totrans-118
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.14: Image of sample 11'
+  id: totrans-119
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_14.jpg)'
+  id: totrans-120
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.14: Image of sample 11'
+  id: totrans-121
   prefs: []
   type: TYPE_NORMAL
 - en: Looking at this sample image and the corresponding t-SNE coordinates, that is,
@@ -641,18 +800,23 @@
     of those numbers in this image. In this example, we applied a simplified SNE,
     demonstrating some of its efficiencies as well as possible sources of confusion
     and the output of unsupervised learning.
+  id: totrans-122
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-123
   prefs: []
   type: TYPE_NORMAL
 - en: To access the source code for this specific section, please refer to [https://packt.live/3iDsCNf](https://packt.live/3iDsCNf)
+  id: totrans-124
   prefs: []
   type: TYPE_NORMAL
 - en: You can also run this example online at [https://packt.live/3gBdrSK](https://packt.live/3gBdrSK)
+  id: totrans-125
   prefs: []
   type: TYPE_NORMAL
 - en: 'Activity 6.01: Wine t-SNE'
+  id: totrans-126
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -666,74 +830,91 @@
     Alcohol, Malic acid, Ash, Alkalinity of ash, Magnesium, Total phenols, Flavanoids,
     Nonflavanoid phenols, Proanthocyanins, Color intensity, Hue, OD280/OD315 of diluted
     wines, and Proline.
+  id: totrans-127
   prefs: []
   type: TYPE_NORMAL
 - en: Each sample contains a class identifier (1 – 3).
+  id: totrans-128
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-129
   prefs: []
   type: TYPE_NORMAL
 - en: 'This dataset is sourced from [https://archive.ics.uci.edu/ml/machine-learning-databases/wine/](https://archive.ics.uci.edu/ml/machine-learning-databases/wine/)
     (UCI Machine Learning Repository [[http://archive.ics.uci.edu/ml](http://archive.ics.uci.edu/ml)].
     Irvine, CA: University of California, School of Information and Computer Science).
     It can also be downloaded from [https://packt.live/3e1JOcY](https://packt.live/3e1JOcY).'
+  id: totrans-130
   prefs: []
   type: TYPE_NORMAL
 - en: 'These steps will help you complete this activity:'
+  id: totrans-131
   prefs: []
   type: TYPE_NORMAL
 - en: Import `pandas`, `numpy`, and `matplotlib`, as well as the `t-SNE` and `PCA`
     models from scikit-learn.
+  id: totrans-132
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Load the Wine dataset using the `wine.data` file included in the accompanying
     source code and display the first five rows of data.
+  id: totrans-133
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-134
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: You can delete columns within pandas DataFrames by using the `del` keyword.
     Simply pass `del` the DataFrame and the selected column within the square root.
+  id: totrans-135
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: The first column contains the labels; extract this column and remove it from
     the dataset.
+  id: totrans-136
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Execute PCA to reduce the dataset to the first six components.
+  id: totrans-137
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Determine the amount of variance within the data described by these six components.
+  id: totrans-138
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Create a t-SNE model using a specified random state and a `verbose` value of
     1.
+  id: totrans-139
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Fit the PCA data to the t-SNE model.
+  id: totrans-140
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Confirm that the shape of the t-SNE fitted data is two-dimensional.
+  id: totrans-141
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Create a scatter plot of the two-dimensional data.
+  id: totrans-142
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Create a secondary scatter plot of the two-dimensional data with the class labels
     applied to visualize any clustering that may be present.
+  id: totrans-143
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
@@ -741,24 +922,31 @@
     of the Wine dataset using its six components and identified some relationships
     in the location of the data within the plot. The final plot will look similar
     to the following:'
+  id: totrans-144
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 6.15: The expected plot'
+  id: totrans-145
   prefs: []
   type: TYPE_NORMAL
 - en: '](img/B15923_06_15.jpg)'
+  id: totrans-146
   prefs: []
   type: TYPE_NORMAL
 - en: 'Figure 6.15: The expected plot'
+  id: totrans-147
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-148
   prefs: []
   type: TYPE_NORMAL
 - en: The solution to this activity can be found on page 460.
+  id: totrans-149
   prefs: []
   type: TYPE_NORMAL
 - en: Interpreting t-SNE Plots
+  id: totrans-150
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -767,9 +955,11 @@
     are important in interpreting and generating them. In this section, we will highlight
     some of the important features of t-SNE and demonstrate how care should be taken
     when using this visualization technique.
+  id: totrans-151
   prefs: []
   type: TYPE_NORMAL
 - en: Perplexity
+  id: totrans-152
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -782,71 +972,92 @@
     the calculation. Typically, it is worth trying a range of different values to
     investigate the effect of perplexity. Again, values between 5 and 50 tend to work
     quite well.
+  id: totrans-153
   prefs: []
   type: TYPE_NORMAL
 - en: 'Exercise 6.02: t-SNE MNIST and Perplexity'
+  id: totrans-154
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
 - en: 'In this exercise, we will try a range of different values for perplexity and
     look at the effect in the visualization plot:'
+  id: totrans-155
   prefs: []
   type: TYPE_NORMAL
 - en: 'Import `pickle`, `numpy`, and `matplotlib`, as well as `PCA` and `t-SNE` from
     scikit-learn:'
+  id: totrans-156
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE15]'
+  id: totrans-157
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE15]'
 - en: Load the MNIST dataset.
+  id: totrans-158
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE16]'
+  id: totrans-159
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE16]'
 - en: 'Using PCA, select only the first 30 components of variance from the image data:'
+  id: totrans-160
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE17]'
+  id: totrans-161
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE17]'
 - en: 'In this exercise, we are investigating the effect of perplexity on the t-SNE
     manifold. Iterate through a model/plot loop with a perplexity of 3, 30, and 300:'
+  id: totrans-162
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE18]'
+  id: totrans-163
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE18]'
 - en: 'The output is as follows:'
+  id: totrans-164
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.16: Iterating through a model'
+  id: totrans-165
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_16.jpg)'
+  id: totrans-166
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.16: Iterating through a model'
+  id: totrans-167
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-168
   prefs: []
   type: TYPE_NORMAL
 - en: The preceding output has been truncated for presentation purposes. Standard
     outputs like this would typically be much longer. However, it has been included
     as it is important to keep an eye on such outputs while the model is training.
+  id: totrans-169
   prefs: []
   type: TYPE_NORMAL
 - en: Note the KL divergence in each of the three different perplexity values, along
@@ -857,49 +1068,64 @@
     the space between the clusters improves with reasonably clear distinctions at
     a perplexity of 30\. As the perplexity increases to 300, we can see that the clusters
     of eight and five, along with nine, four, and seven, are starting to converge.
+  id: totrans-170
   prefs: []
   type: TYPE_NORMAL
 - en: 'Let''s start with a low perplexity value:'
+  id: totrans-171
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 6.17: Plot of the low perplexity value'
+  id: totrans-172
   prefs: []
   type: TYPE_NORMAL
 - en: '](img/B15923_06_17.jpg)'
+  id: totrans-173
   prefs: []
   type: TYPE_NORMAL
 - en: 'Figure 6.17: Plot of the low perplexity value'
+  id: totrans-174
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-175
   prefs: []
   type: TYPE_NORMAL
 - en: The plotting function in *Step 4* would result in this plot. The subsequent
     outputs are the plots for varying values of perplexity.
+  id: totrans-176
   prefs: []
   type: TYPE_NORMAL
 - en: 'Increasing the perplexity by a factor of 10 shows much clearer clusters:'
+  id: totrans-177
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 6.18: Plot after increasing perplexity by a factor of 10'
+  id: totrans-178
   prefs: []
   type: TYPE_NORMAL
 - en: '](img/B15923_06_18.jpg)'
+  id: totrans-179
   prefs: []
   type: TYPE_NORMAL
 - en: 'Figure 6.18: Plot after increasing perplexity by a factor of 10'
+  id: totrans-180
   prefs: []
   type: TYPE_NORMAL
 - en: 'By increasing the perplexity to 300, we start to merge more of the labels together:'
+  id: totrans-181
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 6.19: Increasing the perplexity value to 300'
+  id: totrans-182
   prefs: []
   type: TYPE_NORMAL
 - en: '](img/B15923_06_19.jpg)'
+  id: totrans-183
   prefs: []
   type: TYPE_NORMAL
 - en: 'Figure 6.19: Increasing the perplexity value to 300'
+  id: totrans-184
   prefs: []
   type: TYPE_NORMAL
 - en: In this exercise, we developed our understanding of the effect of perplexity
@@ -907,18 +1133,23 @@
     can lead to a more homogenous mix of locations with very little space between
     them. Increasing the perplexity separates the clusters more effectively, but an
     excessive value leads to overlapping clusters.
+  id: totrans-185
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-186
   prefs: []
   type: TYPE_NORMAL
 - en: To access the source code for this specific section, please refer to [https://packt.live/3gI0zdp](https://packt.live/3gI0zdp)
+  id: totrans-187
   prefs: []
   type: TYPE_NORMAL
 - en: You can also run this example online at [https://packt.live/3gDcjxR](https://packt.live/3gDcjxR)
+  id: totrans-188
   prefs: []
   type: TYPE_NORMAL
 - en: 'Activity 6.02: t-SNE Wine and Perplexity'
+  id: totrans-189
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -927,32 +1158,39 @@
     to determine whether we can identify the source of the wine based on its chemical
     composition. The t-SNE process provides an effective means of representing and
     possibly identifying the sources.
+  id: totrans-190
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-191
   prefs: []
   type: TYPE_NORMAL
 - en: 'This dataset is sourced from [https://archive.ics.uci.edu/ml/machine-learning-databases/wine/](https://archive.ics.uci.edu/ml/machine-learning-databases/wine/)
     (UCI Machine Learning Repository [[http://archive.ics.uci.edu/ml](http://archive.ics.uci.edu/ml)].
     Irvine, CA: University of California, School of Information and Computer Science).
     It can be downloaded from [https://packt.live/3aPOmRJ](https://packt.live/3aPOmRJ).'
+  id: totrans-192
   prefs: []
   type: TYPE_NORMAL
 - en: Import `pandas`, `numpy`, and `matplotlib`, as well as the `t-SNE` and `PCA`
     models from scikit-learn.
+  id: totrans-193
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Load the Wine dataset and inspect the first five rows.
+  id: totrans-194
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: The first column provides the labels; extract these from the DataFrame and store
     them in a separate variable. Ensure that the column is removed from the DataFrame.
+  id: totrans-195
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Execute PCA on the dataset and extract the first six components.
+  id: totrans-196
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
@@ -960,30 +1198,38 @@
     80, 160, 320). For each loop, generate a t-SNE model with the corresponding perplexity
     and print a scatter plot of the labeled wine classes. Note the effect of different
     perplexity values.
+  id: totrans-197
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: 'By the end of this activity, you will have generated a two-dimensional representation
     of the Wine dataset and inspected the resulting plot for clusters or groupings
     of data. The plot for perplexity value 320 looks as follows:'
+  id: totrans-198
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 6.20: Expected output'
+  id: totrans-199
   prefs: []
   type: TYPE_NORMAL
 - en: '](img/B15923_06_20.jpg)'
+  id: totrans-200
   prefs: []
   type: TYPE_NORMAL
 - en: 'Figure 6.20: Expected output'
+  id: totrans-201
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-202
   prefs: []
   type: TYPE_NORMAL
 - en: The solution to this activity can be found on page 464.
+  id: totrans-203
   prefs: []
   type: TYPE_NORMAL
 - en: Iterations
+  id: totrans-204
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -993,9 +1239,11 @@
     simple parameter to adjust and often requires only a certain amount of patience
     as the position of the points in the low-dimensional space stabilize in their
     final locations.
+  id: totrans-205
   prefs: []
   type: TYPE_NORMAL
 - en: 'Exercise 6.03: t-SNE MNIST and Iterations'
+  id: totrans-206
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -1004,107 +1252,139 @@
     that perhaps more training is required. Again, the value of these parameters is
     highly dependent on the dataset and the volume of data that''s available for training.
     We will use MNIST in this example:'
+  id: totrans-207
   prefs: []
   type: TYPE_NORMAL
 - en: 'Import `pickle`, `numpy`, and `matplotlib`, as well as `PCA` and `t-SNE` from
     scikit-learn:'
+  id: totrans-208
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE19]'
+  id: totrans-209
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE19]'
 - en: 'Load the MNIST dataset:'
+  id: totrans-210
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE20]'
+  id: totrans-211
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE20]'
 - en: 'Using PCA, select only the first 30 components of variance from the image data:'
+  id: totrans-212
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE21]'
+  id: totrans-213
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE21]'
 - en: 'In this exercise, we are investigating the effect of iterations on the t-SNE
     manifold. Iterate through a model/plot loop with iteration and iterate with the
     progress values `250`, `500`, and `1000`:'
+  id: totrans-214
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE22]'
+  id: totrans-215
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE22]'
 - en: 'The output is as follows:'
+  id: totrans-216
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.21: Iterating through a model'
+  id: totrans-217
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_21.jpg)'
+  id: totrans-218
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.21: Iterating through a model'
+  id: totrans-219
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Plot the results:'
+  id: totrans-220
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: '[PRE23]'
+  id: totrans-221
   prefs:
   - PREF_IND
   type: TYPE_PRE
+  zh: '[PRE23]'
 - en: 'A reduced number of iterations limits the extent to which the algorithm can
     find relevant neighbors, leading to ill-defined clusters:'
+  id: totrans-222
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '![Figure 6.22: Plot after 250 iterations'
+  id: totrans-223
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: '](img/B15923_06_22.jpg)'
+  id: totrans-224
   prefs:
   - PREF_IND
   type: TYPE_NORMAL
 - en: 'Figure 6.22: Plot after 250 iterations'
+  id: totrans-225
   prefs: []
   type: TYPE_NORMAL
 - en: 'Increasing the number of iterations provides the algorithm with enough time
     to adequately project the data:'
+  id: totrans-226
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 6.23: Plot after increasing the iterations to 500'
+  id: totrans-227
   prefs: []
   type: TYPE_NORMAL
 - en: '](img/B15923_06_23.jpg)'
+  id: totrans-228
   prefs: []
   type: TYPE_NORMAL
 - en: 'Figure 6.23: Plot after increasing the iterations to 500'
+  id: totrans-229
   prefs: []
   type: TYPE_NORMAL
 - en: 'Once the clusters have settled, increased iterations have an extremely small
     effect and essentially lead to increased training time:'
+  id: totrans-230
   prefs: []
   type: TYPE_NORMAL
 - en: '![Figure 6.24: Plot after 1,000 iterations'
+  id: totrans-231
   prefs: []
   type: TYPE_NORMAL
 - en: '](img/B15923_06_24.jpg)'
+  id: totrans-232
   prefs: []
   type: TYPE_NORMAL
 - en: 'Figure 6.24: Plot after 1,000 iterations'
+  id: totrans-233
   prefs: []
   type: TYPE_NORMAL
 - en: Looking at the previous plots, we can see that the cluster positions with iteration
@@ -1113,18 +1393,23 @@
     as though the clusters are still in a process of motion, making their way to the
     final positions. As such, there is sufficient evidence to suggest that an iteration
     value of 500 is sufficient.
+  id: totrans-234
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-235
   prefs: []
   type: TYPE_NORMAL
 - en: To access the source code for this specific section, please refer to [https://packt.live/2Zaw1uZ](https://packt.live/2Zaw1uZ)
+  id: totrans-236
   prefs: []
   type: TYPE_NORMAL
 - en: You can also run this example online at [https://packt.live/3gCOiHf](https://packt.live/3gCOiHf)
+  id: totrans-237
   prefs: []
   type: TYPE_NORMAL
 - en: 'Activity 6.03: t-SNE Wine and Iterations'
+  id: totrans-238
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -1134,6 +1419,7 @@
     relationships in the data. Depending on the dataset and the type of analysis,
     we may need to try a number of different iterations, such as the ones we will
     look at in this activity.
+  id: totrans-239
   prefs: []
   type: TYPE_NORMAL
 - en: As we mentioned previously, this process is extremely helpful for projecting
@@ -1144,61 +1430,75 @@
     action-related features, which can make regular off-the-shelf analysis impossible.
     t-SNE is a helpful tool for working high-dimensional data into a more intuitive
     state.
+  id: totrans-240
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-241
   prefs: []
   type: TYPE_NORMAL
 - en: 'This dataset is sourced from [https://archive.ics.uci.edu/ml/machine-learning-databases/wine/](https://archive.ics.uci.edu/ml/machine-learning-databases/wine/)
     (UCI Machine Learning Repository [[http://archive.ics.uci.edu/ml](http://archive.ics.uci.edu/ml)].
     Irvine, CA: University of California, School of Information and Computer Science).
     It can be downloaded from [https://packt.live/2xXgHXo](https://packt.live/2xXgHXo).'
+  id: totrans-242
   prefs: []
   type: TYPE_NORMAL
 - en: 'These steps will help you complete this activity:'
+  id: totrans-243
   prefs: []
   type: TYPE_NORMAL
 - en: Import `pandas`, `numpy`, and `matplotlib`, as well as the `t-SNE` and `PCA`
     models from scikit-learn.
+  id: totrans-244
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Load the Wine dataset and inspect the first five rows.
+  id: totrans-245
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: The first column provides the labels; extract these from the DataFrame and store
     them in a separate variable. Ensure that the column is removed from the DataFrame.
+  id: totrans-246
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Execute PCA on the dataset and extract the first six components.
+  id: totrans-247
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Construct a loop that iterates through the iteration values (`250`, `500`, `1000`).
     For each loop, generate a t-SNE model with the corresponding number of iterations
     and an identical number of iterations without progress values.
+  id: totrans-248
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: Construct a scatter plot of the labeled wine classes. Note the effect of different
     iteration values.
+  id: totrans-249
   prefs:
   - PREF_OL
   type: TYPE_NORMAL
 - en: By completing this activity, we will have seen the effect of modifying the iteration
     parameter of the model. This is an important parameter in ensuring that the data
     has settled into a somewhat final position in the low-dimensional space.
+  id: totrans-250
   prefs: []
   type: TYPE_NORMAL
 - en: Note
+  id: totrans-251
   prefs: []
   type: TYPE_NORMAL
 - en: The solution to this activity can be found on page 473.
+  id: totrans-252
   prefs: []
   type: TYPE_NORMAL
 - en: Final Thoughts on Visualizations
+  id: totrans-253
   prefs:
   - PREF_H2
   type: TYPE_NORMAL
@@ -1212,15 +1512,18 @@
     distance between the points in local structures may be visually very close within
     the representation, but still might be some distance away in the high-dimensional
     space.
+  id: totrans-254
   prefs: []
   type: TYPE_NORMAL
 - en: This property also has additional consequences in that, sometimes, random data
     can appear as if it has some structure, and that it is often required to generate
     multiple visualizations using different values of perplexity, learning rate, number
     of iterations, and random seed values.
+  id: totrans-255
   prefs: []
   type: TYPE_NORMAL
 - en: Summary
+  id: totrans-256
   prefs:
   - PREF_H1
   type: TYPE_NORMAL
@@ -1233,5 +1536,6 @@
     each image without knowing the ground truth result. In the next chapter, we will
     build on this practical experience by looking into applications of unsupervised
     learning, including basket analysis and topic modeling.
+  id: totrans-257
   prefs: []
   type: TYPE_NORMAL
