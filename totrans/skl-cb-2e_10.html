@@ -1,0 +1,603 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Text and Multiclass Classification with scikit-learn</h1>
+                </header>
+            
+            <article>
+                
+<p class="NormalPACKT">This chapter will cover the following recipes:</p>
+<ul>
+<li class="BulletPACKT">Using LDA for classification</li>
+<li class="BulletPACKT">Working with QDA – a nonlinear LDA</li>
+<li class="BulletPACKT">Using SGD for classification</li>
+<li class="BulletPACKT">Classifying documents with Naive Bayes</li>
+<li class="BulletPACKT">Label propagation with semi-supervised learning</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using LDA for classification</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root"><strong>Linear discriminant analysis</strong> (<strong>LDA</strong>) attempts to fit a linear combination of features to predict an outcome variable. LDA is often used as a pre-processing step. We'll walk through both methods in this recipe.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we will do the following:</p>
+<ol>
+<li>Grab stock data from Google.</li>
+<li>Rearrange it in a shape we're comfortable with.</li>
+<li>Create an LDA object to fit and predict the class labels.</li>
+<li>Give an example of how to use LDA for dimensionality reduction.</li>
+</ol>
+<p>Before starting on step 1 and grabbing stock data from Google, install a version of pandas that supports the latest stock reader. Do so at an Anaconda command line by typing this:</p>
+<pre><strong>conda install -c anaconda pandas-datareader</strong></pre>
+<p>Note that your pandas version will be updated. If this is a problem, create a new environment for this pandas version. Now open a notebook and check whether the <kbd>pandas-datareader</kbd> imports correctly:</p>
+<pre><strong>from <kbd>pandas-datareader</kbd> import data</strong></pre>
+<p>If it is imported correctly, no errors will show up.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>In this example, we will perform an analysis similar to Altman's Z-score. In his paper, Altman looked at a company's likelihood of defaulting within two years based on several financial metrics. The following is taken from the Wikipedia page of Altman's Z-score:</p>
+<table>
+<tbody>
+<tr>
+<td>
+<p><strong>Z-score formula</strong></p>
+</td>
+<td>
+<p><strong>Description</strong></p>
+</td>
+</tr>
+<tr>
+<td>
+<p><em>T1 = Working capital / Total assets</em></p>
+</td>
+<td>
+<p><span>This measures liquid assets in relation to the size of the company.</span></p>
+</td>
+</tr>
+<tr>
+<td>
+<p><em>T2 = Retained earnings / Total assets</em></p>
+</td>
+<td>
+<p><span>This measures profitability that reflects the company's age and earning power.</span></p>
+</td>
+</tr>
+<tr>
+<td>
+<p><em>T3 = Earnings before interest and taxes / Total assets</em></p>
+</td>
+<td>
+<p><span>This measures operating efficiency apart from tax and leveraging factors. It recognizes operating earnings as being important to long-term viability.</span></p>
+</td>
+</tr>
+<tr>
+<td>
+<p><em>T4 = Market value of equity / Book value of total liabilities</em></p>
+</td>
+<td>
+<p><span>This adds market dimension that can show up a security price fluctuation as a possible red flag.</span></p>
+</td>
+</tr>
+<tr>
+<td>
+<p><em>T5 = Sales / Total assets</em></p>
+</td>
+<td>
+<p><span>This is the standard measure for total asset turnover (varies greatly from industry to industry).</span></p>
+</td>
+</tr>
+</tbody>
+</table>
+<p> </p>
+<p>Refer to the article, <em>Financial Ratios, Discriminant Analysis and the Prediction of Corporate Bankruptcy</em>, by <span>Altman, Edward I. (September 1968), </span>Journal of Finance: 189–209.</p>
+<p>In this analysis, we'll look at some financial data from Google via pandas. We'll try to predict whether a stock will be higher in exactly six months from today based on the current attribute of the stock. It's obviously nowhere near as refined as Altman's Z-score.</p>
+<ol>
+<li>Begin with a few imports and by storing the tickers you will use, the first date, and the last date of the data:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>%matplotlib inline</strong><br/><br/><strong>from pandas_datareader import data</strong><br/><strong>import pandas as pd</strong><br/><br/><strong>tickers = ["F", "TM", "GM", "TSLA"]</strong><br/><br/><strong>first_date = '2009-01-01'</strong><br/><strong>last_date = '2016-12-31'</strong></pre>
+<ol start="2">
+<li class="mce-root">Now, let's pull the stock data:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>stock_panel = data.DataReader(tickers, 'google', first_date, last_date)</strong></pre>
+<ol start="3">
+<li>This data structure is a panel from pandas. It's similar to an <span><strong>online analytical processing</strong> (</span><strong>OLAP</strong>) cube or a 3D dataframe. Let's take a look at the data to get more familiar with the closes since that's what we care about when comparing:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>stock_df = stock_panel.Close.dropna()</strong><br/><strong>stock_df.plot(figsize=(12, 5))</strong></pre>
+<p style="padding-left: 60px" class="mce-root">The following is the output:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="191" width="446" src="assets/01c78109-cbbb-4a0e-8d89-ae29c7316169.png"/></div>
+<p style="padding-left: 60px">Okay, so now we need to compare each stock price with its price in six months. If it's higher, we'll code it with one, and if not, we'll code it with zero.</p>
+<ol start="4">
+<li>To do this, we'll just shift the dataframe back by 180 days and compare:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>#this dataframe indicates if the stock was higher in 180 days</strong><br/><strong>classes = (stock_df.shift(-180) &gt; stock_df).astype(int)</strong></pre>
+<ol start="5">
+<li>The next thing we need to do is flatten out the dataset:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>X = stock_panel.to_frame()</strong><br/><strong>classes = classes.unstack()</strong><br/><strong>classes = classes.swaplevel(0, 1).sort_index()</strong><br/><strong>classes = classes.to_frame()</strong><br/><strong>classes.index.names = ['Date', 'minor']</strong><br/><strong>data = X.join(classes).dropna()</strong><br/><strong>data.rename(columns={0: 'is_higher'}, inplace=True)</strong><br/><strong>data.head()</strong></pre>
+<p style="padding-left: 60px">The following is the output:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/a3ff74d1-9b3f-4e80-b603-1aeaf1ffe48e.png"/></div>
+<ol start="6">
+<li>Okay, so now we need to create matrices in NumPy. To do this, we'll use the <kbd>patsy</kbd> library. This is a great library that can be used to create a design matrix in a fashion similar to R:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>import patsy</strong><br/><strong>X = patsy.dmatrix("Open + High + Low + Close + Volume + is_higher - 1", data.reset_index(),return_type='dataframe')</strong><br/><strong>X.head()</strong></pre>
+<p style="padding-left: 60px" class="mce-root"><span>The following is the output:</span></p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/6b83a26d-5dc5-4854-82e2-c18ba3daa2a5.png"/></div>
+<p style="padding-left: 60px">The <kbd>patsy</kbd> is a very strong package; for example, suppose we want to apply pre-processing. In <kbd>patsy</kbd>, it's possible, like R, to modify the formula in a way that corresponds to modifications in the design matrix. It won't be done here, but if we want to scale the value to mean 0 and standard deviation 1, the function will be <em>scale(open) + scale(high)</em>.</p>
+<ol start="7">
+<li>So, now that we have our dataset, let's fit the LDA object:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA</strong><br/><strong>lda = LDA()</strong><br/><strong>lda.fit(X.iloc[:, :-1], X.iloc[:, -1]);</strong></pre>
+<ol start="8">
+<li>We can see that it's not too bad when predicting against the dataset. Certainly, we will want to improve this with other parameters and test the model:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.metrics import classification_report</strong><br/><strong>print classification_report(X.iloc[:, -1].values,</strong><br/><strong>lda.predict(X.iloc[:, :-1]))</strong><br/><br/><strong>             precision    recall  f1-score   support</strong><br/><br/><strong>        0.0       0.64      0.81      0.72      3432</strong><br/><strong>        1.0       0.64      0.42      0.51      2727</strong><br/><br/><strong>avg / total       0.64      0.64      0.62      6159</strong></pre>
+<p>These metrics describe how the model fits the data in various ways.</p>
+<p>The <kbd>precision</kbd> and <kbd>recall</kbd> parameters are fairly similar. In some ways, as shown in the following list, they can be thought of as conditional proportions:</p>
+<ul>
+<li><kbd>precision</kbd>: Given that the model predicts a positive value, what proportion of it is correct? This is why an alternate name for precision is <strong>positive predictive value</strong> (<strong>PPV</strong>).</li>
+<li><kbd>recall</kbd>: Given that the state of one class is true, what proportion did we select? I say select because <kbd>recall</kbd> is a common metric in search problems. For example, there can be a set of underlying web pages that, in fact, relate to a search term—the proportion that is returned. In <a href="d2473ebe-f050-4e72-bbf9-fabe5d62d441.xhtml" target="_blank">Chapter 5</a>, <em>Linear Models - Logistic Regression</em>, you saw recall by another name, sensitivity.</li>
+</ul>
+<p>The <kbd>f1-score</kbd> parameter attempts to summarize the relationship between <kbd>recall</kbd> and <kbd>precision</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>LDA is actually fairly similar to clustering, which we did previously. We fit a basic model from the data. Then, once we have the model, we try to predict and compare the likelihoods of the data given in each class. We choose the option that is more likely.</p>
+<p>LDA is actually a simplification of <strong>quadratic discernment analysis</strong> (<strong>QDA</strong>), which we'll talk about in the next recipe. Here we assume that the covariance of each class is the same, but in QDA, this assumption is relaxed. Think about the connections between KNN and <strong>Gaussian mixture models</strong> (<strong>GMM</strong>) and the relationship there and here.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Working with QDA – a nonlinear LDA</h1>
+                </header>
+            
+            <article>
+                
+<p>QDA is the generalization of a common technique such as quadratic regression. It is simply a generalization of a model to allow for more complex models to fit, though, like all things, when allowing complexity to creep in, we make our lives more difficult.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We will expand on the last recipe and look at QDA via the QDA object.</p>
+<p>We said we made an assumption about the covariance of the model. Here we will relax that assumption.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>QDA is aptly a member of the <kbd>qda</kbd> module. Use the following commands to use QDA:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis as QDA</strong><br/><strong>qda = QDA()</strong><br/><br/><strong>qda.fit(X.iloc[:, :-1], X.iloc[:, -1])</strong><br/><strong>predictions = qda.predict(X.iloc[:, :-1])</strong><br/><strong>predictions.sum()</strong><br/><br/><strong>2686.0</strong><br/><br/><strong>from<span> </span><span class="cm-variable">sklearn</span><span>.</span><span class="cm-variable">metrics</span><span> </span><span class="cm-keyword">import</span><span> </span><span class="cm-variable">classification_report<br/></span>print<span> </span><span class="cm-variable">classification_report</span><span>(</span><span class="cm-variable">X</span><span>.</span><span class="cm-variable">iloc</span><span>[:, </span><span class="cm-operator">-</span><span class="cm-number">1</span><span>].</span><span class="cm-variable">values</span><span>, </span><span class="cm-variable">predictions</span><span>)<br/></span>             precision    recall  f1-score   support</strong><br/><br/><strong>        0.0       0.65      0.66      0.65      3432</strong><br/><strong>        1.0       0.56      0.55      0.56      2727</strong><br/><br/><strong>avg / total       0.61      0.61      0.61      6159</strong></pre>
+<p style="margin-bottom: .0001pt" class="NormalPACKT">As you can see, it's about equal on the whole. If we look back at the <em>Using LDA for classification</em> recipe, we can see large changes as opposed to the QDA object for class zero and minor differences for class one.</p>
+<p style="margin-bottom: .0001pt" class="NormalPACKT">As we talked about in the last recipe, we essentially compare likelihoods here. But how do we compare likelihoods? Let's just use the price at hand to attempt to classify <kbd>is_higher</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll assume that the closing price is log-normally distributed. In order to compute the likelihood for each class, we need to create the subsets of the closes as well as a training and test set for each class. We'll use the built-in cross-validation methods:</p>
+<pre class="mce-root"><strong>from sklearn.model_selection import ShuffleSplit</strong><br/><strong>import scipy.stats as sp</strong><br/><br/><strong>shuffle_split_inst = ShuffleSplit()</strong><br/><br/><strong>for test, train in shuffle_split_inst.split(X):</strong><br/><strong>      train_set = X.iloc[train]</strong><br/><strong>      train_close = train_set.Close</strong><br/><br/><strong>      train_0 = train_close[~train_set.is_higher.astype(bool)]</strong><br/><strong>      train_1 = train_close[train_set.is_higher.astype(bool)]</strong><br/><br/><strong>      test_set = X.iloc[test]</strong><br/><strong>      test_close = test_set.Close.values</strong><br/><br/><strong>ll_0 = sp.norm.pdf(test_close, train_0.mean())</strong><br/><strong>ll_1 = sp.norm.pdf(test_close, train_1.mean())</strong></pre>
+<p>Now that we have likelihoods for both classes, we can compare and assign classes:</p>
+<pre class="mce-root"><strong>(ll_0 &gt; ll_1).mean()</strong><br/><br/><strong>0.14486740032473389</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using SGD for classification</h1>
+                </header>
+            
+            <article>
+                
+<p>The <strong>stochastic gradient descent</strong> (<strong>SGD</strong>) is a fundamental technique used to fit a model for regression. There are natural connections between SGD for classification or regression.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In regression, we minimized a cost function that penalized for bad choices on a continuous scale, but for classification, we'll minimize a cost function that penalizes for two (or more) cases.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>First, let's create some very basic data:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn import datasets</strong><br/><strong>X, y = datasets.make_classification(n_samples = 500)</strong></pre>
+<ol start="2">
+<li>Split the data into training and testing sets:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.model_selection import train_test_split</strong><br/><strong>X_train, X_test, y_train, y_test = train_test_split(X,y,stratify=y)</strong></pre>
+<ol start="3">
+<li>Instantiate and train the classifier:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import linear_model</strong><br/><strong>sgd_clf = linear_model.SGDClassifier()</strong><br/><strong>#As usual, we'll fit the model:</strong><br/><strong>sgd_clf.fit(X_train, y_train)</strong></pre>
+<ol start="4">
+<li class="mce-root">Measure the performance on the test set:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.metrics import accuracy_score</strong><br/><strong>accuracy_score(y_test,sgd_clf.predict(X_test))</strong><br/><br/><strong>0.80000000000000004</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>We can set the <kbd>class_weight</kbd> parameter to account for the varying amount of imbalance in a dataset.</p>
+<p>The hinge loss function is defined as follows:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="21" width="112" class="fm-editor-equation" src="assets/5c055abe-eff5-4e39-bfb7-c5be9b0ccf45.png"/></div>
+<p>Here, <kbd>t</kbd> is the true classification denoted as <em>+1</em> for one case and <em>-1</em> for the other. The vector of coefficients is denoted by <em>y</em> as fit from the model, and <em>x</em> is the value of interest. There is also an intercept for good measure. To put it another way:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="21" width="84" class="fm-editor-equation" src="assets/9bf8c9bd-dc17-4835-a57f-40dc47b94d64.png"/></div>
+<div class="CDPAlignCenter CDPAlign"><img height="22" width="95" class="fm-editor-equation" src="assets/3a8e922a-1339-4f03-a10e-eb7bf4ec001d.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Classifying documents with Naive Bayes</h1>
+                </header>
+            
+            <article>
+                
+<p>Naive Bayes is a really interesting model. It's somewhat similar to KNN in the sense that it makes some assumptions that might oversimplify reality, but still it performs well in many cases.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll use Naive Bayes to do document classification with <kbd>sklearn</kbd>. An example I have personal experience of is using a word that makes up an account descriptor in accounting, such as accounts payable, and determining if it belongs to the income statement, cash flow statement, or balance sheet.</p>
+<p>The basic idea is to use the word frequency from a labeled test corpus to learn the classifications of the documents. Then, we can turn it on a training set and attempt to predict the label.</p>
+<p>We'll use the <kbd>newgroups</kbd> dataset within <kbd>sklearn</kbd> to play with the Naive Bayes model. It's a non-trivial amount of data, so we'll fetch it instead of loading it. We'll also limit the categories to <kbd>rec.autos</kbd> and <kbd>rec.motorcycles</kbd>:</p>
+<pre><strong>import numpy as np</strong><br/><strong>from sklearn.datasets import fetch_20newsgroups</strong><br/><strong>categories = ["rec.autos", "rec.motorcycles"]</strong><br/><strong>newgroups = fetch_20newsgroups(categories=categories)</strong><br/><strong>#take a look</strong><br/><strong>print "\n".join(newgroups.data[:1])</strong><br/><br/><strong>From: gregl@zimmer.CSUFresno.EDU (Greg Lewis)
+Subject: Re: WARNING.....(please read)...
+Keywords: BRICK, TRUCK, DANGER
+Nntp-Posting-Host: zimmer.csufresno.edu
+Organization: CSU Fresno
+Lines: 33</strong><br/><strong>...</strong><br/><br/><strong>newgroups.target_names</strong><br/><br/><strong>['rec.autos', 'rec.motorcycles']</strong></pre>
+<p>Now that we have new groups, we'll need to represent each document as a bag-of-words. This representation is what gives Naive Bayes its name. The model is naive because documents are classified without regard for any intradocument word covariance. This might be considered a flaw, but Naive Bayes has been shown to work reasonably well.</p>
+<p>We need to pre-process the data into a bag-of-words matrix. This is a sparse matrix that has entries when the word is present in the document. This matrix can become quite large, as illustrated:</p>
+<pre><strong>from sklearn.feature_extraction.text import CountVectorizer</strong><br/><strong>count_vec = CountVectorizer()</strong><br/><strong>bow = count_vec.fit_transform(newgroups.data)</strong></pre>
+<p>This matrix is a sparse matrix, which is the length of the number of documents by each word. The document and word value of the matrix are the frequency of the particular term:</p>
+<pre><strong>bow</strong><br/><br/><strong>&lt;1192x19177 sparse matrix of type '&lt;type 'numpy.int64'&gt;'</strong><br/><strong> with 164296 stored elements in Compressed Sparse Row format&gt;</strong></pre>
+<p>We'll actually need the matrix as a dense array for the Naive Bayes object. So, let's convert it back:</p>
+<pre><strong>bow = np.array(bow.todense())</strong></pre>
+<p>Clearly, most of the entries are zero, but we might want to reconstruct the document counts as a sanity check:</p>
+<pre><strong>words = np.array(count_vec.get_feature_names())</strong><br/><strong>words[bow[0] &gt; 0][:5]</strong><br/><br/><strong>array([u'10pm', u'1qh336innfl5', u'33', u'93740',</strong><br/><strong> u'___________________________________________________________________'], </strong><br/><strong> dtype='&lt;U79')</strong></pre>
+<p>Now, are these the examples in the first document? Let's check that using the following command:</p>
+<pre><strong>'10pm' in newgroups.data[0].lower()</strong><br/><br/><strong>True</strong><br/><br/><strong>'1qh336innfl5' in newgroups.data[0].lower()</strong><br/><br/><strong>True</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Okay, so it took a bit longer than normal to get the data ready, but we're dealing with text data that isn't as quickly represented as a matrix as the data we're used to.</p>
+<ol>
+<li>However, now that we're ready, we'll fire up the classifier and fit our model:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import naive_bayes</strong><br/><strong>clf = naive_bayes.GaussianNB().fit(X_train, y_train)</strong></pre>
+<ol start="2">
+<li>Rename the sets <kbd>bow</kbd> and <kbd>newgroups.target</kbd> to <kbd>X</kbd> and <kbd>y</kbd> respectively. Before we fit the model, let's split the dataset into a training and a test set:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>X = bow</strong><br/><strong>y = newgroups.target</strong><br/><br/><strong>from sklearn.model_selection import train_test_split</strong><br/><br/><strong>X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.5,stratify=y)</strong></pre>
+<ol start="3">
+<li>Now that we fit a model on a test set and predicted the training set in an attempt to determine which categories go with which articles, let's get a sense of the approximate accuracy:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.metrics import accuracy_score</strong><br/><strong>accuracy_score(y_test,clf.predict(X_test) )</strong><br/><br/><strong>0.94630872483221473</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The fundamental idea of Naive Bayes is that we can estimate the probability of a data point being a class, given the feature vector.</p>
+<p>This can be rearranged via the Bayes formula to give the <span><strong>maximum a posteriori</strong> (</span><strong>MAP</strong>) estimate for the feature vector. This MAP estimate chooses the class for which the feature vector's probability is maximized.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>We can also extend Naive Bayes to do multiclass work. Instead of assuming a Gaussian likelihood, we'll use a multinomial likelihood.</p>
+<p>First, let's get a third category of data:</p>
+<pre><strong>from sklearn.datasets import fetch_20newsgroups</strong><br/><strong>mn_categories = ["rec.autos", "rec.motorcycles", "talk.politics.guns"]</strong><br/><strong>mn_newgroups = fetch_20newsgroups(categories=mn_categories)</strong></pre>
+<p>We'll need to vectorize this just like the class case:</p>
+<pre><strong>mn_bow = count_vec.fit_transform(mn_newgroups.data)</strong><br/><strong>mn_bow = np.array(mn_bow.todense())</strong></pre>
+<p>Rename <kbd>mn_bow</kbd> and <kbd>mn_newgroups.target</kbd> to <kbd>X</kbd> and <kbd>y</kbd> respectively. Let's create a train and a test set and train a multinomial Bayes model with the training data:</p>
+<pre class="mce-root"><strong>X = mn_bow</strong><br/><strong>y = mn_newgroups.target</strong><br/><br/><strong>from sklearn.model_selection import train_test_split</strong><br/><strong>X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.5,stratify=y)</strong><br/><br/><strong>from sklearn.naive_bayes import MultinomialNB</strong><br/><strong>clf = MultinomialNB().fit(X_train, y_train)</strong></pre>
+<p>Measure the model accuracy:</p>
+<pre><strong>from sklearn.metrics import accuracy_score</strong><br/><strong> accuracy_score(y_test,clf.predict(X_test) )</strong><br/><br/><strong>0.96317606444188719</strong></pre>
+<p>It's not completely surprising that we did well. We did fairly well in the dual class case, and since one will guess that the <kbd>talk.politics.guns</kbd> category is fairly orthogonal to the other two, we should probably do pretty well.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Label propagation with semi-supervised learning</h1>
+                </header>
+            
+            <article>
+                
+<p>Label propagation is a semi-supervised technique that makes use of labeled and unlabeled data to learn about unlabeled data. Quite often, data that will benefit from a classification algorithm is difficult to label. For example, labeling data might be very expensive, so only a subset is cost-effective to manually label. That said, there does seem to be slow but growing support for companies to hire taxonomists.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Another problem area is censored data. You can imagine a case where the frontier of time will affect your ability to gather labeled data. Say, for instance, you took measurements of patients and gave them an experimental drug. In some cases, you are able to measure the outcome of the drug if it happens fast enough, but you might want to predict the outcome of the drugs that have a slower reaction time. The drug might cause a fatal reaction for some patients and life-saving measures might need to be taken.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>In order to represent semi-supervised or censored data, we'll need to do a little data pre-processing. First, we'll walk through a simple example, and then we'll move on to some more difficult cases:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import datasets</strong><br/><strong>d = datasets.load_iris()</strong></pre>
+<ol start="2">
+<li>Due to the fact that we'll be messing with the data, let's make copies and add an unlabeled member to the target name's copy. It'll make it easier to identify the data later:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>X = d.data.copy()</strong><br/><strong>y = d.target.copy()</strong><br/><strong>names = d.target_names.copy()</strong><br/><strong>names = np.append(names, ['unlabeled'])</strong><br/><strong>names</strong><br/><br/><strong>array(['setosa', 'versicolor', 'virginica', 'unlabeled'], </strong><br/><strong> dtype='|S10')</strong></pre>
+<ol start="3">
+<li>Now, let's update <kbd>y</kbd> with <kbd>-1</kbd>. This is the marker for the unlabeled case. This is also why we added unlabeled at the end of the names:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>y[np.random.choice([True, False], len(y))] = -1</strong></pre>
+<ol start="4">
+<li>Our data now has a bunch of negative ones (<kbd>-1</kbd>) interspersed with the actual data:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>y[:10]</strong><br/><br/><strong>array([ 0, -1, -1, 0, 0, 0, 0, -1, 0, -1])</strong><br/><br/><strong>names[y[:10]]</strong><br/><br/><strong>array(['setosa', 'unlabeled', 'unlabeled', 'setosa', 'setosa', 'setosa',</strong><br/><strong> 'setosa', 'unlabeled', 'setosa', 'unlabeled'], </strong><br/><strong> dtype='|S10')</strong></pre>
+<ol start="5">
+<li class="mce-root">We clearly have a lot of unlabeled data, and the goal now is to use the <kbd>LabelPropagation</kbd> method to predict the labels:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import semi_supervised</strong><br/><strong>lp = semi_supervised.LabelPropagation()</strong><br/><strong>lp.fit(X, y)</strong><br/><br/><strong>LabelPropagation(alpha=1, gamma=20, kernel='rbf', max_iter=30, n_jobs=1,</strong><br/><strong> n_neighbors=7, tol=0.001)</strong></pre>
+<ol start="6">
+<li class="mce-root">Measure the accuracy score:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>preds = lp.predict(X)</strong><br/><strong>(preds == d.target).mean()</strong><br/><br/><strong>0.97333333333333338</strong></pre>
+<p>Not too bad, though we did use all the data, so it's kind of cheating. Also, the iris dataset is a fairly separated dataset.</p>
+<div class="packt_infobox">Using the whole dataset is reminiscent of more traditional statistics. Making the choice of not measuring on a test set decreases our focus on prediction and encourages more understanding and interpretation of the whole dataset. As mentioned before, understanding versus black-box prediction distinguishes traditional statistics with machine learning.</div>
+<p>While we're at it, let's look at <kbd>LabelSpreading</kbd>, the sister class of <kbd>LabelPropagation</kbd>. We'll make the technical distinction between <kbd>LabelPropagation</kbd> and <kbd>LabelSpreading</kbd> in the <em>How it works..</em>. section of this recipe, but they are extremely similar:</p>
+<pre><strong>ls = semi_supervised.LabelSpreading()</strong></pre>
+<p>The <kbd>LabelSpreading</kbd> is more robust and noisy as observed from the way it works:</p>
+<pre><strong>ls.fit(X, y)</strong><br/><br/><strong>LabelSpreading(alpha=0.2, gamma=20, kernel='rbf', max_iter=30, n_jobs=1,</strong><br/><strong> n_neighbors=7, tol=0.001)</strong></pre>
+<p>Measure the accuracy score:</p>
+<pre><strong>(ls.predict(X) == d.target).mean()</strong><br/><br/><strong>0.96666666666666667</strong></pre>
+<p>Don't consider the fact that the label-spreading algorithm missed one more as an indication and that it performs worse in general. The whole point is that we might give it some ability to predict well on the training set and to work on a wider range of situations.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Label propagation works by creating a graph of the data points, with weights placed on the edge as per the following formula:</p>
+<div class="mce-root CDPAlignCenter CDPAlign"><img height="43" width="101" class="fm-editor-equation" src="assets/66959096-80b2-4bec-94d0-8b7253f9e092.png"/></div>
+<p>The algorithm then works by labeled data points propagating their labels to the unlabeled data. This propagation is, in part, determined by edge weight.</p>
+<p>The edge weights can be placed in a matrix of transition probabilities. We can iteratively determine a good estimate of the actual labels.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

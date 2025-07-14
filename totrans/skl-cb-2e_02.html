@@ -1,0 +1,1228 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Pre-Model Workflow and Pre-Processing</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter we will see the following recipes:</p>
+<ul>
+<li><span>Creating sample data for toy analysis</span></li>
+<li>Scaling data to the standard normal distribution</li>
+<li>Creating binary features through thresholding</li>
+<li>Working with categorical variables</li>
+<li>Imputing missing values through various strategies</li>
+<li>A linear model in the presence of outliers</li>
+<li>Putting it all together with pipelines</li>
+<li>Using Gaussian processes for regression</li>
+<li>Using SGD for regression</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Introduction</h1>
+                </header>
+            
+            <article>
+                
+<p>What is data, and what are we doing with it?</p>
+<p>A simple answer is that we attempt to place our data as points on paper, graph them, think, and look for simple explanations that approximate the data well. The simple geometric line of <em>F=ma</em> (force being proportional to acceleration) explained a lot of noisy data for hundreds of years. I tend to think of data science as data compression at times.</p>
+<p>Sometimes, when a machine is given only win-lose outcomes (of winning games of checkers, for example) and trained, I think of artificial intelligence. It is never taught explicit directions on how to play to win in such a case.</p>
+<p>This chapter deals with the pre-processing of data in scikit-learn. Some questions you can ask about your dataset are as follows:</p>
+<ul>
+<li>Are there missing values in your dataset?</li>
+<li>Are there outliers (points far away from the others) in your set?</li>
+<li>What are the variables in the data like? Are they continuous quantities or categories?</li>
+<li>What do the continuous variable distributions look like? Can any of the variables in your dataset be described by normal distributions (bell-shaped curves)?</li>
+<li>Can any continuous variables be turned into categorical variables for simplicity? (This tends to be true if the distribution takes on very few particular values and not a continuous-like range of values.)</li>
+<li>What are the units of the variables involved? Will you mix the variables somehow in the machine learning algorithm you chose to use?</li>
+</ul>
+<p>These questions can have simple or complex answers. Thankfully, you ask them many times, even on the same dataset, and after these recipes you will have some practice at crafting answers to pre-processing machine learning questions.</p>
+<p>Additionally, we will see pipelines: a great organizational tool to make sure we perform the same operations on both the training and testing sets without errors and with relatively little work. We will also see regression examples: <strong>stochastic gradient descent</strong> (<strong>SGD</strong>) and Gaussian processes.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating sample data for toy analysis</h1>
+                </header>
+            
+            <article>
+                
+<p>If possible, use some of your own data for this book, but in the event you cannot, we'll learn how we can use scikit-learn to create toy data. scikit-learn's pseudo, theoretically constructed data is very interesting in its own right.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Very similar to getting built-in datasets, fetching new datasets, and creating sample datasets, the functions that are used follow the naming convention <kbd>make_*</kbd>. Just to be clear, this data is purely artificial:</p>
+<pre><strong>from sklearn import datasets</strong><br/><strong>datasets.make_*?</strong><br/><br/><strong>datasets.make_biclusters</strong><br/><strong>datasets.make_blobs</strong><br/><strong>datasets.make_checkerboard</strong><br/><strong>datasets.make_circles</strong><br/><strong>datasets.make_classification</strong><br/><strong>...</strong></pre>
+<p>To save typing, import the <kbd>datasets</kbd> module as <kbd>d</kbd>, and <kbd>numpy</kbd> as <kbd>np</kbd>:</p>
+<pre><strong>import sklearn.datasets as d</strong><br/><strong>import numpy as np</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>This section will walk you through the creation of several datasets. In addition to the sample datasets, these will be used throughout the book to create data with the necessary characteristics for the algorithms on display.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating a regression dataset</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>First, the stalwart—regression:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>reg_data = d.make_regression()</strong></pre>
+<p style="padding-left: 60px">By default, this will generate a tuple with a 100 x 100 matrix—100 samples by 100 features. However, by default, only 10 features are responsible for the target data generation. The second member of the tuple is the target variable. It is also possible to get more involved in generating data for regression.</p>
+<ol start="2">
+<li>For example, to generate a 1,000 x 10 matrix with five features responsible for the target creation, an underlying bias factor of 1.0, and 2 targets, the following command will be run:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>complex_reg_data = d.make_regression(1000, 10, 5, 2, 1.0)</strong><br/><strong>complex_reg_data[0].shape</strong><br/><br/><strong>(1000L, 10L)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating an unbalanced classification dataset</h1>
+                </header>
+            
+            <article>
+                
+<p>Classification datasets are also very simple to create. It's simple to create a base classification set, but the basic case is rarely experienced in practice—most users don't convert, most transactions aren't fraudulent, and so on.</p>
+<ol start="3">
+<li>Therefore, it's useful to explore classification on unbalanced datasets:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>classification_set = d.make_classification(weights=[0.1])</strong><br/><strong>np.bincount(classification_set[1])</strong><br/><br/><strong>array([10, 90], dtype=int64)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating a dataset for clustering</h1>
+                </header>
+            
+            <article>
+                
+<p>Clusters will also be covered. There are actually several functions to create datasets that can be modeled by different cluster algorithms.</p>
+<ol start="4">
+<li>For example, blobs are very easy to create and can be modeled by k-means:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>blobs_data, blobs_target = d.make_blobs()</strong></pre>
+<ol start="5">
+<li>This will look like the following:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import matplotlib.pyplot as plt</strong><br/><strong>%matplotlib inline     </strong><br/><strong>#Within an Ipython notebook</strong><br/><strong>plt.scatter(blobs_data[:,0],blobs_data[:,1],c = blobs_target) </strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="218" width="318" src="assets/0bf9b285-7654-42fc-a2cb-4f14e9d40e44.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's walk you through how scikit-learn produces the regression dataset by taking a look at the source code (with some modifications for clarity). Any undefined variables are assumed to have the default value of <kbd>make_regression</kbd>.</p>
+<p>It's actually surprisingly simple to follow. First, a random array is generated with the size specified when the function is called:</p>
+<pre><strong>X = np.random.randn(n_samples, n_features)</strong></pre>
+<p>Given the basic dataset, the target dataset is then generated:</p>
+<pre><strong>ground_truth = np.zeros((np_samples, n_target))</strong><br/><strong>ground_truth[:n_informative, :] = 100*np.random.rand(n_informative, n_targets)</strong></pre>
+<p>The dot product of <kbd>X</kbd> and <kbd>ground_truth</kbd> are taken to get the final target values. Bias, if any, is added at this time:</p>
+<pre><strong>y = np.dot(X, ground_truth) + bias</strong></pre>
+<p>The dot product is simply a matrix multiplication. So, our final dataset will have <kbd>n_samples</kbd>, which is the number of rows from the dataset, and <kbd>n_target,</kbd> which is the number of target variables.</p>
+<p>Due to NumPy's broadcasting, bias can be a scalar value, and this value will be added to every sample. Finally, it's a simple matter of adding any noise and shuffling the dataset. Voila, we have a dataset that's perfect for testing regression.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Scaling data to the standard normal distribution</h1>
+                </header>
+            
+            <article>
+                
+<p>A pre-processing step that is recommended is to scale columns to the standard normal. The standard normal is probably the most important distribution in statistics. If you've ever been introduced to statistics, you must have almost certainly seen z-scores. In truth, that's all this recipe is about—transforming our features from their endowed distribution into z-scores.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>The act of scaling data is extremely useful. There are a lot of machine learning algorithms, which perform differently (and incorrectly) in the event the features exist at different scales. For example, SVMs perform poorly if the data isn't scaled because they use a distance function in their optimization, which is biased if one feature varies from 0 to 10,000 and the other varies from 0 to 1.</p>
+<p>The <kbd>preprocessing</kbd> module contains several useful functions for scaling features:</p>
+<pre><strong>from sklearn import preprocessing</strong><br/><strong>import numpy as np # we'll need it later</strong></pre>
+<p>Load the Boston dataset:</p>
+<pre class="mce-root"><strong>from sklearn.datasets import load_boston</strong><br/><br/><strong>boston = load_boston()</strong><br/><strong>X,y = boston.data, boston.target</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Continuing with the Boston dataset, run the following commands:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>X[:, :3].mean(axis=0) #mean of the first 3 features</strong><br/><br/><strong>array([  3.59376071,  11.36363636,  11.13677866])</strong><br/><br/><strong>X[:, :3].std(axis=0)</strong><br/><br/><strong>array([  8.58828355,  23.29939569,   6.85357058])</strong></pre>
+<ol start="2">
+<li>There's actually a lot to learn from this initially. Firstly, the first feature has the smallest mean but varies even more than the third feature. The second feature has the largest mean and standard deviation—it takes the widest spread of values:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>X_2 = preprocessing.scale(X[:, :3])</strong><br/><strong>X_2.mean(axis=0)</strong><br/><br/><strong>array([  6.34099712e-17,  -6.34319123e-16,  -2.68291099e-15])</strong><br/><br/><strong>X_2.std(axis=0)</strong><br/><br/><strong>array([ 1., 1., 1.])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The centering and scaling function is extremely simple. It merely subtracts the mean and divides by the standard deviation.</p>
+<p>Pictorially and with pandas, the third feature looks as follows before the transformation:</p>
+<pre><strong>pd.Series(X[:,2]).hist(bins=50)</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="207" width="306" src="assets/0d0ec1e7-2c6e-447a-a34c-c6a548aab0db.png"/></div>
+<p>This is what it looks like afterward:</p>
+<pre><strong>pd.Series(preprocessing.scale(X[:, 2])).hist(bins=50)</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="210" width="303" src="assets/1a8a94aa-e223-4952-94f9-2ab4258b4705.png"/></div>
+<p>The <em>x</em> axis label has changed.</p>
+<p>In addition to a function, there is also a centering and scaling class that is easy to invoke, and this is particularly useful when used in conjunction with pipelines, which are mentioned later. It's also useful for the centering and scaling class to persist across individual scaling:</p>
+<pre><strong>my_scaler = preprocessing.StandardScaler()</strong><br/><strong>my_scaler.fit(X[:, :3])</strong><br/><strong>my_scaler.transform(X[:, :3]).mean(axis=0)</strong><br/><br/><strong>array([  6.34099712e-17,  -6.34319123e-16,  -2.68291099e-15])</strong></pre>
+<p>Scaling features to a mean of zero and a standard deviation of one isn't the only useful type of scaling.</p>
+<p>Pre-processing also contains a <kbd>MinMaxScaler</kbd> class, which will scale the data within a certain range:</p>
+<pre><strong>my_minmax_scaler = preprocessing.MinMaxScaler()</strong><br/><strong>my_minmax_scaler.fit(X[:, :3])</strong><br/><strong>my_minmax_scaler.transform(X[:, :3]).max(axis=0)</strong><br/><br/><strong>array([ 1., 1., 1.])</strong><br/><br/><strong>my_minmax_scaler.transform(X[:, :3]).min(axis=0)</strong><br/><br/><strong>array([ 0., 0., 0.])</strong></pre>
+<p>It's very simple to change the minimum and maximum values of the <kbd>MinMaxScaler</kbd> class from its defaults of <kbd>0</kbd> and <kbd>1</kbd>, respectively:</p>
+<pre><br/><strong>my_odd_scaler = preprocessing.MinMaxScaler(feature_range=(-3.14, 3.14))</strong></pre>
+<p>Furthermore, another option is normalization. This will scale each sample to have a length of one. This is different from the other types of scaling done previously, where the features were scaled. Normalization is illustrated in the following command:</p>
+<pre><strong>normalized_X = preprocessing.normalize(X[:, :3])</strong> </pre>
+<p>If it's not apparent why this is useful, consider the Euclidean distance (a measure of similarity) between three of the samples, where one sample has the values <em>(1, 1, 0)</em>, another has <em>(3, 3, 0)</em>, and the final has <em>(1, -1, 0)</em>.</p>
+<p>The distance between the first and third vector is less than the distance between the first and second although the first and third are orthogonal, whereas the first and second only differ by a scalar factor of three. Since distances are often used as measures of similarity, not normalizing the data first can be misleading.</p>
+<p>From an alternative perspective, try the following syntax:</p>
+<pre><strong>(normalized_X * normalized_X).sum(axis = 1)</strong><br/><br/><strong>array([ 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,
+        1.,  1. </strong><br/><strong>        ...]</strong></pre>
+<p>All the rows are normalized and consist of vectors of length one. In three dimensions, all normalized vectors lie on the surface of a sphere centered at the origin. The information left is the direction of the vectors because, by definition, by normalizing you are dividing the vector by its length. Do always remember, though, that when performing this operation you have set an origin at <em>(0, 0, 0)</em> and you have turned any row of data in the array into a vector relative to this origin.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Creating binary features through thresholding</h1>
+                </header>
+            
+            <article>
+                
+<p>In the last recipe, we looked at transforming our data into the standard normal distribution. Now, we'll talk about another transformation, one that is quite different. Instead of working with the distribution to standardize it, we'll purposely throw away data; if we have good reason, this can be a very smart move. Often, in what is ostensibly continuous data, there are discontinuities that can be determined via binary features.</p>
+<p>Additionally, note that in the previous chapter, we turned a classification problem into a regression problem. With thresholding, we can turn a regression problem into a classification <span>problem</span>. This happens in some data science contexts.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Creating binary features and outcomes is a very useful method, but it should be used with caution. Let's use the Boston dataset to learn how to turn values into binary outcomes. First, load the Boston dataset:</p>
+<pre><strong>import numpy as np</strong><br/><strong>from sklearn.datasets import load_boston</strong><br/> <br/><strong>boston = load_boston()</strong><br/><strong>X, y = boston.data, boston.target.reshape(-1, 1)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Similar to scaling, there are two ways to binarize features in scikit-learn:</p>
+<ul>
+<li><kbd>preprocessing.binarize</kbd></li>
+<li><kbd>preprocessing.Binarizer</kbd></li>
+</ul>
+<p>The Boston dataset's <kbd>target</kbd> variable is the median value of houses in thousands. This dataset is good for testing regression and other continuous predictors, but consider a situation where we want to simply predict whether a house's value is more than the overall mean.</p>
+<ol>
+<li>To do this, we will want to create a threshold value of the mean. If the value is greater than the mean, produce a <kbd>1</kbd>; if it is less, produce a <kbd>0</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import preprocessing</strong><br/><strong>new_target = preprocessing.binarize(y,threshold=boston.target.mean())</strong><br/><strong>new_target[:5]</strong><br/><br/><strong> array([[ 1.],</strong><br/><strong>        [ 0.],</strong><br/><strong>        [ 1.],</strong><br/><strong>        [ 1.],</strong><br/><strong>        [ 1.]])</strong></pre>
+<ol start="2">
+<li>This was easy, but let's check to make sure it worked correctly:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>(y[:5] &gt; y.mean()).astype(int)</strong><br/><br/><strong>array([[1],
+       [0],
+       [1],
+       [1],
+       [1]])</strong></pre>
+<ol start="3">
+<li>Given the simplicity of the operation in NumPy, it's a fair question to ask why you would want to use the built-in functionality of scikit-learn. Pipelines, covered in the <em>Putting it all together with pipelines</em> recipe, will help to explain this; in anticipation of this, let's use the <kbd>Binarizer</kbd> class:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>binar = preprocessing.Binarizer(y.mean())</strong><br/><strong>new_target = binar.fit_transform(y)</strong><br/><strong>new_target[:5]</strong><br/><br/><strong>array([[ 1.],
+       [ 0.],
+       [ 1.],
+       [ 1.],
+       [ 1.]])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's also learn about sparse matrices and the <kbd>fit</kbd> method.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Sparse matrices</h1>
+                </header>
+            
+            <article>
+                
+<p>Sparse matrices are special in that zeros aren't stored; this is done in an effort to save space in memory. This creates an issue for the binarizer, so to combat it, a special condition for the binarizer for sparse matrices is that the threshold cannot be less than zero:</p>
+<pre><strong>from scipy.sparse import coo</strong><br/><strong>spar = coo.coo_matrix(np.random.binomial(1, .25, 100))</strong><br/><strong>preprocessing.binarize(spar, threshold=-1)</strong><br/><br/><strong>ValueError: Cannot binarize a sparse matrix with threshold &amp;lt; 0</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">The fit method</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>fit</kbd> method exists for the binarizer transformation, but it will not fit anything; it will simply return the object. The object, however, will store the threshold and be ready for the <kbd>transform</kbd> method.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Working with categorical variables</h1>
+                </header>
+            
+            <article>
+                
+<p>Categorical variables are a problem. On one hand they provide valuable information; on the other hand, it's probably text—either the actual text or integers corresponding to the text—such as an index in a lookup table.</p>
+<p>So, we clearly need to represent our text as integers for the model's sake, but we can't just use the id field or naively represent them. This is because we need to avoid a similar problem to the <em>Creating binary features through thresholding</em> recipe. If we treat data that is continuous, it must be interpreted as continuous.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>The Boston dataset won't be useful for this section. While it's useful for feature binarization, it won't suffice for creating features from categorical variables. For this, the iris dataset will suffice.</p>
+<p>For this to work, the problem needs to be turned on its head. Imagine a problem where the goal is to predict the sepal width; in this case, the species of the flower will probably be useful as a feature.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Let's get the data sorted first:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import datasets</strong><br/><strong>import numpy as np</strong><br/><strong>iris = datasets.load_iris()</strong><br/> <br/><strong>X = iris.data</strong><br/><strong>y = iris.target</strong></pre>
+<ol start="2">
+<li class="mce-root">Place <kbd>X</kbd> and <kbd>y</kbd>, all of the numerical data, side-by-side. Create an encoder with scikit-learn to handle the category of the <kbd>y</kbd> column:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import preprocessing</strong><br/><strong>cat_encoder = preprocessing.OneHotEncoder()</strong><br/><strong>cat_encoder.fit_transform(y.reshape(-1,1)).toarray()[:5]</strong><br/><br/><strong>array([[ 1.,  0.,  0.],
+       [ 1.,  0.,  0.],
+       [ 1.,  0.,  0.],
+       [ 1.,  0.,  0.],
+       [ 1.,  0.,  0.]])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The encoder creates additional features for each categorical variable, and the value returned is a sparse matrix. The result is a sparse matrix by definition; each row of the new features has <kbd>0</kbd> everywhere, except for the column whose value is associated with the feature's category. Therefore, it makes sense to store this data in a sparse matrix. The <kbd>cat_encoder</kbd> is now a standard scikit-learn model, which means that it can be used again:</p>
+<pre><strong>cat_encoder.transform(np.ones((3, 1))).toarray() </strong><br/><br/><strong>array([[ 0.,  1.,  0.],</strong><br/><strong>        [ 0.,  1.,  0.],</strong><br/><strong>        [ 0.,  1.,  0.]])</strong></pre>
+<p>In the previous chapter, we turned a classification problem into a regression problem. Here, there are three columns:</p>
+<ul>
+<li>The first column is <kbd>1</kbd> if the flower is a Setosa and <kbd>0</kbd> otherwise</li>
+<li>The second column is <kbd>1</kbd> if the flower is a Versicolor and <kbd>0</kbd> otherwise</li>
+<li>The third column is <kbd>1</kbd> if the flower is a Virginica and <kbd>0</kbd> otherwise</li>
+</ul>
+<p>Thus, we could use any of these three columns to create a regression similar to the one in the previous chapter; we will perform a regression to determine the degree of setosaness of a flower as a real number. The matching statement in classification is whether a flower is a Setosa one or not. This is the problem statement if we perform binary classification of the first column.</p>
+<p>scikit-learn has the capacity for this type of multi-output regression. Compare it with multiclass classification. Let's try a simple one.</p>
+<p>Import the ridge regression regularized linear model. It tends to be very well behaved because it is regularized. Instantiate a ridge regressor class:</p>
+<pre><strong>from sklearn.linear_model import Ridge</strong><br/><strong>ridge_inst = Ridge()</strong></pre>
+<p>Now import a multi-output regressor that takes the ridge regressor instance as an argument:</p>
+<pre><strong>from sklearn.multioutput import MultiOutputRegressor</strong><br/><strong>multi_ridge = MultiOutputRegressor(ridge_inst, n_jobs=-1)</strong></pre>
+<p>From earlier in this recipe, transform the target variable <kbd>y</kbd> to a three-part target variable, <kbd>y_multi</kbd>, with <kbd>OneHotEncoder()</kbd>. If <kbd>X</kbd> and <kbd>y</kbd> were part of a pipeline, the pipeline would transform the training and testing sets separately, and this is preferable:</p>
+<pre><strong>from sklearn import preprocessing</strong><br/><strong>cat_encoder = preprocessing.OneHotEncoder()</strong><br/><strong>y_multi = cat_encoder.fit_transform(y.reshape(-1,1)).toarray()</strong></pre>
+<p>Create training and testing sets:</p>
+<pre><strong>from sklearn.model_selection import train_test_split</strong><br/><strong>X_train, X_test, y_train, y_test = train_test_split(X, y_multi, stratify=y, random_state= 7)</strong></pre>
+<p>Fit the multi-output estimator:</p>
+<pre><strong>multi_ridge.fit(X_train, y_train)</strong><br/><br/><strong>MultiOutputRegressor(estimator=Ridge(alpha=1.0, copy_X=True, fit_intercept=True, max_iter=None,
+   normalize=False, random_state=None, solver='auto', tol=0.001),
+           n_jobs=-1)</strong></pre>
+<p>Predict the multi-output target on the testing set:</p>
+<pre><strong>y_multi_pre = multi_ridge.predict(X_test)</strong><br/><strong>y_multi_pre[:5]</strong><br/><br/><br/><strong>array([[ 0.81689644,  0.36563058, -0.18252702],</strong><br/><strong>       [ 0.95554968,  0.17211249, -0.12766217],</strong><br/><strong>       [-0.01674023,  0.36661987,  0.65012036],</strong><br/><strong>       [ 0.17872673,  0.474319  ,  0.34695427],</strong><br/><strong>       [ 0.8792691 ,  0.14446485, -0.02373395]])</strong></pre>
+<p>Use the <kbd>binarize</kbd> function from the previous recipe to turn each real number into the integers <kbd>0</kbd> or <kbd>1</kbd>:</p>
+<pre><strong>from sklearn import preprocessing</strong><br/><strong>y_multi_pred = preprocessing.binarize(y_multi_pre,threshold=0.5)</strong><br/><strong>y_multi_pred[:5]</strong><br/><br/><br/><strong>array([[ 1.,  0.,  0.],</strong><br/><strong>       [ 1.,  0.,  0.],</strong><br/><strong>       [ 0.,  0.,  1.],</strong><br/><strong>       [ 0.,  0.,  0.],</strong><br/><strong>       [ 1.,  0.,  0.]])</strong></pre>
+<p>We can measure the overall multi-output performance with the <kbd>roc_auc_score</kbd>:</p>
+<pre><strong>from sklearn.metrics import roc_auc_score</strong><br/> <br/><strong> roc_auc_score(y_test, y_multi_pre)</strong><br/> <br/><br/><strong>0.91987179487179482</strong></pre>
+<p>Or, we can do it flower type by flower type, column by column:</p>
+<pre><strong>from sklearn.metrics import accuracy_score</strong><br/> <br/><strong>print ("Multi-Output Scores for the Iris Flowers: ")</strong><br/><strong>for column_number in range(0,3):</strong><br/><strong>     print ("Accuracy score of flower " + str(column_number),accuracy_score(y_test[:,column_number], y_multi_pred[:,column_number]))</strong><br/><strong>     print ("AUC score of flower " + str(column_number),roc_auc_score(y_test[:,column_number], y_multi_pre[:,column_number]))</strong><br/><strong>     print ("")</strong><br/><br/><strong> Multi-Output Scores for the Iris Flowers:</strong><br/><strong> ('Accuracy score of flower 0', 1.0)</strong><br/><strong> ('AUC score of flower 0', 1.0)</strong><br/> <br/><strong> ('Accuracy score of flower 1', 0.73684210526315785)</strong><br/><strong> ('AUC score of flower 1', 0.76923076923076927)</strong><br/> <br/><strong> ('Accuracy score of flower 2', 0.97368421052631582)</strong><br/><strong> ('AUC score of flower 2', 0.99038461538461542)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the preceding multi-output regression, you could be concerned with the dummy variable trap: the collinearity of the outputs. Without dropping any output columns, you assume that there is a fourth option: that a flower can be of none of the three types. To prevent the trap, drop the last column and assume that the flower has to be of one of the three types as we do not have any training examples where it is not one of the three flower types.</p>
+<p>There are other ways to create categorical variables in scikit-learn and Python. The <kbd>DictVectorizer</kbd> class is a good option if you like to limit the dependencies of your projects to only scikit-learn and you have a fairly simple encoding scheme. However, if you require more sophisticated categorical encoding, patsy is a very good option.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">DictVectorizer class</h1>
+                </header>
+            
+            <article>
+                
+<p>Another option is to use <kbd>DictVectorizer</kbd> class. This can be used to directly convert strings to features:</p>
+<pre><strong>from sklearn.feature_extraction import DictVectorizer</strong><br/><strong>dv = DictVectorizer()</strong><br/><strong>my_dict = [{'species': iris.target_names[i]} for i in y]</strong><br/><strong>dv.fit_transform(my_dict).toarray()[:5]</strong><br/><br/><strong>array([[ 1.,  0.,  0.],
+       [ 1.,  0.,  0.],
+       [ 1.,  0.,  0.],
+       [ 1.,  0.,  0.],
+       [ 1.,  0.,  0.]])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Imputing missing values through various strategies</h1>
+                </header>
+            
+            <article>
+                
+<p>Data imputation is critical in practice, and thankfully there are many ways to deal with it. In this recipe, we'll look at a few of the strategies. However, be aware that there might be other approaches that fit your situation better.</p>
+<p>This means scikit-learn comes with the ability to perform fairly common imputations; it will simply apply some transformations to the existing data and fill the NAs. However, if the dataset is missing data, and there's a known reason for this missing data—for example, response times for a server that times out after 100 ms—it might be better to take a statistical approach through other packages, such as the Bayesian treatment via PyMC, hazards models via Lifelines, or something home-grown.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>The first thing to do when learning how to input missing values is to create missing values. NumPy's masking will make this extremely simple:</p>
+<pre><strong>from sklearn import datasets</strong><br/><strong>import numpy as np</strong><br/><br/><strong>iris = datasets.load_iris()</strong><br/><strong>iris_X = iris.data</strong><br/><strong>masking_array = np.random.binomial(1, .25,iris_X.shape).astype(bool)</strong><br/><strong>iris_X[masking_array] = np.nan</strong></pre>
+<p>To unravel this a bit, in case NumPy isn't too familiar, it's possible to index arrays with other arrays in NumPy. So, to create the random missing data, a random Boolean array is created, which is of the same shape as the iris dataset. Then, it's possible to make an assignment via the masked array. It's important to note that because a random array is used, it is likely that your <kbd>masking_array</kbd> will be different from what's used here.</p>
+<p>To make sure this works, use the following command (since we're using a random mask, it might not match directly):</p>
+<pre><strong>masking_array[:5]</strong><br/><br/><strong>array([[ True, False, False,  True],
+       [False, False, False, False],
+       [False, False, False, False],
+       [ True, False, False, False],
+       [False, False, False,  True]], dtype=bool)</strong><br/><br/><strong>iris_X [:5]</strong><br/><br/><strong>array([[ nan,  3.5,  1.4,  nan],
+       [ 4.9,  3. ,  1.4,  0.2],
+       [ 4.7,  3.2,  1.3,  0.2],
+       [ nan,  3.1,  1.5,  0.2],
+       [ 5. ,  3.6,  1.4,  nan]])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>A theme prevalent throughout this book (due to the theme throughout scikit-learn) is reusable classes that fit and transform datasets that can subsequently be used to transform unseen datasets. This is illustrated as follows:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import preprocessing</strong><br/><strong>impute = preprocessing.Imputer()</strong><br/><strong>iris_X_prime = impute.fit_transform(iris_X)</strong><br/><strong>iris_X_prime[:5]</strong><br/><br/><strong>array([[ 5.82616822,  3.5       ,  1.4       ,  1.22589286],
+       [ 4.9       ,  3.        ,  1.4       ,  0.2       ],
+       [ 4.7       ,  3.2       ,  1.3       ,  0.2       ],
+       [ 5.82616822,  3.1       ,  1.5       ,  0.2       ],
+       [ 5.        ,  3.6       ,  1.4       ,  1.22589286]])</strong></pre>
+<ol start="2">
+<li>Notice the difference in the position <kbd>[0, 0]</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>iris_X_prime[0, 0]</strong><br/><br/><strong>5.8261682242990664</strong><br/><br/><strong>iris_X[0, 0] </strong><br/><br/><strong>nan</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The imputation works by employing different strategies. The default is mean, but in total there are the following: </p>
+<ul>
+<li><kbd>mean</kbd> (default)</li>
+<li><kbd>median</kbd></li>
+<li><kbd>most_frequent</kbd> (mode)</li>
+</ul>
+<p><span>scikit-learn will use the selected strategy to calculate the value for each non-missing value in t</span>he dataset. It will then simply fill the missing values. For example, to redo the iris example with the median strategy, simply reinitialize impute with the new strategy:</p>
+<pre><strong>impute = preprocessing.Imputer(strategy='median')</strong><br/><strong>iris_X_prime = impute.fit_transform(iris_X)</strong><br/><strong>iris_X_prime[:5]</strong><br/><br/><strong>array([[ 5.8,  3.5,  1.4,  1.3],
+       [ 4.9,  3. ,  1.4,  0.2],
+       [ 4.7,  3.2,  1.3,  0.2],
+       [ 5.8,  3.1,  1.5,  0.2],
+       [ 5. ,  3.6,  1.4,  1.3]])</strong></pre>
+<p>If the data is missing values, it might be inherently dirty in other places. For instance, in the example in the preceding, <em>How to do it...</em> section, <kbd>np.nan</kbd> (the default missing value) was used as the missing value, but missing values can be represented in many ways. Consider a situation where missing values are <kbd>-1</kbd>. In addition to the strategy to compute the missing value, it's also possible to specify the missing value for the imputer. The default is <kbd>nan</kbd>, which will handle <kbd>np.nan</kbd> values.</p>
+<p>To see an example of this, modify <kbd>iris_X</kbd> to have <kbd>-1</kbd> as the missing value. It sounds crazy, but since the iris dataset contains measurements that are always possible, many people will fill the missing values with <kbd>-1</kbd> to signify they're not there:</p>
+<pre><strong>iris_X[np.isnan(iris_X)] = -1</strong><br/><strong>iris_X[:5]</strong></pre>
+<p>Filling these in is as simple as the following:</p>
+<pre><strong>impute = preprocessing.Imputer(missing_values=-1)</strong><br/><strong>iris_X_prime = impute.fit_transform(iris_X)</strong><br/><strong>iris_X_prime[:5]</strong><br/><br/><strong>array([[ 5.1 , 3.5 , 1.4 , 0.2 ],</strong><br/><strong> [ 4.9 , 3. , 1.4 , 0.2 ],</strong><br/><strong> [ 4.7 , 3.2 , 1.3 , 0.2 ],</strong><br/><strong> [ 5.87923077, 3.1 , 1.5 , 0.2 ],</strong><br/><strong> [ 5. , 3.6 , 1.4 , 0.2 ]])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Pandas also provides a functionality to fill in missing data. It actually might be a bit more flexible, but it is less reusable:</p>
+<pre><strong>import pandas as pd</strong><br/><strong>iris_X_prime = np.where(pd.DataFrame(iris_X).isnull(),-1,iris_X)</strong><br/><strong>iris_X_prime[:5]</strong><br/><br/><strong>array([[-1. ,  3.5,  1.4, -1. ],
+       [ 4.9,  3. ,  1.4,  0.2],
+       [ 4.7,  3.2,  1.3,  0.2],
+       [-1. ,  3.1,  1.5,  0.2],
+       [ 5. ,  3.6,  1.4, -1. ]])</strong></pre>
+<p>To mention its flexibility, <kbd>fillna</kbd> can be passed any sort of statistic, that is, the strategy is more arbitrarily defined:</p>
+<pre><strong>pd.DataFrame(iris_X).fillna(-1)[:5].values</strong><br/><br/><strong>array([[-1. ,  3.5,  1.4, -1. ],
+       [ 4.9,  3. ,  1.4,  0.2],
+       [ 4.7,  3.2,  1.3,  0.2],
+       [-1. ,  3.1,  1.5,  0.2],
+       [ 5. ,  3.6,  1.4, -1. ]])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">A linear model in the presence of outliers</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, <span>instead of traditional linear regression </span><span>we will try using the Theil-Sen estimator to deal with some outliers.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>First, create the data corresponding to a line with a slope of <kbd>2</kbd>:</p>
+<pre><strong>import numpy as np</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/><strong>%matplotlib inline</strong><br/><br/><strong>num_points = 100</strong><br/><strong>x_vals = np.arange(num_points)</strong><br/><strong>y_truth = 2 * x_vals</strong><br/><strong>plt.plot(x_vals, y_truth)</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="232" width="349" src="assets/d1ebad85-c139-418a-94ec-06c1d3ce5791.png"/></div>
+<p>Add noise to that data and label it as <kbd>y_noisy</kbd>:</p>
+<pre><strong>y_noisy = y_truth.copy()</strong><br/><strong>#Change y-values of some points in the line</strong><br/><strong>y_noisy[20:40] = y_noisy[20:40] * (-4 * x_vals[20:40]) - 100</strong><br/><br/><strong>plt.title("Noise in y-direction")</strong><br/><strong>plt.xlim([0,100])</strong><br/><strong>plt.scatter(x_vals, y_noisy,marker='x')</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="232" width="340" src="assets/f9790eae-a74e-4d0f-93b0-45057e7afff8.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Import both <kbd>LinearRegression</kbd> and <kbd>TheilSenRegressor</kbd>. Score the estimators using the original line as the testing set, <kbd>y_truth</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.linear_model import LinearRegression, TheilSenRegressor</strong><br/><strong>from sklearn.metrics import r2_score, mean_absolute_error</strong><br/><br/><strong>named_estimators = [('OLS ', LinearRegression()), ('TSR ', TheilSenRegressor())]</strong><br/><br/><strong>for num_index, est in enumerate(named_estimators):</strong><br/><strong>    y_pred = est[1].fit(x_vals.reshape(-1, 1),y_noisy).predict(x_vals.reshape(-1, 1))</strong><br/><strong>    print (est[0], "R-squared: ", r2_score(y_truth, y_pred), "Mean Absolute Error", mean_absolute_error(y_truth, y_pred))</strong><br/><strong>    plt.plot(x_vals, y_pred, label=est[0])</strong><br/><br/><strong>('OLS   ', 'R-squared: ', 0.17285546630270587, 'Mean Absolute Error', 44.099173357335729)
+('TSR   ', 'R-squared: ', 0.99999999928066519, 'Mean Absolute Error', 0.0013976236426276058)</strong></pre>
+<ol start="2">
+<li>Plot the lines. Note that <strong>o</strong><span><strong>rdinary least squares</strong> (</span><strong>OLS</strong>) is way off the true line, <kbd>y_truth</kbd>. Theil-Sen overlaps the real line:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>plt.plot(x_vals, y_truth, label='True line')</strong><br/><strong>plt.legend(loc='upper left')</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="198" width="289" src="assets/87bf00b0-a0bf-4e0e-8e82-8fcdd3a54a7d.png"/></div>
+<ol start="3">
+<li>Plot the dataset and the estimated lines:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>for num_index, est in enumerate(named_estimators):</strong><br/><strong>    y_pred = est[1].fit(x_vals.reshape(-1, 1),y_noisy).predict(x_vals.reshape(-1, 1))</strong><br/><strong>    plt.plot(x_vals, y_pred, label=est[0])</strong><br/><strong>plt.legend(loc='upper left')</strong><br/><strong>plt.title("Noise in y-direction")</strong><br/><strong>plt.xlim([0,100])</strong><br/><strong>plt.scatter(x_vals, y_noisy,marker='x', color='red')</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="186" width="274" src="assets/24418ea6-bb8c-4d1d-90bf-c357f9d6bd18.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>TheilSenRegressor</kbd> is a robust estimator that performs well in the presence of outliers. It uses the measurement of medians, which is more robust to outliers. In OLS regression, errors are squared, and thus a squared error can decrease good results.</p>
+<p>You can try several robust estimators in scikit-learn Version 0.19.0:</p>
+<pre><strong>from sklearn.linear_model import Ridge, LinearRegression, TheilSenRegressor, RANSACRegressor, ElasticNet, HuberRegressor</strong><br/><strong>from sklearn.metrics import r2_score, mean_absolute_error</strong><br/><strong>named_estimators = [('OLS ', LinearRegression()),</strong><br/><strong>('Ridge ', Ridge()),('TSR ', TheilSenRegressor()),('RANSAC', RANSACRegressor()),('ENet ',ElasticNet()),('Huber ',HuberRegressor())]</strong><br/><br/><strong>for num_index, est in enumerate(named_estimators):</strong><br/><strong>    y_pred = est[1].fit(x_vals.reshape(-1, 1),y_noisy).predict(x_vals.reshape(-1, 1))</strong><br/><strong>    print (est[0], "R-squared: ", r2_score(y_truth, y_pred), "Mean Absolute Error", mean_absolute_error(y_truth, y_pred))</strong><br/><br/><strong>('OLS   ', 'R-squared: ', 0.17285546630270587, 'Mean Absolute Error', 44.099173357335729)
+('Ridge ', 'R-squared: ', 0.17287378039132695, 'Mean Absolute Error', 44.098937961740631)
+('TSR   ', 'R-squared: ', 0.99999999928066519, 'Mean Absolute Error', 0.0013976236426276058)
+('RANSAC', 'R-squared: ', 1.0, 'Mean Absolute Error', 1.0236256287043944e-14)
+('ENet  ', 'R-squared: ', 0.17407294649885618, 'Mean Absolute Error', 44.083506446776603)
+('Huber ', 'R-squared: ', 0.99999999999404421, 'Mean Absolute Error', 0.00011755074198335526)</strong></pre>
+<p>As you can see, the robust linear estimators Theil-Sen, <span><strong>random sample consensus</strong> (</span><strong>RANSAC</strong>), and the Huber regressor out-perform the other linear regressors in the presence of outliers.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Putting it all together with pipelines</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we've used pipelines and data transformation techniques, we'll walk through a more complicated example that combines several of the previous recipes into a pipeline.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In this section, we'll show off some more of pipeline's power. When we used it earlier to impute missing values, it was only a quick taste; here, we'll chain together multiple pre-processing steps to show how pipelines can remove extra work.<br/>
+<br/>
+Let's briefly load the iris dataset and seed it with some missing values:</p>
+<pre><strong>from sklearn.datasets import load_iris</strong><br/><strong>from sklearn.datasets import load_iris</strong><br/><strong>import numpy as np</strong><br/><strong>iris = load_iris()</strong><br/><strong>iris_data = iris.data</strong><br/><strong>mask = np.random.binomial(1, .25, iris_data.shape).astype(bool)</strong><br/><strong>iris_data[mask] = np.nan</strong><br/><strong>iris_data[:5]</strong><br/><br/><strong>array([[ nan,  3.5,  1.4,  0.2],
+       [ 4.9,  3. ,  1.4,  nan],
+       [ nan,  3.2,  nan,  nan],
+       [ nan,  nan,  1.5,  0.2],
+       [ nan,  3.6,  1.4,  0.2]])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>The goal of this chapter is to first impute the missing values of <kbd>iris_data</kbd>, and then perform PCA on the corrected dataset. You can imagine (and we'll do it later) that this workflow might need to be split between a training dataset and a holdout set; pipelines will make this easier, but first we need to take a baby step.</p>
+<ol>
+<li>Let's load the required libraries:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import pipeline, preprocessing, decomposition</strong></pre>
+<ol start="2">
+<li>Next, create the <kbd>imputer</kbd> and <kbd>pca</kbd> classes:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>pca = decomposition.PCA()</strong><br/><strong>imputer = preprocessing.Imputer()</strong></pre>
+<ol start="3">
+<li>Now that we have the classes we need, we can load them into <kbd>Pipeline</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>pipe = pipeline.Pipeline([('imputer', imputer), ('pca', pca)])</strong><br/><strong>iris_data_transformed = pipe.fit_transform(iris_data)</strong><br/><strong>iris_data_transformed[:5]</strong><br/><br/><strong>array([[-2.35980262,  0.6490648 ,  0.54014471,  0.00958185],
+       [-2.29755917, -0.00726168, -0.72879348, -0.16408532],
+       [-0.00991161,  0.03354407,  0.01597068,  0.12242202],
+       [-2.23626369,  0.50244737,  0.50725722, -0.38490096],
+       [-2.36752684,  0.67520604,  0.55259083,  0.1049866 ]])</strong></pre>
+<p>This takes a lot more management if we use separate steps. Instead of each step requiring a fit transform, this step is performed only once, not to mention that we only have to keep track of one object!</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Hopefully it was obvious, but each step in a pipeline is passed to a pipeline object via a list of tuples, with the first element getting the name and the second getting the actual object. Under the hood, these steps are looped through when a method such as <kbd>fit_transform</kbd> is called on the pipeline object.</p>
+<p>This said, there are quick and dirty ways to create a pipeline, much in the same way there was a quick way to perform scaling, though we can use <kbd>StandardScaler</kbd> if we want more power. The <kbd>pipeline</kbd> function will automatically create the names for the pipeline objects:</p>
+<pre><strong>pipe2 = pipeline.make_pipeline(imputer, pca)</strong><br/><strong>pipe2.steps</strong><br/> <br/><strong>[('imputer',</strong><br/><strong>   Imputer(axis=0, copy=True, missing_values='NaN', strategy='mean', verbose=0)),</strong><br/><strong>  ('pca',</strong><br/><strong>   PCA(copy=True, iterated_power='auto', n_components=None, random_state=None,</strong><br/><strong>     svd_solver='auto', tol=0.0, whiten=False))]</strong></pre>
+<p>This is the same object that was created in the more verbose method:</p>
+<pre><strong>iris_data_transformed2 = pipe2.fit_transform(iris_data)</strong><br/><strong>iris_data_transformed2[:5]</strong><br/><br/><strong>array([[-2.35980262,  0.6490648 ,  0.54014471,  0.00958185],
+       [-2.29755917, -0.00726168, -0.72879348, -0.16408532],
+       [-0.00991161,  0.03354407,  0.01597068,  0.12242202],
+       [-2.23626369,  0.50244737,  0.50725722, -0.38490096],
+       [-2.36752684,  0.67520604,  0.55259083,  0.1049866 ]])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>We just walked through pipelines at a very high level, but it's unlikely that we will want to apply the base transformation. Therefore, the attributes of each object in a pipeline can be accessed using a <kbd>set_params</kbd> method, where the parameter follows the <kbd>&lt;step_name&gt;__&lt;step_parameter&gt;</kbd> convention. For example, let's change the <kbd>pca</kbd> object to use two components:</p>
+<pre><strong>pipe2.set_params(pca__n_components=2)</strong><br/><br/><strong>Pipeline(steps=[('imputer', Imputer(axis=0, copy=True, missing_values='NaN', strategy='mean', verbose=0)), ('pca', PCA(copy=True, iterated_power='auto', n_components=2, random_state=None,
+  svd_solver='auto', tol=0.0, whiten=False))])</strong></pre>
+<p>Notice, <kbd>n_components=2</kbd> in the preceding output. Just as a test, we can output the same transformation we have already done twice, and the output will be an N x 2 matrix:</p>
+<pre><strong>iris_data_transformed3 = pipe2.fit_transform(iris_data)</strong><br/><strong>iris_data_transformed3[:5]</strong><br/><br/><strong>array([[-2.35980262,  0.6490648 ],</strong><br/><strong>       [-2.29755917, -0.00726168],</strong><br/><strong>       [-0.00991161,  0.03354407],</strong><br/><strong>       [-2.23626369,  0.50244737],</strong><br/><strong>       [-2.36752684,  0.67520604]])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using Gaussian processes for regression</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll use a Gaussian process for regression. In the linear models section, we will see how representing prior information on the coefficients was possible using Bayesian ridge regression.</p>
+<p>With a Gaussian process, it's about the variance and not the mean. However, with a Gaussian process, we assume the mean is 0, so it's the covariance function we'll need to specify.</p>
+<p>The basic setup is similar to how a prior can be put on the coefficients in a typical regression problem. With a Gaussian process, a prior can be put on the functional form of the data, and it's the covariance between the data points that is used to model the data, and therefore, must fit the data.</p>
+<p>A big advantage of Gaussian processes is that they can predict probabilistically: you can obtain confidence bounds on your predictions. Additionally, the prediction can interpolate the observations for the available kernels: predictions from regression are smooth and thus a prediction between two points you know about is between those two points.</p>
+<p>A disadvantage of Gaussian processes is lack of efficiency in high-dimensional spaces.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>So, let's use some regression data and walk through how Gaussian processes work in scikit-learn:</p>
+<pre><strong>from sklearn.datasets import load_boston</strong><br/><strong>boston = load_boston()</strong><br/><strong>boston_X = boston.data</strong><br/><strong>boston_y = boston.target</strong><br/><strong>train_set = np.random.choice([True, False], len(boston_y),p=[.75, .25])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>We have the data, we'll create a scikit-learn <kbd>GaussianProcessRegressor</kbd> object. Let's look at the <kbd>gpr</kbd> object:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>sklearn.gaussian_process import GaussianProcessRegressor</strong><br/><strong>gpr = GaussianProcessRegressor()</strong><br/><strong>gpr</strong><br/><br/><strong>GaussianProcessRegressor(alpha=1e-10, copy_X_train=True, kernel=None,
+             n_restarts_optimizer=0, normalize_y=False,
+             optimizer='fmin_l_bfgs_b', random_state=None)</strong></pre>
+<p style="padding-left: 60px">There are a few parameters that are important and must be set:</p>
+<ul>
+<li style="list-style-type: none">
+<ul>
+<li><kbd>alpha</kbd>: This is a noise parameter. You can assign a noise value for all observations or assign <kbd>n</kbd> values in the form of a NumPy array where <kbd>n</kbd> is the length of the target observations in the training set you pass to <kbd>gpr</kbd> for training.</li>
+<li><kbd>kernel</kbd>: This is a kernel that approximates a function. The default in a previous version of scikit-learn was <strong>radial basis functions</strong> (<strong>RBF</strong>), and we will construct a flexible kernel from constant kernels and RBF kernels.</li>
+<li><kbd>normalize_y</kbd>:  You can set it to true if the mean of the target set is not zero. If you leave it set to false, it still works fairly well.</li>
+<li><kbd>n_restarts_optimizer</kbd>: Set this to 10-20 for practical use. This is the number of iterations to optimize the kernel.</li>
+</ul>
+</li>
+</ul>
+<ol start="2">
+<li>Import the required kernel functions and set a flexible kernel:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.gaussian_process.kernels import RBF, ConstantKernel as CK</strong><br/> <br/><strong>mixed_kernel = kernel = CK(1.0, (1e-4, 1e4)) * RBF(10, (1e-4, 1e4))</strong></pre>
+<ol start="3">
+<li>Finally, instantiate and fit the algorithm. Note that <kbd>alpha</kbd> is set to <kbd>5</kbd> for all values. I came up with that number as being around one-fourth of the target values:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>gpr = GaussianProcessRegressor(alpha=5,</strong><br/><strong>                                n_restarts_optimizer=20,</strong><br/><strong>                                kernel = mixed_kernel)</strong><br/> <br/><strong>gpr.fit(boston_X[train_set],boston_y[train_set])</strong></pre>
+<ol start="4">
+<li>Store the predictions on unseen data as <kbd>test_preds</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>test_preds = gpr.predict(boston_X[~train_set])</strong></pre>
+<ol start="5">
+<li>Plot the results:</li>
+</ol>
+<pre style="padding-left: 60px">&gt;<strong>from sklearn.model_selection import cross_val_predict</strong><br/> <br/><strong>from matplotlib import pyplot as plt</strong><br/><strong>%matplotlib inline</strong><br/> <br/><strong>f, ax = plt.subplots(figsize=(10, 7), nrows=3)</strong><br/><strong>f.tight_layout()</strong><br/> <br/><strong>ax[0].plot(range(len(test_preds)), test_preds,label='Predicted Values');</strong><br/><strong>ax[0].plot(range(len(test_preds)), boston_y[~train_set],label='Actual Values');</strong><br/><strong>ax[0].set_title("Predicted vs Actuals")</strong><br/><strong>ax[0].legend(loc='best')</strong><br/> <br/><strong>ax[1].plot(range(len(test_preds)),test_preds - boston_y[~train_set]);</strong><br/><strong>ax[1].set_title("Plotted Residuals")</strong><br/><strong>ax[2].hist(test_preds - boston_y[~train_set]);</strong><br/><strong>ax[2].set_title("Histogram of Residuals")</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/1a8840b6-2a13-4f42-9d39-ff0de8bb8cf4.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Cross-validation with the noise parameter</h1>
+                </header>
+            
+            <article>
+                
+<p>You might wonder if that is the best noise parameter, <kbd>alpha=5</kbd>? To figure this out, try some cross-validation.</p>
+<ol>
+<li>First, produce a cross-validation score with <kbd>alpha=5</kbd>. Note the scorer within the <kbd>cross_val_score</kbd> object is <kbd>neg_mean_absolute_error</kbd>, as the default R-squared score is hard to read for this dataset:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.model_selection import cross_val_score</strong><br/> <br/><strong>gpr5 = GaussianProcessRegressor(alpha=5,</strong><br/><strong>                                n_restarts_optimizer=20,</strong><br/><strong>                                kernel = mixed_kernel)</strong><br/> <br/><strong>scores_5 = (cross_val_score(gpr5,</strong><br/><strong>                             boston_X[train_set],</strong><br/><strong>                             boston_y[train_set],</strong><br/><strong>                             cv = 4,</strong><br/><strong>                             scoring = 'neg_mean_absolute_error'))</strong></pre>
+<ol start="2">
+<li>Look at the scores in <kbd>scores_5</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>def score_mini_report(scores_list):</strong><br/><strong>     print "List of scores: ", scores_list</strong><br/><strong>     print "Mean of scores: ", scores_list.mean()</strong><br/><strong>     print "Std of scores: ", scores_list.std()</strong><br/>     <br/><strong> score_mini_report(scores_5)</strong><br/><br/><strong>List of scores:  [ -4.10973995  -4.93446898  -3.78162    -13.94513686]
+Mean of scores:  -6.69274144767
+Std of scores:  4.20818506589</strong></pre>
+<p style="padding-left: 60px">Observe that the scores in the last fold do not look the same as the other three.</p>
+<ol start="3">
+<li>Now produce a report with <kbd>alpha=7</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><br/><strong>gpr7 = GaussianProcessRegressor(alpha=7,</strong><br/><strong>                                n_restarts_optimizer=20,</strong><br/><strong>                                kernel = mixed_kernel)</strong><br/> <br/><strong>scores_7 = (cross_val_score(gpr7,</strong><br/><strong>                             boston_X[train_set],</strong><br/><strong>                             boston_y[train_set],</strong><br/><strong>                             cv = 4,</strong><br/><strong>                             scoring = 'neg_mean_absolute_error'))</strong><br/><br/><strong>score_mini_report(scores_7)</strong><br/><br/><strong>List of scores:  [ -3.70606009  -4.92211642  -3.63887969 -14.20478333]
+Mean of scores:  -6.61795988295
+Std of scores:  4.40992783912</strong></pre>
+<ol start="4">
+<li>This score looks a little better. Now, try <kbd>alpha=7</kbd> and <kbd>normalize_y</kbd> set to <kbd>True</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.model_selection import cross_val_score</strong><br/> <br/><strong> gpr7n = GaussianProcessRegressor(alpha=7,</strong><br/><strong>                                n_restarts_optimizer=20,</strong><br/><strong>                                kernel = mixed_kernel,</strong><br/><strong>                                normalize_y=True)</strong><br/> <br/><strong> scores_7n = (cross_val_score(gpr7n,</strong><br/><strong>                             boston_X[train_set],</strong><br/><strong>                             boston_y[train_set],</strong><br/><strong>                             cv = 4,</strong><br/><strong>                             scoring = 'neg_mean_absolute_error'))</strong><br/><strong>score_mini_report(scores_7n)</strong><br/><br/><strong>List of scores:  [-4.0547601  -4.91077385 -3.65226736 -9.05596047]
+Mean of scores:  -5.41844044809
+Std of scores:  2.1487361839</strong></pre>
+<ol start="5">
+<li>This looks even better, as the mean is higher and the standard deviation is lower. Let's select the last model for final training:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>gpr7n.fit(boston_X[train_set],boston_y[train_set])</strong></pre>
+<ol start="6">
+<li>Predict it:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>test_preds = gpr7n.predict(boston_X[~train_set])</strong></pre>
+<ol start="7">
+<li>Visualize the results:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/a5930ca5-55ac-412c-8b48-5282cc355af9.png"/></div>
+<ol start="8">
+<li>The residuals look a bit more centered. You can also pass a NumPy array for <kbd>alpha</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>gpr_new = GaussianProcessRegressor(alpha=boston_y[train_set]/4,</strong><br/><strong>                                  n_restarts_optimizer=20,</strong><br/><strong>                                  kernel = mixed_kernel)</strong></pre>
+<ol start="9">
+<li>This leads to the following graphs:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/877acdd9-751d-40ab-a2db-8ab3246271bb.png"/></div>
+<p>The array alphas are not compatible with <kbd>cross_val_score</kbd>, so I cannot select this model as the best model by looking at the final graphs and deciding which is the best. So, our final model selection is <kbd>gpr7n</kbd> with <kbd>alpha=7</kbd> and <kbd>normalize_y=True</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Underneath it all, the kernel computes covariances between points in <kbd>X</kbd>. It assumes that similar points in the inputs should lead to similar outputs. Gaussian processes are great for confidence predictions and smooth-like outputs. (Later, we will see random forests, that do not lead to smooth outputs even though they are very predictive.)</p>
+<p>We may need to understand the uncertainty in our estimates. If we pass the <kbd>eval_MSE</kbd> argument as true, we'll get <kbd>MSE</kbd> and the predicted values, so we can make the predictions. A tuple of predictions and <kbd>MSE</kbd> is returned, from a mechanics standpoint:</p>
+<pre><strong>test_preds, MSE = gpr7n.predict(boston_X[~train_set], return_std=True)</strong><br/><strong>MSE[:5]</strong><br/><br/><strong>array([ 1.20337425,  1.43876578,  1.19910262,  1.35212445,  1.32769539])</strong></pre>
+<p>Plot all of the predictions with error bars as follows:</p>
+<pre><strong>f, ax = plt.subplots(figsize=(7, 5))</strong><br/><strong>n = 133</strong><br/><strong>rng = range(n)</strong><br/><strong>ax.scatter(rng, test_preds[:n])</strong><br/><strong>ax.errorbar(rng, test_preds[:n], yerr=1.96*MSE[:n])</strong><br/><strong>ax.set_title("Predictions with Error Bars")</strong><br/><strong>ax.set_xlim((-1, n));</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/0116515f-41b8-4bfd-9c78-911c85eac557.png"/></div>
+<p>Set <kbd>n=20</kbd> in the preceding code to look at fewer points:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/003714ee-b7a8-4bad-a8d8-81da8b3abe4e.png"/></div>
+<p>The uncertainty is very high for some points. As you can see, there is a lot of of variance in the estimates for many of the given points. However, the overall error is not that bad.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using SGD for regression</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll get our first taste of stochastic gradient descent. We'll use it for regression here.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>SGD is often an unsung hero in machine learning. Underneath many algorithms, there is SGD doing the work. It's popular due to its simplicity and speed—these are both very good things to have when dealing with a lot of data. The other nice thing about SGD is that while it's at the core of many machine learning algorithms computationally, it does so because it easily describes the process. At the end of the day, we apply some transformation on the data, and then we fit our data to the model with a loss function.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>If SGD is good on large datasets, we should probably test it on a fairly large dataset:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.datasets import make_regression</strong><br/><strong>X, y = make_regression(int(1e6))  #1,000,000 rows</strong></pre>
+<p style="padding-left: 60px">It's probably worth gaining some intuition about the composition and size of the object. Thankfully, we're dealing with NumPy arrays, so we can just access <kbd>nbytes</kbd>. The built-in Python way to access the object's size doesn't work for NumPy arrays.</p>
+<ol start="2">
+<li>This output can be system dependent, so you may not get the same results:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>print "{:,}".format(X.nbytes)</strong><br/><br/><strong>800,000,000</strong></pre>
+<ol start="3">
+<li>To get some human perspective, we can convert <kbd>nbytes</kbd> to megabytes. There are roughly 1 million bytes in a megabyte:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>X.nbytes / 1e6</strong><br/><br/><strong>800</strong></pre>
+<ol start="4">
+<li>So, the number of bytes per data point is as follows:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>X.nbytes / (X.shape[0]*X.shape[1])</strong><br/><br/><strong>8</strong></pre>
+<p style="padding-left: 60px">Well, isn't that tidy, and fairly tangential, for what we're trying to accomplish? However, it's worth knowing how to get the size of the objects you're dealing with.</p>
+<ol start="5">
+<li>So, now that we have the data, we can simply fit a <kbd>SGDRegressor</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><br/><strong>from sklearn.linear_model import SGDRegressor</strong><br/><strong>sgd = SGDRegressor()</strong><br/><strong>train = np.random.choice([True, False], size=len(y), p=[.75, .25])</strong><br/><strong>sgd.fit(X[train], y[train])</strong><br/><br/><strong>SGDRegressor(alpha=0.0001, average=False, epsilon=0.1, eta0=0.01,
+       fit_intercept=True, l1_ratio=0.15, learning_rate='invscaling',
+       loss='squared_loss', n_iter=5, penalty='l2', power_t=0.25,
+       random_state=None, shuffle=True, verbose=0, warm_start=False)</strong></pre>
+<p style="padding-left: 60px">So, we have another beefy object. The main thing to know now is that our loss function is <kbd>squared_loss</kbd>, which is the same thing that occurs during linear regression. It is also worth noting that shuffle will generate a random shuffle of the data. This is useful if you want to break a potentially spurious correlation. With <kbd>X</kbd>, scikit-learn will automatically include a column of ones.</p>
+<ol start="6">
+<li>We can then predict, as we previously have, using scikit-learn's consistent API. You can see we actually got a really good fit. There is barely any variation, and the histogram has a nice normal look.:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>y_pred = sgd.predict(X[~train])</strong><br/><br/><strong>%matplotlib inline</strong><br/><strong>import pandas as pd</strong><br/><br/><strong>pd.Series(y[~train] - y_pred).hist(bins=50)</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="244" width="371" src="assets/e0b40007-829c-455a-8bcc-bcb3866d8f80.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>Clearly, the fake dataset we used wasn't too bad, but you can imagine datasets with larger magnitudes. For example, if you worked on Wall Street on any given day, there might be 2 billion transactions on any given exchange in a market. Now, imagine that you have a week's or a year's data. Running in-core algorithms does not work with huge volumes of data.<br/>
+The reason this is normally difficult is that to do SGD, we're required to calculate the gradient at every step. The gradient has the standard definition from any third calculus course.</p>
+<p>The gist of the algorithm is that at each step, we calculate a new set of coefficients and update this with a learning rate and the outcome of the objective function. In pseudocode, this might look like the following:</p>
+<pre><strong>while not converged:</strong><br/><strong>     w = w – learning_rate*gradient(cost(w))</strong></pre>
+<p>The relevant variables are as follows:</p>
+<ul>
+<li><kbd>w</kbd>: This is the coefficient matrix.</li>
+<li><kbd>learning_rate</kbd>: This shows how big a step to take at each iteration. This might be important to tune if you aren't getting good convergence.</li>
+<li><kbd>gradient</kbd>: This is the matrix of second derivatives.</li>
+<li><kbd>cost</kbd>: This is the squared error for regression. We'll see later that this cost function can be adapted to work with classification tasks. This flexibility is one thing that makes SGD so useful.</li>
+</ul>
+<p>This will not be so bad, except for the fact that the gradient function is expensive. As the vector of coefficients gets larger, calculating the gradient becomes very expensive. For each update step, we need to calculate a new weight for every point in the data, and then update. SGD works slightly differently; instead of the previous definition for batch gradient descent, we'll update the parameter with each new data point. This data point is picked at random, hence the name stochastic gradient descent.</p>
+<p>A final note on SGD is that it is a meta-heuristic that gives a lot of power to several machine learning algorithms. It is worth checking out some papers on meta-heuristics applied to various machine learning algorithms. Cutting-edge solutions might be innocently hidden in such papers.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

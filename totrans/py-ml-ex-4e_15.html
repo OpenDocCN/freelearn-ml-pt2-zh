@@ -1,0 +1,927 @@
+<html><head></head><body>
+  <div class="Basic-Text-Frame" id="_idContainer530">
+    <h1 class="chapterNumber">15</h1>
+    <h1 class="chapterTitle" id="_idParaDest-360">Making Decisions in Complex Environments with Reinforcement Learning</h1>
+    <p class="normal">In the previous chapter, we focused on multimodal models for image and text co-learning. The last chapter of this book will be about reinforcement learning, which is the third type of machine learning task mentioned at the beginning of the book. You will see how learning from experience and learning by interacting with the environment differs from previously covered supervised and unsupervised learning.</p>
+    <p class="normal">We will cover the following topics in this chapter:</p>
+    <ul>
+      <li class="bulletList">Setting up the working environment</li>
+      <li class="bulletList">Introducing reinforcement learning with examples</li>
+      <li class="bulletList">Solving the FrozenLake environment with dynamic programming</li>
+      <li class="bulletList">Performing Monte Carlo learning</li>
+      <li class="bulletList">Solving the Taxi problem with the Q-learning algorithm</li>
+    </ul>
+    <h1 class="heading-1" id="_idParaDest-361">Setting up the working environment</h1>
+    <p class="normal">Let’s get<a id="_idIndexMarker1464"/> started with setting up the working environment needed for this chapter, including Gymnasium (which builds upon OpenAI Gym), the toolkit that gives you a variety of environments to develop your learning algorithms on.</p>
+    <h1 class="heading-1" id="_idParaDest-362">Introducing OpenAI Gym and Gymnasium</h1>
+    <p class="normal"><strong class="keyWord">OpenAI Gym</strong> was a <a id="_idIndexMarker1465"/>toolkit for developing and comparing reinforcement learning algorithms. It provided a collection of environments, or “tasks,” in which reinforcement learning agents can interact and learn. These environments range from simple grid-world games to complex simulations of real-world scenarios, allowing researchers and developers to experiment with a wide variety of reinforcement learning algorithms. It was developed by OpenAI, focused<a id="_idIndexMarker1466"/> on building safe and beneficial <strong class="keyWord">Artificial General Intelligence</strong> (<strong class="keyWord">AGI</strong>).</p>
+    <p class="normal">Some key features of<a id="_idIndexMarker1467"/> OpenAI Gym included:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">Environment interface</strong>: Gym provided a consistent interface for interacting with environments, allowing agents to observe states, take actions, and receive rewards (we will learn about these terms).</li>
+      <li class="bulletList"><strong class="keyWord">Extensive collection of environments</strong>: Gym offered a diverse set of environments, including classic control tasks, Atari games, robotics simulations, and more. This allowed researchers and developers to evaluate algorithms across various domains.</li>
+      <li class="bulletList"><strong class="keyWord">Easy-to-use API</strong>: Gym’s API was straightforward and easy to use, making it accessible to both beginners and experienced researchers. Developers could quickly prototype and test reinforcement learning algorithms using Gym’s environments.</li>
+      <li class="bulletList"><strong class="keyWord">Benchmarking</strong>: Gym facilitated benchmarking by providing standardized environments and evaluation metrics. This enabled researchers to compare the performance of different algorithms on common tasks.</li>
+      <li class="bulletList"><strong class="keyWord">Community contributions</strong>: Gym was an open-source project, and the community actively contributed new environments, algorithms, and extensions to the toolkit. This collaborative effort helped to continuously expand and improve Gym’s capabilities.</li>
+    </ul>
+    <p class="normal">Overall, OpenAI Gym served as a valuable resource for the reinforcement learning community, providing a standardized platform for research, experimentation, and benchmarking.</p>
+    <p class="normal">Gym was a pioneering library and set the standard for simplicity for many years. However, it is no longer actively<a id="_idIndexMarker1468"/> maintained by the OpenAI team. Recognizing this, some developers took the initiative to create <strong class="keyWord">Gymnasium</strong> (<a href="https://gymnasium.farama.org/index.html"><span class="url">https://gymnasium.farama.org/index.html</span></a>), with approval from OpenAI. Gymnasium emerged as a successor to Gym, and the original developers from OpenAI occasionally contribute to its development, ensuring its reliability and continuity. In this chapter, we will be using<a id="_idIndexMarker1469"/> Gymnasium, which is a <strong class="keyWord">maintained fork</strong> of Gym.</p>
+    <h2 class="heading-2" id="_idParaDest-363">Installing Gymnasium</h2>
+    <p class="normal">One way <a id="_idIndexMarker1470"/>to install the Gymnasium library is via <code class="inlineCode">pip</code>, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con">pip install gymnasium
+</code></pre>
+    <p class="normal">It is recommended to install the <code class="inlineCode">toy-text</code> extension using the following command:</p>
+    <pre class="programlisting con"><code class="hljs-con">pip install gymnasium [toy-text]
+</code></pre>
+    <p class="normal">The <code class="inlineCode">toy-text</code> extension provides additional toy text-based environments, such as the FrozenLake environment (discussed later), for reinforcement learning experimentation.</p>
+    <p class="normal">After the installation, you can check the available Gymnasium environments by running the following code:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> gymnasium </span><span class="hljs-con-keyword">as</span><span class="language-python"> gym</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(gym.envs.registry.keys())</span>
+dict_keys(['CartPole-v0', 'CartPole-v1', 'MountainCar-v0', 'MountainCarContinuous-v0', 'Pendulum-v1', 'Acrobot-v1', 'phys2d/CartPole-v0', 'phys2d/CartPole-v1', 'phys2d/Pendulum-v0', 'LunarLander-v2', 'LunarLanderContinuous-v2', 'BipedalWalker-v3', 'BipedalWalkerHardcore-v3', 'CarRacing-v2', 'Blackjack-v1', 'FrozenLake-v1', 'FrozenLake8x8-v1', 'CliffWalking-v0', 'Taxi-v3', 'tabular/Blackjack-v0', 'tabular/CliffWalking-v0', 'Reacher-v2', 'Reacher-v4', 'Pusher-v2', 'Pusher-v4', 'InvertedPendulum-v2', 'InvertedPendulum-v4', 'InvertedDoublePendulum-v2', 'InvertedDoublePendulum-v4', 'HalfCheetah-v2', 'HalfCheetah-v3', 'HalfCheetah-v4', 'Hopper-v2', 'Hopper-v3', 'Hopper-v4', 'Swimmer-v2', 'Swimmer-v3', 'Swimmer-v4', 'Walker2d-v2', 'Walker2d-v3', 'Walker2d-v4', 'Ant-v2', 'Ant-v3', 'Ant-v4', 'Humanoid-v2', 'Humanoid-v3', 'Humanoid-v4', 'HumanoidStandup-v2', 'HumanoidStandup-v4', 'GymV21Environment-v0', 'GymV26Environment-v0'])
+</code></pre>
+    <p class="normal">You can see lists of the environments at <a href="https://gymnasium.farama.org/environments/toy_text/"><span class="url">https://gymnasium.farama.org/environments/toy_text/</span></a> and <a href="https://gymnasium.farama.org/environments/atari/"><span class="url">https://gymnasium.farama.org/environments/atari/</span></a>, including walking, moon landing, car racing, and Atari games. Feel free to play around with Gymnasium by going through its introduction at <a href="https://gymnasium.farama.org/content/basic_usage/"><span class="url">https://gymnasium.farama.org/content/basic_usage/</span></a>.</p>
+    <p class="normal">To benchmark <a id="_idIndexMarker1471"/>different reinforcement learning algorithms, we need to apply them in a standardized environment. Gymnasium is the perfect place for this, with a number of versatile environments. This is similar to using datasets such as MNIST, ImageNet, and Thomson Reuters News as benchmarks in supervised and unsupervised learning.</p>
+    <p class="normal">Gymnasium has an easy-to-use interface for the reinforcement learning environments that we can write <strong class="keyWord">agents</strong> to interact with. So what’s reinforcement learning? What’s an agent? Let’s see in the next section.</p>
+    <h1 class="heading-1" id="_idParaDest-364">Introducing reinforcement learning with examples</h1>
+    <p class="normal">In this chapter, we <a id="_idIndexMarker1472"/>will first introduce the elements of reinforcement learning along with an interesting example, then will move on to how we measure feedback from the environment, and follow with the fundamental approaches to solve reinforcement learning problems.</p>
+    <h2 class="heading-2" id="_idParaDest-365">Elements of reinforcement learning</h2>
+    <p class="normal">You may have<a id="_idIndexMarker1473"/> played Super Mario (or Sonic) when you were young. During the video game, you control Mario to collect coins and avoid obstacles at the same time. The game ends if Mario hits an obstacle or falls in a gap, and you try to get as many coins as possible before the game ends.</p>
+    <p class="normal">Reinforcement learning is very similar to the Super Mario game. Reinforcement learning is about learning what to do. It involves observing situations in the environment and determining the right actions in order to maximize a numerical reward.</p>
+    <p class="normal">Here is the list of elements in a reinforcement learning task (we also link each element to Super Mario and other examples so it’s easier to understand):</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">Environment</strong>: The<a id="_idIndexMarker1474"/> environment is a task or simulation. In the Super Mario game, the game itself is the environment. In self-driving, the road and traffic are the environment. In the context of Go playing chess, the board is the environment. The inputs to the environment are the actions sent from the <strong class="keyWord">agent</strong> and the outputs are <strong class="keyWord">states</strong> and <strong class="keyWord">rewards</strong> sent to the agent.</li>
+      <li class="bulletList"><strong class="keyWord">Agent</strong>: The<a id="_idIndexMarker1475"/> agent is the component that takes <strong class="keyWord">actions</strong> according to the reinforcement learning model. It interacts with the environment and observes the states to feed into the model. The goal of the agent is to solve the environment—that is, finding the best set of actions to maximize the rewards. The agent in the Super Mario game is Mario, and the autonomous vehicle is the agent for self-driving.</li>
+      <li class="bulletList"><strong class="keyWord">Action</strong>: This<a id="_idIndexMarker1476"/> is the possible movement <a id="_idIndexMarker1477"/>of the agent. It is usually random in a reinforcement learning task at the beginning when the model starts to learn about the environment. Possible actions for Mario include moving left and right, jumping, and crouching.</li>
+      <li class="bulletList"><strong class="keyWord">States</strong>: The<a id="_idIndexMarker1478"/> states are the observations from the environment. They describe the situation in a numerical way at every time step. For a chess game, the state is the positions of all the pieces on the board. For Super Mario, the state includes the coordinates of Mario and other elements in the time frame. For a robot learning to walk, the position of its two legs is the state.</li>
+      <li class="bulletList"><strong class="keyWord">Rewards</strong>: Every <a id="_idIndexMarker1479"/>time the agent takes an action, it receives numerical feedback from the environment. The feedback is called the <strong class="keyWord">reward</strong>. It can be positive, negative, or zero. The reward in the Super Mario game can be, for example, +1 if Mario collects a coin, +2 if he avoids an obstacle, -10 if he hits an obstacle, or 0 for other cases.</li>
+    </ul>
+    <p class="normal">The following diagram summarizes<a id="_idIndexMarker1480"/> the process of reinforcement learning:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_15_01.png"/></figure>
+    <p class="packt_figref">Figure 15.1: Reinforcement learning process</p>
+    <p class="normal">The reinforcement learning process <a id="_idIndexMarker1481"/>is an iterative loop. At the beginning, the agent observes the initial state, <em class="italic">s</em><sub class="subscript">0</sub>, from the environment. Then the agent takes an action, <em class="italic">a</em><sub class="subscript">0</sub>, according to the model. After the agent moves, the environment is now in a new state, <em class="italic">s</em><sub class="subscript">1</sub>, and it gives a feedback reward, <em class="italic">R</em><sub class="subscript">1</sub>. The agent then takes an action, <em class="italic">a</em><sub class="subscript">1</sub>, as computed by the model with inputs <em class="italic">s</em><sub class="subscript">1</sub> and <em class="italic">R</em><sub class="subscript">1</sub>. This process continues until termination, completion, or for forever.</p>
+    <p class="normal">The goal of the reinforcement learning model is to maximize the total reward. So how can we calculate the total reward? Is it simply by summing up rewards at all the time steps? Let’s see in the next section.</p>
+    <h2 class="heading-2" id="_idParaDest-366">Cumulative rewards</h2>
+    <p class="normal">At <a id="_idIndexMarker1482"/>time <a id="_idIndexMarker1483"/>step <em class="italic">t</em>, the <strong class="keyWord">cumulative rewards</strong> (also called <strong class="keyWord">returns</strong>) <em class="italic">G</em><sub class="subscript">1</sub> can be written as:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_15_001.png"/></p>
+    <p class="normal">Here, <em class="italic">T</em> is the termination time step or infinity. <em class="italic">G</em><sub class="subscript-italic" style="font-style: italic;">t</sub> means the total future reward after taking an action <em class="italic">a</em><sub class="subscript-italic" style="font-style: italic;">t</sub> at time <em class="italic">t</em>. At each time step <em class="italic">t</em>, the reinforcement learning model attempts to learn the best possible action in order to maximize <em class="italic">G</em><sub class="subscript-italic" style="font-style: italic;">t</sub>.</p>
+    <p class="normal">However, in many real-world cases, things don’t work this way where we simply sum up all future rewards. Take a look at the following example:</p>
+    <p class="normal">Stock A rises 6 dollars at the end of day 1 and falls 5 dollars at the end of day 2. Stock B falls 5 dollars<a id="_idIndexMarker1484"/> on day 1 and rises 6 dollars on day 2. After two days, both stocks rise 1 dollar. So, if we knew that, which one would we buy at the beginning of day 1? Obviously, stock A, because we won’t lose money and can even profit 6 dollars if we sell it at the beginning of day 2.</p>
+    <p class="normal">Both stocks have the same total reward but we favor stock A as we care more about immediate return than distant return. Similarly in reinforcement learning, we discount rewards in the distant future and the discount factor is associated with the time horizon. Longer time<a id="_idIndexMarker1485"/> horizons should have less impact on the cumulative rewards. This is because longer time horizons include more irrelevant information and consequently are of higher variance.</p>
+    <p class="normal">We define a discount factor <img alt="" role="presentation" src="../Images/B21047_15_002.png"/> with a value between 0 and 1. We rewrite the cumulative rewards incorporating the discount factor:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_15_003.png"/></p>
+    <p class="normal">As you can see, the larger the <img alt="" role="presentation" src="../Images/B21047_15_004.png"/>, the smaller the discount and vice versa. If <img alt="" role="presentation" src="../Images/B21047_15_005.png"/>, there is literally no discount and the model evaluates an action based on the sum total of all future rewards. If <img alt="" role="presentation" src="../Images/B21047_15_006.png"/>, the model only focuses on the immediate reward <em class="italic">R</em><sub class="subscript-italic" style="font-style: italic;">t</sub><sub class="subscript">+1</sub>.</p>
+    <p class="normal">Now that we know how to calculate the cumulative reward, the next thing to talk about is how to maximize it.</p>
+    <h2 class="heading-2" id="_idParaDest-367">Approaches to reinforcement learning</h2>
+    <p class="normal">There are two main approaches to solving reinforcement learning problems, which are about finding the optimal actions to maximize the cumulative rewards. One is a policy-based approach and the other is value-based.</p>
+    <h3 class="heading-3" id="_idParaDest-368">Policy-based approach</h3>
+    <p class="normal">A <strong class="keyWord">policy</strong> is a<a id="_idIndexMarker1486"/> function <img alt="" role="presentation" src="../Images/B21047_15_007.png"/> that maps each <a id="_idIndexMarker1487"/>input state to an action:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_15_008.png"/></p>
+    <p class="normal">It can be either deterministic or stochastic:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">Deterministic</strong>: There is one-to-one mapping from the input state to the output action</li>
+      <li class="bulletList"><strong class="keyWord">Stochastic</strong>: This gives a probability distribution over all possible actions <img alt="" role="presentation" src="../Images/B21047_15_009.png"/></li>
+    </ul>
+    <p class="normal">In the <strong class="keyWord">policy-based</strong> approach, the model learns the optimal policy that maps each input state to the best action. The agent directly learns the best course of action (policy) for any situation (state) it encounters.</p>
+    <p class="normal">In a policy-based algorithm, the model starts with a random policy. It then computes the value function of that policy. This step is<a id="_idIndexMarker1488"/> called the <strong class="keyWord">policy evaluation step</strong>. After this, it finds a new and better policy based on the value function. This <a id="_idIndexMarker1489"/>is the <strong class="keyWord">policy improvement step</strong>. These two steps repeat until the optimal policy is found.</p>
+    <p class="normal">Imagine you are training a race car driver. In a policy-based approach, you directly teach the driver the best manoeuvres (policy) to take on different parts of the track (states) to achieve the fastest lap time (reward). You don’t tell them the estimated result (reward) of each turn, but rather guide them towards the optimal racing line through feedback and practice.</p>
+    <h3 class="heading-3" id="_idParaDest-369">Value-based approach</h3>
+    <p class="normal">The <strong class="keyWord">value</strong> <em class="italic">V</em> of a <a id="_idIndexMarker1490"/>state is defined as the expected future cumulative reward to collect from the state:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_15_010.png"/></p>
+    <p class="normal">In the <strong class="keyWord">value-based</strong> approach, the model learns the optimal value function that maximizes the <a id="_idIndexMarker1491"/>value of the input state. In other words, the agent takes an action to reach the state that achieves the largest value.</p>
+    <p class="normal">In a value-based algorithm, the model starts with a random value function. It then finds a new and improved value function in an iterative manner, until it reaches the optimal value function.</p>
+    <p class="normal">Now imagine <a id="_idIndexMarker1492"/>you are a treasure hunter. In a value-based approach, you learn the estimated treasure (value) of different locations (states) in a maze. This helps you choose paths that lead to areas with higher potential treasure (rewards) without needing a pre-defined course of action (policy).</p>
+    <p class="normal">We’ve learned there are two main approaches to solving reinforcement learning problems. In the next section, let’s see how to solve a concrete reinforcement learning example (FrozenLake) using a concrete algorithm, the dynamic programming method, in a policy-based and value-based way respectively.</p>
+    <h1 class="heading-1" id="_idParaDest-370">Solving the FrozenLake environment with dynamic programming</h1>
+    <p class="normal">We will focus <a id="_idIndexMarker1493"/>on the policy-based and value-based dynamic programming algorithms in this section. But let’s start by simulating the FrozenLake environment. It simulates a simple grid-world scenario where an agent navigates through a grid of icy terrain, represented as a frozen lake, to reach a goal tile.</p>
+    <h2 class="heading-2" id="_idParaDest-371">Simulating the FrozenLake environment</h2>
+    <p class="normal">FrozenLake <a id="_idIndexMarker1494"/>is a typical OpenAI Gym (now Gymnasium) environment <a id="_idIndexMarker1495"/>with <strong class="keyWord">discrete</strong> states. It is about moving the agent from the starting tile to the destination tile in a grid, and at the same time avoiding traps. The grid is either 4 * 4 (FrozenLake-v1), or 8 * 8 (FrozenLake8x8-v1). There are four types of tiles in the grid:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">The starting tile</strong>: This is state 0, and it comes with 0 reward.</li>
+      <li class="bulletList"><strong class="keyWord">The goal tile</strong>: It is state 15 in the 4 * 4 grid. It gives +1 reward and terminates an episode.</li>
+      <li class="bulletList"><strong class="keyWord">The frozen tile</strong>: In the 4 * 4 grid, states 1, 2, 3, 4, 6, 8, 9, 10, 13, and 14 are walkable tiles. It gives 0 reward.</li>
+      <li class="bulletList"><strong class="keyWord">The hole tile</strong>: In the 4 * 4 grid, states 5, 7, 11, and 12 are hole tiles. It gives 0 reward and terminates an episode.</li>
+    </ul>
+    <p class="normal">Here, an <strong class="keyWord">episode</strong> means <a id="_idIndexMarker1496"/>a simulation of a reinforcement learning environment. It contains a list of states from the initial state to the terminal state, a list of actions and rewards. In the 4 * 4 FrozenLake environment, there are 16 possible states as the agent can move to any of the 16 tiles. And there are four possible actions: moving left (0), down (1), right (2), and up (3).</p>
+    <p class="normal">The tricky part of this environment is that, as the ice surface is slippery, the agent won’t always move in the direction it intends and can move in any other walkable direction or stay unmoved with certain probabilities. For example, it may move to the right even though it intends to move up.</p>
+    <p class="normal">Now let’s simulate the 4 * 4 FrozenLake environment by following these steps:</p>
+    <ol>
+      <li class="numberedList" value="1">To simulate any OpenAI Gym environment, we need to first look up its name in the documentation at <a href="https://gymnasium.farama.org/environments/toy_text/frozen_lake/"><span class="url">https://gymnasium.farama.org/environments/toy_text/frozen_lake/</span></a>. We get <code class="inlineCode">FrozenLake-v1</code> in our case.</li>
+      <li class="numberedList">We import the <code class="inlineCode">gym</code> library and create a <code class="inlineCode">FrozenLake</code> instance:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">env = gym.make(</span><span class="hljs-con-string">"FrozenLake-v1"</span><span class="language-python"> , render_mode=</span><span class="hljs-con-string">"rgb_array"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_state = env.observation_space.n</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(n_state)</span>
+16
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_action = env.action_space.n</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(n_action)</span>
+4
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">The<a id="_idIndexMarker1497"/> environment is initialized with the <code class="inlineCode">FrozenLake-v1</code> identifier. Additionally, the <code class="inlineCode">render_mode</code> parameter is set to <code class="inlineCode">rgb_array</code>, indicating that the environment should render its state as an RGB array, suitable for visualization purposes.</p>
+    <p class="normal-one">We also obtain the dimensions of the environment.</p>
+    <ol>
+      <li class="numberedList" value="3">Every time we run a new episode, we need to reset the environment:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">env.reset()</span>
+(0, {'prob': 1})
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">It means that the agent starts with state 0. Again, there are 16 possible states, 0, 1, …, 15.</p>
+    <ol>
+      <li class="numberedList" value="4">We render the environment to display it:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> matplotlib.pyplot </span><span class="hljs-con-keyword">as</span><span class="language-python"> plt</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.imshow(env.render())</span>
+</code></pre>
+      </li>
+    </ol>
+    <div class="packt_tip-one">
+      <p class="normal">If you encounter any error, you may install the <code class="inlineCode">pyglet</code> library, which embeds a <code class="inlineCode">Matplotlib</code> figure within a window using canvas rendering, using the following command:</p>
+      <pre class="programlisting con"><code class="hljs-con">pip install pyglet
+</code></pre>
+    </div>
+    <p class="normal-one">You will see a 4 * 4 matrix representing the FrozenLake grid and the tile (state 0) where the agent is located:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_15_02.png"/></figure>
+    <p class="packt_figref">Figure 15.2: Initial state of FrozenLake</p>
+    <ol>
+      <li class="numberedList" value="5">Let’s now<a id="_idIndexMarker1498"/> start moving the agent around. Let’s take a right action since it is walkable:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">new_state, reward, terminated, truncated, info = env.step(</span><span class="hljs-con-number">2</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">is_done = terminated </span><span class="hljs-con-keyword">or</span><span class="language-python"> truncated</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> env.render()
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(new_state)</span>
+4
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(reward)</span>
+0.0
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(is_done)</span>
+False
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(info)</span>
+{'prob': 0.3333333333333333}
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We take a “right” (2) action, but the agent moves down to state 4, at a probability of 33.33%, and gets 0 reward since the episode is not done yet.</p>
+    <p class="normal-one">Let’s see the <a id="_idIndexMarker1499"/>rendered result:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.imshow(env.render())</span>
+</code></pre>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_15_03.png"/></figure>
+    <p class="packt_figref">Figure 15.3: Result of the agent moving right</p>
+    <p class="normal-one">You may get a completely different result as the agent can move right to state 1 at a probability of 33.33%, or stay at state 0 at a probability of 33.33% due to the <strong class="keyWord">slippery</strong> nature of the frozen lake.</p>
+    <div class="note-one">
+      <p class="normal">In Gymnasium, “<strong class="keyWord">terminated</strong>” and “<strong class="keyWord">truncated</strong>” refer to different ways in which an episode can end in a reinforcement learning environment. When an episode is terminated, it means that the episode has ended naturally according to the rules of the environment. When an episode is truncated, it means that the episode is artificially terminated before it can end naturally.</p>
+    </div>
+    <ol>
+      <li class="numberedList" value="6">Next, we <a id="_idIndexMarker1500"/>define a function that simulates a FrozenLake episode under a given policy and returns the total reward (as an easy start, let’s just assume discount factor <img alt="" role="presentation" src="../Images/B21047_15_011.png"/>):
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">run_episode</span><span class="language-python">(</span><span class="hljs-con-params">env, policy</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    state, _= env.reset()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    total_reward = </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    is_done = </span><span class="hljs-con-literal">False</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">while</span><span class="language-python"> </span><span class="hljs-con-keyword">not</span><span class="language-python"> is_done:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        action = policy[state].item()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        state, reward, terminated, truncated, info = env.step(action)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        is_done = terminated </span><span class="hljs-con-keyword">or</span><span class="language-python"> truncated</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        total_reward += reward</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> is_done:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">break</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> total_reward</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, <code class="inlineCode">policy</code> is a PyTorch tensor, and <code class="inlineCode">.item()</code> extracts the value of an element on the tensor.</p>
+    <ol>
+      <li class="numberedList" value="7">Now let’s play around with the environment using a random policy. We will implement a random policy (where random actions are taken) and calculate the average total reward over 1,000 episodes:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> torch</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_episode = </span><span class="hljs-con-number">1000</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">total_rewards = []</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> episode </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_episode):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    random_policy = torch.randint(high=n_action, size=(n_state,))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    total_reward = run_episode(env, random_policy)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    total_rewards.append(total_reward)</span>
+<span class="hljs-con-meta">...</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'Average total reward under random policy:</span>
+          {sum(total_rewards)/n_episode}')
+Average total reward under random policy: 0.016
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">On average, there is a 1.6% chance that the agent can reach the goal if we take random actions. This tells us it is not as easy to solve the FrozenLake environment as you might think.</p>
+    <ol>
+      <li class="numberedList" value="8">As a bonus<a id="_idIndexMarker1501"/> step, you can look into the transition matrix. The <strong class="keyWord">transition matrix T</strong>(<em class="italic">s</em>, <em class="italic">a</em>, <em class="italic">s’</em>) contains probabilities of<a id="_idIndexMarker1502"/> taking action <em class="italic">a</em> from state <em class="italic">s</em> then reaching <em class="italic">s’</em>. Take state 6 as an example:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(env.env.P[</span><span class="hljs-con-number">6</span><span class="language-python">])</span>
+{0: [(0.3333333333333333, 2, 0.0, False), (0.3333333333333333, 5, 0.0, True), (0.3333333333333333, 10, 0.0, False)], 1: [(0.3333333333333333, 5, 0.0, True), (0.3333333333333333, 10, 0.0, False), (0.3333333333333333, 7, 0.0, True)], 2: [(0.3333333333333333, 10, 0.0, False), (0.3333333333333333, 7, 0.0, True), (0.3333333333333333, 2, 0.0, False)], 3: [(0.3333333333333333, 7, 0.0, True), (0.3333333333333333, 2, 0.0, False), (0.3333333333333333, 5, 0.0, True)]}
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">The keys of the returning dictionary 0, 1, 2, 3 represent four possible actions. The value of a key is a list of tuples associated with the action. The tuple is in the format of (transition probability, new state, reward, is terminal state or not). For example, if the agent intends to take action 1 (down) from state 6, it will move to state 5 (H) with 33.33% probability and receive 0 reward and the episode will end consequently; it will move to state 10 with 33.33% probability and receive 0 reward; it will move to state 7 (H) with 33.33% probability and receive 0 reward and terminate the episode.</p>
+    <p class="normal">We’ve experimented with the random policy in this section, and we only succeeded 1.6% of the time. But this gets you ready for the next section where we will find the optimal policy using the value-based dynamic programming algorithm, called the <strong class="keyWord">value iteration algorithm</strong>.</p>
+    <h2 class="heading-2" id="_idParaDest-372">Solving FrozenLake with the value iteration algorithm</h2>
+    <p class="normal">Value iteration<a id="_idIndexMarker1503"/> is an iterative algorithm. It <a id="_idIndexMarker1504"/>starts with random policy values <em class="italic">V</em>, and then iteratively updates the values based <a id="_idIndexMarker1505"/>on the <strong class="keyWord">Bellman optimality equation</strong> (<a href="https://en.wikipedia.org/wiki/Bellman_equation"><span class="url">https://en.wikipedia.org/wiki/Bellman_equation</span></a>) until the values converge.</p>
+    <p class="normal">It is usually<a id="_idIndexMarker1506"/> difficult for the values to completely converge. Hence, there are two criteria of convergence. One is passing a fixed number of iterations, such as 1,000 or 10,000. Another one is specifying a threshold (such as 0.0001, or 0.00001) and we terminate the process if the changes of all values are less than the threshold.</p>
+    <p class="normal">Importantly, in <a id="_idIndexMarker1507"/>each iteration, instead of taking the expectation (average) of values across all actions, it picks the action that maximizes the policy values. The iteration process can be expressed as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_15_012.png"/></p>
+    <p class="normal">This is the representation of the Bellman equation for the state-value function V(s). Here, <img alt="" role="presentation" src="../Images/B21047_15_013.png"/> is the optimal value function; <img alt="" role="presentation" src="../Images/B21047_15_014.png"/> denotes the transition probability of moving to state <img alt="" role="presentation" src="../Images/B21047_15_015.png"/> from state <em class="italic">s</em> by taking action <em class="italic">a</em>; and <img alt="" role="presentation" src="../Images/B21047_15_016.png"/> is the reward provided in state <img alt="" role="presentation" src="../Images/B21047_15_017.png"/> by taking action <em class="italic">a</em>.</p>
+    <p class="normal">Once we obtain the optimal values, we can easily compute the optimal policy accordingly:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_15_018.png"/></p>
+    <p class="normal">Let’s solve the<a id="_idIndexMarker1508"/> FrozenLake environment using the value iteration algorithm as follows:</p>
+    <ol>
+      <li class="numberedList" value="1">First we set <code class="inlineCode">0.99</code> as the discount factor, and <code class="inlineCode">0.0001</code> as the convergence threshold:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">gamma = </span><span class="hljs-con-number">0.99</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">threshold = </span><span class="hljs-con-number">0.0001</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We <a id="_idIndexMarker1509"/>develop the value iteration algorithm, which computes the optimal values:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">value_iteration</span><span class="language-python">(</span><span class="hljs-con-params">env, gamma, threshold</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Solve a given environment with value iteration algorithm</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param env: Gymnasium environment</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param gamma: discount factor</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param threshold: the evaluation will stop once values for all states are less than the threshold</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @return: values of the optimal policy for the given environment</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    n_state = env.observation_space.n</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    n_action = env.action_space.n</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    V = torch.zeros(n_state)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">while</span><span class="language-python"> </span><span class="hljs-con-literal">True</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        V_temp = torch.empty(n_state)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">for</span><span class="language-python"> state </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_state):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            v_actions = torch.zeros(n_action)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">for</span><span class="language-python"> action </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_action):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                </span><span class="hljs-con-keyword">for</span><span class="language-python"> trans_prob, new_state, reward, _ </span><span class="hljs-con-keyword">in</span><span class="language-python"> \</span>
+                                       env.env.P[state][action]:
+<span class="hljs-con-meta">...</span> <span class="language-python">                    v_actions[action] += trans_prob * (</span>
+                                     reward + gamma * V[new_state])
+<span class="hljs-con-meta">...</span> <span class="language-python">            V_temp[state] = torch.</span><span class="hljs-con-built_in">max</span><span class="language-python">(v_actions)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        max_delta = torch.</span><span class="hljs-con-built_in">max</span><span class="language-python">(torch.</span><span class="hljs-con-built_in">abs</span><span class="language-python">(V - V_temp))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        V = V_temp.clone()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> max_delta &lt;= threshold:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">break</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> V</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">The <code class="inlineCode">value_iteration</code> function does the following tasks:</p>
+    <ul>
+      <li class="bulletList level-2">Starts with policy values as all 0s</li>
+      <li class="bulletList level-2">Updating the values based on the Bellman optimality equation:</li>
+    </ul>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_15_019.png"/></p>
+    <ul>
+      <li class="bulletList level-2">Computing the maximal change of the values across all states</li>
+      <li class="bulletList level-2">Continuing to update the values if the maximal change is greater than the convergence threshold</li>
+      <li class="bulletList level-2">Otherwise, terminating the iteration process and returning the last values as the optimal values</li>
+    </ul>
+    <ol>
+      <li class="numberedList" value="3">We <a id="_idIndexMarker1510"/>apply <a id="_idIndexMarker1511"/>the algorithm to solve the FrozenLake environment along with the specified parameters:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">V_optimal = value_iteration(env, gamma, threshold)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Take a look at the resulting optimal values:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'</span><span class="hljs-con-string">Optimal values:\n'</span><span class="language-python">, V_optimal)</span>
+Optimal values:
+tensor([0.5404, 0.4966, 0.4681, 0.4541, 0.5569, 0.0000, 0.3572, 0.0000, 0.5905, 0.6421, 0.6144, 0.0000, 0.0000, 0.7410, 0.8625, 0.0000])
+</code></pre>
+    <ol>
+      <li class="numberedList" value="4">Since we have the optimal values, we can extract the optimal policy from the values. We develop the following function to do this:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">extract_optimal_policy</span><span class="language-python">(</span><span class="hljs-con-params">env, V_optimal, gamma</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Obtain the optimal policy based on the optimal values</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param env: Gymnasium environment</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param V_optimal: optimal values</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param gamma: discount factor</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @return: optimal policy</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    n_state = env.observation_space.n</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    n_action = env.action_space.n</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    optimal_policy = torch.zeros(n_state)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">for</span><span class="language-python"> state </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_state):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        v_actions = torch.zeros(n_action)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">for</span><span class="language-python"> action </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_action):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">for</span><span class="language-python"> trans_prob, new_state, reward, _ </span><span class="hljs-con-keyword">in</span>
+                                   env.env.P[state][action]:
+<span class="hljs-con-meta">...</span> <span class="language-python">                v_actions[action] += trans_prob * (</span>
+                           reward + gamma * V_optimal[new_state])
+<span class="hljs-con-meta">...</span> <span class="language-python">        optimal_policy[state] = torch.argmax(v_actions)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> optimal_policy</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Then<a id="_idIndexMarker1512"/> we obtain the optimal policy based on the optimal values:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">optimal_policy = extract_optimal_policy(env, V_optimal, gamma)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Take a look at the resulting optimal policy:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Optimal policy:\n'</span><span class="language-python">, optimal_policy)</span>
+Optimal policy:
+tensor([0., 3., 3., 3., 0., 0., 0., 0., 3., 1., 0., 0., 0., 2., 1., 0.])
+</code></pre>
+    <p class="normal-one">This <a id="_idIndexMarker1513"/>means the optimal action in state 0 is 0 (left), 3 (up) in state 1, etc. This doesn’t seem very intuitive if you look at the grid. But remember that the grid is slippery and the agent can move in another direction than the desired one.</p>
+    <ol>
+      <li class="numberedList" value="6">If you doubt that it is the optimal policy, you can run 1,000 episodes with the policy and gauge how good it is by checking the average reward, as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">run_episode</span><span class="language-python">(</span><span class="hljs-con-params">env, policy</span><span class="language-python">):</span>
+        state, _ = env.reset()
+        total_reward = 0
+        is_done = False
+        while not is_done:
+            action = policy[state].item()
+            state, reward, terminated, truncated, info = env.step(action)
+            is_done = terminated or truncated
+            total_reward += reward
+            if is_done:
+                break
+        return total_reward
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_episode = </span><span class="hljs-con-number">1000</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">total_rewards = []</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> episode </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_episode):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    total_reward = run_episode(env, optimal_policy)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    total_rewards.append(total_reward)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, we<a id="_idIndexMarker1514"/> define the <code class="inlineCode">run_episode</code> function to simulate one episode. Then we print out the average reward over 1,000 episodes:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Average total reward under the optimal policy:'</span><span class="language-python">, </span><span class="hljs-con-built_in">sum</span><span class="language-python">(total_rewards) / n_episode)</span>
+Average total reward under the optimal policy: 0.738
+</code></pre>
+    <p class="normal">Value iteration<a id="_idIndexMarker1515"/> is guaranteed to converge to the optimal value function for a finite environment with a finite state and action space. It provides a computationally efficient method for solving for the optimal policy in RL problems, especially when the dynamics of the environment are known. Under the optimal policy computed by the value iteration algorithm, the agent in FrozenLake reaches the goal tile 74% of the time.</p>
+    <div class="packt_tip">
+      <p class="normal"><strong class="keyWord">Best practice</strong></p>
+      <p class="normal">The discount factor is an important parameter in RL, especially for value-based models. A high factor (closer to 1) makes the agent prioritize long-term rewards, leading to more exploration, while a low factor (closer to 0) makes it focus on immediate rewards. Typical tuning strategies for the discount factor include grid search and random search. Both could be computationally expensive for large ranges. Adaptive tuning is another approach, where we dynamically adjust the factor during training. You can start with a medium value (such as 0.9). If the agent seems too focused on immediate rewards, converges fast, and ignores exploration, try increasing the discount factor. If the agent keeps exploring and never settles on a good policy, try decreasing the discount factor.</p>
+    </div>
+    <p class="normal">Can we do something similar with the policy-based approach? Let’s see in the next section.</p>
+    <h2 class="heading-2" id="_idParaDest-373">Solving FrozenLake with the policy iteration algorithm</h2>
+    <p class="normal">The <strong class="keyWord">policy iteration</strong> algorithm <a id="_idIndexMarker1516"/>has <a id="_idIndexMarker1517"/>two components, policy evaluation and policy improvement. Similar to value iteration, it starts with an arbitrary policy and follows with a bunch of iterations.</p>
+    <p class="normal">In the <a id="_idIndexMarker1518"/>policy evaluation step in each iteration, we first<a id="_idIndexMarker1519"/> compute the values of the latest policy, based on the <strong class="keyWord">Bellman expectation equation</strong>:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_15_020.png"/></p>
+    <p class="normal">In the policy improvement step, we derive an improved policy based on the latest policy values, again based on the Bellman optimality equation:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_15_021.png"/></p>
+    <p class="normal">These two steps repeat until the policy converges. At convergence, the latest policy and its value are the optimal policy and the optimal value.</p>
+    <p class="normal">Let’s develop the policy iteration algorithm and use it to solve the FrozenLake environment as follows:</p>
+    <ol>
+      <li class="numberedList" value="1">We start with the <code class="inlineCode">policy_evaluation</code> function that computes the values of a given policy:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">policy_evaluation</span><span class="language-python">(</span><span class="hljs-con-params">env, policy, gamma, threshold</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python"> </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Perform policy evaluation</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param env: Gymnasium environment</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param policy: policy matrix containing actions and</span>
+        their probability in each state
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param gamma: discount factor</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param threshold: the evaluation will stop once values</span>
+        for all states are less than the threshold
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @return: values of the given policy</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string"> """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    n_state = policy.shape[</span><span class="hljs-con-number">0</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    V = torch.zeros(n_state)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">while</span><span class="language-python"> </span><span class="hljs-con-literal">True</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        V_temp = torch.zeros(n_state)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">for</span><span class="language-python"> state </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_state):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            action = policy[state].item()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">for</span><span class="language-python"> trans_prob, new_state, reward, _ </span><span class="hljs-con-keyword">in</span><span class="language-python"> \</span>
+                                     env.env.P[state][action]:
+<span class="hljs-con-meta">...</span> <span class="language-python">                V_temp[state] += trans_prob * </span>
+                                     <span class="language-python">(</span>reward + gamma * V[new_state])
+<span class="hljs-con-meta">...</span> <span class="language-python">        max_delta = torch.</span><span class="hljs-con-built_in">max</span><span class="language-python">(torch.</span><span class="hljs-con-built_in">abs</span><span class="language-python">–V - V_temp))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        V = V_temp.clone()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> max_delta &lt;= threshold:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">break</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> V</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">The function does the following tasks:</p>
+    <ul>
+      <li class="bulletList level-2">Initializing the policy values with all 0s</li>
+      <li class="bulletList level-2">Updating the values based on the Bellman expectation equation</li>
+      <li class="bulletList level-2">Computing the maximal change of the values across all states</li>
+      <li class="bulletList level-2">If the maximal change is greater than the threshold, it keeps updating the values</li>
+      <li class="bulletList level-2">Otherwise, it terminates the evaluation process and returns the latest values</li>
+    </ul>
+    <ol>
+      <li class="numberedList" value="2">Next, we <a id="_idIndexMarker1520"/>develop<a id="_idIndexMarker1521"/> the second component, the policy improvement, in the following function:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">policy_improvement</span><span class="language-python">(</span><span class="hljs-con-params">env, V, gamma</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python"> </span><span class="hljs-con-string">""""""</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    Obtain an improved policy based on the values</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-meta">    @param env: Gymnasium environment</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-meta">    @param V: policy values</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-meta">    @param gamma: discount factor</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-meta">    @return: the policy</span>
+<span class="hljs-con-meta">...</span> <span class="language-python"> </span><span class="hljs-con-string">""""""</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    n_state = env.observation_space.n</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    n_action = env.action_space.n</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    policy = torch.zeros(n_state)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">for</span><span class="language-python"> state </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_state):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        v_actions = torch.zeros(n_action)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">for</span><span class="language-python"> action </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_action):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">for</span><span class="language-python"> trans_prob, new_state, reward, _ </span><span class="hljs-con-keyword">in</span>
+                                      env.env.P[state][action]:
+<span class="hljs-con-meta">...</span> <span class="language-python">                v_actions[action] += trans_prob * (</span>
+                                  reward + gamma * V[new_state])
+<span class="hljs-con-meta">...</span> <span class="language-python">        policy[state] = torch.argmax(v_actions)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> policy</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">It derives <a id="_idIndexMarker1522"/>a new and better policy from the input policy values based on the Bellman optimality equation.</p>
+    <ol>
+      <li class="numberedList" value="3">With both <a id="_idIndexMarker1523"/>components ready, we now develop the whole policy iteration algorithm:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">policy_iteration</span><span class="language-python">(</span><span class="hljs-con-params">env, gamma, threshold</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python"> </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Solve a given environment with policy iteration algorithm</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param env: Gymnasium environment</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param gamma: discount factor</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param threshold: the evaluation will stop once values for all states are less than the threshold</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @return: optimal values and the optimal policy for the given environment</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string"> """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    n_state = env.observation_space.n</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    n_action = env.action_space.n</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    policy = torch.randint(high=n_action,</span>
+                               size=(n_state,)).float()
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">while</span><span class="language-python"> </span><span class="hljs-con-literal">True</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        V = policy_evaluation(env, policy, gamma, threshold)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        policy_improved = policy_improvement(env, V, gamma)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> torch.equal(policy_improved, policy):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">return</span><span class="language-python"> V, policy_improved</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        policy = policy_improved</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">This function does the following tasks:</p>
+    <ul>
+      <li class="bulletList level-2">Initializing a random policy</li>
+      <li class="bulletList level-2">Performing policy evaluation to update the policy values</li>
+      <li class="bulletList level-2">Performing policy improvement to generate a new policy</li>
+      <li class="bulletList level-2">If the new policy is different from the old one, it updates the policy and runs another iteration of policy evaluation and improvement</li>
+      <li class="bulletList level-2">Otherwise, it terminates the iteration process and returns the latest policy and its values</li>
+    </ul>
+    <ol>
+      <li class="numberedList" value="4">Next, we<a id="_idIndexMarker1524"/> use<a id="_idIndexMarker1525"/> policy iteration to solve the FrozenLake environment:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">V_optimal, optimal_policy = policy_iteration(env, gamma, threshold)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Finally, we display the optimal policy and its values:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Optimal values'</span><span class="language-python">\n</span><span class="hljs-con-string">', V_optimal)</span>
+Optimal values:
+tensor([0.5404, 0.4966, 0.4681, 0.4541, 0.5569, 0.0000, 0.3572, 0.0000, 0.5905, 0.6421, 0.6144, 0.0000, 0.0000, 0.7410, 0.8625, 0.0000])
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-string">print('</span><span class="language-python">Optimal policy</span><span class="hljs-con-string">'\n'</span><span class="language-python">, optimal_policy)</span>
+Optimal policy:
+tensor([0., 3., 3., 3., 0., 0., 0., 0., 3., 1., 0., 0., 0., 2., 1., 0.])
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We got the same results as the value iteration algorithm.</p>
+    <div class="note">
+      <p class="normal"><strong class="keyWord">Best practice</strong></p>
+      <p class="normal">Policy-based methods rely on estimating the gradient of the expected reward with respect to the policy parameters. In practice, we use techniques like REINFORCE, which uses simple Monte Carlo estimates, and <strong class="keyWord">Proximal Policy Optimization</strong> (<strong class="keyWord">PPO</strong>) employing stable gradient estimation. You can read more here: <a href="https://professional.mit.edu/course-catalog/reinforcement-learning"><span class="url">https://professional.mit.edu/course-catalog/reinforcement-learning</span></a> (<em class="chapterRef">Chapter 8</em>, <em class="italic">Policy Gradient Methods</em>).</p>
+    </div>
+    <p class="normal">We have just solved the FrozenLake environment with the policy iteration algorithm. You may wonder<a id="_idIndexMarker1526"/> how to choose<a id="_idIndexMarker1527"/> between the value iteration and policy iteration algorithms. Take a look at the following table:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_15_04.png"/></figure>
+    <p class="packt_figref">Table 15.4: Choosing between the policy iteration and value iteration algorithms</p>
+    <p class="normal">We solved a reinforcement learning problem using dynamic programming methods. They require a fully known transition matrix and reward matrix of an environment. And they have limited scalability for environments with many states. In the next section, we will continue our learning journey with the Monte Carlo method, which has no requirement of prior knowledge of the environment and is much more scalable.</p>
+    <h1 class="heading-1" id="_idParaDest-374">Performing Monte Carlo learning</h1>
+    <p class="normal"><strong class="keyWord">Monte Carlo</strong> (<strong class="keyWord">MC</strong>)-based reinforcement learning is a <strong class="keyWord">model-free</strong> approach, which means it doesn’t need<a id="_idIndexMarker1528"/> a known transition matrix and reward matrix. In this section, you will learn about MC policy evaluation on Gymnasium’s Blackjack environment, and solve the environment with MC control algorithms. Blackjack is a typical environment with an unknown transition matrix. Let’s first simulate the Blackjack environment.</p>
+    <h2 class="heading-2" id="_idParaDest-375">Simulating the Blackjack environment</h2>
+    <p class="normal">Blackjack is a popular<a id="_idIndexMarker1529"/> card game. The game has the following rules:</p>
+    <ul>
+      <li class="bulletList">The player competes against a dealer and wins if the total value of their cards is higher than the dealer’s and doesn’t exceed 21.</li>
+      <li class="bulletList">Cards from 2 to 10 have values from 2 to 10.</li>
+      <li class="bulletList">Cards J, K, and Q have a value of 10.</li>
+      <li class="bulletList">The value of an ace can be either 1 or 11 (called a “usable” ace).</li>
+      <li class="bulletList">At the beginning, both parties are given two random cards, but only one of the dealer’s cards is revealed to the player. The player can request additional cards (called <strong class="keyWord">hit</strong>) or stop having any more cards (called <strong class="keyWord">stick</strong>). Before the player calls stick, the player will lose if the sum of their cards exceeds 21 (called <strong class="keyWord">bust</strong>). After the player sticks, the dealer keeps drawing cards until the sum of cards reaches 17. If the sum of the dealer’s cards exceeds 21, the player will win. If neither of the two parties busts, the one with higher points will win or it may be a draw.</li>
+    </ul>
+    <p class="normal">The Blackjack environment (<a href="https://gymnasium.farama.org/environments/toy_text/blackjack/"><span class="url">https://gymnasium.farama.org/environments/toy_text/blackjack/</span></a>) in Gymnasium is formulated as<a id="_idIndexMarker1530"/> follows:</p>
+    <ul>
+      <li class="bulletList">An episode of the environment starts with two cards for each party, and only one from the dealer’s cards is observed.</li>
+      <li class="bulletList">An episode ends if there is a win or draw.</li>
+      <li class="bulletList">The final reward of an episode is +1 if the player wins, -1 if the player loses, or 0 if there is a draw.</li>
+      <li class="bulletList">In each round, the player can take any of the two actions, hit (1) or stick (0).</li>
+    </ul>
+    <p class="normal">Now let’s simulate the Blackjack environment and explore its states and actions:</p>
+    <ol>
+      <li class="numberedList" value="1">First, create a <code class="inlineCode">Blackjack</code> instance:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">env = gym.make(</span><span class="hljs-con-string">'Blackjack'</span><span class="language-python">v1</span><span class="hljs-con-string">')</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Reset the environment:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">env.reset(seed=0)</span>
+((11, 10, False), {})
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">It returns <a id="_idIndexMarker1531"/>the initial state (a 3-dimensional vector):</p>
+    <ul>
+      <li class="bulletList level-2">Player’s current points (<code class="inlineCode">11</code> in this example)</li>
+      <li class="bulletList level-2">The points of the dealer’s revealed card (<code class="inlineCode">10</code> in this example)</li>
+      <li class="bulletList level-2">Having a usable ace or not (<code class="inlineCode">False</code> in this example)</li>
+    </ul>
+    <p class="normal-one">The usable ace variable is <code class="inlineCode">True</code> only if the player has an ace that can be counted as 11 without causing a bust. If the player doesn’t have an ace, or has<a id="_idIndexMarker1532"/> an ace but it busts, this state variable will become <code class="inlineCode">False</code>.</p>
+    <p class="normal-one">For another state example <code class="inlineCode">(18, 6, True)</code>, it means that the player has an ace counted as 11 and a 7, and that the dealer’s revealed card is value 6.</p>
+    <ol>
+      <li class="numberedList" value="3">Let’s now take some actions to see how the environment works. First, we take a hit action since we only have 11 points:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">env.step(</span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+((12, 10, False), 0.0, False, False, {}) 
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">It returns a state <code class="inlineCode">(12, 10, False)</code>, a 0 reward, and the episode not being done (meaning <code class="inlineCode">False</code>).</p>
+    <ol>
+      <li class="numberedList" value="4">Let’s take another hit since we only have 12 points:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">env.step(</span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+((13, 10, False), 0.0, False, False, {})
+</code></pre>
+      </li>
+      <li class="numberedList">We have 13 points and think it is good enough. Then we stop drawing cards by taking the stick action (0):
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">env.step(</span><span class="hljs-con-number">0</span><span class="language-python">)</span>
+((13, 10, False), -1.0, True, False, {})
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">The <a id="_idIndexMarker1533"/>dealer gets some cards and beats the player. So the player loses and gets a -1 reward. The episode ends.</p>
+    <p class="normal">Feel free to play <a id="_idIndexMarker1534"/>around with the Blackjack environment. Once you feel comfortable with the environment, you can move on to the next section, MC policy evaluation on a simple policy.</p>
+    <h2 class="heading-2" id="_idParaDest-376">Performing Monte Carlo policy evaluation</h2>
+    <p class="normal">In the <a id="_idIndexMarker1535"/>previous section, we applied dynamic programming to perform policy evaluation, which is the value function of a policy. However, it won’t work in most real-life situations where the transition matrix is not known beforehand. In this case, we can evaluate the value function using the MC method.</p>
+    <p class="normal">To estimate the value function, the MC method uses empirical mean return instead of expected return (as in dynamic programming). There are two approaches to compute the empirical mean return. One is first-visit, which averages returns <strong class="keyWord">only </strong>for the <strong class="keyWord">first occurrence</strong> of a state <em class="italic">s</em> among all episodes. Another one is every-visit, which averages returns for <strong class="keyWord">every occurrence</strong> of a state <em class="italic">s </em>among all episodes.</p>
+    <p class="normal">Obviously, the first-visit approach has a lot less computation and is therefore more commonly used. I will only cover the first-visit approach in this chapter.</p>
+    <p class="normal">In this section, we experiment with a simple policy where we keep adding new cards until the total value reaches 18 (or 19, or 20 if you like). We perform first-visit MC evaluation on the simple policy as follows:</p>
+    <ol>
+      <li class="numberedList" value="1">We first need to define a function that simulates a Blackjack episode under the simple policy:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">run_episode</span><span class="language-python">(</span><span class="hljs-con-params">env, hold_score</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    state , _ = env.reset()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    rewards = []</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    states = [state]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">while</span><span class="language-python"> </span><span class="hljs-con-literal">True</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        action = </span><span class="hljs-con-number">1</span><span class="language-python"> </span><span class="hljs-con-keyword">if</span><span class="language-python"> state[</span><span class="hljs-con-number">0</span><span class="language-python">] &lt; hold_score </span><span class="hljs-con-keyword">else</span><span class="language-python"> </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        state, reward, terminated, truncated, info = env.step(action)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        is_done = terminated </span><span class="hljs-con-keyword">or</span><span class="language-python"> truncated</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        states.append(state)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        rewards.append(reward)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> is_done:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">break</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> states, rewards</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">In each round of an episode, the agent takes a hit if the current score is less than <code class="inlineCode">hold_score</code> or a stick otherwise.</p>
+    <ol>
+      <li class="numberedList" value="2">In the<a id="_idIndexMarker1536"/> MC settings, we need to keep track of states and rewards over all steps. And in first-visit value evaluation, we average returns only for the first occurrence of a state among all episodes. We define a function that evaluates the simple Blackjack policy with first-visit MC:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> collections </span><span class="hljs-con-keyword">import</span><span class="language-python"> defaultdict</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">mc_prediction_first_visit</span><span class="language-python">(</span><span class="hljs-con-params">env, hold_score, gamma, n_episode</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    V = defaultdict(</span><span class="hljs-con-built_in">float</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    N = defaultdict(</span><span class="hljs-con-built_in">int</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">for</span><span class="language-python"> episode </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_episode):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        states_t, rewards_t = run_episode(env, hold_score)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        return_t = </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        G = {}</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">for</span><span class="language-python"> state_t, reward_t </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">zip</span><span class="language-python">(</span>
+                           states_t[1::-1], rewards_t[::-1]):
+<span class="hljs-con-meta">...</span> <span class="language-python">            return_t = gamma * return_t + reward_t</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            G[state_t] = return_t</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">for</span><span class="language-python"> state, return_t </span><span class="hljs-con-keyword">in</span><span class="language-python"> G.items():</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">if</span><span class="language-python"> state[</span><span class="hljs-con-number">0</span><span class="language-python">] &lt;= </span><span class="hljs-con-number">21</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                V[state] += return_t</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                N[state] += </span><span class="hljs-con-number">1</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">for</span><span class="language-python"> state </span><span class="hljs-con-keyword">in</span><span class="language-python"> V:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        V[state] = V[state] / N[state]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> V</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">The function performs the following tasks:</p>
+    <ul>
+      <li class="bulletList level-2">Running <code class="inlineCode">n_episode</code> episodes under the simple Blackjack policy with the <code class="inlineCode">run_episode</code> function</li>
+      <li class="bulletList level-2">For each episode, computing the <code class="inlineCode">G</code> returns for the first visit of each state</li>
+      <li class="bulletList level-2">For each state, obtaining the value by averaging its first returns from all episodes</li>
+      <li class="bulletList level-2">Returning the resulting values</li>
+    </ul>
+    <p class="normal-one">Note that here we ignore states where the player busts, since we know their values are <code class="inlineCode">-1</code>.</p>
+    <ol>
+      <li class="numberedList" value="3">We <a id="_idIndexMarker1537"/>specify the <code class="inlineCode">hold_score</code> as <code class="inlineCode">18</code> and the discount rate as <code class="inlineCode">1</code> as a Blackjack episode is short enough, and will simulate 500,000 episodes:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">hold_score = </span><span class="hljs-con-number">18</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">gamma = </span><span class="hljs-con-number">1</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_episode = </span><span class="hljs-con-number">500000</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Now we plug in all variables to perform MC first-visit evaluation:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">value = mc_prediction_first_visit(env, hold_score, gamma, n_episode)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We then print the resulting values:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(value)</span>
+defaultdict(&lt;class 'float'&gt;, {(13, 10, False): -0.2743235693191795, (5, 10, False): -0.3903118040089087, (19, 7, True): 0.6293800539083558, (17, 7, True): -0.1297709923664122, (18, 7, False): 0.4188926663428849, (13, 7, False): -0.04472843450479233, (19, 10, False): -0.016647081864473168, (12, 10, False): -0.24741546832491254, (21, 10, True):
+……
+……
+……
+2, 2, True): 0.07981220657276995, (5, 5, False): -0.25877192982456143, (4, 9, False): -0.24497991967871485, (15, 5, True): -0.011363636363636364, (15, 2, True): -0.08379888268156424, (5, 3, False): -0.19078947368421054, (4, 3, False): -0.2987012987012987})
+</code></pre>
+    <p class="normal-one">We have just computed the values for all possible 280 states:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Number of states:'</span><span class="language-python">, </span><span class="hljs-con-built_in">len</span><span class="language-python">(value))</span>
+Number of states: 280
+</code></pre>
+    <p class="normal">We have just experienced computing the values of 280 states under a simple policy in the Blackjack environment using the MC method. The transition matrix of the Blackjack environment is not<a id="_idIndexMarker1538"/> known beforehand. Moreover, obtaining the transition matrix (size 280 * 280) will be extremely costly if we go with the dynamic programming approach. In the MC-based solution, we just need to simulate a bunch of episodes and compute the empirical average values. In a similar manner, we will search for the optimal policy in the next section.</p>
+    <h2 class="heading-2" id="_idParaDest-377">Performing on-policy Monte Carlo control</h2>
+    <p class="normal"><strong class="keyWord">MC control</strong> is<a id="_idIndexMarker1539"/> used to find the optimal policy for environments with unknown transition matrices. There are two types of MC control, on-policy and off-policy. In the <strong class="keyWord">on-policy approach</strong>, we execute the policy and evaluate and improve it iteratively; whereas in the off-policy approach, we train the optimal policy using data generated by another policy.</p>
+    <p class="normal">In this section, we<a id="_idIndexMarker1540"/> focus on the on-policy approach. The way it works is very similar to the policy iteration method. It iterates between the following two phases, evaluation and improvement, until convergence:</p>
+    <ul>
+      <li class="bulletList">In the evaluation phase, instead of evaluating the state value, we evaluate the <strong class="keyWord">action-value</strong>, which is commonly called the <strong class="keyWord">Q-value</strong>. Q-value <em class="italic">Q</em>(<em class="italic">s</em>, <em class="italic">a</em>) is the value of a state-action pair (<em class="italic">s</em>, <em class="italic">a</em>) when taking the action <em class="italic">a</em> in state <em class="italic">s</em> under a given policy. The evaluation can be conducted in a first-visit or an every-visit manner.</li>
+      <li class="bulletList">In the improvement phase, we update the policy by assigning the optimal action in each state:</li>
+    </ul>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_15_022.png"/></p>
+    <p class="normal">Let’s now search for the optimal Blackjack policy with on-policy MC control by following the steps below:</p>
+    <ol>
+      <li class="numberedList" value="1">We start by developing a function that executes an episode by taking the best actions under the given Q-values:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">run_episode</span><span class="language-python">(</span><span class="hljs-con-params">env, Q, n_action</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    state, _ = env.reset()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    rewards = []</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    actions = []</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    states = []</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    action = torch.randint(</span><span class="hljs-con-number">0</span><span class="language-python">, n_action, [</span><span class="hljs-con-number">1</span><span class="language-python">]).item()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">while</span><span class="language-python"> </span><span class="hljs-con-literal">True</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        actions.append(action)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        states.append(state)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        state, reward, terminated, truncated, info = env.step(action)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        is_done = terminated </span><span class="hljs-con-keyword">or</span><span class="language-python"> truncated</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        rewards.append(reward)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> is_done:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">break</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        action = torch.argmax(Q[state]).item()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> states, actions, rewards</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">This <a id="_idIndexMarker1541"/>serves as <a id="_idIndexMarker1542"/>the improvement phase. Specifically, it does the following tasks:</p>
+    <ul>
+      <li class="bulletList level-2">Initializing an episode</li>
+      <li class="bulletList level-2">Taking a random action as an exploring start</li>
+      <li class="bulletList level-2">After the first action, taking actions based on the given Q-value table, that is <img alt="" role="presentation" src="../Images/B21047_15_023.png"/></li>
+      <li class="bulletList level-2">Storing the states, actions, and rewards for all steps in the episode, which will be used for evaluation</li>
+    </ul>
+    <ol>
+      <li class="numberedList" value="2">Next, we develop the on-policy MC control algorithm:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">mc_control_on_policy</span><span class="language-python">(</span><span class="hljs-con-params">env, gamma, n_episode</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    G_sum = defaultdict(</span><span class="hljs-con-built_in">float</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    N = defaultdict(</span><span class="hljs-con-built_in">int</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    Q = defaultdict(</span><span class="hljs-con-keyword">lambda</span><span class="language-python">: torch.empty(env.action_space.n))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">for</span><span class="language-python"> episode </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_episode):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        states_t, actions_t, rewards_t =</span>
+                       run_episode(env,  Q,  env.action_space.n)
+<span class="hljs-con-meta">...</span> <span class="language-python">        return_t = </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        G = {}</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">for</span><span class="language-python"> state_t, action_t, reward_t </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">zip</span><span class="language-python">(state_t[::-</span><span class="hljs-con-number">1</span><span class="language-python">], </span>
+<span class="language-python">                                                   actions_t[::-</span><span class="hljs-con-number">1</span><span class="language-python">],</span>
+                                                   rewards_t[::-1]):
+<span class="hljs-con-meta">...</span> <span class="language-python">            return_t = gamma * return_t + reward_t</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            G[(state_t, action_t)] = return_t</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">for</span><span class="language-python"> state_action, return_t </span><span class="hljs-con-keyword">in</span><span class="language-python"> G.items():</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            state, action = state_action</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">if</span><span class="language-python"> state[</span><span class="hljs-con-number">0</span><span class="language-python">] &lt;= </span><span class="hljs-con-number">21</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                G_sum[state_action] += return_t</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                N[state_action] += </span><span class="hljs-con-number">1</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                Q[state][action] =</span>
+                          G_sum[state_action] / N[state_action]
+<span class="hljs-con-meta">...</span> <span class="language-python">    policy = {}</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">for</span><span class="language-python"> state, actions </span><span class="hljs-con-keyword">in</span><span class="language-python"> Q.items():</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        policy[state] = torch.argmax(actions).item()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> Q, policy</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">This <a id="_idIndexMarker1543"/>function does the following tasks:</p>
+    <ul>
+      <li class="bulletList level-2">Randomly initializing the Q-values</li>
+      <li class="bulletList level-2">Running <code class="inlineCode">n_episode</code> episodes</li>
+      <li class="bulletList level-2">For each episode, performing policy improvement and obtaining the training data; performing first-visit policy evaluation on the resulting states, actions, and rewards; and updating the Q-values</li>
+      <li class="bulletList level-2">In the end, finalizing the optimal Q-values and the optimal policy</li>
+    </ul>
+    <ol>
+      <li class="numberedList" value="3">Now <a id="_idIndexMarker1544"/>that the MC control function is ready, we compute the optimal policy:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">gamma = </span><span class="hljs-con-number">1</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_episode = </span><span class="hljs-con-number">500000</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">optimal_Q, optimal_policy = mc_control_on_policy(env, gamma, n_episode)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Take a look at the optimal policy:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(optimal_policy)</span>
+{(16, 8, True): 1, (11, 2, False): 1, (15, 5, True): 1, (14, 9, False): 1, (11, 6, False): 1, (20, 3, False): 0, (9, 6, False):
+0, (12, 9, False): 0, (21, 2, True): 0, (16, 10, False): 1, (17, 5, False): 0, (13, 10, False): 1, (12, 10, False): 1, (14, 10, False): 0, (10, 2, False): 1, (20, 4, False): 0, (11, 4, False): 1, (16, 9, False): 0, (10, 8,
+……
+……
+1, (18, 6, True): 0, (12, 2, True): 1, (8, 3, False): 1, (13, 3, True): 0, (4, 7, False): 1, (18, 8, True): 0, (6, 5, False): 1, (17, 6, True): 0, (19, 9, True): 0, (4, 4, False): 0, (14, 5, True): 1, (12, 6, True): 0, (4, 9, False): 1, (13, 4, True): 1, (4, 8, False): 1, (14, 3, True): 1, (12, 4, True): 1, (4, 6, False): 0, (12, 5, True): 0, (4, 2, False): 1, (4, 3, False): 1, (5, 4, False): 1, (4, 1, False): 0}
+</code></pre>
+    <p class="normal">You may wonder if this optimal policy is really optimal and better than the previous simple policy (hold at 18 points). Let’s simulate 100,000 Blackjack episodes under the optimal policy and<a id="_idIndexMarker1545"/> the simple policy respectively:</p>
+    <ol>
+      <li class="numberedList" value="1">We start with<a id="_idIndexMarker1546"/> the function that simulates an episode under the simple policy:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">simulate_hold_episode</span><span class="language-python">(</span><span class="hljs-con-params">env, hold_score</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    state, _ = env.reset()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">while</span><span class="language-python"> </span><span class="hljs-con-literal">True</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        action = </span><span class="hljs-con-number">1</span><span class="language-python"> </span><span class="hljs-con-keyword">if</span><span class="language-python"> state[</span><span class="hljs-con-number">0</span><span class="language-python">] &lt; hold_score </span><span class="hljs-con-keyword">else</span><span class="language-python"> </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        state, reward, terminated, truncated, info = env.step(action)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        is_done = terminated </span><span class="hljs-con-keyword">or</span><span class="language-python"> truncated</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> is_done:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">return</span><span class="language-python"> reward</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Next, we work on the simulation function under the optimal policy:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">simulate_episode</span><span class="language-python">(</span><span class="hljs-con-params">env, policy</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    state, _ = env.reset()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">while</span><span class="language-python"> </span><span class="hljs-con-literal">True</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        action = policy[state]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        state, reward, terminated, truncated, info = env.step(action)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        is_done = terminated </span><span class="hljs-con-keyword">or</span><span class="language-python"> truncated</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> is_done:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">return</span><span class="language-python"> reward</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We then run 100,000 episodes for both policies and keep track of their winning times:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_episode = </span><span class="hljs-con-number">100000</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">hold_score = </span><span class="hljs-con-number">18</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_win_opt = </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_win_hold = </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> _ </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_episode):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    reward = simulate_episode(env, optimal_policy)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> reward == </span><span class="hljs-con-number">1</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        n_win_opt += </span><span class="hljs-con-number">1</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    reward = simulate_hold_episode(env, hold_score)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> reward == </span><span class="hljs-con-number">1</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        n_win_hold += </span><span class="hljs-con-number">1</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We print out the results as follows:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'Winning probability under the simple policy: </span><span class="hljs-con-subst">{n_win_hold/n_episode}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+Winning probability under the simple policy: 0.40256
+&gt;&gt;&gt;print(f'Winning probability under the optimal policy: {n_win_opt/n_episode}')
+Winning probability under the optimal policy: 0.43148
+</code></pre>
+    <p class="normal-one">Playing under the optimal policy has a 43% chance of winning, while playing under the simple policy has only a 40% chance.</p>
+    <p class="normal">In this section, we<a id="_idIndexMarker1547"/> solved <a id="_idIndexMarker1548"/>the Blackjack environment with a model-free algorithm, MC learning. In MC learning, the Q-values are updated until the end of an episode. This could be problematic for long processes. In the next section, we will talk about Q-learning, which updates the Q-values for every step in an episode. You will see how it increases learning efficiency.</p>
+    <h1 class="heading-1" id="_idParaDest-378">Solving the Blackjack problem with the Q-learning algorithm</h1>
+    <p class="normal">Q-learning is also a <a id="_idIndexMarker1549"/>model-free <a id="_idIndexMarker1550"/>learning<a id="_idIndexMarker1551"/> algorithm. It updates the Q-function for every step in an episode. We will demonstrate how Q-learning is used to solve the Blackjack environment.</p>
+    <h2 class="heading-2" id="_idParaDest-379">Introducing the Q-learning algorithm</h2>
+    <p class="normal"><strong class="keyWord">Q-learning</strong> is <a id="_idIndexMarker1552"/>an <strong class="keyWord">off-policy</strong> learning algorithm that optimizes the Q-values based on data generated by a behavior policy. The behavior policy is a greedy policy where it takes actions that achieve the highest returns for given states. The behavior policy generates learning data and the target policy (the policy we attempt to optimize) updates the Q-values based on the following equation:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_15_024.png"/></p>
+    <p class="normal">Here, <img alt="" role="presentation" src="../Images/B21047_15_025.png"/> is the resulting state after taking action <em class="italic">a</em> from state <em class="italic">s</em> and <em class="italic">r</em> is the associated reward. <img alt="" role="presentation" src="../Images/B21047_15_026.png"/> means that the behavior policy generates the highest Q-value given state <img alt="" role="presentation" src="../Images/B21047_15_027.png"/>. Hyperparameters <img alt="" role="presentation" src="../Images/B21047_15_028.png"/> and <img alt="" role="presentation" src="../Images/B21047_15_029.png"/> are the learning rate and discount factor respectively. The Q-learning equation updates the Q-value (estimated future reward) of a state-action pair based on the current Q-value, the immediate reward, and the potential future rewards the agent can expect by taking the best possible action in the next state.</p>
+    <p class="normal">Learning from the experience generated by another policy enables Q-learning to optimize its Q-values in every single step in an episode. We gain the information from a greedy policy and use this information to update the target values right away.</p>
+    <p class="normal">One more thing to note is that the target policy is epsilon-greedy, meaning it takes a random action with a probability of <img alt="" role="presentation" src="../Images/B21047_15_030.png"/> (value from 0 to 1) and takes a greedy action with a probability of <img alt="" role="presentation" src="../Images/B21047_15_031.png"/> . The epsilon-greedy policy combines <strong class="keyWord">exploitation</strong> and <strong class="keyWord">exploration</strong>: it exploits the best action while exploring different actions.</p>
+    <h2 class="heading-2" id="_idParaDest-380">Developing the Q-learning algorithm</h2>
+    <p class="normal">Now it is time to <a id="_idIndexMarker1553"/>develop the Q-learning algorithm to solve the Blackjack environment:</p>
+    <ol>
+      <li class="numberedList" value="1">We start with defining the epsilon-greedy policy:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">epsilon_greedy_policy</span><span class="language-python">(</span><span class="hljs-con-params">n_action, epsilon, state, Q</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    probs = torch.ones(n_action) * epsilon / n_action</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    best_action = torch.argmax(Q[state]).item()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    probs[best_action] += </span><span class="hljs-con-number">1.0</span><span class="language-python"> - epsilon</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    action = torch.multinomial(probs, </span><span class="hljs-con-number">1</span><span class="language-python">).item()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> action</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Given <img alt="" role="presentation" src="../Images/B21047_15_032.png"/> possible actions, each action is taken with a probability <img alt="" role="presentation" src="../Images/B21047_15_033.png"/>, and the action with the highest state-action value is chosen with an additional probability <img alt="" role="presentation" src="../Images/B21047_15_034.png"/>.</p>
+    <ol>
+      <li class="numberedList" value="2">We will start with a large exploration factor <img alt="" role="presentation" src="../Images/B21047_15_035.png"/> and reduce it over time until it reaches <code class="inlineCode">0.1</code>. We define the starting and final <img alt="" role="presentation" src="../Images/B21047_15_036.png"/> as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">epsilon = </span><span class="hljs-con-number">1.0</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">final_epsilon = </span><span class="hljs-con-number">0.1</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Next, we implement the Q-learning algorithm:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> q_learning(env, gamma, n_episode, alpha, epsilon, final_epsilon):</span>
+        n_action = env.action_space.n
+        Q = defaultdict(lambda: torch.zeros(n_action))
+        epsilon_decay = epsilon / (n_episode / 2)
+        for episode in range(n_episode):
+            state, _ = env.reset()
+            is_done = False
+            epsilon = max(final_epsilon, epsilon - epsilon_decay)
+            while not is_done:
+                action = epsilon_greedy_policy(n_action, epsilon, state, Q)
+                next_state, reward, terminated, truncated, info = env.step(action)
+                is_done = terminated or truncated
+                delta = reward + gamma * torch.max(
+                                           Q[next_state]) - Q[state][action]
+                Q[state][action] += alpha * delta
+                total_reward_episode[episode] += reward
+                if is_done:
+                    break
+                state = next_state
+        policy = {}
+        for state, actions in Q.items():
+            policy[state] = torch.argmax(actions).item()
+        return Q, policy
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We<a id="_idIndexMarker1554"/> initialize the action-value function Q and calculate the epsilon decay rate for the epsilon-greedy exploration strategy. For each episode, we let the agent take actions following the epsilon-greedy policy, and update the Q function for each step based on the off-policy learning equation. The exploration factor also decreases over time. We run <code class="inlineCode">n_episode</code> episodes and finally extract the optimal policy from the learned action-value function Q by selecting the action with the maximum value for each state.</p>
+    <ol>
+      <li class="numberedList" value="4">We then initiate a variable to store the performance of each of 10,000 episodes, measured by the reward:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_episode = </span><span class="hljs-con-number">10000</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">total_reward_episode = [</span><span class="hljs-con-number">0</span><span class="language-python">] * n_episode</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Finally, we perform Q-learning to obtain the optimal policy for the Blackjack problem <a id="_idIndexMarker1555"/>with the following hyperparameters:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">gamma = </span><span class="hljs-con-number">1</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">alpha = </span><span class="hljs-con-number">0.003</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">optimal_Q, optimal_policy = q_learning(env, gamma, n_episode, alpha,</span>
+<span class="language-python">                                           epsilon,</span> final_epsilon)
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, discount rate <img alt="" role="presentation" src="../Images/B21047_15_037.png"/> and learning rate <img alt="" role="presentation" src="../Images/B21047_15_038.png"/> for more exploration.</p>
+    <ol>
+      <li class="numberedList" value="6">After 10,000 episodes of learning, we plot the rolling average rewards over the episodes as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">rolling_avg_reward = [total_reward_episode[</span><span class="hljs-con-number">0</span><span class="language-python">]]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> i, reward </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">enumerate</span><span class="language-python">(total_reward_episode[</span><span class="hljs-con-number">1</span><span class="language-python">:], </span><span class="hljs-con-number">1</span><span class="language-python">):</span>
+        rolling_avg_reward.append((rolling_avg_reward[-1]*i + reward)/(i+1))
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.plot(rolling_avg_reward)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.title(</span><span class="hljs-con-string">'Average reward over time'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.xlabel(</span><span class="hljs-con-string">'Episode'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylabel(</span><span class="hljs-con-string">'Average reward'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylim([-</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.show()</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Refer to the following screenshot for the end result:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_15_05.png"/></figure>
+    <p class="packt_figref">Figure 15.5: Average reward over episodes</p>
+    <p class="normal-one">The<a id="_idIndexMarker1556"/> average reward steadily rises throughout the training process, eventually converging. This indicates that the model becomes proficient in solving the problem after training.</p>
+    <ol>
+      <li class="numberedList" value="7">Finally, we simulate 100,000 episodes for the optimal policy we obtained using Q-learning and calculate the winning chance:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_episode = </span><span class="hljs-con-number">100000</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_win_opt = </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> _ </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(n_episode):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    reward = simulate_episode(env, optimal_policy)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> reward == </span><span class="hljs-con-number">1</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        n_win_opt += </span><span class="hljs-con-number">1</span>
+&gt;&gt;&gt;print(f'Winning probability under the optimal policy: {n_win_opt/n_episode}')
+Winning probability under the optimal policy: 0.42398
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Playing under the optimal policy has a 42% chance of winning.</p>
+    <p class="normal">In this <a id="_idIndexMarker1557"/>section, we solved the Blackjack problem with off-policy Q-learning. The algorithm optimizes the Q-values in every single step by learning from the experience generated by a greedy policy.</p>
+    <h1 class="heading-1" id="_idParaDest-381">Summary</h1>
+    <p class="normal">This chapter commenced with configuring the working environment, followed by an examination of the core concepts of reinforcement learning, accompanied by practical examples. Subsequently, we delved into the FrozenLake environment, employing dynamic programming techniques such as value iteration and policy iteration to tackle it effectively. Monte Carlo learning was introduced for value estimation and control in the Blackjack environment. Finally, we implemented the Q-learning algorithm to address the same problem, providing a comprehensive overview of reinforcement learning techniques.</p>
+    <h1 class="heading-1" id="_idParaDest-382">Exercises</h1>
+    <ol>
+      <li class="numberedList" value="1">Can you try to solve the 8 * 8 FrozenLake environment with the value iteration or policy iteration algorithm?</li>
+      <li class="numberedList">Can you implement the every-visit MC policy evaluation algorithm?</li>
+    </ol>
+    <h1 class="heading-1" id="_idParaDest-383">Join our book’s Discord space</h1>
+    <p class="normal">Join our community’s Discord space for discussions with the authors and other readers:</p>
+    <p class="normal"><a href="https://packt.link/yuxi"><span class="url">https://packt.link/yuxi</span></a></p>
+    <p class="normal"><img alt="" role="presentation" src="../Images/QR_Code187846872178698968.png"/></p>
+  </div>
+
+
+  <div id="_idContainer534">
+    <p class="BM-packtLogo"><img alt="" role="presentation" src="../Images/New_Packt_Logo1.png"/></p>
+    <p class="normal"><a href="https://www.packt.com"><span class="url">packt.com</span></a></p>
+    <p class="normal">Subscribe to our online digital library for full access to over 7,000 books and videos, as well as industry leading tools to help you plan your personal development and advance your career. For more information, please visit our website.</p>
+    <h1 class="heading-1" id="_idParaDest-384">Why subscribe?</h1>
+    <ul>
+      <li class="bulletList">Spend less time learning and more time coding with practical eBooks and Videos from over 4,000 industry professionals</li>
+      <li class="bulletList">Improve your learning with Skill Plans built especially for you</li>
+      <li class="bulletList">Get a free eBook or video every month</li>
+      <li class="bulletList">Fully searchable for easy access to vital information</li>
+      <li class="bulletList">Copy and paste, print, and bookmark content</li>
+    </ul>
+    <p class="normal">At <a href="https://www.packt.com"><span class="url">www.packt.com</span></a>, you can also read a collection of free technical articles, sign up for a range of free newsletters, and receive exclusive discounts and offers on Packt books and eBooks.</p>
+    <p class="eop"/>
+    <h1 class="mainHeading" id="_idParaDest-385">Other Books You May Enjoy</h1>
+    <p class="normal">If you enjoyed this book, you may be interested in these other books by Packt:</p>
+    <p class="BM-bookCover"><a href="https://www.packtpub.com/en-us/product/mastering-pytorch-9781801074308"><img alt="" role="presentation" src="../Images/978-1-80107-430-8.png"/></a></p>
+    <p class="normal"><strong class="keyWord">Mastering PyTorch – Second Edition</strong></p>
+    <p class="normal">Ashish Ranjan Jha</p>
+    <p class="normal">ISBN: 978-1-80107-430-8</p>
+    <ul>
+      <li class="bulletList">Implement text, vision, and music generation models using PyTorch</li>
+      <li class="bulletList">Build a deep Q-network (DQN) model in PyTorch</li>
+      <li class="bulletList">Deploy PyTorch models on mobile devices (Android and iOS)</li>
+      <li class="bulletList">Become well versed in rapid prototyping using PyTorch with fastai</li>
+      <li class="bulletList">Perform neural architecture search effectively using AutoML</li>
+      <li class="bulletList">Easily interpret machine learning models using Captum</li>
+      <li class="bulletList">Design ResNets, LSTMs, and graph neural networks (GNNs)</li>
+      <li class="bulletList">Create language and vision transformer models using Hugging Face</li>
+    </ul>
+    <p class="eop"/>
+    <p class="BM-bookCover"><a href="https://www.packtpub.com/en-us/product/building-llm-powered-applications-9781835462317"><img alt="" role="presentation" src="../Images/978-1-83546-231-7.png"/></a></p>
+    <p class="normal"><strong class="keyWord">Building LLM Powered Applications</strong></p>
+    <p class="normal">Valentina Alto</p>
+    <p class="normal">ISBN: 978-1-83546-231-7</p>
+    <ul>
+      <li class="bulletList">Explore the core components of LLM architecture, including encoder-decoder blocks and embeddings</li>
+      <li class="bulletList">Understand the unique features of LLMs like GPT-3.5/4, Llama 2, and Falcon LLM</li>
+      <li class="bulletList">Use AI orchestrators like LangChain, with Streamlit for the frontend</li>
+      <li class="bulletList">Get familiar with LLM components such as memory, prompts, and tools</li>
+      <li class="bulletList">Learn how to use non-parametric knowledge and vector databases</li>
+      <li class="bulletList">Understand the implications of LFMs for AI research and industry applications</li>
+      <li class="bulletList">Customize your LLMs with fine tuning</li>
+      <li class="bulletList">Learn about the ethical implications of LLM-powered applications</li>
+    </ul>
+    <p class="eop"/>
+    <h1 class="heading-1" id="_idParaDest-386">Packt is searching for authors like you</h1>
+    <p class="normal">If you’re interested in becoming an author for Packt, please visit <a href="https://authors.packtpub.com"><span class="url">authors.packtpub.com</span></a> and apply today. We have worked with thousands of developers and tech professionals, just like you, to help them share their insight with the global tech community. You can make a general application, apply for a specific hot topic that we are recruiting an author for, or submit your own idea.</p>
+  </div>
+  <div class="Basic-Text-Frame" id="_idContainer535">
+    <p class="eop"/>
+    <h1 class="heading-1" id="_idParaDest-387">Share your thoughts</h1>
+    <p class="normal">Now you’ve finished <em class="italic">Python Machine Learning By Example - Fourth Edition</em>, we’d love to hear your thoughts! If you purchased the book from Amazon, please <a href="https://packt.link/r/1835085628"><span class="url">click here to go straight to the Amazon review page</span></a> for this book and share your feedback or leave a review on the site that you purchased it from.</p>
+    <p class="normal">Your review is important to us and the tech community and will help us make sure we’re delivering excellent quality content.</p>
+  </div>
+</body></html>

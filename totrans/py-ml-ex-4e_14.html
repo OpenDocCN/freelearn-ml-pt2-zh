@@ -1,0 +1,639 @@
+<html><head></head><body>
+  <div class="Basic-Text-Frame" id="_idContainer481">
+    <h1 class="chapterNumber">14</h1>
+    <h1 class="chapterTitle" id="_idParaDest-331">Building an Image Search Engine Using CLIP: a Multimodal Approach</h1>
+    <p class="normal">In the previous chapter, we focused on Transformer models such as BERT and GPT, leveraging their capabilities for sequence learning tasks. In this chapter, we’ll explore a multimodal model, which seamlessly connects visual and textual data. With its dual encoder architecture, this model learns the relationships between visual and textual concepts, enabling it to excel in tasks involving image and text. We will delve into its architecture, key components, and learning mechanisms, leading to a practical implementation of the model. We will then build a multimodal image search engine with text-to-image and image-to-image capabilities. To top it all off, we will tackle an awesome zero-shot image classification project!</p>
+    <p class="normal">We will cover the following topics in this chapter:</p>
+    <ul>
+      <li class="bulletList">Introducing the CLIP model</li>
+      <li class="bulletList">Getting started with the dataset</li>
+      <li class="bulletList">Architecting the CLIP model</li>
+      <li class="bulletList">Finding images with words</li>
+    </ul>
+    <h1 class="heading-1" id="_idParaDest-332">Introducing the CLIP model</h1>
+    <p class="normal">We have explored computer vision in <em class="chapterRef">Chapter 11</em>, <em class="italic">Categorizing Images of Clothing with Convolutional Neural Networks</em>, and NLP in <em class="chapterRef">Chapter 12</em>, <em class="italic">Making Predictions with Sequences Using Recurrent Neural Networks</em>, and <em class="chapterRef">Chapter 13</em>, <em class="italic">Advancing Language Understanding and Generation with the Transformer Models</em>. In this chapter, we will delve into a model that bridges the realms of computer vision and NLP, the <strong class="keyWord">Contrastive Language–Image Pre-Training</strong> (<strong class="keyWord">CLIP</strong>) model<a id="_idIndexMarker1389"/> developed by OpenAI. Unlike traditional models that are specialized for either computer vision or natural language processing, CLIP is trained to understand both <strong class="keyWord">modalities </strong>(image and text) in a unified manner. Hence, CLIP excels at understanding and generating relationships between images and natural language.</p>
+    <div class="note">
+      <p class="normal">A modality<a id="_idIndexMarker1390"/> in ML/AI is a specific way of representing information. Common modalities include text, images, audio, video, and even sensor data.</p>
+    </div>
+    <p class="normal">Excited to delve into the workings of CLIP? Let’s explore and discover more about how it works! </p>
+    <h2 class="heading-2" id="_idParaDest-333">Understanding the mechanism of the CLIP model</h2>
+    <p class="normal">CLIP is designed to learn<a id="_idIndexMarker1391"/> representations of images and corresponding textual descriptions simultaneously. The model learns to associate similar pairs and disassociate dissimilar pairs of images and text. Its unique architecture (see <em class="italic">Figure 14.1</em> below) enables it to develop semantic connections between images and their textual descriptions:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_14_01.png"/></figure>
+    <p class="packt_figref">Figure 14.1: CLIP architecture (image based on Figure 1 in “Learning Transferable Visual Models From Natural Language Supervision”: <a href="https://arxiv.org/pdf/2103.00020.pdf">https://arxiv.org/pdf/2103.00020.pdf</a>)</p>
+    <p class="normal">As you can see, it <a id="_idIndexMarker1392"/>utilizes a dual-encoder architecture that integrates both vision and text encoder. The output from the vision encoder and the output from the text encoder are projected into a shared space. It then evaluates the placement of these image-text pairs based on their similarity. This shared semantic space allows CLIP to perform various vision-language tasks, such as image classification, object detection, and image retrieval.</p>
+    <p class="normal">Here are the key components of the CLIP model.</p>
+    <h3 class="heading-3" id="_idParaDest-334">Vision encoder</h3>
+    <p class="normal">The vision encoder (also called image encoder) in CLIP <a id="_idIndexMarker1393"/>is responsible for <a id="_idIndexMarker1394"/>processing and encoding image inputs. It is <a id="_idIndexMarker1395"/>typically implemented as a <strong class="keyWord">CNN</strong>. Recall that CNNs are well suited for image-related tasks, as they can effectively capture hierarchical features in images. The output of the vision encoder for an input image is a fixed-size vector representation. The embedding vector captures the semantic content of the image.</p>
+    <p class="normal">There are two<a id="_idIndexMarker1396"/> main architectures used for the vision encoder. The first version is a modified <strong class="keyWord">ResNet mode</strong> based on the ResNet-50 model. Additionally, the average pooling layer is substituted with an attention pooling mechanism. This attention pooling is realized as a single layer of multi-head attention, with the query conditioned on the recently<a id="_idIndexMarker1397"/> introduced <strong class="keyWord">Vision Transformer</strong> (<code class="inlineCode">https://huggingface.co/google/vit-base-patch16-224</code>). It includes an additional normalization layer just before the Transformer as the only adjustment.</p>
+    <p class="normal">It is important to note that the generated visual embeddings exist in <strong class="keyWord">a shared space</strong> with embeddings from the text encoder. This shared space projection enables direct comparisons between visual and textual representations. If an image and a textual description are semantically related, they would be mapped to closer points in this space. For example, an image of a cat and the corresponding text “a fluffy cat” would be close together in this space, indicating their semantic similarity.</p>
+    <p class="normal">The vision encoder is pre-trained on a large and diverse dataset containing images and their associated textual descriptions. For example, OpenAI mentioned in the CLIP paper (<a href="https://openai.com/index/clip"><span class="url">https://openai.com/index/clip</span></a>) that their model was trained on a collection of 400 million image-text pairs obtained from crawling the internet. The pre-training process allows the vision encoder to learn rich and generalized visual representations. Furthermore, the learned representations are task-agnostic. Hence, we can fine-tune a CLIP model for a wide range of text-image applications.</p>
+    <h3 class="heading-3" id="_idParaDest-335">Text encoder</h3>
+    <p class="normal">Similarly, the text encoder<a id="_idIndexMarker1398"/> is responsible for processing and encoding textual <a id="_idIndexMarker1399"/>inputs. The process begins with tokenization. The tokenized text is then passed through an embedding layer and converted into a fixed-size high-dimensional vector. Additionally, to preserve important sequential information in the text, we add <strong class="keyWord">positional encoding</strong> to the<a id="_idIndexMarker1400"/> embeddings. The resulting embeddings can capture the semantic content of the text.</p>
+    <p class="normal">The text encoder is implemented as a Transformer with a particular architecture. For instance, the OpenAI team utilized a 12-level, 512-wide model with 8 attention heads and 63 million <a id="_idIndexMarker1401"/>parameters in <a id="_idIndexMarker1402"/>total, and its maximum sequence length was restricted to 76.</p>
+    <p class="normal">As mentioned earlier, the text embeddings are in a shared space with the embeddings from the vision encoder. This allows direct comparisons between visual and textual inputs and cross-modal understanding. Similarly, pre-training on a diverse dataset enables the model to learn generalizable contextual understanding from various linguistic contexts. The text encoder can be fine-tuned for various downstream tasks in collaboration with the vision encoder.</p>
+    <h3 class="heading-3" id="_idParaDest-336">Contrastive learning</h3>
+    <p class="normal">Contrastive learning is the<a id="_idIndexMarker1403"/> training strategy in CLIP. It teaches the model to differentiate between<a id="_idIndexMarker1404"/> similar and dissimilar image-text pairs. During training, CLIP is presented with positive and negative image-text pairs. A positive pair consists of an image and description that are semantically related. On the other hand, a negative pair is formed by combining an image with a randomly chosen description, creating mismatches.</p>
+    <p class="normal">Contrastive learning focuses on bringing embeddings of positive pairs closer together in the shared embedding space, while pushing embeddings of negative pairs further apart. This separation is achieved through<a id="_idIndexMarker1405"/> a <strong class="keyWord">contrastive loss function</strong>. Let’s break down the contrastive loss calculation:</p>
+    <ol>
+      <li class="numberedList" value="1">Embedding generation:</li>
+    </ol>
+    <p class="normal-one">Given <em class="italic">N</em> images <em class="italic">I</em> and the corresponding text descriptions <em class="italic">T</em>, the CLIP model first creates image embeddings <img alt="" role="presentation" src="../Images/B21047_14_001.png"/> and text embeddings <img alt="" role="presentation" src="../Images/B21047_14_002.png"/> using its dual encoder (vision encoder and text encoder) architecture.</p>
+    <ol>
+      <li class="numberedList" value="2">Similarity matrix calculation:</li>
+    </ol>
+    <p class="normal-one">Since embeddings <img alt="" role="presentation" src="../Images/B21047_14_001.png"/><code class="inlineCode">and </code><img alt="" role="presentation" src="../Images/B21047_14_002.png"/> are in the same space, we can calculate pair-wise similarities <em class="italic">S</em>. For image <em class="italic">i</em> and text <em class="italic">j</em>, their similarity <img alt="" role="presentation" src="../Images/B21047_14_005.png"/> is the cosine similarity <a id="_idIndexMarker1406"/>image <a id="_idIndexMarker1407"/>embedding <img alt="" role="presentation" src="../Images/B21047_14_006.png"/> and text embedding <img alt="" role="presentation" src="../Images/B21047_14_007.png"/>:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_14_008.png"/></p>
+    <p class="normal-one">Here, <img alt="" role="presentation" src="../Images/B21047_14_009.png"/>. The goal is to maximize the similarity of image and text embeddings for <em class="italic">N</em> positive pairs, while minimizing the similarity for the embeddings of <em class="italic">N</em>² − <em class="italic">N</em> negative pairings.</p>
+    <ol>
+      <li class="numberedList" value="3">Target matrix creation:</li>
+    </ol>
+    <p class="normal-one">Next, we construct <code class="inlineCode">the target ("ideal") </code>matrix <em class="italic">Y</em><code class="inlineCode"> for learning.</code> <code class="inlineCode">Here,</code> <img alt="" role="presentation" src="../Images/B21047_14_010.png"/> if image <em class="italic">i</em> and text <em class="italic">j</em> are a <code class="inlineCode">positive </code>pair (diagonal elements); <img alt="" role="presentation" src="../Images/B21047_14_011.png"/> for all other pairs (off-diagonal elements).</p>
+    <ol>
+      <li class="numberedList" value="4">Cross-entropy <a id="_idIndexMarker1408"/>loss computation:</li>
+    </ol>
+    <p class="normal-one">With the similarity matrix <em class="italic">S</em> and target matrix <em class="italic">Y</em>, we then compute the cross-entropy loss for both image and text modalities. Here is the loss for image alignment:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_14_012.png"/></p>
+    <p class="normal-one">It measures how well the model predicts the correct image given a text description.</p>
+    <p class="normal-one">The loss for text<a id="_idIndexMarker1409"/> alignment, measuring how well the model predicts the correct description given an image, is:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_14_013.png"/></p>
+    <ol>
+      <li class="numberedList" value="5">Final loss computation:</li>
+    </ol>
+    <p class="normal-one">The contrastive loss is the average of the image-based loss and the text-based loss:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_14_014.png"/></p>
+    <p class="normal">During training, the model’s parameters are updated to minimize the contrastive loss function. This drives the model to learn embeddings that align correctly paired images and text, while pushing apart mismatched pairs.</p>
+    <p class="normal">The contrastive learning objective contributes to effective cross-modal retrieval and understanding. Along with the dual-encoder architecture, a pre-trained CLIP model can perform various downstream image-text tasks without task-specific retraining. So what are those typical applications and scenarios? Let’s see next.</p>
+    <h2 class="heading-2" id="_idParaDest-337">Exploring applications of the CLIP model</h2>
+    <p class="normal">In this section, we will <a id="_idIndexMarker1410"/>explain some common applications and use cases for the CLIP model.</p>
+    <h3 class="heading-3" id="_idParaDest-338">Zero-shot image classification</h3>
+    <p class="normal">In a <a id="_idIndexMarker1411"/>zero-shot learning setup, CLIP <a id="_idIndexMarker1412"/>is presented with a task it has not been <a id="_idIndexMarker1413"/>explicitly trained on. For instance, it might be asked to classify images into unseen categories, or to generate descriptions for images without having seen similar examples during pre-training.</p>
+    <p class="normal">The first zero-shot application is image classification based on textual descriptions. We don’t need to perform any task-specific training thanks to the model’s pre-trained knowledge. The model can categorize the images based on their alignment with the descriptions.</p>
+    <p class="normal">For example, given three unseen images (<em class="italic">Image 1</em>: a photo of a red vintage car on a city street; <em class="italic">Image 2</em>: a painting depicting a red car in an urban setting; <em class="italic">Image 3</em>: a cartoon illustration of a city with a red car), we pass the query text “A vintage red car parked on a city street” to the CLIP model. It may correctly rank <em class="italic">Image 1</em> as the most relevant to the query, with a red vintage car on a city street. <em class="italic">Image 3</em> may be ranked the least relevant due to its cartoon style, which is least aligned with the query.</p>
+    <p class="normal">The zero-shot learning capability makes CLIP useful for tasks where labeled examples are scarce or even unavailable. We’ve seen it can categorize images even for categories never seen during pre-training. In the next section, we will use it for zero-shot text classification.</p>
+    <h3 class="heading-3" id="_idParaDest-339">Zero-shot text classification</h3>
+    <p class="normal">Similarly, CLIP <a id="_idIndexMarker1414"/>can classify new textual descriptions based on images. In zero-shot<a id="_idIndexMarker1415"/> setting, we don’t need to provide labeled examples for fine-tuning. The model can categorize text inputs based on their alignment with the images.</p>
+    <p class="normal">For example, given a query image of a mountain landscape and three potential descriptions (<em class="italic">Text 1</em>: “A view of a serene mountain range,” <em class="italic">Text 2</em>: “The majestic peaks and valleys of the mountains,” and <em class="italic">Text 3</em>: “Hiking trails in mountainous regions.”), the CLIP model may score <em class="italic">Text 1</em> the most relevant due to its highest alignment with the query image.</p>
+    <p class="normal">We’ve talked about CLIP for zero-shot image and text classification. In fact, we can extend it to content retrieval. Let’s see the next section.</p>
+    <h3 class="heading-3" id="_idParaDest-340">Image and text retrieval</h3>
+    <p class="normal">CLIP can be used to <a id="_idIndexMarker1416"/>retrieve<a id="_idIndexMarker1417"/> images relevant to a given text query, and vice versa,</p>
+    <p class="normal">For example, in image retrieval, we pass the text query “playful puppies” to an image search engine. The CLIP model retrieves images that best match the description of playful puppies. It also ranks them based on their alignment with the text query. Similarly, CLIP can also be used to retrieve and rank captions for images that accurately describe their content.</p>
+    <p class="normal">We’ve <a id="_idIndexMarker1418"/>demonstrated CLIP’s cross-modal retrieval abilities. In the next section, let’s look at its adoption in cross-modal generation.</p>
+    <h3 class="heading-3" id="_idParaDest-341">Image and text generation</h3>
+    <p class="normal">Beyond retrieving from the existing <a id="_idIndexMarker1419"/>content pool, we can use CLIP to generate images based <a id="_idIndexMarker1420"/>on textual prompts or to provide textual descriptions for images.</p>
+    <p class="normal">For instance, we can generate artistic images by giving the CLIP model a prompt like “a surreal painting of a robot riding a bicycle.” We can also ask the CLIP model to describe a picture of a modern kitchen. It may answer with “A contemporary kitchen design.”</p>
+    <p class="normal">In fact, CLIP can answer many questions about the given images, beyond just providing descriptions.</p>
+    <p class="normal">Visual question answering (VQA)</p>
+    <p class="normal">CLIP can be adapted for <a id="_idIndexMarker1421"/>visual <a id="_idIndexMarker1422"/>question-answering tasks. It can be used to answer questions about images based on its knowledge of both visual and textual modalities. For example, we can use the model to answer questions like “What kind of animal is this?” or “How many people are in the photo?”</p>
+    <h3 class="heading-3" id="_idParaDest-342">Transfer learning</h3>
+    <p class="normal">Finally, we can fine-tune<a id="_idIndexMarker1423"/> CLIP on specific downstream tasks, such as object detection, sentiment analysis, and <a id="_idIndexMarker1424"/>custom classification tasks.</p>
+    <p class="normal">During pre-training, the CLIP model gains a generalized understanding across modalities from a diverse range of images and text. Leveraging transfer learning, we don’t need to perform extensive task-specific training. It can be adopted for a wide range of vision and NLP <a id="_idIndexMarker1425"/>applications.</p>
+    <p class="normal">Excited to start implementing CLIP? Let’s begin by delving into the dataset containing images and captions that we’ll use for the training process.</p>
+    <h1 class="heading-1" id="_idParaDest-343">Getting started with the dataset</h1>
+    <p class="normal">We are going to use<a id="_idIndexMarker1426"/> the <code class="inlineCode">Flickr8k</code> dataset (<a href="https://hockenmaier.cs.illinois.edu/8k-pictures.html"><span class="url">https://hockenmaier.cs.illinois.edu/8k-pictures.html</span></a>), created by M. Hodosh, P. Young, and J. Hockenmaier, described in <em class="italic">Framing Image Description as a Ranking Task: Data, Models and Evaluation Metrics</em>, <em class="italic">Journal of Artificial Intelligence Research</em>, Volume 47, pages 853–899 (<a href="https://www.jair.org/index.php/jair/article/view/10833/25855"><span class="url">https://www.jair.org/index.php/jair/article/view/10833/25855</span></a>). It is commonly employed in various computer vision tasks, particularly image captioning.</p>
+    <p class="normal">The <code class="inlineCode">Flickr8k</code> dataset contains 8,000 images collected from the Flickr photo-sharing website. These images cover a diverse range of scenes, objects, and activities. Each image in the dataset is associated with five English sentences. These sentences serve as captions and provide textual descriptions of the image content.</p>
+    <p class="normal">One common use of the <code class="inlineCode">Flickr8k</code> dataset is image captioning, where the goal is to train models to generate human-like captions for images. The <code class="inlineCode">Flickr8k</code> dataset is often used by researchers and practitioners as a benchmark for image captioning models. It allows us to evaluate the ability of models to understand and describe visual content in natural language.</p>
+    <p class="normal">There is also an extended version called <code class="inlineCode">Flickr30k</code>, which contains 30,000 images with corresponding captions. The larger dataset provides a more extensive and diverse set of images for training and evaluation, but it consumes more computational resources. So we will focus on the <code class="inlineCode">Flickr8k</code> dataset in this chapter.</p>
+    <h2 class="heading-2" id="_idParaDest-344">Obtaining the Flickr8k dataset</h2>
+    <p class="normal">To obtain<a id="_idIndexMarker1427"/> the <code class="inlineCode">Flickr8k</code> dataset, simply submit a request at <a href="https://illinois.edu/fb/sec/1713398"><span class="url">https://illinois.edu/fb/sec/1713398</span></a>. Upon request, dataset links will be emailed to you. One of the links will lead you to a downloadable file, <code class="inlineCode">Flickr8k_Dataset.zip</code>, from which you can extract 8,091 image files. Another link will direct you to a downloadable file called <code class="inlineCode">Flickr8k_text.zip</code>. We will use the extracted file <code class="inlineCode">Flickr8k.token.txt</code>, which contains the raw captions of the <code class="inlineCode">Flickr8</code>k dataset. The first column is in the format of “image path # caption number,” and the second column is the corresponding caption.</p>
+    <p class="normal">The dataset is also available on Kaggle, such as <a href="https://www.kaggle.com/datasets/adityajn105/flickr8k/data"><span class="url">https://www.kaggle.com/datasets/adityajn105/flickr8k/data</span></a>. The <code class="inlineCode">captions.txt</code> file contains information mirroring that of the <code class="inlineCode">Flickr8k.token.txt</code> file, but it is easier to use, as the first column contains only the image paths. For simplicity, we will use the <code class="inlineCode">captions.txt</code> file instead of the original <code class="inlineCode">Flickr8k.token.txt</code> file.</p>
+    <h2 class="heading-2" id="_idParaDest-345">Loading the Flickr8k dataset</h2>
+    <p class="normal">After extracting all the<a id="_idIndexMarker1428"/> images from <code class="inlineCode">Flickr8k_Dataset.zip</code> and getting the caption text file ready, we can now load the <code class="inlineCode">Flickr8k</code> dataset into a custom PyTorch Dataset object. Follow the steps below:</p>
+    <ol>
+      <li class="numberedList" value="1">First, we import the necessary packages:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> os</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> PIL </span><span class="hljs-con-keyword">import</span><span class="language-python"> Image</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> torch</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> torch.utils.data </span><span class="hljs-con-keyword">import</span><span class="language-python"> Dataset, DataLoader</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> torchvision.transforms </span><span class="hljs-con-keyword">as</span><span class="language-python"> transforms</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, the <code class="inlineCode">Image</code> package will be used to load the image files.</p>
+    <ol>
+      <li class="numberedList" value="2">We then set the image directory and the caption file path as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">image_dir = </span><span class="hljs-con-string">"flickr8k/Flicker8k_Dataset"</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">caption_file = </span><span class="hljs-con-string">"</span><span class="hljs-con-string">flickr8k/captions.txt"</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, we put all the extracted images in the <code class="inlineCode">flickr8k/Flicker8k_Dataset</code> folder and the <code class="inlineCode">captions.txt</code> file in the same root directory, <code class="inlineCode">flickr8k</code>.</p>
+    <ol>
+      <li class="numberedList" value="3">Next, we load the <code class="inlineCode">DistilBRET</code> tokenizer as we did in the previous chapter, <em class="italic">Advancing Language Understanding and Generation with the Transformer Models</em>:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> transformers </span><span class="hljs-con-keyword">import</span><span class="language-python"> DistilBertTokenizer</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">tokenizer = DistilBertTokenizer.from_pretrained(</span>
+<span class="language-python">                                         </span><span class="hljs-con-string">'distilbert-base-uncased'</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Now, we create a custom <a id="_idIndexMarker1429"/>PyTorch Dataset class for the <code class="inlineCode">Flickr8k</code> dataset, as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">class</span><span class="language-python"> </span><span class="hljs-con-title">Flickr8kDataset</span><span class="language-python">(</span><span class="hljs-con-title">Dataset</span><span class="language-python">):</span>
+        def __init__(self, image_dir, caption_file):
+            self.image_dir = image_dir
+            self.transform = transforms.Compose([
+                                transforms.Resize((224, 224)),
+                                transforms.ToTensor(),
+                             ])
+            self.image_paths, self.captions = 
+            self.read_caption_file(caption_file)
+        def read_caption_file(self, caption_file):
+            image_paths = []
+            captions = []
+            with open(caption_file, "r") as file:
+                lines = file.readlines()
+                for line in lines[1:]:
+                    parts = line.strip().split(",")
+                     image_paths.append(os.path.join(self.image_dir,
+                                                     parts[0]))
+                     captions.append(parts[1])
+            self.caption_encodings = tokenizer(captions, truncation=True,
+                                               padding=True,
+                                               max_length=200)
+            return image_paths, captions
+        def __len__(self):
+            return len(self.image_paths)
+ 
+        def __getitem__(self, idx):
+            item = {key: torch.tensor(val[idx]) for key, val in
+                                            self.caption_encodings.items()}
+            caption = self.captions[idx]
+            item["caption"] = caption
+            img_path = self.image_paths[idx]
+            img = Image.open(img_path).convert("RGB")
+            img = self.transform(img)
+            item['image'] = img
+            return item
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Upon initialization, we<a id="_idIndexMarker1430"/> define a<code class="inlineCode">n</code> image transformation function using the <code class="inlineCode">transforms</code> module from <code class="inlineCode">torchvision</code>, including resizing the images to (224, 224) pixels and converting them to tensors; we read the caption file line by line, extract image paths and captions, and store them in the <code class="inlineCode">image_paths</code> and <code class="inlineCode">captions</code> lists. The captions are tokenized and encoded using the given tokenizer, with options for truncation, padding, and a maximum length of 200 tokens. Results are stored in <code class="inlineCode">caption_encodings</code>.</p>
+    <p class="normal-one">Upon retrieving an item from the dataset, the tokenized and encoded captions are stored in the <code class="inlineCode">item</code> object along with the original caption. The image at the corresponding index is also loaded, transformed, and added to the <code class="inlineCode">item</code>. </p>
+    <ol>
+      <li class="numberedList" value="5">We initiate an instance of the custom <code class="inlineCode">Dataset</code> class, as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">flickr8k_dataset = Flickr8kDataset(image_dir=image_dir,</span>
+                                       caption_file=caption_file)
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Take a look at one data sample:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">item_sample = </span><span class="hljs-con-built_in">next</span><span class="language-python">(</span><span class="hljs-con-built_in">iter</span><span class="language-python">(flickr8k_dataset))</span>
+{'input_ids': tensor([ 101, 1037, 2775, 1999, 1037, 5061, 4377, 2003, 
+        8218, 2039, 1037, 2275, 1997, 5108, 1999, 2019, 4443, 2126, 1012, 
+         102,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0, 
+           0,    0,    0,    0,    0,    0,    0,    0,    0]),
+ 'attention_mask': tensor([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+           1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+           0, 0, 0]),
+ 'caption': 'A child in a pink dress is climbing up a set of stairs in an entry way.',
+ 'image': tensor([[[0.3216, 0.4353, 0.4549,  ..., 0.0157, 0.0235, 0.0235],
+          [0.3098, 0.4431, 0.4667,  ..., 0.0314, 0.0275, 0.0471],
+          [0.3020, 0.4588, 0.4745,  ..., 0.0314, 0.0275, 0.0392],
+          ...,
+          [0.7294, 0.5882, 0.6706,  ..., 0.8314, 0.6471, 0.6471],
+          [0.6902, 0.6941, 0.8627,  ..., 0.8235, 0.6588, 0.6588],
+          [0.8118, 0.8196, 0.7333,  ..., 0.8039, 0.6549, 0.6627]],
+         [[0.3412, 0.5020, 0.5255,  ..., 0.0118, 0.0235, 0.0314],
+          [0.3294, 0.5059, 0.5412,  ..., 0.0353, 0.0392, 0.0824],
+          [0.3098, 0.5176, 0.5529,  ..., 0.0353, 0.0510, 0.0863],
+          ...,
+          [0.4235, 0.3137, 0.4784,  ..., 0.8667, 0.7255, 0.7216],
+          [0.3765, 0.5059, 0.6627,  ..., 0.8549, 0.7216, 0.7216],
+          [0.4941, 0.5804, 0.4784,  ..., 0.8392, 0.7216, 0.7216]],
+         [[0.3804, 0.4902, 0.4980,  ..., 0.0118, 0.0157, 0.0196],
+          [0.3608, 0.5059, 0.5176,  ..., 0.0275, 0.0235, 0.0235],
+          [0.3647, 0.5255, 0.5333,  ..., 0.0196, 0.0235, 0.0275],
+          ...,
+          [0.1216, 0.1098, 0.2549,  ..., 0.9176, 0.8235, 0.7961],
+          [0.0784, 0.1804, 0.2902,  ..., 0.9137, 0.8118, 0.7843],
+          [0.1843, 0.2588, 0.2824,  ..., 0.9176, 0.8039, 0.7686]]])}
+</code></pre>
+    <p class="normal-one">The caption is <code class="inlineCode">A child in a pink dress is climbing up a set of stairs in an entryway</code><em class="italic">.</em> Let’s <a id="_idIndexMarker1431"/>display the image itself using the following script:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> matplotlib.pyplot </span><span class="hljs-con-keyword">as</span><span class="language-python"> plt</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> numpy </span><span class="hljs-con-keyword">as</span><span class="language-python"> np</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">npimg = item_sample[</span><span class="hljs-con-string">'image'</span><span class="language-python">].numpy()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.imshow(np.transpose(npimg, (</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">)))</span>
+</code></pre>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_14_02.png"/></figure>
+    <p class="packt_figref">Figure 14.2: Image of the Flickr8k data sample (photo by Rick &amp; Brenda Beerhorst, Flickr: <a href="https://www.flickr.com/photos/studiobeerhorst/1000268201/">https://www.flickr.com/photos/studiobeerhorst/1000268201/</a>)</p>
+    <ol>
+      <li class="numberedList" value="6">The last step of<a id="_idIndexMarker1432"/> data preparation is to create a <code class="inlineCode">DataLoader</code> object to handle batching and shuffling. We set the batch size to 32 and initiate a <code class="inlineCode">DataLoader</code>, based on the previously created dataset:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">batch_size = </span><span class="hljs-con-number">32</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">data_loader = DataLoader(flickr8k_dataset, batch_size=batch_size, shuffle=</span><span class="hljs-con-literal">True</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal">Now that the dataset is prepared, let’s proceed to develop the CLIP model in the following section.</p>
+    <h2 class="heading-2" id="_idParaDest-346">Architecting the CLIP model</h2>
+    <p class="normal">The vision encoder and text encoder are the two main components of the CLIP model. We will start with the vision encoder.</p>
+    <h3 class="heading-3" id="_idParaDest-347">Vision encoder</h3>
+    <p class="normal">Implementing the vision<a id="_idIndexMarker1433"/> encoder is <a id="_idIndexMarker1434"/>quite straightforward. We leverage the PyTorch <code class="inlineCode">vision</code> library, which provides access to various pre-trained image models, including <code class="inlineCode">ResNets</code> and <code class="inlineCode">VisionTransformer</code>. Here, we opt for ResNet50 as our vision encoder as an example.</p>
+    <p class="normal">The vision encoder ensures each image is encoded into a fixed-size vector, with the dimensionality matching the model’s output channels (in the case of ResNet50, the vector size is <code class="inlineCode">2048</code>):</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> torch.nn </span><span class="hljs-con-keyword">as</span><span class="language-python"> nn</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> torchvision.models </span><span class="hljs-con-keyword">import</span><span class="language-python"> resnet50</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">class</span><span class="language-python"> </span><span class="hljs-con-title">VisionEncoder</span><span class="language-python">(nn.Module):</span>
+        def __init__(self):
+            super().__init__()
+            pretrained_resnet50 = resnet50(pretrained=True)
+            self.model = nn.Sequential(*list(
+                                       pretrained_resnet50.children())[:-1])
+            for param in self.model.parameters():
+                param.requires_grad = False
+        def forward(self, x):
+            x= self.model(x)
+            x = x.view(x.size(0), -1)
+            return x
+</code></pre>
+    <p class="normal">Upon initialization, we load the pre-trained ResNet50 model. Then, we remove the final classification layer, as we are using the ResNet50 model as a feature extractor instead of a classifier. Here, we freeze the model’s parameters by setting their <code class="inlineCode">requires_grad</code> trainable attribute to false. You can also fine-tune the pre-trained ResNet50 model component by making the parameters trainable. The <code class="inlineCode">forward</code> method is used to extract image embeddings from input images.</p>
+    <p class="normal">We just implemented<a id="_idIndexMarker1435"/> the <code class="inlineCode">VisionEncoder</code> module based on the pre-trained ResNet50 model. We use the model’s hidden layer<a id="_idIndexMarker1436"/> output as the fixed-size vector representation for each image. Since we ignore its final classification layer, the ResNet50 model in this case is used as an image feature extractor.</p>
+    <p class="normal">We will continue with the text encoder module next.</p>
+    <h3 class="heading-3" id="_idParaDest-348">Text encoder</h3>
+    <p class="normal">For simplicity, we will <a id="_idIndexMarker1437"/>employ DistilBERT as the text encoder. We extract the complete <a id="_idIndexMarker1438"/>representation of a sentence by utilizing the final representations of the <code class="inlineCode">[CLS]</code> token. The expectation is that this representation captures the overall meaning of the sentence (the image caption in this case). Conceptually, this is similar to the process applied to images, where they are transformed into fixed-size vectors. For DistilBERT (and BERT as well), each token’s output representation is a vector with a size of <code class="inlineCode">768</code>.</p>
+    <p class="normal">We implement the text encoder using the following code:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> transformers </span><span class="hljs-con-keyword">import</span><span class="language-python"> DistilBertModel</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">class</span><span class="language-python"> </span><span class="hljs-con-title">TextEncoder</span><span class="language-python">(nn.Module):</span>
+        def __init__(self):
+            super().__init__()
+            self.model = DistilBertModel.from_pretrained(
+                                              'distilbert-base-uncased')
+            for param in self.model.parameters():
+                param.requires_grad = False
+        def forward(self, input_ids, attention_mask=None):
+            outputs = self.model(input_ids=input_ids,
+                                 attention_mask=attention_mask)
+            return outputs.last_hidden_state[:, 0, :]
+</code></pre>
+    <p class="normal">Upon initialization, we first load a pre-trained DistilBERT model from the Hugging Face Transformers library. Then, we freeze the parameters of the DistilBERT model by setting <code class="inlineCode">requires_grad</code> to <code class="inlineCode">False</code> for all parameters. Again, you can also fine-tune the pre-trained DistilBERT model by making the parameters trainable. In the forward pass, we feed the input into the DistilBERT model and extract the last hidden state from the model’s outputs. Finally, we return the vector corresponding to the [<code class="inlineCode">CLS</code>] token, as the embedding representation of the input caption.</p>
+    <p class="normal">We just implemented the <code class="inlineCode">TextEncoder</code> module to encode textual input using the DistilBERT model. It uses the <code class="inlineCode">[CLS]</code> token representation as the fixed-size vector representation of the input text sequence. Similar to what we did in the vision encoder for simplicity, we freeze the parameters in the DistilBERT model and use it as a text feature extractor without further training.</p>
+    <h2 class="heading-2" id="_idParaDest-349">Projection head for contrastive learning</h2>
+    <p class="normal">Having encoded both<a id="_idIndexMarker1439"/> images and texts into fixed-size vectors (2,048 for images and 768 for text), the next step is to project them into a shared space. This process enables the comparison of image and text embedding vectors. We can later train the CLIP model to distinguish between relevant and non-relevant image-text pairs.</p>
+    <p class="normal">We develop the following head projection module to transform the initial 2,048-dimensional image vectors or 768-dimensional text vectors into a shared 256-dimensional space:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">class</span><span class="language-python"> </span><span class="hljs-con-title">ProjectionHead</span><span class="language-python">(nn.Module):</span>
+        def __init__(self, embedding_dim, projection_dim=256, dropout=0.1):
+            super().__init__()
+            self.projection = nn.Linear(embedding_dim, projection_dim)
+            self.gelu = nn.GELU()
+            self.fc = nn.Linear(projection_dim, projection_dim)
+            self.dropout = nn.Dropout(dropout)
+            self.layer_norm = nn.LayerNorm(projection_dim)
+        def forward(self, x):
+            projection = self.projection(x)
+            x = self.gelu(projection)
+            x = self.fc(x)
+            x = self.dropout(x)
+            x = projection + x
+            x = self.layer_norm(x)
+            return x           
+</code></pre>
+    <p class="normal">Here, we first create a linear projection layer to transform input vectors from the size of <code class="inlineCode">embedding_dim</code> to <code class="inlineCode">projection_dim</code>. We then apply the <strong class="keyWord">Gaussian Error Linear Unit</strong> (<strong class="keyWord">GELU</strong>) activation function<a id="_idIndexMarker1440"/> to introduce non-linearity. We add another fully connected layer and incorporate a dropout layer for regularization. Finally, we apply layer normalization for more efficient training.</p>
+    <div class="note">
+      <p class="normal">GELU is an <a id="_idIndexMarker1441"/>activation function that introduces non-linearity into neural networks. It is defined as:</p>
+      <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_14_015.png"/></figure>
+      <p class="normal">Compared to ReLU, GELU is much more complex (as you can see) and, hence, has smoother gradients. Also, GELU tends to perform better than ReLU in deeper or more complex networks. However, ReLU remains popular due to its simplicity and effectiveness in many scenarios.</p>
+    </div>
+    <div class="note">
+      <p class="normal"><strong class="keyWord">Best Practice</strong></p>
+      <p class="normal">Layer normalization<a id="_idIndexMarker1442"/> is used in deep neural networks to normalize the inputs of a layer. It aims to improve training stability and model generalization. Unlike batch normalization, which normalizes across the entire batch of data, layer normalization normalizes across the features for each individual data sample.</p>
+      <p class="normal">For each data point, layer normalization is applied independently across the features. Hence, layer normalization is beneficial for training with small mini-batches or online training, while batch normalization is more suitable for large batches or large datasets. They are both valuable techniques for stabilizing training in DL. You can choose one based on factors like dataset size and batch size.</p>
+    </div>
+    <p class="normal">In this context, <code class="inlineCode">embedding_dim</code> represents the size of the input vectors (2,048 for images and 768 for text), while <code class="inlineCode">projection_dim</code> denotes the size of the output vectors, 256 in our case.</p>
+    <p class="normal">In summary, this projection head module is designed to transform both input image and text representation vectors into the same lower-dimensional space. As well as using linear projection, we add non-linearity and employ regularization techniques, such as dropout and layer normalization. The resulting projected vectors will become the building blocks for contrastive learning. Let’s figure out how they are used to learn semantical relationships between images and text in the next section.</p>
+    <h3 class="heading-3" id="_idParaDest-350">CLIP model</h3>
+    <p class="normal">This section is where the real<a id="_idIndexMarker1443"/> excitement unfolds! We utilize the previously constructed modules to implement the primary CLIP model, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> torch.nn.functional </span><span class="hljs-con-keyword">as</span><span class="language-python"> F</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">class</span><span class="language-python"> </span><span class="hljs-con-title">CLIPModel</span><span class="language-python">(nn.Module):</span>
+        def __init__(self, image_embedding=2048, text_embedding=768):
+            super().__init__()
+            self.vision_encoder = VisionEncoder()
+            self.text_encoder = TextEncoder()
+            self.image_projection = ProjectionHead(embedding_dim=image_embedding)
+            self.text_projection = ProjectionHead(embedding_dim=text_embedding)
+        def forward(self, batch):
+            image_features = self.vision_encoder(batch["image"])
+            text_features = self.text_encoder(
+                input_ids=batch["input_ids"], 
+                attention_mask=batch["attention_mask"]
+            )
+            image_embeddings = self.image_projection(image_features)
+            text_embeddings = self.text_projection(text_features)
+            logits = text_embeddings @ image_embeddings.T
+            images_similarity = image_embeddings @ image_embeddings.T
+            texts_similarity = text_embeddings @ text_embeddings.T
+            targets = F.softmax((images_similarity + texts_similarity)/2 , dim=-1)
+            texts_loss = F.cross_entropy(logits, targets)
+            images_loss = F.cross_entropy(logits.T, targets.T)
+            loss = (images_loss + texts_loss) / 2
+            return loss.mean()           
+</code></pre>
+    <p class="normal">The initialization is self-explanatory, where we create instances of the <code class="inlineCode">VisionEncoder</code> and <code class="inlineCode">TextEncoder</code> for images and text, respectively, and their corresponding head projection <code class="inlineCode">ProjectionHead</code> instances. In the forward pass, we encode the input images into fixed-size vectors using the vision encoder, and we encode the input texts using the text encoder. Recall that the output size for encoded image and text vectors is 2,048 and 768, respectively. Subsequently, we employ separate projection modules to project the encoded vectors into a shared space, as previously mentioned. In this shared space, both encodings assume a similar shape (256 in our case). Following this, we compute the contrastive loss. Here are the details:</p>
+    <ol>
+      <li class="numberedList" value="1">First, we calculate <a id="_idIndexMarker1444"/>the similarity between text and image embeddings using matrix multiplication (<code class="inlineCode">text_embeddings @ image_embeddings.T</code>). Here, the <code class="inlineCode">@</code> operator in PyTorch performs matrix multiplication, or dot product in this context, and <code class="inlineCode">.T</code> is the transpose operation that we discussed previously. Recall that in linear algebra, calculating the dot product is a common method to gauge the similarity between two vectors. A higher result suggests greater similarity.</li>
+      <li class="numberedList">Next, we compute the similarities between image embeddings themselves, and the similarities between text respectively.</li>
+      <li class="numberedList">We then combine the image and text similarities to create target distributions.</li>
+      <li class="numberedList">We calculate the cross-entropy loss between the predicted logits and target distributions for both images and texts.</li>
+      <li class="numberedList">Finally, we compute the final contrastive loss as the average of the image and text losses.</li>
+    </ol>
+    <p class="normal">We just developed a module to train the CLIP model using a contrastive loss. The model takes a batch containing both image and text data, encodes them, and then projects them into a shared space. It then calculates the similarities and computes the contrastive loss. The goal is to bring similar pairs of image and text representations closer together and push dissimilar pairs further apart.</p>
+    <p class="normal">Now that all the modules are prepared, it’s time to commence training the CLIP model.</p>
+    <h1 class="heading-1" id="_idParaDest-351">Finding images with words</h1>
+    <p class="normal">In this section, we will first<a id="_idIndexMarker1445"/> train a CLIP model that we implemented in the previous sections. We will then use the trained model to retrieve images given a query. Finally, we will use a pre-trained CLIP model to perform image searches and zero-shot predictions.</p>
+    <h2 class="heading-2" id="_idParaDest-352">Training a CLIP model</h2>
+    <p class="normal">Let’s train a CLIP model in the <a id="_idIndexMarker1446"/>following steps:</p>
+    <ol>
+      <li class="numberedList" value="1">First, we create a CLIP model and move it to system device (either a GPU or CPU):
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">device = torch.device(</span><span class="hljs-con-string">"cuda"</span><span class="language-python"> </span><span class="hljs-con-keyword">if</span><span class="language-python"> torch.cuda.is_available() </span><span class="hljs-con-keyword">else</span><span class="language-python"> </span><span class="hljs-con-string">"cpu"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">model = CLIPModel().to(device)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Next, we initialize an Adam optimizer to train the model and set the learning rate:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">optimizer = torch.optim.Adam(model.parameters(), lr=</span><span class="hljs-con-number">0.001</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">As we did in previous chapters, we define the following training function to update the model:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">train</span><span class="language-python">(</span><span class="hljs-con-params">model, dataloader, optimizer</span><span class="language-python">):</span>
+        model.train()
+        total_loss = 0
+        b = 0
+        for batch in dataloader:
+            optimizer.zero_grad()
+            batch = {k: v.to(device) for k, v in batch.items()
+                                         if k != "caption"}
+            loss = model(batch)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()*len(batch)
+       
+        return total_loss/len(dataloader.dataset)
+</code></pre>
+      </li>
+      <li class="numberedList">We<a id="_idIndexMarker1447"/> train the model for three epochs:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">num_epochs = </span><span class="hljs-con-number">3</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> epoch </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(num_epochs):</span>
+        train_loss = train(model, data_loader, optimizer)
+        print(f'Epoch {epoch+1} - loss: {train_loss:.4f}')
+Epoch 1 - loss: 0.2551
+Epoch 2 - loss: 0.1504
+Epoch 3 - loss: 0.1274
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal">The training completes after three epochs. Now, let’s proceed to conduct an image search using the trained CLIP model.</p>
+    <h2 class="heading-2" id="_idParaDest-353">Obtaining embeddings for images and text to identify matches</h2>
+    <p class="normal">To find <a id="_idIndexMarker1448"/>matching images for a text query (or vice versa), the key process involves obtaining the projected embeddings for both the image candidates and the text query. The goal is to fetch the image that achieves the highest similarity score between its embedding and the text embedding.</p>
+    <p class="normal">For illustrative purposes, we’ll utilize a single batch of image data as the pool of image candidates. Let’s explore the steps involved in searching for the pertinent image within this sample pool:</p>
+    <ol>
+      <li class="numberedList" value="1">First, we sample a batch of 32 data points from the <code class="inlineCode">data_loader</code>:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> torch.manual_seed(0)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> data_loader = DataLoader(flickr8k_dataset, batch_size=batch_size,
+                             shuffle=True)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">sample_batch = </span><span class="hljs-con-built_in">next</span><span class="language-python">(</span><span class="hljs-con-built_in">iter</span><span class="language-python">(data_loader))</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Next, we compute the projected embeddings for the sampled images using the previously trained CLIP model:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">batch_image_features = model.vision_encoder(sample_batch[</span><span class="hljs-con-string">"image"</span><span class="language-python">].to(device))</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">batch_image_embeddings = model.image_projection(batch_image_features)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We now define the image search function, as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">search_top_images</span><span class="language-python">(</span><span class="hljs-con-params">model, image_embeddings, query, n=</span><span class="hljs-con-number">1</span><span class="language-python">):</span>
+        encoded_query = tokenizer([query])
+        batch = {
+            key: torch.tensor(values).to(device)
+            for key, values in encoded_query.items()
+        }
+        model.eval()
+        with torch.no_grad():
+            text_features = model.text_encoder(
+                input_ids=batch["input_ids"],
+                attention_mask=batch["attention_mask"])
+            text_embeddings = model.text_projection(text_features)
+        dot_similarity = text_embeddings @ image_embeddings.T
+        values, indices = torch.topk(dot_similarity.squeeze(0), n)
+        return indices       
+       
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, we<a id="_idIndexMarker1449"/> first compute the projected text embeddings for a given text query. Next, we compute the dot product similarity between the text embedding and the precomputed image embeddings for each image candidate. We retrieve the top-n indices corresponding to the highest similarity scores. Don’t forget to set the trained model to evaluation mode, indicating that no gradients should be computed during inference.</p>
+    <ol>
+      <li class="numberedList" value="4">Let’s observe its performance now! First, we search for “<code class="inlineCode">a running dog</code>" using the image search function we just defined and display the search results:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">query = </span><span class="hljs-con-string">"a running dog"</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">top_image_ids = search_top_images(model, batch_image_embeddings, query, </span><span class="hljs-con-number">2</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">"</span><span class="hljs-con-string">Query:"</span><span class="language-python">, query)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> </span><span class="hljs-con-built_in">id</span><span class="language-python"> </span><span class="hljs-con-keyword">in</span><span class="language-python"> top_image_ids:</span>
+        image = sample_batch["image"][id]
+        npimg = image.numpy()
+        plt.imshow(np.transpose(npimg, (1, 2, 0)))
+        plt.title(f"Query: {query}")
+        plt.show()
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">The following <a id="_idIndexMarker1450"/>screenshot shows the result:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_14_03.png"/></figure>
+    <p class="packt_figref">Figure 14.3: Retrieved images for the query “a running dog” (Top photo by Ron Mandsager, Flickr: <a href="https://www.flickr.com/photos/remandsager/3540416981/">https://www.flickr.com/photos/remandsager/3540416981/</a>; bottom photo by Rob Burns-Sweeney, Flickr: <a href="https://www.flickr.com/photos/mulberryphotographic/3368207495/">https://www.flickr.com/photos/mulberryphotographic/3368207495/</a>)</p>
+    <p class="normal-one">The two <a id="_idIndexMarker1451"/>retrieved images are highly pertinent to the query.</p>
+    <ol>
+      <li class="numberedList" value="5">Let’s try another query, “<code class="inlineCode">kids jumping into a pool</code>", before we end this section:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">query = </span><span class="hljs-con-string">" kids jumping into a pool "</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">top_image_ids = search_top_images(model, batch_image_embeddings, query)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">"Query:"</span><span class="language-python">, query)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> </span><span class="hljs-con-built_in">id</span><span class="language-python"> </span><span class="hljs-con-keyword">in</span><span class="language-python"> top_image_ids:</span>
+        image = sample_batch["image"][id]
+        npimg = image.numpy()
+        plt.imshow(np.transpose(npimg, (1, 2, 0)))
+        plt.title(f"Query: {query}")
+        plt.show()
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">The following screenshot shows the result:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_14_04.png"/></figure>
+    <p class="packt_figref">Figure 14.4: Retrieved image for the query “kids jumping into a pool” (photo by Alecia, Flickr: <a href="https://www.flickr.com/photos/jnjsmom2007/2602415701/">https://www.flickr.com/photos/jnjsmom2007/2602415701/</a>)</p>
+    <p class="normal-one">The retrieved image is exactly what we are looking for.</p>
+    <p class="normal">The CLIP model <a id="_idIndexMarker1452"/>we implemented employs the pre-trained ResNet50 model as the vision encoder and the pre-trained DistilBERT model as the text encoder. Remember that we kept the parameters frozen for both ResNet50 and DistilBERT, utilizing them as image and text feature extractors. If desired, you can fine-tune these models by allowing their parameters to be trainable. This will be the exercise for this chapter. We trained our CLIP model using the <code class="inlineCode">Flickr8k</code> dataset and performed image searches as a performance evaluation. Starting from the next section, we will use the pre-trained CLIP model, which learns from a much larger and more diverse dataset to perform image search, image-to-image search, and zero-shot prediction.</p>
+    <h2 class="heading-2" id="_idParaDest-354">Image search using the pre-trained CLIP model</h2>
+    <p class="normal">A popular<a id="_idIndexMarker1453"/> library SentenceTransformers (<a href="https://www.sbert.net/index.html"><span class="url">https://www.sbert.net/index.html</span></a>) offers a wrapper for the OpenAI <a id="_idIndexMarker1454"/>CLIP model. The <code class="inlineCode">SentenceTransformer</code> package is developed for sentence and text embeddings. It provides pre-trained models to encode sentences into high-dimensional vectors in a semantic space.</p>
+    <p class="normal">Let’s perform the following tasks to search images, using a pre-trained CLIP model from <code class="inlineCode">SentenceTransformer</code>:</p>
+    <ol>
+      <li class="numberedList" value="1">First things first, install the <code class="inlineCode">SentenceTransformers</code> library using the following command:
+        <pre class="programlisting con-one"><code class="hljs-con">pip install -U sentence-transformers
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">or</p>
+    <pre class="programlisting con-one"><code class="hljs-con">conda install -c conda-forge sentence-transformers
+</code></pre>
+    <ol>
+      <li class="numberedList" value="2">Import the <code class="inlineCode">SentenceTransformers</code> library and load the pre-trained CLIP model:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sentence_transformers </span><span class="hljs-con-keyword">import</span><span class="language-python"> SentenceTransformer, util</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">model = SentenceTransformer(</span><span class="hljs-con-string">'clip-ViT-B-32'</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, we use <a id="_idIndexMarker1455"/>the <strong class="keyWord">Vision Transformer</strong> (<strong class="keyWord">ViT</strong>)-based CLIP model. The “<code class="inlineCode">B-32</code>" designation refers to the size of the ViT model, which means it has 32 times more parameters than the base ViT model.</p>
+    <ol>
+      <li class="numberedList" value="3">Next, we need to compute the image embeddings for all the <code class="inlineCode">Flickr8k</code> image candidates using the CLIP model we just loaded:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> glob</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">image_paths = </span><span class="hljs-con-built_in">list</span><span class="language-python">(glob.glob(</span><span class="hljs-con-string">'flickr8k/Flicker8k_Dataset/*.jpg'</span><span class="language-python">))</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">all_image_embeddings = []</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> img_path </span><span class="hljs-con-keyword">in</span><span class="language-python"> image_paths:</span>
+        img = Image.open(img_path)
+        all_image_embeddings.append(model.encode(img, convert_to_tensor=True))
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">The <code class="inlineCode">model.encode()</code> method can take in text or images and generate corresponding embeddings. Here, we store all the resulting image embeddings in <code class="inlineCode">all_image_embeddings</code>.</p>
+    <ol>
+      <li class="numberedList" value="4">Similar to what we did in the previous section, we define the image search function as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">search_top_images</span><span class="language-python">(</span><span class="hljs-con-params">model, image_embeddings, query, top_k=</span><span class="hljs-con-number">1</span><span class="language-python">):</span>
+        query_embeddings = model.encode([query], convert_to_tensor=True,
+                                        show_progress_bar=False)
+        hits = util.semantic_search(query_embeddings,  image_embeddings,
+                                    top_k=top_k)[0]
+        return hits
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, we <a id="_idIndexMarker1456"/>use the <code class="inlineCode">model.encode()</code> method again to obtain the embeddings for the given query. We employ the <code class="inlineCode">util.semantic_search</code> utility function to fetch the top k images for the given text query, based on the similarities of their embeddings.</p>
+    <ol>
+      <li class="numberedList" value="5">Now, let’s search for “<code class="inlineCode">a swimming dog</code>", using the image search function we just defined, and display the search results:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">query = </span><span class="hljs-con-string">"a swimming dog"</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">hits = search_top_images(model, all_image_embeddings, query)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> hit </span><span class="hljs-con-keyword">in</span><span class="language-python"> hits:</span>
+        img_path = image_paths[hit['corpus_id']]
+        image = Image.open(img_path)
+        plt.imshow(image)
+        plt.title(f"Query: {query}")
+        plt.show()
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">The following screenshot shows the result:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_14_05.png"/></figure>
+    <p class="packt_figref">Figure 14.5: Retrieved image for the query “a swimming dog” (photo by Julia, Flickr: <a href="https://www.flickr.com/photos/drakegsd/408233586/">https://www.flickr.com/photos/drakegsd/408233586/</a>)</p>
+    <p class="normal-one">This is very accurate.</p>
+    <ol>
+      <li class="numberedList" value="6">We can go<a id="_idIndexMarker1457"/> beyond a text-to-image search and perform<a id="_idIndexMarker1458"/> an <strong class="keyWord">image-to-image</strong> search:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">image_query =</span>
+       Image.open("flickr8k/Flicker8k_Dataset/240696675_7d05193aa0.jpg")
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We will take a random image, <code class="inlineCode">240696675_7d05193aa0.jpg</code>, as the query image, feed it to the image search function, and display the retrieved images that follow the query image:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">hits = search_top_images(model, all_image_embeddings, image_query, </span><span class="hljs-con-number">3</span><span class="language-python">)[</span><span class="hljs-con-number">1</span><span class="language-python">:]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.imshow(image_query)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.title(</span><span class="hljs-con-string">f"Query image"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.show()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> hit </span><span class="hljs-con-keyword">in</span><span class="language-python"> hits:</span>
+        img_path = image_paths[hit['corpus_id']]
+        image = Image.open(img_path)
+        plt.imshow(image)
+        plt.title(f"Similar image")       
+        plt.show()
+</code></pre>
+    <p class="normal-one">Note that we skip the first retrieved image because it is the query image.</p>
+    <p class="normal-one">The following <a id="_idIndexMarker1459"/>screenshot shows the result:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_14_06.png"/></figure>
+    <p class="packt_figref">Figure 14.6: Query image and similar images (top photo by Rose, Flickr: <a href="https://www.flickr.com/photos/rosespics/240696675/">https://www.flickr.com/photos/rosespics/240696675/</a>; middle photo by Mark Dowling, Flickr: <a href="https://www.flickr.com/photos/markdowlrods/421932359/">https://www.flickr.com/photos/markdowlrods/421932359/</a>; bottom photo by Rob, Flickr: <a href="https://www.flickr.com/photos/mind_the_goat/3419634480/">https://www.flickr.com/photos/mind_the_goat/3419634480/</a>)</p>
+    <p class="normal-one">We can see that the retrieved images are highly similar to the query image.</p>
+    <p class="normal">The pre-trained CLIP model<a id="_idIndexMarker1460"/> excels in both text-to-image and image-to-image search tasks. Notably, the model may not have been specifically trained on the <code class="inlineCode">Flickr8k</code> dataset, but it performs well in zero-shot learning, as you saw in this section. Finally, let’s take a look at another example of zero-shot prediction – classifying the CIFAR-100 dataset.</p>
+    <h2 class="heading-2" id="_idParaDest-355">Zero-shot classification</h2>
+    <p class="normal">In the final part of this <a id="_idIndexMarker1461"/>chapter, we will utilize the CLIP model to classify the <code class="inlineCode">CIFAR-100</code> dataset. Both <code class="inlineCode">CIFAR-10</code> and <code class="inlineCode">CIFAR-100</code> (<a href="https://www.cs.toronto.edu/~kriz/cifar.html"><span class="url">https://www.cs.toronto.edu/~kriz/cifar.html</span></a>) are labeled subsets derived from the 80 Million Tiny Images dataset, a collection curated by Alex Krizhevsky, Vinod Nair, and Geoffrey Hinton. The <code class="inlineCode">CIFAR-100</code> dataset comprises 60,000 32x32 color images. These images are categorized into 100 classes, with each class containing exactly 600 images. We can load the dataset directly from PyTorch, which includes 50,000 images for training and 10,000 images for testing.</p>
+    <p class="normal">Let’s perform the following tasks to classify the <code class="inlineCode">CIFAR-100</code> dataset:</p>
+    <ol>
+      <li class="numberedList" value="1">Firstly, we load the <code class="inlineCode">CIFAR-100</code> dataset from PyTorch:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> torchvision.datasets </span><span class="hljs-con-keyword">import</span><span class="language-python"> CIFAR100</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">cifar100 = CIFAR100(root=</span><span class="hljs-con-string">"CIFAR100"</span><span class="language-python">, download=</span><span class="hljs-con-literal">True</span><span class="language-python">, train=</span><span class="hljs-con-literal">False</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, we only load the testing subset with 10,000 samples.</p>
+    <ol>
+      <li class="numberedList" value="2">Examine the classes of the dataset:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(cifar100.classes)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">"Number of classes in CIFAR100 dataset:"</span><span class="language-python">, </span><span class="hljs-con-built_in">len</span><span class="language-python">(cifar100.classes))</span>
+['apple', 'aquarium_fish', 'baby', 'bear', 'beaver', 'bed', 'bee', 'beetle', 'bicycle', 'bottle', 'bowl', 'boy', 'bridge', 'bus', 'butterfly', 'camel', 'can', 'castle', 'caterpillar', 'cattle', 'chair', 'chimpanzee', 'clock', 'cloud', 'cockroach', 'couch', 'crab', 'crocodile', 'cup', 'dinosaur', 'dolphin', 'elephant', 'flatfish', 'forest', 'fox', 'girl', 'hamster', 'house', 'kangaroo', 'keyboard', 'lamp', 'lawn_mower', 'leopard', 'lion', 'lizard', 'lobster', 'man', 'maple_tree', 'motorcycle', 'mountain', 'mouse', 'mushroom', 'oak_tree', 'orange', 'orchid', 'otter', 'palm_tree', 'pear', 'pickup_truck', 'pine_tree', 'plain', 'plate', 'poppy', 'porcupine', 'possum', 'rabbit', 'raccoon', 'ray', 'road', 'rocket', 'rose', 'sea', 'seal', 'shark', 'shrew', 'skunk', 'skyscraper', 'snail', 'snake', 'spider', 'squirrel', 'streetcar', 'sunflower', 'sweet_pepper', 'table', 'tank', 'telephone', 'television', 'tiger', 'tractor', 'train', 'trout', 'tulip', 'turtle', 'wardrobe', 'whale', 'willow_tree', 'wolf', 'woman', 'worm']
+Number of classes in CIFAR100 dataset: 100
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">There are 100 classes.</p>
+    <ol>
+      <li class="numberedList" value="3">We start <a id="_idIndexMarker1462"/>with one sample:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">sample_index = </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">img, class_id = cifar100[index]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f"Class of the sample image: </span><span class="hljs-con-subst">{class_id}</span><span class="hljs-con-string"> - </span><span class="hljs-con-subst">{cifar100.classes[class_id]}</span><span class="hljs-con-string">"</span><span class="language-python">)</span>
+Class of the sample image: 49 - mountain
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We will see if we can classify it correctly as a “<code class="inlineCode">mountain</code>.”</p>
+    <ol>
+      <li class="numberedList" value="4">We then generate the image embeddings for the selected data sample using the pre-trained CLIP model:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">sample_image_embeddings = model.encode(img, convert_to_tensor=</span><span class="hljs-con-literal">True</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Now, here’s the clever approach. We consider each of the 100 classes as a textual description, and our goal is to find the most appropriate description for a given image, in order to classify it. Therefore, we must generate text embeddings for each of the 100 classes:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">class_text = model.encode(cifar100.classes, convert_to_tensor=</span><span class="hljs-con-literal">True</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Let’s search for the best class text description for the given image, as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">hits = util.semantic_search(sample_image_embeddings,  class_text, top_k=</span><span class="hljs-con-number">1</span><span class="language-python">)[</span><span class="hljs-con-number">0</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pred = hits[</span><span class="hljs-con-number">0</span><span class="language-python">][</span><span class="hljs-con-string">'corpus_id'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f"Predicted class of the sample image: </span><span class="hljs-con-subst">{pred}</span><span class="hljs-con-string">"</span><span class="language-python">)  </span>
+Predicted class of the sample image: 49  
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We can correctly predict the right class for the sample image. What about the whole dataset? Let’s evaluate its performance in the next steps.</p>
+    <ol>
+      <li class="numberedList" value="7">Similarly, we <a id="_idIndexMarker1463"/>compute the image embeddings for all images in the dataset:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">all_image_embeddings = []</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">class_true = []</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> img, class_id </span><span class="hljs-con-keyword">in</span><span class="language-python"> cifar100:</span>
+        class_true.append(class_id)
+        all_image_embeddings.append(model.encode(img, convert_to_tensor=True))
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We also record the true class information.</p>
+    <ol>
+      <li class="numberedList" value="8">Now, we search for the best class text description for each of the images:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">class_pred = []</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> hit </span><span class="hljs-con-keyword">in</span><span class="language-python"> util.semantic_search(all_image_embeddings,  class_text, top_k=</span><span class="hljs-con-number">1</span><span class="language-python">):</span>
+        class_pred.append(hit[0]['corpus_id'])
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Finally, we evaluate the classification accuracy:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.metrics </span><span class="hljs-con-keyword">import</span><span class="language-python"> accuracy_score</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">acc = accuracy_score(class_true, class_pred)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f"Accuracy of zero-shot classification: </span><span class="hljs-con-subst">{acc * </span><span class="hljs-con-number">100</span><span class="hljs-con-subst">}</span><span class="hljs-con-string">%"</span><span class="language-python">)</span>
+Accuracy of zero-shot classification: 55.15%
+</code></pre>
+    <p class="normal-one">We attain a classification accuracy of 55% on the 100-class CIFAR dataset.</p>
+    <p class="normal">This project demonstrates how CLIP can be used for zero-shot classification. The model predicts the textual labels for images without having seen specific image-label pairs during training. Feel free to adjust the textual descriptions and images based on your specific use case. For example, you may group several similar fine classes into one coarse class, such as “<code class="inlineCode">boy</code>,” “<code class="inlineCode">girl</code>,” “<code class="inlineCode">man</code>,” and “<code class="inlineCode">woman</code>" into “<code class="inlineCode">people</code>.”</p>
+    <div class="note">
+      <p class="normal">Zero-shot classification using CLIP is powerful, but its performance is limited by training data used in a pre-trained model. Intuitively, this can be improved by leveraging pre-trained models on larger datasets. Another approach is knowledge distillation, which transfers knowledge from a complex and high-performance model to a smaller and faster model. You can read more about knowledge distillation in <em class="italic">Distilling the Knowledge in a Neural Network</em> (2015) by Geoffrey Hinton, Oriol Vinyals, and Jeff Dean (<a href="https://arxiv.org/abs/2006.05525"><span class="url">https://arxiv.org/abs/2006.05525</span></a>).</p>
+    </div>
+    <h1 class="heading-1" id="_idParaDest-356">Summary</h1>
+    <p class="normal">This chapter introduced CLIP, a powerful DL model designed for cross-modal tasks, such as finding relevant images based on textual queries or vice versa. We learned that the model’s dual encoder architecture and contrastive learning mechanism enable it to understand both images and text in a shared space.</p>
+    <p class="normal">We implemented our customized versions of CLIP models, using the DistilBERT and ResNet50 models. Following an exploration of the <code class="inlineCode">Flickr8k</code> dataset, we built a CLIP model and explored its capabilities in text-to-image and image-to-image searches. CLIP excels at zero-shot transfer learning. We showcased this by using a pre-trained CLIP model for image search and <code class="inlineCode">CIFAR-100</code> classification.</p>
+    <p class="normal">In the next chapter, we will focus on the third type of machine learning problem: reinforcement learning. You will learn how the reinforcement learning model learns by interacting with the environment to reach its learning goal.</p>
+    <h1 class="heading-1" id="_idParaDest-357">Exercises</h1>
+    <ol>
+      <li class="numberedList" value="1">Fine-tune the pre-trained ResNet50 and DistilBERT models employed in our self-implemented CLIP model.</li>
+      <li class="numberedList">Can you perform zero-shot classification on the 10-class <code class="inlineCode">CIFAR-10</code> dataset?</li>
+      <li class="numberedList">Fine-tune the CLIP model using the training set of the <code class="inlineCode">CIFAR-100</code> dataset, and see if you can get better performance on the test set.</li>
+    </ol>
+    <h1 class="heading-1" id="_idParaDest-358">References</h1>
+    <ul>
+      <li class="bulletList"><em class="italic">Learning Transferable Visual Models From Natural Language Supervision</em>, by Alec Radford et al.</li>
+      <li class="bulletList"><code class="inlineCode">Flickr8k</code> dataset: <em class="italic">Framing Image Description as a Ranking Task: Data, Models and Evaluation Metrics</em>, <em class="italic">Journal of Artificial Intelligence Research</em>, Volume 47, pages 853–899</li>
+      <li class="bulletList"><code class="inlineCode">CIFAR-100</code> dataset: <em class="italic">Learning Multiple Layers of Features from Tiny Images</em>, Alex Krizhevsky, 2009.</li>
+    </ul>
+    <h1 class="heading-1" id="_idParaDest-359">Join our book’s Discord space</h1>
+    <p class="normal">Join our community’s Discord space for discussions with the authors and other readers:</p>
+    <p class="normal"><a href="https://packt.link/yuxi"><span class="url">https://packt.link/yuxi</span></a></p>
+    <p class="normal"><img alt="" role="presentation" src="../Images/QR_Code1878468721786989681.png"/></p>
+  </div>
+</body></html>

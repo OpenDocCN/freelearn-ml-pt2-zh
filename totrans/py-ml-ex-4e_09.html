@@ -1,0 +1,663 @@
+<html><head></head><body>
+  <div class="Basic-Text-Frame" id="_idContainer375">
+    <h1 class="chapterNumber">9</h1>
+    <h1 class="chapterTitle" id="_idParaDest-200">Recognizing Faces with Support Vector Machine</h1>
+    <p class="normal">In the previous chapter, we discovered underlying topics using clustering and topic modeling techniques. This chapter continues our journey of supervised learning and classification, with a particular emphasis on <strong class="keyWord">Support Vector Machine</strong> (<strong class="keyWord">SVM</strong>) classifiers.</p>
+    <p class="normal">SVM is one of the most popular algorithms when it comes to high-dimensional spaces. The goal of the algorithm is to find a decision boundary in order to separate data from different classes. We will discuss in detail how that works. Also, we will implement the algorithm with scikit-learn and apply it to solve various real-life problems, including our main project of face recognition. A <a id="_idIndexMarker856"/>dimensionality reduction technique called <strong class="keyWord">principal component analysis</strong>, which boosts the performance of the image classifier, will also be covered in this chapter, as will support vector regression.</p>
+    <p class="normal">This chapter explores the following topics:</p>
+    <ul>
+      <li class="bulletList">Finding the separating boundary with SVM</li>
+      <li class="bulletList">Classifying face images with SVM</li>
+      <li class="bulletList">Estimating with support vector regression</li>
+    </ul>
+    <h1 class="heading-1" id="_idParaDest-201">Finding the separating boundary with SVM</h1>
+    <p class="normal">SVM is another great classifier, which is <a id="_idIndexMarker857"/>effective in cases with high-dimensional spaces or where the number of dimensions is greater than the<a id="_idIndexMarker858"/> number of samples.</p>
+    <p class="normal">In machine learning classification, SVM finds an optimal hyperplane that best segregates observations from different classes.</p>
+    <p class="normal">A <strong class="keyWord">hyperplane</strong> is a plane of <em class="italic">n - 1</em> dimensions <a id="_idIndexMarker859"/>that separates the <em class="italic">n</em>-dimensional feature space of the observations into two spaces. For example, the hyperplane in a two-dimensional feature space is a line, and in a three-dimensional feature space, the hyperplane is a surface. The optimal hyperplane<a id="_idIndexMarker860"/> is picked so that the distance from its nearest points in each space to itself is maximized, and these nearest points are the <a id="_idIndexMarker861"/>so-called <strong class="keyWord">support vectors</strong>.</p>
+    <p class="normal">The following toy example demonstrates <a id="_idIndexMarker862"/>what support vectors and a separating hyperplane (along with the distance margin, which I will explain later) look like in a binary classification case:</p>
+    <figure class="mediaobject"><img alt="A picture containing screenshot, diagram, line, plot  Description automatically generated" src="../Images/B21047_09_01.png"/></figure>
+    <p class="packt_figref">Figure 9.1: Example of support vectors and a hyperplane in binary classification</p>
+    <p class="normal">The ultimate goal of SVM is to find an optimal hyperplane, but the burning question is “How can we find this optimal hyperplane?” You will get the answer as we explore the following scenarios. It’s not as hard as you may think. The first thing we will look at is how to find a hyperplane.</p>
+    <h2 class="heading-2" id="_idParaDest-202">Scenario 1 – identifying a separating hyperplane</h2>
+    <p class="normal">First, you need to understand what qualifies <a id="_idIndexMarker863"/>as a separating hyperplane. In the following example, hyperplane <em class="italic">C</em> is the only correct one, as it <a id="_idIndexMarker864"/>successfully segregates observations by their labels, while hyperplanes <em class="italic">A</em> and <em class="italic">B</em> fail:</p>
+    <figure class="mediaobject"><img alt="A picture containing diagram, line, screenshot  Description automatically generated" src="../Images/B21047_09_02.png"/></figure>
+    <p class="packt_figref">Figure 9.2: Example of qualified and unqualified hyperplanes</p>
+    <p class="normal">This is an easy observation. Let’s express a separating hyperplane in a formal or mathematical way next.</p>
+    <p class="normal">In a two-dimensional space, a line can be defined by a slope vector <em class="italic">w</em> (represented as a two-dimensional vector), and an intercept <em class="italic">b</em>. Similarly, in a space of <em class="italic">n</em> dimensions, a hyperplane can be defined by an <em class="italic">n</em>-dimensional vector <em class="italic">w</em> and an intercept <em class="italic">b</em>. Any data point <em class="italic">x</em> on the hyperplane satisfies <em class="italic">wx + b = 0</em>. A hyperplane is a separating hyperplane if the following conditions are satisfied:</p>
+    <ul>
+      <li class="bulletList">For any data point <em class="italic">x</em> from one class, it satisfies <em class="italic">wx</em> + <em class="italic">b</em> &gt; <em class="italic">0</em></li>
+      <li class="bulletList">For any data point <em class="italic">x</em> from another class, it satisfies <em class="italic">wx</em> + <em class="italic">b</em> &lt; <em class="italic">0</em></li>
+    </ul>
+    <p class="normal">However, there can be <a id="_idIndexMarker865"/>countless possible solutions for <em class="italic">w</em> and <em class="italic">b</em>. You can move or rotate hyperplane <em class="italic">C </em>to a certain extent, and it will still remain a separating hyperplane. Next, you will learn how to identify <a id="_idIndexMarker866"/>the best hyperplane among various possible separating hyperplanes.</p>
+    <h2 class="heading-2" id="_idParaDest-203">Scenario 2 – determining the optimal hyperplane</h2>
+    <p class="normal">Look at the following example: hyperplane <em class="italic">C</em> is preferred, as it enables the maximum sum of the distance between the <a id="_idIndexMarker867"/>nearest data<a id="_idIndexMarker868"/> point on the positive side and itself, and the distance between the nearest data point on the negative side and itself:</p>
+    <figure class="mediaobject"><img alt="A picture containing screenshot, line, diagram  Description automatically generated" src="../Images/B21047_09_03.png"/></figure>
+    <p class="packt_figref">Figure 9.3: An example of optimal and suboptimal hyperplanes</p>
+    <p class="normal">The nearest point(s) on the<a id="_idIndexMarker869"/> positive side can constitute a hyperplane parallel to the decision hyperplane, which we call a <strong class="keyWord">positive hyperplane</strong>; conversely, the nearest point(s) on the negative side can constitute the <strong class="keyWord">negative hyperplane</strong>. The perpendicular distance <a id="_idIndexMarker870"/>between the positive and negative hyperplanes is<a id="_idIndexMarker871"/> called the <strong class="keyWord">margin</strong>, the value of which equates to the sum of the two aforementioned <a id="_idIndexMarker872"/>distances. A <strong class="keyWord">decision</strong> hyperplane is deemed <strong class="keyWord">optimal</strong> if the <a id="_idIndexMarker873"/>margin is maximized.</p>
+    <p class="normal">The optimal (also called <strong class="keyWord">maximum-margin</strong>) hyperplane<a id="_idIndexMarker874"/> and the distance margins for a trained SVM model are illustrated in <a id="_idIndexMarker875"/>the following diagram. Again, samples on the margin (two from<a id="_idIndexMarker876"/> one class and one from another class, as shown) are the so-called <strong class="keyWord">support vectors</strong>:</p>
+    <figure class="mediaobject"><img alt="A diagram of a positive hyperplane  Description automatically generated with low confidence" src="../Images/B21047_09_04.png"/></figure>
+    <p class="packt_figref">Figure 9.4: An example of an optimal hyperplane and distance margins</p>
+    <p class="normal">We can interpret it mathematically by first describing the positive and negative hyperplanes, as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_001.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_002.png"/></p>
+    <p class="normal">Here, <img alt="" role="presentation" src="../Images/B21047_09_003.png"/> is a data point on the<a id="_idIndexMarker877"/> positive hyperplane, and <img alt="" role="presentation" src="../Images/B21047_09_004.png"/> is a data point on the negative hyperplane.</p>
+    <p class="normal">The distance between a <a id="_idIndexMarker878"/>point <img alt="" role="presentation" src="../Images/B21047_09_005.png"/> and the decision hyperplane can be calculated as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_006.png"/></p>
+    <p class="normal">Similarly, the distance between a point <img alt="" role="presentation" src="../Images/B21047_09_007.png"/> and the decision hyperplane is as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_008.png"/></p>
+    <p class="normal">So the margin becomes <img alt="" role="presentation" src="../Images/B21047_09_009.png"/>. As a result, we need to minimize <img alt="" role="presentation" src="../Images/B21047_09_010.png"/> in order to maximize the margin. Importantly, to comply with the fact that the support vectors on the positive and negative hyperplanes are the nearest data points to the decision hyperplane, we add a condition that no data<a id="_idIndexMarker879"/> point falls between the positive and negative hyperplanes:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_011.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_012.png"/></p>
+    <p class="normal">Here, <img alt="" role="presentation" src="../Images/B21047_09_013.png"/> is an <a id="_idIndexMarker880"/>observation. This can be combined further into the following:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_014.png"/></p>
+    <p class="normal">To summarize, <em class="italic">w</em> and <em class="italic">b</em>, which determine the SVM decision hyperplane, are trained and solved by the following optimization problem:</p>
+    <ul>
+      <li class="bulletList">Minimizing <img alt="" role="presentation" src="../Images/B21047_09_015.png"/></li>
+      <li class="bulletList">Subject to <img alt="" role="presentation" src="../Images/B21047_09_016.png"/>, for a training set of <img alt="" role="presentation" src="../Images/B21047_09_017.png"/>, <img alt="" role="presentation" src="../Images/B21047_09_018.png"/>,… <img alt="" role="presentation" src="../Images/B21047_09_019.png"/>…, and <img alt="" role="presentation" src="../Images/B21047_09_020.png"/></li>
+    </ul>
+    <p class="normal">To solve this optimization problem, we need to resort to quadratic programming techniques, which are beyond the <a id="_idIndexMarker881"/>scope of our learning journey. Therefore, we will not cover the computation methods in detail and, instead, will implement the classifier using the <code class="inlineCode">SVC</code> and <code class="inlineCode">LinearSVC</code> modules from scikit-learn, which are respectively based on <code class="inlineCode">libsvm</code> (<a href="https://www.csie.ntu.edu.tw/~cjlin/libsvm/"><span class="url">https://www.csie.ntu.edu.tw/~cjlin/libsvm/</span></a>) and <code class="inlineCode">liblinear</code> (<a href="https://www.csie.ntu.edu.tw/~cjlin/liblinear/"><span class="url">https://www.csie.ntu.edu.tw/~cjlin/liblinear/</span></a>), two popular open-source SVM machine learning libraries. However, it is always valuable to understand the concepts of computing SVM.</p>
+    <div class="note">
+      <p class="normal"><em class="italic">Pegasos: Primal estimated sub-gradient solver for SVM</em> (<em class="italic">Mathematical Programming</em>, March 2011, volume 127, issue 1, pp. 3–30) by Shai Shalev-Shwartz et al. and <em class="italic">A dual coordinate descent method for large-scale linear SVM</em> (<em class="italic">Proceedings of the 25th international conference on machine learning</em>, pp 408–415) by Cho-Jui Hsieh et al. are great learning materials. They cover two modern approaches, sub-gradient descent and coordinate descent.</p>
+    </div>
+    <p class="normal">The learned model<a id="_idIndexMarker882"/> parameters <em class="italic">w</em> and <em class="italic">b</em> are then used to classify a new sample <em class="italic">x</em>’, based on the following conditions:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_021.png"/></p>
+    <p class="normal">Moreover, <img alt="" role="presentation" src="../Images/B21047_09_022.png"/> can be portrayed as the distance from the data point <em class="italic">x</em>’ to the decision hyperplane, and it can also be interpreted as the confidence of prediction: the higher the value, the further away the data point is from the decision boundary, hence the higher prediction certainty.</p>
+    <p class="normal">Although you might be eager to implement the SVM algorithm, let’s take a step back and look at a common scenario where data points are not linearly separable in a strict way. Try to find a separating<a id="_idIndexMarker883"/> hyperplane in the following example:</p>
+    <figure class="mediaobject"><img alt="A picture containing screenshot, line, diagram, design  Description automatically generated" src="../Images/B21047_09_05.png"/></figure>
+    <p class="packt_figref">Figure 9.5: An example of data points that are not strictly linearly separable</p>
+    <p class="normal">How can we deal with cases<a id="_idIndexMarker884"/> where it is impossible to strictly linearly segregate a set of observations containing outliers? Let’s see in the next section.</p>
+    <h2 class="heading-2" id="_idParaDest-204">Scenario 3 – handling outliers</h2>
+    <p class="normal">To handle scenarios where we<a id="_idIndexMarker885"/> cannot linearly segregate a set of observations containing outliers, we can actually allow the misclassification of outliers and try to <a id="_idIndexMarker886"/>minimize the error introduced. The misclassification<a id="_idIndexMarker887"/> error <img alt="" role="presentation" src="../Images/B21047_09_023.png"/> (also called <strong class="keyWord">hinge loss</strong>) for a sample <img alt="" role="presentation" src="../Images/B21047_09_024.png"/> can be expressed as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_025.png"/></p>
+    <p class="normal">Together with the ultimate term <img alt="" role="presentation" src="../Images/B21047_09_026.png"/> that we want to reduce, the final objective value we want to minimize becomes<a id="_idIndexMarker888"/> the following:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_027.png"/></p>
+    <p class="normal">As regards a training set of <em class="italic">m</em> samples <img alt="" role="presentation" src="../Images/B21047_09_028.png"/>, <img alt="" role="presentation" src="../Images/B21047_09_029.png"/>,… <img alt="" role="presentation" src="../Images/B21047_09_030.png"/>…, and <img alt="" role="presentation" src="../Images/B21047_09_031.png"/>, where the<a id="_idIndexMarker889"/> hyperparameter <em class="italic">C</em> controls the trade-off between the two terms, the following apply:</p>
+    <ul>
+      <li class="bulletList">If a large value of <em class="italic">C</em> is chosen, the penalty for misclassification becomes relatively high. This means the rule of thumb of data segregation becomes stricter and the model might be prone to overfitting, since few mistakes are allowed during training. An SVM model with a large <em class="italic">C</em> has a low bias, but it might suffer from high variance.</li>
+      <li class="bulletList">Conversely, if the value of <em class="italic">C</em> is sufficiently small, the influence of misclassification becomes fairly low. This model allows more misclassified data points than a model with a large <em class="italic">C</em>. Thus, data separation becomes less strict. Such a model has low variance, but it might be compromised by high bias.</li>
+    </ul>
+    <p class="normal">A comparison between a large and small <em class="italic">C</em> is<a id="_idIndexMarker890"/> shown in the following diagram:</p>
+    <figure class="mediaobject"><img alt="A screenshot of a screen  Description automatically generated with low confidence" src="../Images/B21047_09_06.png"/></figure>
+    <p class="packt_figref">Figure 9.6: How the value of C affects the strictness of segregation and the margin</p>
+    <p class="normal">The parameter <em class="italic">C</em> determines the <a id="_idIndexMarker891"/>balance between bias and variance. It can<a id="_idIndexMarker892"/> be fine-tuned with cross-validation, which we will practice shortly.</p>
+    <h2 class="heading-2" id="_idParaDest-205">Implementing SVM</h2>
+    <p class="normal">We have largely covered the <a id="_idIndexMarker893"/>fundamentals of the SVM classifier. Now, let’s apply it right away to an easy binary classification dataset. We will use the classic breast cancer Wisconsin dataset (<a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html"><span class="url">https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_breast_cancer.html</span></a>) from scikit-learn.</p>
+    <p class="normal">Let’s take a look at the following steps:</p>
+    <ol>
+      <li class="numberedList" value="1">We first load the dataset and do some basic analysis, as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.datasets </span><span class="hljs-con-keyword">import</span><span class="language-python"> load_breast_cancer</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">cancer_data = load_breast_cancer()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X = cancer_data.data</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y = cancer_data.target</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Input data size :'</span><span class="language-python">, X.shape)</span>
+Input data size : (569, 30)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Output data size :'</span><span class="language-python">, Y.shape)</span>
+Output data size : (569,)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Label names:'</span><span class="language-python">, cancer_data.target_names)</span>
+Label names: ['malignant' 'benign']
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_pos = (Y == </span><span class="hljs-con-number">1</span><span class="language-python">).</span><span class="hljs-con-built_in">sum</span><span class="language-python">()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_neg = (Y == </span><span class="hljs-con-number">0</span><span class="language-python">).</span><span class="hljs-con-built_in">sum</span><span class="language-python">()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'</span><span class="hljs-con-subst">{n_pos}</span><span class="hljs-con-string"> positive samples and </span><span class="hljs-con-subst">{n_neg}</span><span class="hljs-con-string"> negative samples.'</span><span class="language-python">)</span>
+357 positive samples and 212 negative samples.
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">As you can see, the dataset has 569 samples with 30 features; its label is binary, and 63% of samples are positive (benign). Again, always check whether classes are imbalanced before trying to solve any classification problem. In this case, they are relatively balanced.</p>
+    <ol>
+      <li class="numberedList" value="2">Next, we split the data into training and testing sets:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.model_selection </span><span class="hljs-con-keyword">import</span><span class="language-python"> train_test_split</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train, X_test, Y_train, Y_test = train_test_split(X, Y, random_state=</span><span class="hljs-con-number">42</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">For reproducibility, don’t forget to specify a random seed.</p>
+    <ol>
+      <li class="numberedList" value="3">We can now apply the SVM classifier to the data. We first initialize an <code class="inlineCode">SVC</code> model with the <code class="inlineCode">kernel</code> parameter set to <code class="inlineCode">linear</code> (linear kernel refers to the use of a linear decision boundary to separate classes in the input space. I will explain what kernel means in <em class="italic">Scenario 5</em>) and the penalty hyperparameter <code class="inlineCode">C</code> set to the default value, <code class="inlineCode">1.0</code>:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.svm </span><span class="hljs-con-keyword">import</span><span class="language-python"> SVC</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">clf = SVC(kernel=</span><span class="hljs-con-string">'linear'</span><span class="language-python">, C=</span><span class="hljs-con-number">1.0</span><span class="language-python">, random_state=</span><span class="hljs-con-number">42</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We then fit our model on the training set, as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">clf.fit(X_train, Y_train)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Then, we predict on<a id="_idIndexMarker894"/> the testing set with the trained model and obtain the prediction accuracy directly:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">accuracy = clf.score(X_test, Y_test)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'The accuracy is: </span><span class="hljs-con-subst">{accuracy*</span><span class="hljs-con-number">100</span><span class="hljs-con-subst">:</span><span class="hljs-con-number">.1</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">%'</span><span class="language-python">)</span>
+The accuracy is: 95.8%
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal">Our first SVM model works just great, achieving an accuracy of <code class="inlineCode">95.8%</code>. How about dealing with more than two topics? How does SVM handle multiclass classification?</p>
+    <h2 class="heading-2" id="_idParaDest-206">Scenario 4 – dealing with more than two classes</h2>
+    <p class="normal">SVM and many other classifiers can be applied to cases with more than two classes. There are two typical approaches we <a id="_idIndexMarker895"/>can take, <strong class="keyWord">one-vs-rest</strong> (also called <strong class="keyWord">one-vs-all</strong>) and <strong class="keyWord">one-vs-one</strong>.</p>
+    <h3 class="heading-3" id="_idParaDest-207">One-vs-rest</h3>
+    <p class="normal">In the one-vs-rest setting, for a <em class="italic">K</em>-class <a id="_idIndexMarker896"/>problem, we construct <em class="italic">K</em> different<a id="_idIndexMarker897"/> binary SVM classifiers. For the <em class="italic">k</em><sup class="superscript-italic" style="font-style: italic;">th</sup> classifier, it treats the <em class="italic">k</em><sup class="superscript-italic" style="font-style: italic;">th</sup> class as the positive case and the<a id="_idIndexMarker898"/> remaining <em class="italic">K-1</em> classes as the negative case as a whole; the hyperplane denoted as (<em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">k</sub><em class="italic">, b</em><sub class="subscript-italic" style="font-style: italic;">k</sub>) is trained to separate these two cases. To predict the class of a new sample, <em class="italic">x</em>’, it compares the resulting predictions <img alt="" role="presentation" src="../Images/B21047_09_032.png"/> from <em class="italic">K</em> individual classifiers from <em class="italic">1</em> to <em class="italic">k</em>. As we discussed in the previous section, the larger value of <img alt="" role="presentation" src="../Images/B21047_09_033.png"/> means<a id="_idIndexMarker899"/> higher confidence that <em class="italic">x</em>’ belongs to the positive case. Therefore, it assigns <em class="italic">x</em>’ to the class <em class="italic">i</em> where <img alt="" role="presentation" src="../Images/B21047_09_034.png"/> has the largest value among all prediction results:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_035.png"/></p>
+    <p class="normal">The following diagram<a id="_idIndexMarker900"/> shows how the one-vs-rest strategy works in a three-class case:</p>
+    <figure class="mediaobject"><img alt="A picture containing diagram, screenshot, line, plot  Description automatically generated" src="../Images/B21047_09_07.png"/></figure>
+    <p class="packt_figref">Figure 9.7: An example of three-class classification using the one-vs-rest strategy</p>
+    <p class="normal">For instance, if we have<a id="_idIndexMarker901"/> the following (<em class="italic">r</em>, <em class="italic">b</em>, and <em class="italic">g</em> denote<a id="_idIndexMarker902"/> the red cross, blue dot, and green square classes, respectively):</p>
+    <p class="center"><em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">r</sub><em class="italic">x’</em>+<em class="italic">b</em><sub class="subscript-italic" style="font-style: italic;">r</sub> = 0.78</p>
+    <p class="center"><em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">b</sub><em class="italic">x’</em>+<em class="italic">b</em><sub class="subscript-italic" style="font-style: italic;">b</sub> = 0.35</p>
+    <p class="center"><em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">g</sub><em class="italic">x’</em>+<em class="italic">b</em><sub class="subscript-italic" style="font-style: italic;">g</sub> = -0.64</p>
+    <p class="normal">we can say <em class="italic">x</em>’ belongs to the red cross class, since <em class="italic">0.78 &gt; 0.35 &gt; -0.64</em>.</p>
+    <p class="normal">If we have the following:</p>
+    <p class="center"><em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">r</sub><em class="italic">x’</em>+<em class="italic">b</em><sub class="subscript-italic" style="font-style: italic;">r</sub> = -0.78</p>
+    <p class="center"><em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">b</sub><em class="italic">x’</em>+<em class="italic">b</em><sub class="subscript-italic" style="font-style: italic;">b</sub> = -0.35</p>
+    <p class="center"><em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">g</sub><em class="italic">x’</em>+<em class="italic">b</em><sub class="subscript-italic" style="font-style: italic;">g</sub> = -0.64</p>
+    <p class="normal">then we can determine that <em class="italic">x</em>’ belongs<a id="_idIndexMarker903"/> to the blue dot class regardless of the sign, since -<em class="italic">0.35 &gt; -0.64 &gt; -0.78</em>.</p>
+    <h3 class="heading-3" id="_idParaDest-208">One-vs-one</h3>
+    <p class="normal">In the one-vs-one strategy, we<a id="_idIndexMarker904"/> conduct a pairwise comparison by building a set of SVM classifiers that can distinguish data points<a id="_idIndexMarker905"/> from each pair of classes. This will result in <img alt="" role="presentation" src="../Images/B21047_09_036.png"/> different classifiers.</p>
+    <p class="normal">For a classifier associated with classes <em class="italic">i</em> and <em class="italic">j</em>, the hyperplane denoted as (<em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">ij</sub>,<em class="italic">b</em><sub class="subscript-italic" style="font-style: italic;">ij</sub>) is trained only on the basis of observations from <em class="italic">i</em> (can be viewed as a positive case) and <em class="italic">j</em> (can be viewed as a negative case); it then assigns the class, either <em class="italic">i</em> or <em class="italic">j</em>, to a new sample, <em class="italic">x</em>’, based on the sign of <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">ij</sub><em class="italic">x’</em>+<em class="italic">b</em><sub class="subscript-italic" style="font-style: italic;">ij</sub>. Finally, the class with the highest number of assignments is considered the predicted result of <em class="italic">x</em>’. The winner is the class that gets the most votes.</p>
+    <p class="normal">The following diagram shows how the one-vs-one strategy works in a three-class case:</p>
+    <figure class="mediaobject"><img alt="A picture containing diagram, screenshot, line, text  Description automatically generated" src="../Images/B21047_09_08.png"/></figure>
+    <p class="packt_figref">Figure 9.8: An example of three-class classification using the one-vs-one strategy</p>
+    <p class="normal">In general, an SVM classifier with a one-vs-rest setting and a classifier with a one-vs-one setting perform comparably in terms of accuracy. The choice between these two strategies is largely computational.</p>
+    <p class="normal">Although one-vs-one requires more classifiers, <img alt="" role="presentation" src="../Images/B21047_09_037.png"/>, than one-vs-rest (<em class="italic">K</em>), each pairwise classifier only needs to<a id="_idIndexMarker906"/> learn on a small <a id="_idIndexMarker907"/>subset of data, as opposed to the entire set in the one-vs-rest setting. As a result, training an SVM model in the one-vs-one setting is generally more memory-efficient and less computationally expensive; hence, it is preferable for practical use, as argued in Chih-Wei Hsu and Chih-Jen Lin’s <em class="italic">A comparison of methods for multiclass support vector machines</em> (<em class="italic">IEEE Transactions on Neural Networks</em>, March 2002, Volume 13, pp. 415–425).</p>
+    <h3 class="heading-3" id="_idParaDest-209">Multiclass cases in scikit-learn</h3>
+    <p class="normal">In scikit-learn, classifiers handle multiclass<a id="_idIndexMarker908"/> cases internally, and we do not need to<a id="_idIndexMarker909"/> explicitly write any additional code to enable this. You can see how simple it is in the wine classification example (<a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_wine.html#sklearn.datasets.load_wine"><span class="url">https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_wine.html#sklearn.datasets.load_wine</span></a>) with three classes, as follows:</p>
+    <ol>
+      <li class="numberedList" value="1">We first load the dataset and do some basic analysis, as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.datasets </span><span class="hljs-con-keyword">import</span><span class="language-python"> load_wine</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">wine_data = load_wine()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X = wine_data.data</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y = wine_data.target</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Input data size :'</span><span class="language-python">, X.shape)</span>
+Input data size : (178, 13)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Output data size :'</span><span class="language-python">, Y.shape)</span>
+Output data size : (178,)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Label names:'</span><span class="language-python">, wine_data.target_names)</span>
+Label names: ['class_0' 'class_1' 'class_2']
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_class0 = (Y == </span><span class="hljs-con-number">0</span><span class="language-python">).</span><span class="hljs-con-built_in">sum</span><span class="language-python">()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_class1 = (Y == </span><span class="hljs-con-number">1</span><span class="language-python">).</span><span class="hljs-con-built_in">sum</span><span class="language-python">()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_class2 = (Y == </span><span class="hljs-con-number">2</span><span class="language-python">).</span><span class="hljs-con-built_in">sum</span><span class="language-python">()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'</span><span class="hljs-con-subst">{n_class0}</span><span class="hljs-con-string"> class0 samples,\n</span><span class="hljs-con-subst">{n_class1}</span><span class="hljs-con-string"> class1 samples,\n</span><span class="hljs-con-subst">{n_class2}</span><span class="hljs-con-string"> class2 samples.'</span><span class="language-python">)</span>
+59 class0 samples,
+71 class1 samples,
+48 class2 samples.
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">As you can see, the dataset has 178 samples with 13 features; its label has three possible values taking up 33%, 40%, and 27%, respectively.</p>
+    <ol>
+      <li class="numberedList" value="2">Next, we split the data into training and testing sets:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train, X_test, Y_train, Y_test = train_test_split(X, Y, random_state=</span><span class="hljs-con-number">42</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We can now apply the <a id="_idIndexMarker910"/>SVM classifier to the data. We first initialize an <code class="inlineCode">SVC</code> model and fit it against the training set:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">clf = SVC(kernel=</span><span class="hljs-con-string">'linear'</span><span class="language-python">, C=</span><span class="hljs-con-number">1.0</span><span class="language-python">, random_state=</span><span class="hljs-con-number">42</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">clf.fit(X_train, Y_train)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">In an <code class="inlineCode">SVC</code> model, multiclass <a id="_idIndexMarker911"/>support is implicitly handled according to the one-vs-one scheme.</p>
+    <ol>
+      <li class="numberedList" value="4">Next, we predict on the testing set with the trained model and obtain the prediction accuracy directly:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">accuracy = clf.score(X_test, Y_test)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'The accuracy is: </span><span class="hljs-con-subst">{accuracy*</span><span class="hljs-con-number">100</span><span class="hljs-con-subst">:</span><span class="hljs-con-number">.1</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">%'</span><span class="language-python">)</span>
+The accuracy is: 97.8%
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Our SVM model also works well in this multiclass case, achieving an accuracy of <code class="inlineCode">97.8%</code>.</p>
+    <ol>
+      <li class="numberedList" value="5">We also check how it performs for individual classes:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.metrics </span><span class="hljs-con-keyword">import</span><span class="language-python"> classification_report</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pred = clf.predict(X_test)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(classification_report(Y_test, pred))</span>
+              precision    recall  f1-score   support
+           0       1.00      1.00      1.00        15
+           1       1.00      0.94      0.97        18
+           2       0.92      1.00      0.96        12
+    accuracy                           0.98        45
+   macro avg       0.97      0.98      0.98        45
+weighted avg       0.98      0.98      0.98        45
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal">It looks excellent! Is the example too easy? Maybe. What do we do in tricky cases? Of course, we could tweak the values of the kernel and C hyperparameters. As discussed, factor C controls the strictness <a id="_idIndexMarker912"/>of separation, and it can be tuned to achieve the best trade-off between bias and variance. How about the kernel? What does it mean and what are the alternatives to a<a id="_idIndexMarker913"/> linear kernel?</p>
+    <p class="normal">In the next section, we will answer those two questions we just raised. You will see how the kernel trick makes SVM so powerful.</p>
+    <h2 class="heading-2" id="_idParaDest-210">Scenario 5 – solving linearly non-separable problems with kernels</h2>
+    <p class="normal">The hyperplanes we have found so far <a id="_idIndexMarker914"/>are linear, for instance, a line in a two-dimensional feature space, or a surface in a three-dimensional one. However, in the following example, we are not able to find a linear hyperplane that can separate two classes:</p>
+    <figure class="mediaobject"><img alt="A picture containing line, screenshot, diagram  Description automatically generated" src="../Images/B21047_09_09.png"/></figure>
+    <p class="packt_figref">Figure 9.9: The linearly non-separable case</p>
+    <p class="normal">Intuitively, we observe that data points from one class are closer to the origin than those from another class. The distance to the origin provides distinguishable information. So we add a new feature, <em class="italic">z</em>=(<em class="italic">x</em><sub class="subscript">1</sub><sup class="superscript">2</sup>+<em class="italic">x</em><sub class="subscript">2</sub><sup class="superscript">2</sup>)<sup class="superscript">2</sup>, and transform the original two-dimensional space into a three-dimensional one. In the new space, as displayed in the following diagram, we can find<a id="_idIndexMarker915"/> a surface hyperplane separating the data (see the bottom left graph in <em class="italic">Figure 9.10</em>), or a line in the two-dimensional view (see the bottom right graph in <em class="italic">Figure 9.10</em>). With the additional feature, the dataset becomes linearly separable in the higher dimensional space, (<em class="italic">x</em><sub class="subscript-italic" style="font-style: italic;">1</sub><em class="italic">,x</em><sub class="subscript-italic" style="font-style: italic;">2</sub><em class="italic">,z</em>):</p>
+    <figure class="mediaobject"><img alt="A picture containing diagram, line, screenshot, plot  Description automatically generated" src="../Images/B21047_09_10.png"/></figure>
+    <p class="packt_figref">Figure 9.10: Making a non-separable case separable</p>
+    <p class="normal">Based upon <a id="_idIndexMarker916"/>similar logic, <strong class="keyWord">SVMs with kernels</strong> were invented to solve non-linear classification problems <a id="_idIndexMarker917"/>by converting the original feature space, <img alt="" role="presentation" src="../Images/B21047_09_038.png"/>, to a higher dimensional feature space with a transformation function, <img alt="" role="presentation" src="../Images/B21047_09_039.png"/>, such that the transformed dataset <img alt="" role="presentation" src="../Images/B21047_09_040.png"/> is linearly separable.</p>
+    <p class="normal">A linear hyperplane <img alt="" role="presentation" src="../Images/B21047_09_041.png"/> is then learned, using observations <img alt="" role="presentation" src="../Images/B21047_09_042.png"/>. For an unknown sample <em class="italic">x</em>’, it is first transformed into <img alt="" role="presentation" src="../Images/B21047_09_043.png"/>; the predicted class is determined by <img alt="" role="presentation" src="../Images/B21047_09_044.png"/>.</p>
+    <p class="normal">An SVM with kernels enables non-linear separation, but it does not explicitly map each original data point to<a id="_idIndexMarker918"/> the high-dimensional space and then perform expensive computation in the new space. Instead, it approaches this in a tricky way.</p>
+    <p class="normal">During the course of solving the SVM optimization problems, feature vectors <em class="italic">x</em><sup class="superscript-italic" style="font-style: italic;">(1)</sup>, <em class="italic">x</em><sup class="superscript-italic" style="font-style: italic;">(2)</sup>,…,<em class="italic">x</em><sup class="superscript-italic" style="font-style: italic;">(m)</sup> are involved only in the form of a pairwise dot product <em class="italic">x</em><sup class="superscript-italic" style="font-style: italic;">(i)</sup><em class="italic"> x</em><sup class="superscript-italic" style="font-style: italic;">(j)</sup>, although we will not expand this mathematically in this book. With kernels, the new feature vectors are <img alt="" role="presentation" src="../Images/B21047_09_045.png"/>, and their pairwise dot products can be expressed as <img alt="" role="presentation" src="../Images/B21047_09_046.png"/>. It would be computationally efficient to first implicitly conduct a pairwise operation on two low-dimensional vectors and later map the result to the high-dimensional space. In fact, a function <em class="italic">K</em> that satisfies this does exist:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_047.png"/></p>
+    <p class="normal">The function <em class="italic">K</em> is the so-called <strong class="keyWord">kernel function</strong>. It is <a id="_idIndexMarker919"/>the mathematical formula that does the transformation.</p>
+    <div class="note">
+      <p class="normal">There are different types of kernels, each suited for different kinds of data. </p>
+    </div>
+    <p class="normal">With the kernel function, the transformation <img alt="" role="presentation" src="../Images/B21047_09_048.png"/> becomes implicit, and the non-linear decision boundary can <a id="_idIndexMarker920"/>be efficiently learned by simply replacing the term <img alt="" role="presentation" src="../Images/B21047_09_049.png"/> with <img alt="" role="presentation" src="../Images/B21047_09_050.png"/>.</p>
+    <p class="normal">The data is transformed into a higher-dimensional space. You don’t actually need to compute this space explicitly; the kernel function just works with the original data and performs the calculations necessary for the SVM.</p>
+    <p class="normal">The most popular kernel function is <a id="_idIndexMarker921"/>probably the <strong class="keyWord">Radial Basis Function</strong> (<strong class="keyWord">RBF</strong>) kernel (also <a id="_idIndexMarker922"/>called the <strong class="keyWord">Gaussian</strong> kernel), which is defined as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_051.png"/></p>
+    <p class="normal">Here, <img alt="" role="presentation" src="../Images/B21047_09_052.png"/> In the Gaussian function, the standard deviation <img alt="" role="presentation" src="../Images/B21047_09_053.png"/> controls the amount of variation or dispersion allowed: the higher the <img alt="" role="presentation" src="../Images/B21047_09_053.png"/> (or the lower the <img alt="" role="presentation" src="../Images/B21047_09_055.png"/>), the larger the width of the bell, and the wider the range in which data points are allowed to spread out over. Therefore, <img alt="" role="presentation" src="../Images/B21047_09_055.png"/> as<a id="_idIndexMarker923"/> the <strong class="keyWord">kernel coefficient</strong> determines how strictly or generally the kernel function fits the observations. A large <img alt="" role="presentation" src="../Images/B21047_09_055.png"/> implies a small variance allowed and a relatively exact fit on the training samples, which might lead to overfitting. Conversely, a small <img alt="" role="presentation" src="../Images/B21047_09_055.png"/> implies a high variance allowed and a loose fit on the training samples, which might cause underfitting.</p>
+    <p class="normal">To illustrate this trade-off, let’s<a id="_idIndexMarker924"/> apply the RBF kernel with different values to a toy dataset:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> numpy </span><span class="hljs-con-keyword">as</span><span class="language-python"> np</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> matplotlib.pyplot </span><span class="hljs-con-keyword">as</span><span class="language-python"> plt</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X = np.c_[</span><span class="hljs-con-comment"># negative class</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (</span><span class="hljs-con-number">.3</span><span class="language-python">, -</span><span class="hljs-con-number">.8</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (-</span><span class="hljs-con-number">1.5</span><span class="language-python">, -</span><span class="hljs-con-number">1</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (-</span><span class="hljs-con-number">1.3</span><span class="language-python">, -</span><span class="hljs-con-number">.8</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (-</span><span class="hljs-con-number">1.1</span><span class="language-python">, -</span><span class="hljs-con-number">1.3</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (-</span><span class="hljs-con-number">1.2</span><span class="language-python">, -</span><span class="hljs-con-number">.3</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (-</span><span class="hljs-con-number">1.3</span><span class="language-python">, -</span><span class="hljs-con-number">.5</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (-</span><span class="hljs-con-number">.6</span><span class="language-python">, </span><span class="hljs-con-number">1.1</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (-</span><span class="hljs-con-number">1.4</span><span class="language-python">, </span><span class="hljs-con-number">2.2</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          </span><span class="hljs-con-comment"># positive class</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (</span><span class="hljs-con-number">1.3</span><span class="language-python">, </span><span class="hljs-con-number">.8</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (</span><span class="hljs-con-number">1.2</span><span class="language-python">, </span><span class="hljs-con-number">.5</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (</span><span class="hljs-con-number">.2</span><span class="language-python">, -</span><span class="hljs-con-number">2</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (</span><span class="hljs-con-number">.5</span><span class="language-python">, -</span><span class="hljs-con-number">2.4</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (</span><span class="hljs-con-number">.2</span><span class="language-python">, -</span><span class="hljs-con-number">2.3</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (</span><span class="hljs-con-number">0</span><span class="language-python">, -</span><span class="hljs-con-number">2.7</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          (</span><span class="hljs-con-number">1.3</span><span class="language-python">, </span><span class="hljs-con-number">2.1</span><span class="language-python">)].T</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y = [-</span><span class="hljs-con-number">1</span><span class="language-python">] * </span><span class="hljs-con-number">8</span><span class="language-python"> + [</span><span class="hljs-con-number">1</span><span class="language-python">] * </span><span class="hljs-con-number">8</span>
+</code></pre>
+    <p class="normal">Eight data points are from one class, and eight are from another. We take three values, <code class="inlineCode">1</code>, <code class="inlineCode">2</code>, and <code class="inlineCode">4</code>, for kernel coefficient options as an example:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">gamma_option = [</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-number">4</span><span class="language-python">]</span>
+</code></pre>
+    <p class="normal">Under each kernel coefficient, we fit <a id="_idIndexMarker925"/>an individual SVM classifier and visualize the trained decision boundary:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> i, gamma </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">enumerate</span><span class="language-python">(gamma_option, </span><span class="hljs-con-number">1</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    svm = SVC(kernel=</span><span class="hljs-con-string">'rbf'</span><span class="language-python">, gamma=gamma)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    svm.fit(X, Y)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    plt.scatter(X[:, </span><span class="hljs-con-number">0</span><span class="language-python">], X[:, </span><span class="hljs-con-number">1</span><span class="language-python">], c=[</span><span class="hljs-con-string">'b'</span><span class="language-python">]*</span><span class="hljs-con-number">8</span><span class="language-python">+[</span><span class="hljs-con-string">'r'</span><span class="language-python">]*</span><span class="hljs-con-number">8</span><span class="language-python">, zorder=</span><span class="hljs-con-number">10</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    plt.axis(</span><span class="hljs-con-string">'tight'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    XX, YY = np.mgrid[-</span><span class="hljs-con-number">3</span><span class="language-python">:</span><span class="hljs-con-number">3</span><span class="language-python">:</span><span class="hljs-con-number">200j</span><span class="language-python">, -</span><span class="hljs-con-number">3</span><span class="language-python">:</span><span class="hljs-con-number">3</span><span class="language-python">:</span><span class="hljs-con-number">200j</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    Z = svm.decision_function(np.c_[XX.ravel(), YY.ravel()])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    Z = Z.reshape(XX.shape)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    plt.pcolormesh(XX, YY, Z &gt; </span><span class="hljs-con-number">0</span><span class="language-python"> , cmap=plt.cm.Paired)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    plt.contour(XX, YY, Z, colors=[</span><span class="hljs-con-string">'</span><span class="hljs-con-string">k'</span><span class="language-python">, </span><span class="hljs-con-string">'k'</span><span class="language-python">, </span><span class="hljs-con-string">'k'</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">           linestyles=[</span><span class="hljs-con-string">'--'</span><span class="language-python">, </span><span class="hljs-con-string">'-'</span><span class="language-python">, </span><span class="hljs-con-string">'--'</span><span class="language-python">], levels=[-</span><span class="hljs-con-number">.5</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">.5</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    plt.title(</span><span class="hljs-con-string">'gamma = %d'</span><span class="language-python"> % gamma)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    plt.show()</span>
+</code></pre>
+    <p class="normal">Refer to the following screenshot for the end results:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_09_11.png"/></figure>
+    <p class="packt_figref">Figure 9.11: The SVM classification decision boundary under different values of gamma</p>
+    <p class="normal">We can observe that a larger <img alt="" role="presentation" src="../Images/B21047_09_055.png"/> results in narrow regions, which means a stricter fit on the dataset; a smaller <img alt="" role="presentation" src="../Images/B21047_09_055.png"/> results in broad regions, which means a loose fit on the dataset. Of course, <img alt="" role="presentation" src="../Images/B21047_09_055.png"/> can be fine-tuned<a id="_idIndexMarker926"/> through cross-validation to obtain the best performance.</p>
+    <p class="normal">Some other common kernel functions include the <strong class="keyWord">polynomial</strong> kernel:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_062.png"/></p>
+    <p class="normal">and the <strong class="keyWord">sigmoid</strong> kernel:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_09_063.png"/></p>
+    <p class="normal">In the absence of prior knowledge of the distribution, the RBF kernel is usually preferable in practical usage, as there is an additional parameter to tweak in the polynomial kernel (polynomial degree <em class="italic">d</em>), and the empirical sigmoid kernel can perform approximately on par with the RBF, but only under certain parameters. Hence, we arrive at a debate between the linear (also considered no kernel) and the RBF kernel when given a dataset.</p>
+    <h2 class="heading-2" id="_idParaDest-211">Choosing between linear and RBF kernels</h2>
+    <p class="normal">Of course, linear separability is the <a id="_idIndexMarker927"/>rule of thumb when choosing the right kernel to start <a id="_idIndexMarker928"/>with due to its simplicity and efficiency. However, most of the time, this is very difficult to identify, unless you have sufficient prior knowledge of the dataset, or its features are of low dimensions (1 to 3).</p>
+    <div class="note">
+      <p class="normal">Some general prior knowledge that is commonly known is that text data is often linearly separable, while data <a id="_idIndexMarker929"/>generated from the XOR function (<a href="https://en.wikipedia.org/wiki/XOR_gate"><span class="url">https://en.wikipedia.org/wiki/XOR_gate</span></a>) is not.</p>
+    </div>
+    <p class="normal">Now, let’s look at the following three <a id="_idIndexMarker930"/>scenarios where the linear kernel is favored over RBF.</p>
+    <p class="normal"><strong class="keyWord">Scenario 1</strong>: Both the number <a id="_idIndexMarker931"/>of features and the number of instances are large (more than 104 or 105). Since the dimension of the feature space is high enough, additional features as a result of RBF transformation will not provide a performance improvement, but this will increase the<a id="_idIndexMarker932"/> computational expense. Some examples from the UCI machine learning repository (a collection of databases, and data generators widely used for empirical analysis of ML algorithms) are of this type:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">URL Reputation Dataset</strong>: <a href="https://archive.ics.uci.edu/ml/datasets/URL+Reputation"><span class="url">https://archive.ics.uci.edu/ml/datasets/URL+Reputation</span></a> (the number of instances: 2,396,130; the <a id="_idIndexMarker933"/>number of features: 3,231,961). This is designed for malicious URL detection based on their lexical and host information.</li>
+      <li class="bulletList"><strong class="keyWord">YouTube Multiview Video Games Dataset</strong>: <a href="https://archive.ics.uci.edu/ml/datasets/YouTube+Multiview+Video+Games+Dataset"><span class="url">https://archive.ics.uci.edu/ml/datasets/YouTube+Multiview+Video+Games+Dataset</span></a> (the number <a id="_idIndexMarker934"/>of instances: 120,000; the number of features: 1,000,000). This is designed for topic classification.</li>
+    </ul>
+    <p class="normal"><strong class="keyWord">Scenario 2</strong>: The number of features is noticeably large compared to the number of training samples. Apart from the reasons stated in <em class="italic">scenario 1</em>, the RBF kernel is significantly more prone to overfitting. Such a scenario occurs, for example, in the following examples:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">Dorothea Dataset</strong>: <a href="https://archive.ics.uci.edu/ml/datasets/Dorothea"><span class="url">https://archive.ics.uci.edu/ml/datasets/Dorothea</span></a> (the number of instances: 1,950; the number of features: 100,000). This is designed for drug <a id="_idIndexMarker935"/>discovery that classifies chemical compounds as active or inactive, according to their structural molecular features.</li>
+      <li class="bulletList"><strong class="keyWord">Arcene Dataset</strong>: <a href="https://archive.ics.uci.edu/ml/datasets/Arcene"><span class="url">https://archive.ics.uci.edu/ml/datasets/Arcene</span></a> (the number of instances: 900; the <a id="_idIndexMarker936"/>number of features: 10,000). This represents a mass spectrometry dataset for cancer detection.</li>
+    </ul>
+    <p class="normal"><strong class="keyWord">Scenario 3</strong>: The number of instances is significantly large compared to the number of features. For a dataset of low dimensions, the RBF kernel will, in general, boost the performance by mapping it to a higher-dimensional space. However, due to the training complexity, it usually becomes inefficient on a training set with more than 106 or 107 samples. Example datasets include the following:</p>
+    <ul>
+      <li class="bulletList"><em class="italic">Heterogeneity Activity Recognition Dataset</em>: <a href="https://archive.ics.uci.edu/ml/datasets/Heterogeneity+Activity+Recognition"><span class="url">https://archive.ics.uci.edu/ml/datasets/Heterogeneity+Activity+Recognition</span></a> (the number of instances: <code class="inlineCode">43,930,257</code>; the number of features: <code class="inlineCode">16</code>). This is designed for human activity recognition.</li>
+      <li class="bulletList"><em class="italic">HIGGS Dataset</em>: <a href="https://archive.ics.uci.edu/ml/datasets/HIGGS"><span class="url">https://archive.ics.uci.edu/ml/datasets/HIGGS</span></a> (the number of instances: 11,000,000; the number of features: 28). This is designed to distinguish<a id="_idIndexMarker937"/> between a signal process producing Higgs bosons or a background process.</li>
+    </ul>
+    <p class="normal">Aside from these three <a id="_idIndexMarker938"/>scenarios, you can <a id="_idIndexMarker939"/>consider experimenting with RBF kernels.</p>
+    <p class="normal">The rules for choosing between linear and RBF kernels can be summarized as follows:</p>
+    <table class="table-container" id="table001-4">
+      <tbody>
+        <tr>
+          <td class="table-cell">
+            <p class="normal"><strong class="keyWord">Scenario</strong></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><strong class="keyWord">Linear</strong></p>
+          </td>
+          <td class="table-cell">
+            <p class="normal"><strong class="keyWord">RBF</strong></p>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">Prior knowledge</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal">If linearly separable</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal">If nonlinearly separable</p>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">Visualizable data of 1 to 3 dimension(s)</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal">If linearly separable</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal">If nonlinearly separable</p>
+          </td>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">Both the number of features and number of instances are large.</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal">First choice</p>
+          </td>
+          <td class="table-cell"/>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">Features &gt;&gt; Instances</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal">First choice</p>
+          </td>
+          <td class="table-cell"/>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">Instances &gt;&gt; Features</p>
+          </td>
+          <td class="table-cell">
+            <p class="normal">First choice</p>
+          </td>
+          <td class="table-cell"/>
+        </tr>
+        <tr>
+          <td class="table-cell">
+            <p class="normal">Others</p>
+          </td>
+          <td class="table-cell"/>
+          <td class="table-cell">
+            <p class="normal">First choice</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="packt_figref">Table 9.1: Rules for choosing between linear and RBF kernels</p>
+    <p class="normal">Once again, <strong class="keyWord">first choice</strong> means we can <strong class="keyWord">begin with</strong> this option; it does not mean that this is the only option moving forward.</p>
+    <p class="normal">Next, let’s take a look at classifying face images.</p>
+    <h1 class="heading-1" id="_idParaDest-212">Classifying face images with SVM</h1>
+    <p class="normal">Finally, it is time to build an SVM-based<a id="_idIndexMarker940"/> face image classifier using everything you just learned. We will do so in parts, exploring the image <a id="_idIndexMarker941"/>dataset first.</p>
+    <h2 class="heading-2" id="_idParaDest-213">Exploring the face image dataset</h2>
+    <p class="normal">We will use the <strong class="keyWord">Labeled Faces in the Wild</strong> (<strong class="keyWord">LFW</strong>) people dataset (<a href="https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_lfw_people.html"><span class="url">https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_lfw_people.html</span></a>) from scikit-learn. It consists of <a id="_idIndexMarker942"/>more than 13,000 curated face images <a id="_idIndexMarker943"/>of more than 5,000 famous people. Each class has various numbers of image samples.</p>
+    <p class="normal">First, we load the face image data as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.datasets </span><span class="hljs-con-keyword">import</span><span class="language-python"> fetch_lfw_people</span>
+Downloading LFW metadata: https://ndownloader.figshare.com/files/5976012
+Downloading LFW metadata: https://ndownloader.figshare.com/files/5976009
+Downloading LFW metadata: https://ndownloader.figshare.com/files/5976006
+Downloading LFW data (~200MB): https://ndownloader.figshare.com/files/5976015
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">face_data = fetch_lfw_people(min_faces_per_person=</span><span class="hljs-con-number">80</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">We only load classes with at least <code class="inlineCode">80</code> samples so that we will have enough training data. Note that if you run into the problem of <code class="inlineCode">ImportError: The Python Imaging Library (PIL) is required to load data from jpeg files</code>, please install the <code class="inlineCode">pillow</code> package in the terminal, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con">pip install pillow
+</code></pre>
+    <p class="normal">If you encounter an <code class="inlineCode">urlopen</code> error, you can download the four data files manually from the following URLs:</p>
+    <ul>
+      <li class="bulletList"><code class="inlineCode">pairsDevTrain.txt</code>: <a href="https://ndownloader.figshare.com/files/5976012"><span class="url">https://ndownloader.figshare.com/files/5976012</span></a></li>
+      <li class="bulletList"><code class="inlineCode">pairsDevTest.txt</code>: <a href="https://ndownloader.figshare.com/files/5976009"><span class="url">https://ndownloader.figshare.com/files/5976009</span></a></li>
+      <li class="bulletList"><code class="inlineCode">pairs.txt</code>: <a href="https://ndownloader.figshare.com/files/5976006"><span class="url">https://ndownloader.figshare.com/files/5976006</span></a></li>
+      <li class="bulletList"><code class="inlineCode">lfw-funneled.tgz</code>: <a href="https://ndownloader.figshare.com/files/5976015"><span class="url">https://ndownloader.figshare.com/files/5976015</span></a></li>
+    </ul>
+    <p class="normal">You can then place them in a designated folder, for example, the current path, <code class="inlineCode">./</code>. Accordingly, the code to load image data becomes the following:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">face_data = fetch_lfw_people(data_home=</span><span class="hljs-con-string">'./'</span><span class="language-python">,</span>
+                                 min_faces_per_person=80,   
+                                 download_if_missing=False )
+</code></pre>
+    <p class="normal">Next, we take a look at<a id="_idIndexMarker944"/> the data we just loaded:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X = face_data.data</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y = face_data.target</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Input data size :'</span><span class="language-python">, X.shape)</span>
+Input data size : (1140, 2914)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Output data size :'</span><span class="language-python">, Y.shape)</span>
+Output data size : (1140,)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Label names:'</span><span class="language-python">, face_data.target_names)</span>
+Label names: ['Colin Powell' 'Donald Rumsfeld' 'George W Bush' 'Gerhard Schroeder' 'Tony Blair']
+</code></pre>
+    <p class="normal">This five-class dataset contains <code class="inlineCode">1,140</code> samples and a sample is of <code class="inlineCode">2,914</code> dimensions. As a good practice, we analyze the label distribution as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> i </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(</span><span class="hljs-con-number">5</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'Class </span><span class="hljs-con-subst">{i}</span><span class="hljs-con-string"> has </span><span class="hljs-con-subst">{(Y == i).</span><span class="hljs-con-built_in">sum</span><span class="hljs-con-subst">()}</span><span class="hljs-con-string"> samples.'</span><span class="language-python">)</span>
+Class 0 has 236 samples.
+Class 1 has 121 samples.
+Class 2 has 530 samples.
+Class 3 has 109 samples.
+Class 4 has 144 samples.
+</code></pre>
+    <p class="normal">The dataset is rather imbalanced. Let’s keep this in mind when we build the model.</p>
+    <p class="normal">Now, let’s plot a few face images:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">fig, ax = plt.subplots(</span><span class="hljs-con-number">3</span><span class="language-python">, </span><span class="hljs-con-number">4</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> i, axi </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">enumerate</span><span class="language-python">(ax.flat):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    axi.imshow(face_data.images[i], cmap=</span><span class="hljs-con-string">'bone'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    axi.</span><span class="hljs-con-built_in">set</span><span class="language-python">(xticks=[], yticks=[],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            xlabel=face_data.target_names[face_data.target[i]])</span>
+<span class="hljs-con-meta">...</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.show()</span>
+</code></pre>
+    <p class="normal">You will see the following 12 images with their labels:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_09_12.png"/></figure>
+    <p class="packt_figref">Figure 9.12: Samples from the LFW people dataset</p>
+    <p class="normal">Now that we have covered <a id="_idIndexMarker945"/>exploratory data analysis, we will move on to the model development phase in the next section.</p>
+    <h2 class="heading-2" id="_idParaDest-214">Building an SVM-based image classifier</h2>
+    <p class="normal">First, we split the data into the training <a id="_idIndexMarker946"/>and testing set:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train, X_test, Y_train, Y_test = train_test_split(X, Y,</span>
+                                                        random_state=42)
+</code></pre>
+    <p class="normal">In this project, the number of dimensions is greater than the number of samples. This is a classification case that SVM is effective at solving. In our solution, we will tune the hyperparameters, including the penalty <code class="inlineCode">C</code>, the kernel (linear or RBF), and <img alt="" role="presentation" src="../Images/B21047_09_055.png"/> (for the RBF kernel) through cross-validation.</p>
+    <p class="normal">We then initialize a common SVM model:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">clf = SVC(class_weight=</span><span class="hljs-con-string">'balanced'</span><span class="language-python">, random_state=</span><span class="hljs-con-number">42</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">The dataset is imbalanced, so <a id="_idIndexMarker947"/>we set <code class="inlineCode">class_weight='balanced</code>' to emphasize the underrepresented classes.</p>
+    <p class="normal">We utilize the GridSearchCV module from scikit-learn to search for the best combination of hyperparameters over several candidates. We will explore the following hyperparameter candidates:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">parameters = {</span><span class="hljs-con-string">'C'</span><span class="language-python">: [</span><span class="hljs-con-number">10</span><span class="language-python">, </span><span class="hljs-con-number">100</span><span class="language-python">, </span><span class="hljs-con-number">300</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">              </span><span class="hljs-con-string">'gamma'</span><span class="language-python">: [</span><span class="hljs-con-number">0.0001</span><span class="language-python">,  </span><span class="hljs-con-number">0.0003</span><span class="language-python">, </span><span class="hljs-con-number">0.001</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">              </span><span class="hljs-con-string">'kernel'</span><span class="language-python"> : [</span><span class="hljs-con-string">'rbf'</span><span class="language-python">, </span><span class="hljs-con-string">'linear'</span><span class="language-python">] }</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.model_selection </span><span class="hljs-con-keyword">import</span><span class="language-python"> GridSearchCV</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search = GridSearchCV(clf, parameters, n_jobs=-</span><span class="hljs-con-number">1</span><span class="language-python">, cv=</span><span class="hljs-con-number">5</span><span class="language-python">)</span>
+</code></pre>
+    <div class="note">
+      <p class="normal">If you are unsure about the suitable value of gamma to start with for RBF kernel, opting for 1 divided by the feature dimension is consistently a reliable choice. So in this example, <code class="inlineCode">1/2914 = 0.0003</code>.</p>
+    </div>
+    <p class="normal">The <code class="inlineCode">GridSearchCV</code> model we just initialized will conduct five-fold cross-validation (<code class="inlineCode">cv=5</code>) and will run in parallel on all available cores (<code class="inlineCode">n_jobs=-1</code>). We then perform hyperparameter tuning by simply applying the <code class="inlineCode">fit</code> method:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search.fit(X_train, Y_train)</span>
+</code></pre>
+    <p class="normal">We obtain the optimal set of hyperparameters using the following code:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'The best model:\n'</span><span class="language-python">, grid_search.best_params_)</span>
+The best model:
+ {'C': 300, 'gamma': 0.001, 'kernel': 'rbf'}
+</code></pre>
+    <p class="normal">Then, we obtain the best five-fold averaged performance under the optimal set of parameters by using the following code:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'The best averaged performance:'</span><span class="language-python">, grid_search.best_score_)</span>
+ The best averaged performance: 0.8456140350877192
+</code></pre>
+    <p class="normal">We then retrieve the SVM model with the optimal set of hyperparameters and apply it to the testing set:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">clf_best = grid_search.best_estimator_</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pred = clf_best.predict(X_test)</span>
+</code></pre>
+    <p class="normal">We then calculate the accuracy <a id="_idIndexMarker948"/>and classification report:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'The accuracy is: </span><span class="hljs-con-subst">{clf_best.score(X_test,</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-subst">      Y_test)*</span><span class="hljs-con-number">100</span><span class="hljs-con-subst">:</span><span class="hljs-con-number">.1</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">%'</span><span class="language-python">)</span>
+The accuracy is: 89.8%
+<span class="hljs-con-meta">&gt;&gt;&gt; </span><span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.metrics </span><span class="hljs-con-keyword">import</span><span class="language-python"> classification_report</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(classification_report(Y_test, pred,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          target_names=face_data.target_names))</span>
+                   precision    recall  f1-score   support
+     Colin Powell       0.90      0.88      0.89        64
+  Donald Rumsfeld       0.90      0.84      0.87        32
+    George W Bush       0.89      0.94      0.92       127
+Gerhard Schroeder       0.90      0.90      0.90        29
+       Tony Blair       0.90      0.85      0.88        33
+        Accuracy                            0.90       285
+        macro avg       0.90      0.88      0.89       285
+     weighted avg       0.90      0.90      0.90       285
+</code></pre>
+    <p class="normal">It should be noted that we tune the model based on the original training set, which is divided into folds for cross-training and validation internally, and that we apply the optimal model to the original testing set. We examine the classification performance in this manner to measure how well generalized the model is, in order to make correct predictions on a completely new dataset. An accuracy of <code class="inlineCode">89.8%</code> is achieved with the best SVM model.</p>
+    <p class="normal">There is another SVM classifier, <code class="inlineCode">LinearSVC</code> (<a href="https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html"><span class="url">https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html</span></a>), from scikit-learn. How is it different from <code class="inlineCode">SVC</code>? <code class="inlineCode">LinearSVC</code> is similar to <code class="inlineCode">SVC</code> with linear kernels, but it is implemented based on the <code class="inlineCode">liblinear</code> library, which is better optimized than <code class="inlineCode">libsvm</code> with the linear kernel, and its penalty function is more flexible.</p>
+    <p class="normal">In general, training with the <code class="inlineCode">LinearSVC</code> model is faster than <code class="inlineCode">SVC</code>. This is because the <code class="inlineCode">liblinear</code> library with high scalability is designed for large datasets, while the <code class="inlineCode">libsvm</code> library, with more than quadratic computation complexity, is not able to scale well with more than 10<sup class="superscript-italic" style="font-style: italic;">5</sup> training instances. But again, the <code class="inlineCode">LinearSVC</code> model is limited to only linear kernels.</p>
+    <h2 class="heading-2" id="_idParaDest-215">Boosting image classification performance with PCA</h2>
+    <p class="normal">We can also improve the image classifier by compressing the input features with <strong class="keyWord">Principal Component Analysis</strong> (<strong class="keyWord">PCA</strong>) (<em class="italic">A Tutorial on Principal Component Analysis</em> by Jonathon Shlens). This reduces the dimension of the original feature space and preserves the most important internal relationships <a id="_idIndexMarker949"/>among features. In simple terms, PCA projects the original data into a smaller <a id="_idIndexMarker950"/>space with the most important directions (coordinates). We hope that in cases where we have more features than training samples, considering fewer features as a result of dimensionality reduction using PCA can prevent overfitting.</p>
+    <p class="normal">Here’s how PCA works:</p>
+    <ol>
+      <li class="numberedList" value="1"><strong class="keyWord">Data Standardization</strong>: Before applying PCA, it is essential to standardize the data by subtracting the mean and dividing it by the standard deviation for each feature. This step ensures that all features are on the same scale and prevents any single feature from dominating the analysis.</li>
+      <li class="numberedList"><strong class="keyWord">Covariance Matrix Calculation</strong>: PCA calculates the covariance matrix of the standardized data. The covariance matrix shows how each pair of features varies together. The diagonal elements of the covariance matrix represent the variance of individual features, while the off-diagonal elements represent the covariance between pairs of features.</li>
+      <li class="numberedList"><strong class="keyWord">Eigendecomposition</strong>: The next step is to perform eigendecomposition on the covariance matrix. Eigendecomposition breaks down the covariance matrix into its eigenvectors and eigenvalues. The eigenvectors represent the principal components, and the corresponding eigenvalues indicate the amount of variance explained by each principal component.</li>
+      <li class="numberedList"><strong class="keyWord">Selecting Principal Components</strong>: The principal components are sorted based on their corresponding eigenvalues in descending order. The first principal component (PC1) explains the highest variance, followed by PC2, PC3, and so on. Typically, you select a subset of principal components that explain a significant portion (e.g., 95% or more) of the total variance.</li>
+      <li class="numberedList"><strong class="keyWord">Projection</strong>: Finally, the data is projected onto the selected principal components to create a lower-dimensional representation of the original data. This lower-dimensional<a id="_idIndexMarker951"/> representation captures most of the variance in the data while reducing the number of features.</li>
+    </ol>
+    <div class="note">
+      <p class="normal">You can read more about PCA at <a href="https://www.kaggle.com/nirajvermafcb/principal-component-analysis-explained"><span class="url">https://www.kaggle.com/nirajvermafcb/principal-component-analysis-explained</span></a> if you are interested. We will implement PCA with the <code class="inlineCode">PCA</code> module (<a href="https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html"><span class="url">https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html</span></a>) from scikit-learn. We will first apply PCA to reduce the dimensionality and train the classifier on the resulting data.</p>
+    </div>
+    <p class="normal">In machine learning, we usually <a id="_idIndexMarker952"/>concatenate multiple consecutive steps and treat them as one “model.” We call this<a id="_idIndexMarker953"/> process <strong class="keyWord">pipelining</strong>. We utilize the <code class="inlineCode">pipeline</code> API (<a href="https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html"><span class="url">https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html</span></a>) from scikit-learn to facilitate this.</p>
+    <p class="normal">Now, let’s initialize a PCA model, an SVC model, and a model pipelining these two:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.decomposition </span><span class="hljs-con-keyword">import</span><span class="language-python"> PCA</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pca = PCA(n_components=</span><span class="hljs-con-number">100</span><span class="language-python">, whiten=</span><span class="hljs-con-literal">True</span><span class="language-python">, random_state=</span><span class="hljs-con-number">42</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">svc = SVC(class_weight=</span><span class="hljs-con-string">'balanced'</span><span class="language-python">, kernel=</span><span class="hljs-con-string">'rbf'</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          random_state=</span><span class="hljs-con-number">42</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.pipeline </span><span class="hljs-con-keyword">import</span><span class="language-python"> Pipeline</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">model = Pipeline([(</span><span class="hljs-con-string">'pca'</span><span class="language-python">, pca),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                 (</span><span class="hljs-con-string">'svc'</span><span class="language-python">, svc)])</span>
+</code></pre>
+    <p class="normal">The PCA component projects the original data into a 100-dimension space, followed by the SVC classifier with the RBF kernel. We then perform a grid search for the best model among a few options:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">parameters_pipeline = {</span><span class="hljs-con-string">'svc__C'</span><span class="language-python">: [</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">3</span><span class="language-python">, </span><span class="hljs-con-number">10</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                      </span><span class="hljs-con-string">'svc__gamma'</span><span class="language-python">: [</span><span class="hljs-con-number">0.01</span><span class="language-python">,  </span><span class="hljs-con-number">0.03</span><span class="language-python">, </span><span class="hljs-con-number">0.003</span><span class="language-python">]}</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search = GridSearchCV(model, parameters_pipeline ,</span>
+                               n_jobs=-1, cv=5)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search.fit(X_train, Y_train)</span>
+</code></pre>
+    <div class="note">
+      <p class="normal"><strong class="keyWord">Best practice</strong></p>
+      <p class="normal">Choosing the initial values of hyperparameters like C and gamma in grid search for SVMs is crucial for efficiently finding optimal values. Here are some best practices:</p>
+      <ul>
+        <li class="bulletList"><strong class="keyWord">Start with a coarse grid</strong>: Begin with a coarse grid that covers a wide range of values for C and gamma. This allows you to quickly explore the hyperparameter space and identify promising regions.</li>
+        <li class="bulletList"><strong class="keyWord">Consider specific knowledge</strong>: Incorporate any prior knowledge or domain expertise about the problem into the selection of initial values. For example, if you know that the dataset is noisy or has outliers, you may want to prioritize larger values of C to allow for more flexibility in the decision boundary.</li>
+        <li class="bulletList"><strong class="keyWord">Use cross-validation</strong>: This helps<a id="_idIndexMarker954"/> to assess how well the initial values generalize to unseen data and guides the refinement of the grid search.</li>
+        <li class="bulletList"><strong class="keyWord">Iteratively refine the grid</strong>: Based on the results of initial cross-validation, iteratively refine the grid around regions that show promising performance. Narrow down the range of values for C and gamma to focus the search on areas where the optimal values are likely to lie.</li>
+      </ul>
+    </div>
+    <p class="normal">Finally, we print out the best set of <a id="_idIndexMarker955"/>hyperparameters and the classification performance with the best model:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'The best model:\n'</span><span class="language-python">, grid_search.best_params_)</span>
+The best model:
+ {'svc__C': 1, 'svc__gamma': 0.01}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'The best averaged performance:'</span><span class="language-python">, grid_search.best_score_)</span>
+The best averaged performance: 0.8619883040935671
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">model_best = grid_search.best_estimator_</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'The accuracy is: </span><span class="hljs-con-subst">{model_best.score(X_test, Y_test)*</span><span class="hljs-con-number">100</span><span class="hljs-con-subst">:</span><span class="hljs-con-number">.1</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">%'</span><span class="language-python">)</span>
+The accuracy is: 92.3%
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pred = model_best.predict(X_test)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(classification_report(Y_test, pred,</span>
+                                target_names=face_data.target_names))
+                   precision    recall  f1-score   support
+     Colin Powell       0.94      0.94      0.94        64
+  Donald Rumsfeld       0.93      0.84      0.89        32
+    George W Bush       0.91      0.97      0.94       127
+Gerhard Schroeder       0.92      0.79      0.85        29
+       Tony Blair       0.94      0.91      0.92        33
+        accuracy                            0.92       285
+        macro avg       0.93      0.89      0.91       285
+     weighted avg       0.92      0.92      0.92       285
+</code></pre>
+    <p class="normal">The model composed of a PCA and an SVM classifier achieves an accuracy of <code class="inlineCode">92.3%</code>. PCA boosts the performance of the SVM-based image classifier.</p>
+    <p class="normal">Following the successful <a id="_idIndexMarker956"/>application of SVM in image classification, we will look at its application in regression.</p>
+    <h1 class="heading-1" id="_idParaDest-216">Estimating with support vector regression</h1>
+    <p class="normal">As the name implies, SVR is part of the support vector family and a sibling of the <strong class="keyWord">Support Vector Machine</strong> (<strong class="keyWord">SVM</strong>) for <a id="_idIndexMarker957"/>classification (or we can just call it <strong class="keyWord">SVC</strong>).</p>
+    <p class="normal">To recap, SVC seeks an optimal <a id="_idIndexMarker958"/>hyperplane that best segregates observations from different classes. In SVR, our goal is to find a decision hyperplane (defined by a slope vector <em class="italic">w</em> and intercept <em class="italic">b</em>) so that two hyperplanes <img alt="" role="presentation" src="../Images/B21047_09_065.png"/> (negative hyperplane) and <img alt="" role="presentation" src="../Images/B21047_09_066.png"/> (positive hyperplane) can cover the <img alt="" role="presentation" src="../Images/B21047_09_067.png"/> bands of the optimal hyperplane. Simultaneously, the optimal hyperplane is as flat as possible, which means <em class="italic">w</em> is as small as possible, as shown in the following diagram:</p>
+    <figure class="mediaobject"><img alt="A diagram of a positive hyperplane  Description automatically generated with low confidence" src="../Images/B21047_09_13.png"/></figure>
+    <p class="packt_figref">Figure 9.13: Finding the decision hyperplane in SVR</p>
+    <p class="normal">This translates into deriving <a id="_idIndexMarker959"/>the optimal <em class="italic">w</em> and <em class="italic">b</em> by solving the following optimization problem:</p>
+    <ul>
+      <li class="bulletList">Minimizing <img alt="" role="presentation" src="../Images/B21047_09_068.png"/></li>
+      <li class="bulletList">Subject to <img alt="" role="presentation" src="../Images/B21047_09_069.png"/> , given a training set of <img alt="" role="presentation" src="../Images/B21047_09_070.png"/>, <img alt="" role="presentation" src="../Images/B21047_09_071.png"/>, … <img alt="" role="presentation" src="../Images/B21047_09_072.png"/>…, <img alt="" role="presentation" src="../Images/B21047_09_073.png"/></li>
+    </ul>
+    <p class="normal">The theory behind SVR is <a id="_idIndexMarker960"/>very similar to SVM. In the next section, let’s see the implementation of SVR.</p>
+    <h2 class="heading-2" id="_idParaDest-217">Implementing SVR</h2>
+    <p class="normal">Again, to solve the preceding optimization <a id="_idIndexMarker961"/>problem, we need to resort to quadratic programming techniques, which are beyond the scope of our learning journey. Therefore, we won’t cover the computation methods in detail and will implement the regression algorithm using the <code class="inlineCode">SVR</code> package (<a href="https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html"><span class="url">https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html</span></a>) from scikit-learn.</p>
+    <p class="normal">Important techniques used in SVM, such as penalty as a trade-off between bias and variance, and the kernel (RBF, for example) handling linear non-separation, are transferable to SVR. The <code class="inlineCode">SVR</code> package from scikit-learn also supports these techniques.</p>
+    <p class="normal">Let’s solve the previous diabetes prediction problem with <code class="inlineCode">SVR</code> this time, as we did in <em class="chapterRef">Chapter 5</em>, <em class="italic">Predicting Stock Prices with Regression Algorithms</em>:</p>
+    <ol>
+      <li class="numberedList" value="1">Initially, we load the dataset and check the data size, as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn </span><span class="hljs-con-keyword">import</span><span class="language-python"> datasets</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">diabetes = datasets.load_diabetes()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X = diabetes.data</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y = diabetes.target</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Input data size :'</span><span class="language-python">, X.shape)</span>
+Input data size : (442, 10)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'Output data size :'</span><span class="language-python">, Y.shape)</span>
+Output data size : (442,)
+</code></pre>
+      </li>
+      <li class="numberedList">Next, we designate the last 30 samples as the testing set, while the remaining samples serve as the training set:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">num_test = </span><span class="hljs-con-number">30</span><span class="language-python">   </span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = diabetes.data[:-num_test, :]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_train = diabetes.target[:-num_test]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_test = diabetes.data[-num_test:, :]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_test = diabetes.target[-num_test:]</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We can now apply the SVR regressor to the data. We first initialize an <code class="inlineCode">SVC</code> model and fit it against the training set:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.svm </span><span class="hljs-con-keyword">import</span><span class="language-python"> SVR</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">regressor = SVR(C=</span><span class="hljs-con-number">100</span><span class="language-python">, kernel=</span><span class="hljs-con-string">'linear'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">regressor.fit(X_train, y_train)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, we start with a linear kernel.</p>
+    <ol>
+      <li class="numberedList" value="4">We predict on the<a id="_idIndexMarker962"/> testing set with the trained model and obtain the prediction performance:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.metrics </span><span class="hljs-con-keyword">import</span><span class="language-python"> r2_score</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions = regressor.predict(X_test)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(r2_score(y_test, predictions))</span>
+0.5868189735154503
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">With this simple model, we are able to achieve an <em class="italic">R</em><sup class="superscript">2</sup> of <code class="inlineCode">0.59</code>.</p>
+    <ol>
+      <li class="numberedList" value="5">Let’s further improve it with a grid search to find the best model from the following options:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">parameters = {</span><span class="hljs-con-string">'C'</span><span class="language-python">: [</span><span class="hljs-con-number">300</span><span class="language-python">, </span><span class="hljs-con-number">500</span><span class="language-python">, </span><span class="hljs-con-number">700</span><span class="language-python">],</span>
+                  'gamma': [0.3, 0.6, 1],
+                  'kernel' : ['rbf', 'linear']}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">regressor = SVR()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search = GridSearchCV(regressor, parameters, n_jobs=-</span><span class="hljs-con-number">1</span><span class="language-python">,</span>
+                               cv=5)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search.fit(X_train, y_train)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">After searching over 18 sets of hyperparameters, we find the best model with the following combination of hyperparameters:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'The best model:\n'</span><span class="language-python">, grid_search.best_params_)</span>
+<span class="language-python">The best model: {</span><span class="hljs-con-string">'C'</span><span class="language-python">: </span><span class="hljs-con-number">300</span><span class="language-python">, </span><span class="hljs-con-string">'gamma'</span><span class="language-python">: </span><span class="hljs-con-number">1.5</span><span class="language-python">, </span><span class="hljs-con-string">'kernel'</span><span class="language-python">: </span><span class="hljs-con-string">'rbf'</span><span class="language-python">}</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Finally, we use the best model to make predictions and evaluate its performance:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">model_best = grid_search.best_estimator_</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions = model_best.predict(X_test)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(r2_score(Y_test, predictions))</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We are able to boost the <em class="italic">R</em><sup class="superscript">2</sup> score to <code class="inlineCode">0.68</code> after fine-tuning.</p>
+    <p class="normal">Unlike SVM for classification, where the goal is to separate data into distinct classes, SVR focuses on finding a function <a id="_idIndexMarker963"/>that best fits the data, by minimizing the prediction error while allowing some tolerance.</p>
+    <h1 class="heading-1" id="_idParaDest-218">Summary</h1>
+    <p class="normal">In this chapter, we continued our journey of supervised learning with SVM. You learned about the mechanics of an SVM, kernel techniques, implementations of SVM, and other important concepts of machine learning classification, including multiclass classification strategies and grid search, as well as useful tips to use an SVM (for example, choosing between kernels and tuning parameters). Then, we finally put into practice what you learned in the form of real-world use cases, including face recognition. You also learned about SVM’s extension to regression, SVR.</p>
+    <p class="normal">In the next chapter, we will review what you have learned so far in this book and examine the best practices of real-world machine learning. The chapter aims to make your learning foolproof and get you ready for the entire machine learning workflow and productionization. This will be a wrap-up of the general machine learning techniques before we move on to more complex topics in the final three chapters.</p>
+    <h1 class="heading-1" id="_idParaDest-219">Exercises</h1>
+    <ol>
+      <li class="numberedList" value="1">Can you implement SVM using the <code class="inlineCode">LinearSVC</code> module? What are the hyperparameters that you need to tweak, and what is the best performance of face recognition you can achieve?</li>
+      <li class="numberedList">Can you classify more classes in the image recognition project? As an example, you can set <code class="inlineCode">min_faces_per_person=50</code>. What is the best performance you can achieve using grid search and cross-validation?</li>
+      <li class="numberedList">Explore stock price prediction using SVR. You can reuse the dataset and feature generation functions from <em class="chapterRef">Chapter 5</em>, <em class="italic">Predicting Stock Prices with Regression Algorithms</em>.</li>
+    </ol>
+    <h1 class="heading-1" id="_idParaDest-220">Join our book’s Discord space</h1>
+    <p class="normal">Join our community’s Discord space for discussions with the authors and other readers:</p>
+    <p class="normal"><a href="https://packt.link/yuxi"><span class="url">https://packt.link/yuxi</span></a></p>
+    <p class="normal"><img alt="" role="presentation" src="../Images/QR_Code187846872178698968.png"/></p>
+  </div>
+</body></html>

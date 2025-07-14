@@ -1,0 +1,678 @@
+<html><head></head><body>
+  <div class="Basic-Text-Frame" id="_idContainer119">
+    <h1 class="chapterNumber">3</h1>
+    <h1 class="chapterTitle" id="_idParaDest-79">Predicting Online Ad Click-Through with Tree-Based Algorithms</h1>
+    <p class="normal">In the previous chapter, we built a movie recommender. In this chapter and the next, we will be solving one of the most data-driven problems in digital advertising: ad click-through prediction—given a user and the page they are visiting, this predicts how likely it is that they will click on a given ad. We will focus on learning tree-based algorithms (including decision trees, random forest models, and boosted trees) and utilize them to tackle this billion-dollar problem.</p>
+    <p class="normal">We will be exploring decision trees from the root to the leaves, as well as the aggregated version, a forest of trees. This won’t be a theory-only chapter, as there are a lot of hand calculations and implementations of tree models from scratch included. We will be using scikit-learn and XGBoost, a popular Python package for tree-based algorithms.</p>
+    <p class="normal">We will cover the following topics in this chapter:</p>
+    <ul>
+      <li class="bulletList">A brief overview of ad click-through prediction</li>
+      <li class="bulletList">Exploring a decision tree from the root to the leaves</li>
+      <li class="bulletList">Implementing a decision tree from scratch</li>
+      <li class="bulletList">Implementing a decision tree with scikit-learn</li>
+      <li class="bulletList">Predicting ad click-through with a decision tree</li>
+      <li class="bulletList">Ensembling decision trees – random forests</li>
+      <li class="bulletList">Ensembling decision trees – gradient-boosted trees</li>
+    </ul>
+    <h1 class="heading-1" id="_idParaDest-80">A brief overview of ad click-through prediction</h1>
+    <p class="normal">Online <a id="_idIndexMarker270"/>display advertising is a multibillion-dollar industry. Online display ads come in different formats, including banner ads composed of text, images, and flash, and rich media such as audio and video. Advertisers, or their agencies, place ads on a variety of websites, and even mobile apps, across the internet in order to reach potential customers and deliver an advertising message.</p>
+    <p class="normal">Online display advertising has served as one of the greatest examples of machine learning utilization. Obviously, advertisers and consumers are keenly interested in well-targeted ads. In the last 20 years, the industry has relied heavily on the ability of machine learning models to predict the effectiveness of ad targeting: how likely it is that an audience of a certain age group will be interested in this product, that customers with a certain household income will purchase this product after seeing the ad, that frequent sports site visitors will spend more time reading this ad, and so on. The most common measurement of effectiveness is <a id="_idIndexMarker271"/>the <strong class="keyWord">Click-Through Rate</strong> (<strong class="keyWord">CTR</strong>), which is the ratio of clicks on a specific ad to its total number of views. In general cases without clickbait or spammy content, a higher CTR indicates that an ad is targeted well and that an online advertising campaign is successful.</p>
+    <p class="normal">Click-through prediction entails both the promises and challenges of machine learning. It mainly involves the binary classification of whether a given ad on a given page (or app) will be clicked on by a given user, with predictive features from the following three aspects:</p>
+    <ul>
+      <li class="bulletList">Ad content and information (category, position, text, format, and so on)</li>
+      <li class="bulletList">Page content and publisher information (category, context, domain, and so on)</li>
+      <li class="bulletList">User information (age, gender, location, income, interests, search history, browsing history, device, and so on)</li>
+    </ul>
+    <p class="normal">Suppose we, as an agency, are operating ads on behalf of several advertisers, and our job is to place the right ads for the right audience. Let’s say that we have an existing dataset in hand (the following small chunk is an example; the number of predictive features can easily go into the thousands in reality) taken from millions of records of campaigns run a month ago, and we need to develop a classification model to learn and predict future ad placement outcomes:</p>
+    <figure class="mediaobject"><img alt="A picture containing text, number, screenshot, font  Description automatically generated" src="../Images/B21047_03_01.png"/></figure>
+    <p class="packt_figref">Figure 3.1: Ad samples for training and prediction</p>
+    <p class="normal">As you<a id="_idIndexMarker272"/> can see in <em class="italic">Figure 3.1</em>, the features are mostly categorical. In fact, data can be either numerical or categorical. Let’s explore this in more detail in the next section.</p>
+    <h1 class="heading-1" id="_idParaDest-81">Getting started with two types of data – numerical and categorical</h1>
+    <p class="normal">At first glance, the features in the preceding dataset are <strong class="keyWord">categorical</strong> – for example, male or female, one of four age groups, one of the predefined site categories, and whether the user is interested in sports. Such data is different from <a id="_idIndexMarker273"/>the <strong class="keyWord">numerical</strong> feature data we have worked with until now.</p>
+    <p class="normal"><strong class="keyWord">Categorical features</strong>, also <a id="_idIndexMarker274"/>known as <strong class="keyWord">qualitative features</strong>, represent distinct characteristics or<a id="_idIndexMarker275"/> groups with a countable number of options. Categorical features may or may not have a logical order. For example, household income from low to medium to <a id="_idIndexMarker276"/>high is an <strong class="keyWord">ordinal</strong> feature, while the category of an ad is not ordinal.</p>
+    <p class="normal">Numerical (also called <strong class="keyWord">quantitative</strong>) features, on the other hand, have mathematical meaning as a<a id="_idIndexMarker277"/> measurement and, of course, are ordered. For instance, counts of items (e.g., number of children in a family, number of bedrooms in a house, and number of days until an event ) are discrete numerical features; the height of individuals, temperature, and<a id="_idIndexMarker278"/> the weight of objects are continuous numerical. The cardiotocography dataset (<a href="https://archive.ics.uci.edu/ml/datasets/Cardiotocography"><span class="url">https://archive.ics.uci.edu/ml/datasets/Cardiotocography</span></a>) contains both discrete (such as the number of accelerations per second or the number of fetal movements per second) and continuous (such as the mean value of long-term variability) numerical features.</p>
+    <p class="normal">Categorical features <a id="_idIndexMarker279"/>can also take on numerical values. For example, 1 to 12 can represent months of the year, and 1 and 0 can indicate adult and minor. Still, these values do not have mathematical implications.</p>
+    <p class="normal">The Naïve Bayes classifier you learned about previously works for both numerical and categorical features as the likelihoods, <em class="italic">P</em>(<em class="italic">x</em> |<em class="italic">y</em>) or <em class="italic">P</em>(<em class="italic">feature </em>|<em class="italic">class</em>), are calculated in the same way.</p>
+    <p class="normal">Now, say we are thinking of predicting click-through using Naïve Bayes and trying to explain the model to our advertising clients. However, our clients may find it difficult to understand the prior and the likelihood of individual attributes and their multiplication. Is there a classifier that is easy to interpret and explain to clients, and that is able to directly handle categorical data? Decision trees are the answer!</p>
+    <h1 class="heading-1" id="_idParaDest-82">Exploring a decision tree from the root to the leaves</h1>
+    <p class="normal">A decision tree<a id="_idIndexMarker280"/> is a tree-like graph, that is, a sequential diagram illustrating all of the possible decision <a id="_idIndexMarker281"/>alternatives and their <a id="_idIndexMarker282"/>corresponding outcomes. Starting from the <strong class="keyWord">root</strong> of a tree, every <a id="_idIndexMarker283"/>internal <strong class="keyWord">node</strong> represents the basis on which a decision is made. Each <a id="_idIndexMarker284"/>branch of a node represents how a choice may lead to the next node. And, finally, each <strong class="keyWord">terminal node</strong>, the <strong class="keyWord">leaf</strong>, represents<a id="_idIndexMarker285"/> the outcome produced.</p>
+    <p class="normal">For example, we have just made a couple of decisions that brought us to the point of using a decision tree to solve our advertising problem:</p>
+    <figure class="mediaobject"><img alt="A picture containing text, screenshot, diagram, font  Description automatically generated" src="../Images/B21047_03_02.png"/></figure>
+    <p class="packt_figref">Figure 3.2: Using a decision tree to find the right algorithm</p>
+    <p class="normal">The <a id="_idIndexMarker286"/>first condition, or the root, is whether the feature type is numerical or categorical. Let’s assume our ad clickstream data contains mostly categorical features, so it goes to the right branch. In the next node, our work needs to be interpretable by non-technical clients, so, it goes to the right branch and reaches the leaf for choosing the decision tree classifier.</p>
+    <p class="normal">You can also look at the paths and see what kinds of problems they can fit in. A decision tree classifier operates in the form of a decision tree. It maps observations to class assignments (symbolized as leaf nodes) through a series of tests (represented as internal nodes) based on feature values and corresponding conditions (represented as branches). In each node, a question regarding the values and characteristics of a feature is asked; depending on the answer to the question, the observations are split into subsets. Sequential<a id="_idIndexMarker287"/> tests are conducted until a conclusion about the observations’ target label is reached. The paths from the root to the end leaves represent the decision-making process and the classification rules.</p>
+    <p class="normal">In a more simplified scenario, as shown in <em class="italic">Figure 3.3</em>, where we want to predict <strong class="keyWord">Click</strong> or <strong class="keyWord">No click</strong> on a self-driven car ad, we can manually construct a decision tree classifier that works for an available dataset. For example, if a user is interested in technology and has a car, they will tend to click on the ad; a person outside of this subset is unlikely to click on the ad, hypothetically. We then use the trained tree to predict two new inputs, whose results are <strong class="keyWord">Click</strong> and <strong class="keyWord">No click</strong>, respectively:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_03_03.png"/></figure>
+    <p class="packt_figref">Figure 3.3: Predicting Click/No Click with a trained decision tree</p>
+    <p class="normal">After a <a id="_idIndexMarker288"/>decision tree has been constructed, classifying a new sample is straightforward, as you just saw: starting from the root, apply the test condition and follow the branch accordingly until a leaf node is reached, and the class label associated will be assigned to the new sample.</p>
+    <p class="normal">So, how can we build an appropriate decision tree?</p>
+    <h2 class="heading-2" id="_idParaDest-83">Constructing a decision tree</h2>
+    <p class="normal">A decision tree<a id="_idIndexMarker289"/> is constructed by partitioning the training samples into successive subsets. The partitioning process is repeated in a recursive fashion on each subset. For each partitioning at a node, a condition test is conducted based on the value of a feature of the subset. When the subset shares the same class label, or when no further splitting can improve the class purity of this subset, recursive partitioning on this node is finished.</p>
+    <div class="note">
+      <p class="normal"><strong class="keyWord">Important note</strong></p>
+      <p class="normal"><strong class="keyWord">Class purity</strong> refers<a id="_idIndexMarker290"/> to the homogeneity of the target variable (class labels) within a subset of data. A subset is considered to have high class purity if the majority of its instances belong to the same class. In other words, a subset with high class purity contains mostly instances of the same class label, while a subset with low class purity contains instances from multiple classes.</p>
+    </div>
+    <p class="normal">Theoretically, to partition a feature (numerical or categorical) with <em class="italic">n</em> different values, there are <em class="italic">n</em> different methods of binary splitting (<strong class="keyWord">Yes</strong> or <strong class="keyWord">No</strong> to the condition test, as illustrated in <em class="italic">Figure 3.4</em>), not to mention other ways of splitting (for example, three- and four-way splitting in <em class="italic">Figure 3.4</em>):</p>
+    <figure class="mediaobject"><img alt="A picture containing text, screenshot, diagram, font  Description automatically generated" src="../Images/B21047_03_04.png"/></figure>
+    <p class="packt_figref">Figure 3.4: Examples of binary splitting and multiway splitting</p>
+    <p class="normal">Without<a id="_idIndexMarker291"/> considering the order of features that partitioning is taking place on, there are already <em class="italic">n</em><sup class="superscript-italic" style="font-style: italic;">m</sup> possible trees for an <em class="italic">m</em>-dimensional dataset.</p>
+    <p class="normal">Many algorithms have been developed to efficiently construct an accurate decision tree. Popular ones include the following:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">Iterative Dichotomiser 3 </strong>(<strong class="keyWord">ID3</strong>): This <a id="_idIndexMarker292"/>algorithm uses a greedy search in a top-down manner by selecting the best attribute to split the dataset on with each iteration without backtracking.</li>
+      <li class="bulletList"><strong class="keyWord">C4.5</strong>: This <a id="_idIndexMarker293"/>is an improved version of ID3 that introduces backtracking. It traverses the constructed tree and replaces the branches with leaf nodes if purity is improved this way.</li>
+      <li class="bulletList"><strong class="keyWord">Classification and Regression Tree</strong> (<strong class="keyWord">CART</strong>): This constructs the tree using binary <a id="_idIndexMarker294"/>splitting, which we will discuss in more detail shortly. CART’s flexibility, efficiency, interpretability, and robustness make it a popular choice for various classification and regression tasks.</li>
+      <li class="bulletList"><strong class="keyWord">Chi-squared Automatic Interaction Detector</strong> (<strong class="keyWord">CHAID</strong>): This algorithm is often used in<a id="_idIndexMarker295"/> direct marketing. It involves complicated statistical concepts, but basically, it determines the optimal way of merging predictive variables in order to best explain the outcome.</li>
+    </ul>
+    <p class="normal">The <a id="_idIndexMarker296"/>basic idea of these algorithms is to grow the tree greedily by making a series of local optimizations when choosing the most significant feature to use to partition the data. The dataset is then split based on the optimal value of that feature. We will discuss the measurement of a significant feature and the optimal splitting value of a feature in the next section.</p>
+    <p class="normal">First, we will study the CART algorithm in more detail, and we will implement it as the most notable decision tree algorithm after that. It constructs the tree using binary splitting and grows each node into left and right children. In each partition, it greedily searches for the most significant combination of a feature and its value; all different possible combinations are tried and tested using a measurement function. With the selected feature and value as a splitting point, the algorithm then divides the dataset as follows:</p>
+    <ul>
+      <li class="bulletList">Samples with the feature of this value (for a categorical feature) or a greater value (for a numerical feature) become the right child</li>
+      <li class="bulletList">The remaining samples become the left child</li>
+    </ul>
+    <p class="normal">This partitioning process repeats and recursively divides up the input samples into two subgroups. The splitting process stops at a subgroup where either of the following two criteria is met:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">The minimum number of samples for a new node</strong>: When the number of samples is not greater than the minimum number of samples required for a further split, the partitioning stops in order to prevent the tree from excessively tailoring to the training set and, as a result, overfitting.</li>
+      <li class="bulletList"><strong class="keyWord">The maximum depth of the tree</strong>: A node stops growing when its depth, which is defined as the number of partitions taking place from the top down, starting from the root node and ending in a terminal node, meets the maximum tree depth. Deeper trees are more specific to the training set and can lead to overfitting.</li>
+    </ul>
+    <p class="normal">A node with no branches becomes a leaf, and the dominant class of samples at this node is the prediction. Once all the splitting processes have finished, the tree is constructed <a id="_idIndexMarker297"/>and is portrayed with the assigned labels at the terminal nodes and the splitting points (feature and value) at all the internal nodes above.</p>
+    <p class="normal">We will implement the CART decision tree algorithm from scratch after studying the metrics of selecting the optimal splitting feature and value, as promised.</p>
+    <h2 class="heading-2" id="_idParaDest-84">The metrics for measuring a split</h2>
+    <p class="normal">When <a id="_idIndexMarker298"/>selecting the best combination of a feature and a value as the splitting point, two criteria, such as <strong class="keyWord">Gini Impurity</strong> and <strong class="keyWord">Information Gain</strong>, can be used to measure the quality of separation.</p>
+    <h3 class="heading-3" id="_idParaDest-85">Gini Impurity</h3>
+    <p class="normal">Gini Impurity, as its <a id="_idIndexMarker299"/>name implies, measures <a id="_idIndexMarker300"/>the impurity rate of the class distribution of data points, or the class mixture rate. For a dataset with <em class="italic">K</em> classes, suppose that data from class <em class="italic">k(1 ≤ k ≤ K)</em> takes up a fraction <em class="italic">f</em><sub class="subscript-italic" style="font-style: italic;">k</sub><em class="italic">(0 ≤ f</em><sub class="subscript-italic" style="font-style: italic;">k</sub><em class="italic"> ≤ 1)</em> of the entire dataset; then the <em class="italic">Gini Impurity</em> of this dataset is written as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_03_001.png"/></p>
+    <p class="normal">A lower Gini Impurity indicates a purer dataset. For example, when the dataset contains only one class, say, the fraction of this class is <code class="inlineCode">1</code> and that of the others is <code class="inlineCode">0</code>, its Gini Impurity becomes 1 – (1<sup class="superscript">2</sup> + 0<sup class="superscript">2</sup>) = 0. In another example, a dataset records a large number of coin flips, and heads and tails each take up half of the samples. The Gini Impurity is 1 – (0.5<sup class="superscript">2</sup> + 0.5<sup class="superscript">2</sup>) = 0.5.</p>
+    <p class="normal">In binary cases, Gini Impurity, under different values of the positive class fraction, can be visualized with the following code blocks:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> matplotlib.pyplot </span><span class="hljs-con-keyword">as</span><span class="language-python"> plt</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> numpy </span><span class="hljs-con-keyword">as</span><span class="language-python"> np</span>
+</code></pre>
+    <p class="normal">The fraction of the positive class varies from <code class="inlineCode">0</code> to <code class="inlineCode">1</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pos_fraction = np.linspace(</span><span class="hljs-con-number">0.00</span><span class="language-python">, </span><span class="hljs-con-number">1.00</span><span class="language-python">, </span><span class="hljs-con-number">1000</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">The <a id="_idIndexMarker301"/>Gini Impurity is calculated accordingly, followed by the<a id="_idIndexMarker302"/> plot of <strong class="keyWord">Gini Impurity</strong> versus <strong class="keyWord">positive fraction</strong>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">gini = </span><span class="hljs-con-number">1</span><span class="language-python"> – pos_fraction**</span><span class="hljs-con-number">2</span><span class="language-python"> – (</span><span class="hljs-con-number">1</span><span class="language-python">-pos_fraction)**</span><span class="hljs-con-number">2</span>
+</code></pre>
+    <p class="normal">Here, <code class="inlineCode">1-pos_fraction</code> is the negative fraction:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.plot(pos_fraction, gini)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylim(</span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.xlabel(</span><span class="hljs-con-string">'Positive fraction'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylabel(</span><span class="hljs-con-string">'Gini impurity'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.show()</span>
+</code></pre>
+    <p class="normal">Refer to <em class="italic">Figure 3.5</em> for the end result:</p>
+    <figure class="mediaobject"><img alt="A picture containing line, plot, diagram, screenshot  Description automatically generated" src="../Images/B21047_03_05.png"/></figure>
+    <p class="packt_figref">Figure 3.5: Gini Impurity versus positive fraction</p>
+    <p class="normal">As<a id="_idIndexMarker303"/> you can see, in binary cases, if the positive fraction is 50%, the impurity will be the highest at <code class="inlineCode">0.5</code>; if the positive fraction is 100% or 0%, it will reach <code class="inlineCode">0</code> impurity.</p>
+    <p class="normal">Given the labels <a id="_idIndexMarker304"/>of a dataset, we can implement the Gini Impurity calculation function as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">gini_impurity</span><span class="language-python">(</span><span class="hljs-con-params">labels</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># When the set is empty, it is also pure</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> </span><span class="hljs-con-built_in">len</span><span class="language-python">(labels) == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">return</span><span class="language-python"> </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># Count the occurrences of each label</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    counts = np.unique(labels, return_counts=</span><span class="hljs-con-literal">True</span><span class="language-python">)[</span><span class="hljs-con-number">1</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    fractions = counts / </span><span class="hljs-con-built_in">float</span><span class="language-python">(</span><span class="hljs-con-built_in">len</span><span class="language-python">(labels))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> </span><span class="hljs-con-number">1</span><span class="language-python"> - np.</span><span class="hljs-con-built_in">sum</span><span class="language-python">(fractions ** </span><span class="hljs-con-number">2</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">Test it out with some examples:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'</span><span class="hljs-con-subst">{gini_impurity([</span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">0</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">0</span><span class="hljs-con-subst">]):</span><span class="hljs-con-number">.4</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+0.4800
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'</span><span class="hljs-con-subst">{gini_impurity([</span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">0</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">0</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">0</span><span class="hljs-con-subst">]):</span><span class="hljs-con-number">.4</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+0.5000
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'</span><span class="hljs-con-subst">{gini_impurity([</span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">]):</span><span class="hljs-con-number">.4</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+0.0000
+</code></pre>
+    <p class="normal">In order to evaluate the quality of a split, we simply add up the Gini Impurity of all resulting subgroups, combining the proportions of each subgroup as corresponding weight factors. And again, the smaller the weighted sum of the Gini Impurity, the better the split.</p>
+    <p class="normal">Take a look at the following self-driving car ad example. Here, we split the data based on a user’s gender and interest in technology, respectively:</p>
+    <figure class="mediaobject"><img alt="A picture containing text, screenshot, number, font  Description automatically generated" src="../Images/B21047_03_06.png"/></figure>
+    <p class="packt_figref">Figure 3.6: Splitting the data based on gender or interest in tech</p>
+    <p class="normal">The <a id="_idIndexMarker305"/>weighted Gini Impurity of the first split can be calculated as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_03_002.png"/></p>
+    <p class="normal">The <a id="_idIndexMarker306"/>second split is as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_03_003.png"/></p>
+    <p class="normal">Therefore, splitting data based on the user’s interest in technology is a better strategy than gender.</p>
+    <h3 class="heading-3" id="_idParaDest-86">Information Gain</h3>
+    <p class="normal">Another <a id="_idIndexMarker307"/>metric, <strong class="keyWord">Information Gain</strong>, measures <a id="_idIndexMarker308"/>the improvement of purity after splitting or, in other words, the reduction of uncertainty due to a split. Higher Information Gain implies better splitting. We obtain the Information Gain of a split by comparing the <strong class="keyWord">entropy</strong> before and<a id="_idIndexMarker309"/> after the split.</p>
+    <p class="normal">Entropy is a<a id="_idIndexMarker310"/> probabilistic measure of uncertainty. Given a <em class="italic">K</em>-class dataset, and <em class="italic">f</em><sub class="subscript-italic" style="font-style: italic;">k</sub><em class="italic"> (0 ≤</em> <em class="italic">f</em><sub class="subscript-italic" style="font-style: italic;">k</sub> <em class="italic">≤ 1)</em> denoted as <a id="_idIndexMarker311"/>the fraction of data from class <em class="italic">k (1 ≤ k ≤ K)</em>, the <em class="italic">entropy</em> of the dataset is defined as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_03_004.png"/></p>
+    <p class="normal">Lower entropy<a id="_idIndexMarker312"/> implies a purer dataset with less ambiguity. In a perfect case, where the dataset contains only one class, the entropy is:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_03_005.png"/></p>
+    <p class="normal">In the coin flip example, the entropy becomes:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_03_006.png"/></p>
+    <p class="normal">Similarly, we can visualize how entropy changes with different values of the positive class fraction in binary cases using the following lines of code:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pos_fraction = np.linspace(</span><span class="hljs-con-number">0.001</span><span class="language-python">, </span><span class="hljs-con-number">0.999</span><span class="language-python">, </span><span class="hljs-con-number">1000</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">ent = - (pos_fraction * np.log2(pos_fraction) +</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        (</span><span class="hljs-con-number">1</span><span class="language-python"> - pos_fraction) * np.log2(</span><span class="hljs-con-number">1</span><span class="language-python"> - pos_fraction))</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.plot(pos_fraction, ent)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.xlabel(</span><span class="hljs-con-string">'Positive fraction'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylabel(</span><span class="hljs-con-string">'Entropy'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylim(</span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.show()</span>
+</code></pre>
+    <p class="normal">This will give us the following output:</p>
+    <figure class="mediaobject"><img alt="A picture containing screenshot, plot, line, diagram  Description automatically generated" src="../Images/B21047_03_07.png"/></figure>
+    <p class="packt_figref">Figure 3.7: Entropy versus positive fraction</p>
+    <p class="normal">As <a id="_idIndexMarker313"/>you can see, in<a id="_idIndexMarker314"/> binary cases, if the positive fraction is 50%, the entropy will be the highest at <code class="inlineCode">1</code>; if the positive fraction is 100% or 0%, it will reach <code class="inlineCode">0</code> entropy.</p>
+    <p class="normal">Given the labels of a dataset, the <code class="inlineCode">entropy</code> calculation function can be implemented as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">entropy</span><span class="language-python">(</span><span class="hljs-con-params">labels</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> </span><span class="hljs-con-built_in">len</span><span class="language-python">(labels) == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">return</span><span class="language-python"> </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    counts = np.unique(labels, return_counts=</span><span class="hljs-con-literal">True</span><span class="language-python">)[</span><span class="hljs-con-number">1</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    fractions = counts / </span><span class="hljs-con-built_in">float</span><span class="language-python">(</span><span class="hljs-con-built_in">len</span><span class="language-python">(labels))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> - np.</span><span class="hljs-con-built_in">sum</span><span class="language-python">(fractions * np.log2(fractions))</span>
+</code></pre>
+    <p class="normal">Test it out with some examples:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'</span><span class="hljs-con-subst">{entropy([</span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">0</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">0</span><span class="hljs-con-subst">]):</span><span class="hljs-con-number">.4</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+0.9710
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'</span><span class="hljs-con-subst">{entropy([</span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">0</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">0</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">0</span><span class="hljs-con-subst">]):</span><span class="hljs-con-number">.4</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+1.0000
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'</span><span class="hljs-con-subst">{entropy([</span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">1</span><span class="hljs-con-subst">]):</span><span class="hljs-con-number">.4</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+-0.0000
+</code></pre>
+    <p class="normal">Now that you have fully understood entropy, we can look into how Information Gain measures how much uncertainty was reduced after splitting, which is defined as the difference in entropy before a split (parent) and after a split (children):</p>
+    <p class="center"><em class="italic">Information Gain</em> = <em class="italic">Entropy</em>(<em class="italic">before</em>) - <em class="italic">Entropy</em>(<em class="italic">after</em>) = <em class="italic">Entropy</em>(<em class="italic">parent</em>) - <em class="italic">Entropy</em>(<em class="italic">children</em>)</p>
+    <p class="normal">Entropy <a id="_idIndexMarker315"/>after a split is calculated as the weighted sum of the entropy of each child, which is similar to the weighted Gini Impurity.</p>
+    <p class="normal">During the <a id="_idIndexMarker316"/>process of constructing a node in a tree, our goal is to search for the splitting point where the maximum Information Gain is obtained. As the entropy of the parent node is unchanged, we just need to measure the entropy of the resulting children due to a split. The best split is the one with the lowest entropy of its resulting children.</p>
+    <p class="normal">To understand this better, let’s look at the self-driving car ad example again.</p>
+    <p class="normal">For the first option, the entropy after the split can be calculated as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_03_007.png"/></p>
+    <p class="normal">The second way of splitting is as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_03_008.png"/></p>
+    <p class="normal">For exploration purposes, we can also calculate the Information Gain with:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_03_009.png"/></p>
+    <p class="center">#1 <em class="italic">Information Gain</em>=0.971-0.951=0.020</p>
+    <p class="center">#2 <em class="italic">Information Gain</em>=0.971-0.551=0.420</p>
+    <p class="normal">According <a id="_idIndexMarker317"/>to the <strong class="keyWord">information Gain = entropy-based evaluation</strong>, the second split is preferable, which is the conclusion of the Gini Impurity criterion.</p>
+    <p class="normal">In general, the<a id="_idIndexMarker318"/> choice between the two metrics, Gini Impurity and Information Gain, has little effect on the performance of the trained decision tree. They both measure the weighted impurity of the children after a split. We can combine them into one function to calculate the weighted impurity:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">criterion_function = {</span><span class="hljs-con-string">'gini'</span><span class="language-python">: gini_impurity,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                      </span><span class="hljs-con-string">'entropy'</span><span class="language-python">: entropy}</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">weighted_impurity</span><span class="language-python">(</span><span class="hljs-con-params">groups, criterion=</span><span class="hljs-con-string">'gini'</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Calculate weighted impurity of children after a split</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param groups: list of children, and a child consists a</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">                   list of class labels</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param criterion: metric to measure the quality of a split,</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">                      'gini' for Gini impurity or 'entropy' for</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">                          information gain</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @return: float, weighted impurity</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    total = </span><span class="hljs-con-built_in">sum</span><span class="language-python">(</span><span class="hljs-con-built_in">len</span><span class="language-python">(group) </span><span class="hljs-con-keyword">for</span><span class="language-python"> group </span><span class="hljs-con-keyword">in</span><span class="language-python"> groups)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    weighted_sum = </span><span class="hljs-con-number">0.0</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">for</span><span class="language-python"> group </span><span class="hljs-con-keyword">in</span><span class="language-python"> groups:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        weighted_sum += </span><span class="hljs-con-built_in">len</span><span class="language-python">(group) / </span><span class="hljs-con-built_in">float</span><span class="language-python">(total) *</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                          criterion_function[criterion](group)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> weighted_sum</span>
+</code></pre>
+    <p class="normal">Test it with the example we just hand-calculated, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">children_1 = [[</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">], [</span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">]]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">children_2 = [[</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">], [</span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">]]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f"Entropy of #1 split: </span><span class="hljs-con-subst">{weighted_impurity(children_1,</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-subst">      </span><span class="hljs-con-string">'entropy'</span><span class="hljs-con-subst">):</span><span class="hljs-con-number">.4</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">"</span><span class="language-python">)</span>
+Entropy of #1 split: 0.9510
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f"Entropy of #2 split: </span><span class="hljs-con-subst">{weighted_impurity(children_2,</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-subst">      </span><span class="hljs-con-string">'entropy'</span><span class="hljs-con-subst">):</span><span class="hljs-con-number">.4</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">"</span><span class="language-python">)</span>
+Entropy of #2 split: 0.5510
+</code></pre>
+    <p class="normal">Now that you have a solid understanding of partitioning evaluation metrics, let’s implement the CART tree algorithm from scratch in the next section.</p>
+    <h1 class="heading-1" id="_idParaDest-87">Implementing a decision tree from scratch</h1>
+    <p class="normal">We<a id="_idIndexMarker319"/> develop the CART tree algorithm by hand on a toy dataset as follows:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_03_08.png"/></figure>
+    <p class="packt_figref">Figure 3.8: An example of ad data</p>
+    <p class="normal">To begin with, we decide on the first splitting point, the root, by trying out all possible values for each of the two features. We utilize the <code class="inlineCode">weighted_impurity</code> function we just defined to calculate the weighted Gini Impurity for each possible combination, as follows:</p>
+    <p class="normal">If we partition according to whether the user interest is tech, we have the 1<sup class="superscript">st</sup>, 5<sup class="superscript">th</sup>, and 6<sup class="superscript">th</sup> samples for one group and the remaining samples for another group. Then the classes for the first group are <code class="inlineCode">[1, 1, 0]</code>, and the classes for the second group are <code class="inlineCode">[0, 0, 0, 1]</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code">Gini(interest, tech) = weighted_impurity([[<span class="hljs-number">1</span>, <span class="hljs-number">1</span>, <span class="hljs-number">0</span>], [<span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>]])
+                     = <span class="hljs-number">0.405</span>
+</code></pre>
+    <p class="normal">If we partition according to whether the user’s interest is fashion, we have the 2<sup class="superscript">nd</sup> and 3<sup class="superscript">rd</sup> samples <a id="_idIndexMarker320"/>for one group and the remaining samples for another group. Then the classes for the first group are <code class="inlineCode">[0, 0]</code>, and the classes for the second group are <code class="inlineCode">[1, 0, 1, 0, 1]</code>:</p>
+    <pre class="programlisting code"><code class="hljs-code">Gini(interest, Fashion) = weighted_impurity([[<span class="hljs-number">0</span>, <span class="hljs-number">0</span>], [<span class="hljs-number">1</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>]])
+                        = <span class="hljs-number">0.343</span>
+</code></pre>
+    <p class="normal">Similarly, we have the following:</p>
+    <pre class="programlisting code"><code class="hljs-code">Gini(interest, Sports) = weighted_impurity([[<span class="hljs-number">0</span>, <span class="hljs-number">1</span>], [<span class="hljs-number">1</span>, <span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>, <span class="hljs-number">0</span>]]) 
+                       = <span class="hljs-number">0.486</span>
+Gini(occupation, professional) = weighted_impurity([[<span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>, <span class="hljs-number">0</span>],
+                                                    [<span class="hljs-number">1</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>]]) = <span class="hljs-number">0.405</span>
+Gini(occupation, student) = weighted_impurity([[<span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>, <span class="hljs-number">0</span>],
+                                               [<span class="hljs-number">1</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>]]) = <span class="hljs-number">0.405</span>
+Gini(occupation, retired) = weighted_impurity([[<span class="hljs-number">1</span>, <span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>, <span class="hljs-number">1</span>], [<span class="hljs-number">1</span>]])
+                          = <span class="hljs-number">0.429</span>
+</code></pre>
+    <p class="normal">The root goes to the user interest feature with the fashion value, as this combination achieves the lowest weighted impurity or the highest Information Gain. We can now build the first level of the tree, as follows:</p>
+    <figure class="mediaobject"><img alt="A picture containing text, screenshot, font, number  Description automatically generated" src="../Images/B21047_03_09.png"/></figure>
+    <p class="packt_figref">Figure 3.9: Partitioning the data according to “Is interested in fashion?”</p>
+    <p class="normal">If we <a id="_idIndexMarker321"/>are satisfied with a one-level-deep tree, we can stop here by assigning the right branch label <strong class="keyWord">0</strong> and the left branch label <strong class="keyWord">1</strong> as the majority class.</p>
+    <p class="normal">Alternatively, we can go further down the road, constructing the second level from the left branch (the right branch cannot be split further):</p>
+    <pre class="programlisting code"><code class="hljs-code">Gini(interest, tech) = weighted_impurity([[<span class="hljs-number">0</span>, <span class="hljs-number">1</span>],
+    [<span class="hljs-number">1</span>, <span class="hljs-number">1</span>, <span class="hljs-number">0</span>]]) = <span class="hljs-number">0.467</span>
+Gini(interest, Sports) = weighted_impurity([[<span class="hljs-number">1</span>, <span class="hljs-number">1</span>, <span class="hljs-number">0</span>],
+    [<span class="hljs-number">0</span>, <span class="hljs-number">1</span>]]) = <span class="hljs-number">0.467</span>
+Gini(occupation, professional) = weighted_impurity([[<span class="hljs-number">0</span>, <span class="hljs-number">1</span>, <span class="hljs-number">0</span>],
+    [<span class="hljs-number">1</span>, <span class="hljs-number">1</span>]]) = <span class="hljs-number">0.267</span>
+Gini(occupation, student) = weighted_impurity([[<span class="hljs-number">1</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>],
+    [<span class="hljs-number">0</span>, <span class="hljs-number">1</span>]]) = <span class="hljs-number">0.467</span>
+Gini(occupation, retired) = weighted_impurity([[<span class="hljs-number">1</span>, <span class="hljs-number">0</span>, <span class="hljs-number">1</span>, <span class="hljs-number">1</span>],
+    [<span class="hljs-number">0</span>]]) = <span class="hljs-number">0.300</span>
+</code></pre>
+    <p class="normal">With the<a id="_idIndexMarker322"/> second splitting point specified by <code class="inlineCode">(occupation, professional)</code> with the lowest Gini Impurity, our tree becomes this:</p>
+    <figure class="mediaobject"><img alt="A picture containing text, screenshot, diagram, number  Description automatically generated" src="../Images/B21047_03_10.png"/></figure>
+    <p class="packt_figref">Figure 3.10: Further partitioning of the data according to “Is occupation professional?”</p>
+    <p class="normal">We can repeat the splitting process as long as the tree does not exceed the maximum depth and the node contains enough samples.</p>
+    <p class="normal">Now that the process of the tree construction has been made clear, it is time for coding.</p>
+    <p class="normal">We start with defining a utility function to split a node into left and right children based on a feature and a value:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">split_node</span><span class="language-python">(</span><span class="hljs-con-params">X, y, index, value</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    x_index = X[:, index]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># if this feature is numerical</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> X[</span><span class="hljs-con-number">0</span><span class="language-python">, index].dtype.kind </span><span class="hljs-con-keyword">in</span><span class="language-python"> [</span><span class="hljs-con-string">'i'</span><span class="language-python">, </span><span class="hljs-con-string">'f'</span><span class="language-python">]:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        mask = x_index &gt;= value</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># if this feature is categorical</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        mask = x_index == value</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># split into left and right child</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    left = [X[~mask, :], y[~mask]]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    right = [X[mask, :], y[mask]]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> left, right</span>
+</code></pre>
+    <p class="normal">We <a id="_idIndexMarker323"/>check whether the feature is numerical or categorical and split the data accordingly.</p>
+    <p class="normal">With the splitting measurement and generation functions available, we now define the greedy search function, which tries out all possible splits and returns the best one given a selection criterion, along with the resulting children:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">get_best_split</span><span class="language-python">(</span><span class="hljs-con-params">X, y, criterion</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    best_index, best_value, best_score, children =</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                                       </span><span class="hljs-con-literal">None</span><span class="language-python">, </span><span class="hljs-con-literal">None</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-literal">None</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">for</span><span class="language-python"> index </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(</span><span class="hljs-con-built_in">len</span><span class="language-python">(X[</span><span class="hljs-con-number">0</span><span class="language-python">])):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">for</span><span class="language-python"> value </span><span class="hljs-con-keyword">in</span><span class="language-python"> np.sort(np.unique(X[:, index])):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            groups = split_node(X, y, index, value)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            impurity = weighted_impurity(</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                        [groups[</span><span class="hljs-con-number">0</span><span class="language-python">][</span><span class="hljs-con-number">1</span><span class="language-python">], groups[</span><span class="hljs-con-number">1</span><span class="language-python">][</span><span class="hljs-con-number">1</span><span class="language-python">]], criterion)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">if</span><span class="language-python"> impurity &lt; best_score:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                best_index, best_value, best_score, children =</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                               index, value, impurity, groups</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> {</span><span class="hljs-con-string">'index'</span><span class="language-python">: best_index, </span><span class="hljs-con-string">'value'</span><span class="language-python">: best_value,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-string">'children'</span><span class="language-python">: children}</span>
+</code></pre>
+    <p class="normal">The selection and splitting process occurs in a recursive manner on each of the subsequent children. When a stopping criterion is met, the process stops at a node, and the major label is assigned to this leaf node:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">get_leaf</span><span class="language-python">(</span><span class="hljs-con-params">labels</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># Obtain the leaf as the majority of the labels</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> np.bincount(labels).argmax()</span>
+</code></pre>
+    <p class="normal">And, finally, the<a id="_idIndexMarker324"/> recursive function links all of them together:</p>
+    <ul>
+      <li class="bulletList">It assigns a leaf node if one of two child nodes is empty</li>
+      <li class="bulletList">It assigns a leaf node if the current branch depth exceeds the maximum depth allowed</li>
+      <li class="bulletList">It assigns a leaf node if the node does not contain sufficient samples required for a further split</li>
+      <li class="bulletList">Otherwise, it proceeds with a further split with the optimal splitting point</li>
+    </ul>
+    <p class="normal">This can be done with the following function:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">split</span><span class="language-python">(</span><span class="hljs-con-params">node, max_depth, min_size, depth, criterion</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    left, right = node[</span><span class="hljs-con-string">'children'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">del</span><span class="language-python"> (node[</span><span class="hljs-con-string">'children'</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> left[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        node[</span><span class="hljs-con-string">'right'</span><span class="language-python">] = get_leaf(right[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">return</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> right[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        node[</span><span class="hljs-con-string">'left'</span><span class="language-python">] = get_leaf(left[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">return</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># Check if the current depth exceeds the maximal depth</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> depth &gt;= max_depth:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        node[</span><span class="hljs-con-string">'left'</span><span class="language-python">], node[</span><span class="hljs-con-string">'right'</span><span class="language-python">] =</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                        get_leaf(left[</span><span class="hljs-con-number">1</span><span class="language-python">]), get_leaf(right[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">return</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># Check if the left child has enough samples</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> left[</span><span class="hljs-con-number">1</span><span class="language-python">].size &lt;= min_size:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        node[</span><span class="hljs-con-string">'left'</span><span class="language-python">] = get_leaf(left[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-comment"># It has enough samples, we further split it</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        result = get_best_split(left[</span><span class="hljs-con-number">0</span><span class="language-python">], left[</span><span class="hljs-con-number">1</span><span class="language-python">], criterion)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        result_left, result_right = result[</span><span class="hljs-con-string">'children'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> result_left[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'left'</span><span class="language-python">] = get_leaf(result_right[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">elif</span><span class="language-python"> result_right[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'left'</span><span class="language-python">] = get_leaf(result_left[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'left'</span><span class="language-python">] = result</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            split(node[</span><span class="hljs-con-string">'left'</span><span class="language-python">], max_depth, min_size,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                                      depth + </span><span class="hljs-con-number">1</span><span class="language-python">, criterion)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># Check if the right child has enough samples</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> right[</span><span class="hljs-con-number">1</span><span class="language-python">].size &lt;= min_size:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        node[</span><span class="hljs-con-string">'right'</span><span class="language-python">] = get_leaf(right[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-comment"># It has enough samples, we further split it</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        result = get_best_split(right[</span><span class="hljs-con-number">0</span><span class="language-python">], right[</span><span class="hljs-con-number">1</span><span class="language-python">], criterion)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        result_left, result_right = result[</span><span class="hljs-con-string">'children'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> result_left[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'</span><span class="hljs-con-string">right'</span><span class="language-python">] = get_leaf(result_right[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">elif</span><span class="language-python"> result_right[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'right'</span><span class="language-python">] = get_leaf(result_left[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'right'</span><span class="language-python">] = result</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            split(node[</span><span class="hljs-con-string">'right'</span><span class="language-python">], max_depth, min_size,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                                        depth + </span><span class="hljs-con-number">1</span><span class="language-python">, criterion)</span>
+</code></pre>
+    <p class="normal">The<a id="_idIndexMarker325"/> function first extracts the left and right children from the node dictionary. It then checks whether either the left or right child is empty. If so, it assigns a leaf node to the corresponding child. Next, it checks whether the current depth exceeds the maximum depth allowed for the tree. If so, it assigns leaf nodes to both children. If the left child has enough samples to split (greater than <code class="inlineCode">min_size</code>), it computes the best split using the <code class="inlineCode">get_best_split</code> function. If the resulting split produces empty children, it assigns a leaf node to the corresponding child; otherwise, it recursively calls the <code class="inlineCode">split</code> function on the left child. Similar steps are repeated for the right child.</p>
+    <p class="normal">Finally, the entry point of the tree’s construction is as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">train_tree</span><span class="language-python">(</span><span class="hljs-con-params">X_train, y_train, max_depth, min_size,</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">               criterion=</span><span class="hljs-con-string">'gini'</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    X = np.array(X_train)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    y = np.array(y_train)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    root = get_best_split(X, y, criterion)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    split(root, max_depth, min_size, </span><span class="hljs-con-number">1</span><span class="language-python">, criterion)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> root</span>
+</code></pre>
+    <p class="normal">Now, let’s test it with the preceding hand-calculated example:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = [[</span><span class="hljs-con-string">'tech'</span><span class="language-python">, </span><span class="hljs-con-string">'professional'</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">           [</span><span class="hljs-con-string">'fashion'</span><span class="language-python">, </span><span class="hljs-con-string">'student'</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">           [</span><span class="hljs-con-string">'fashion'</span><span class="language-python">, </span><span class="hljs-con-string">'professional'</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">           [</span><span class="hljs-con-string">'sports'</span><span class="language-python">, </span><span class="hljs-con-string">'</span><span class="hljs-con-string">student'</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">           [</span><span class="hljs-con-string">'tech'</span><span class="language-python">, </span><span class="hljs-con-string">'student'</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">           [</span><span class="hljs-con-string">'tech'</span><span class="language-python">, </span><span class="hljs-con-string">'retired'</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">           [</span><span class="hljs-con-string">'sports'</span><span class="language-python">, </span><span class="hljs-con-string">'professional'</span><span class="language-python">]]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_train = [</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">tree = train_tree(X_train, y_train, </span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-number">2</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">To verify <a id="_idIndexMarker326"/>that the resulting tree from the model is identical to what we constructed by hand, we write a function displaying the tree:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">CONDITION = {</span><span class="hljs-con-string">'numerical'</span><span class="language-python">: {</span><span class="hljs-con-string">'yes'</span><span class="language-python">: </span><span class="hljs-con-string">'&gt;='</span><span class="language-python">, </span><span class="hljs-con-string">'no'</span><span class="language-python">: </span><span class="hljs-con-string">'&lt;'</span><span class="language-python">},</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">             </span><span class="hljs-con-string">'categorical'</span><span class="language-python">: {</span><span class="hljs-con-string">'yes'</span><span class="language-python">: </span><span class="hljs-con-string">'is'</span><span class="language-python">, </span><span class="hljs-con-string">'no'</span><span class="language-python">: </span><span class="hljs-con-string">'is not'</span><span class="language-python">}}</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">visualize_tree</span><span class="language-python">(</span><span class="hljs-con-params">node, depth=</span><span class="hljs-con-number">0</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> </span><span class="hljs-con-built_in">isinstance</span><span class="language-python">(node, </span><span class="hljs-con-built_in">dict</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> node[</span><span class="hljs-con-string">'value'</span><span class="language-python">].dtype.kind </span><span class="hljs-con-keyword">in</span><span class="language-python"> [</span><span class="hljs-con-string">'i'</span><span class="language-python">, </span><span class="hljs-con-string">'f'</span><span class="language-python">]:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            condition = CONDITION[</span><span class="hljs-con-string">'numerical'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            condition = CONDITION[</span><span class="hljs-con-string">'categorical'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'{}|- X{} {} {}'</span><span class="language-python">.</span><span class="hljs-con-built_in">format</span><span class="language-python">(depth * </span><span class="hljs-con-string">'  '</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'index'</span><span class="language-python">] + </span><span class="hljs-con-number">1</span><span class="language-python">, condition[</span><span class="hljs-con-string">'no'</span><span class="language-python">], node[</span><span class="hljs-con-string">'value'</span><span class="language-python">]))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> </span><span class="hljs-con-string">'left'</span><span class="language-python"> </span><span class="hljs-con-keyword">in</span><span class="language-python"> node:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            visualize_tree(node[</span><span class="hljs-con-string">'left'</span><span class="language-python">], depth + </span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'{}|- X{} {} {}'</span><span class="language-python">.</span><span class="hljs-con-built_in">format</span><span class="language-python">(depth * </span><span class="hljs-con-string">'  '</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'index'</span><span class="language-python">] + </span><span class="hljs-con-number">1</span><span class="language-python">, condition[</span><span class="hljs-con-string">'yes'</span><span class="language-python">], node[</span><span class="hljs-con-string">'value'</span><span class="language-python">]))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> </span><span class="hljs-con-string">'right'</span><span class="language-python"> </span><span class="hljs-con-keyword">in</span><span class="language-python"> node:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            visualize_tree(node[</span><span class="hljs-con-string">'right'</span><span class="language-python">], depth + </span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f"</span><span class="hljs-con-subst">{depth * </span><span class="hljs-con-string">'  '</span><span class="hljs-con-subst">}</span><span class="hljs-con-string">[</span><span class="hljs-con-subst">{node}</span><span class="hljs-con-string">]"</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">visualize_tree(tree)</span>
+|- X1 is not fashion
+ |- X2 is not professional
+   [0]
+ |- X2 is professional
+   [1]
+|- X1 is fashion
+ [0]
+</code></pre>
+    <p class="normal">We can test it with a numerical example, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train_n = [[</span><span class="hljs-con-number">6</span><span class="language-python">, </span><span class="hljs-con-number">7</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            [</span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-number">4</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            [</span><span class="hljs-con-number">7</span><span class="language-python">, </span><span class="hljs-con-number">2</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            [</span><span class="hljs-con-number">3</span><span class="language-python">, </span><span class="hljs-con-number">6</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            [</span><span class="hljs-con-number">4</span><span class="language-python">, </span><span class="hljs-con-number">7</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            [</span><span class="hljs-con-number">5</span><span class="language-python">, </span><span class="hljs-con-number">2</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            [</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">6</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            [</span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            [</span><span class="hljs-con-number">6</span><span class="language-python">, </span><span class="hljs-con-number">3</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            [</span><span class="hljs-con-number">4</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">]]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_train_n = [</span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">tree = train_tree(X_train_n, y_train_n, </span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-number">2</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">visualize_tree(tree)</span>
+|- X2 &lt; 4
+ |- X1 &lt; 7
+   [1]
+ |- X1 &gt;= 7
+   [0]
+|- X2 &gt;= 4
+ |- X1 &lt; 2
+   [1]
+ |- X1 &gt;= 2
+   [0]
+</code></pre>
+    <p class="normal">The<a id="_idIndexMarker327"/> resulting trees from our decision tree model are the same as those we hand-crafted.</p>
+    <p class="normal">Now that you have a more solid understanding of decision trees after implementing one from scratch, we can move on with implementing a decision tree with scikit-learn.</p>
+    <h1 class="heading-1" id="_idParaDest-88">Implementing a decision tree with scikit-learn</h1>
+    <p class="normal">Here, we’ll <a id="_idIndexMarker328"/>use scikit-learn’s decision tree module (<a href="https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html"><span class="url">https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html</span></a>), which<a id="_idIndexMarker329"/> is already well developed and optimized:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.tree </span><span class="hljs-con-keyword">import</span><span class="language-python"> DecisionTreeClassifier</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">tree_sk = DecisionTreeClassifier(criterion=</span><span class="hljs-con-string">'gini'</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                               max_depth=</span><span class="hljs-con-number">2</span><span class="language-python">, min_samples_split=</span><span class="hljs-con-number">2</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">tree_sk.fit(X_train_n, y_train_n)</span>
+</code></pre>
+    <p class="normal">To visualize the tree we just built, we utilize the built-in <code class="inlineCode">export_graphviz</code> function, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.tree </span><span class="hljs-con-keyword">import</span><span class="language-python"> export_graphviz</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">export_graphviz(tree_sk, out_file=</span><span class="hljs-con-string">'tree.dot'</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                feature_names=[</span><span class="hljs-con-string">'X1'</span><span class="language-python">, </span><span class="hljs-con-string">'X2'</span><span class="language-python">], impurity=</span><span class="hljs-con-literal">False</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                filled=</span><span class="hljs-con-literal">True</span><span class="language-python">, class_names=[</span><span class="hljs-con-string">'</span><span class="hljs-con-string">0'</span><span class="language-python">, </span><span class="hljs-con-string">'1'</span><span class="language-python">])</span>
+</code></pre>
+    <p class="normal">Running this <a id="_idIndexMarker330"/>will generate a file called <code class="inlineCode">tree.dot</code>, which can be converted into a PNG image file using <strong class="keyWord">Graphviz</strong> (the introduction and<a id="_idIndexMarker331"/> installation instructions can be found at <a href="http://www.graphviz.org"><span class="url">http://www.graphviz.org</span></a>) by running the following command in the terminal:</p>
+    <pre class="programlisting con"><code class="hljs-con">dot -Tpng tree.dot -o tree.png
+</code></pre>
+    <p class="normal">Refer to <em class="italic">Figure 3.11</em> for the result:</p>
+    <figure class="mediaobject"><img alt="A picture containing text, handwriting, font, screenshot  Description automatically generated" src="../Images/B21047_03_11.png"/></figure>
+    <p class="packt_figref">Figure 3.11: Tree visualization</p>
+    <p class="normal">The generated tree is essentially the same as the one we had before.</p>
+    <p class="normal">I know you can’t wait to employ a decision tree to predict ad click-through. Let’s move on to the next section.</p>
+    <h1 class="heading-1" id="_idParaDest-89">Predicting ad click-through with a decision tree</h1>
+    <p class="normal">After<a id="_idIndexMarker332"/> several examples, it is now time to predict ad click-through using the decision tree algorithm you have just thoroughly <a id="_idIndexMarker333"/>learned about and practiced with. We will use the dataset from a Kaggle machine learning competition, <em class="italic">Click-Through Rate Prediction</em> (<a href="https://www.kaggle.com/c/avazu-ctr-prediction"><span class="url">https://www.kaggle.com/c/avazu-ctr-prediction</span></a>). The dataset can be downloaded from <a href="https://www.kaggle.com/c/avazu-ctr-prediction/data"><span class="url">https://www.kaggle.com/c/avazu-ctr-prediction/data</span></a>.</p>
+    <p class="normal">Only the <code class="inlineCode">train.gz</code> file contains labeled samples, so we only need to download this and unzip it (it will take a while). In this chapter, we will focus on only the first 300,000 samples from the <code class="inlineCode">train.csv</code> file unzipped from <code class="inlineCode">train.gz</code>.</p>
+    <p class="normal">The fields in the raw file are as follows:</p>
+    <figure class="mediaobject"><img alt="A screenshot of a computer  Description automatically generated with low confidence" src="../Images/B21047_03_12.png"/></figure>
+    <p class="packt_figref">Figure 3.12: Description and example values of the dataset</p>
+    <p class="normal">We take<a id="_idIndexMarker334"/> a glance at the head of the file by running the following command:</p>
+    <pre class="programlisting con"><code class="hljs-con">head train | sed 's/,,/, ,/g;s/,,/, ,/g' | column -s, -t
+</code></pre>
+    <p class="normal">Rather <a id="_idIndexMarker335"/>than a simple <code class="inlineCode">head train</code>, the output is cleaner as all the columns are aligned:</p>
+    <figure class="mediaobject"><img alt="A picture containing text, screenshot, black and white, menu  Description automatically generated" src="../Images/B21047_03_13.png"/></figure>
+    <p class="packt_figref">Figure 3.13: The first few rows of the data</p>
+    <p class="normal">Don’t be scared by the anonymized and hashed values. They are categorical features, and each of their possible values corresponds to a real and meaningful value, but it is presented this way due to the privacy policy. Possibly, <code class="inlineCode">C1</code> means user gender, and <code class="inlineCode">1005</code> and <code class="inlineCode">1002</code> represent male and female, respectively.</p>
+    <p class="normal">Now, let’s start <a id="_idIndexMarker336"/>by reading the dataset using <code class="inlineCode">pandas</code>. That’s right, <code class="inlineCode">pandas</code> is extremely good at handling data in a tabular format:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> pandas </span><span class="hljs-con-keyword">as</span><span class="language-python"> pd</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_rows = </span><span class="hljs-con-number">300000</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">df = pd.read_csv(</span><span class="hljs-con-string">"train.csv"</span><span class="language-python">, nrows=n_rows)</span>
+</code></pre>
+    <p class="normal">The <a id="_idIndexMarker337"/>first 300,000 lines of the file are loaded and stored in a DataFrame. Take a quick look at the first five rows of the DataFrame:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(df.head(</span><span class="hljs-con-number">5</span><span class="language-python">))</span>
+id  click      hour C1 banner_pos   site_id ... C16 C17 C18 C19     C20 C21
+0  1.000009e+18      0 14102100 1005          0 1fbe01fe ... 50 1722 0  35 -1 79
+1  1.000017e+19      0 14102100 1005          0 1fbe01fe ... 50 1722 0  35 100084 79
+2  1.000037e+19      0 14102100 1005          0 1fbe01fe ... 50 1722 0  35 100084 79
+3  1.000064e+19      0 14102100 1005          0 1fbe01fe ... 50 1722 0  35 100084 79
+4  1.000068e+19      0 14102100 1005          1 fe8cc448 ... 50 2161 0  35 -1 157
+</code></pre>
+    <p class="normal">The target variable is the <code class="inlineCode">click</code> column:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y = df[</span><span class="hljs-con-string">'click'</span><span class="language-python">].values</span>
+</code></pre>
+    <p class="normal">For the remaining columns, there are several columns that should be removed from the features (<code class="inlineCode">id</code>, <code class="inlineCode">hour</code>, <code class="inlineCode">device_id</code>, and <code class="inlineCode">device_ip</code>) as they do not contain much useful information:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X = df.drop([</span><span class="hljs-con-string">'click'</span><span class="language-python">, </span><span class="hljs-con-string">'id'</span><span class="language-python">, </span><span class="hljs-con-string">'hour'</span><span class="language-python">, </span><span class="hljs-con-string">'device_id'</span><span class="language-python">, </span><span class="hljs-con-string">'device_ip'</span><span class="language-python">],</span>
+                axis=1).values
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(X.shape)</span>
+(300000, 19)
+</code></pre>
+    <p class="normal">Each sample has <code class="inlineCode">19</code> predictive attributes.</p>
+    <p class="normal">Next, we need to split the data into training and testing sets. Normally, we do this by randomly picking samples. However, in our case, the samples are in chronological order, as indicated in the <code class="inlineCode">hour</code> field. Obviously, we cannot use future samples to predict past ones. Hence, we take the first 90% as training samples and the rest as testing samples:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_train = </span><span class="hljs-con-built_in">int</span><span class="language-python">(n_rows * </span><span class="hljs-con-number">0.9</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = X[:n_train]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y_train = Y[:n_train]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_test = X[n_train:]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y_test = Y[n_train:]</span>
+</code></pre>
+    <p class="normal">As<a id="_idIndexMarker338"/> mentioned earlier, decision tree models <a id="_idIndexMarker339"/>can take in categorical features. However, because the tree-based algorithms in scikit-learn (the current version is 1.4.1 as of early 2024) only allow numeric input, we need to transform the categorical features into numerical ones. But note that, in general, we do not need to do this; for example, the decision tree classifier we developed from scratch earlier can directly take in categorical features.</p>
+    <p class="normal">We will now transform string-based categorical features into one-hot encoded vectors using the <code class="inlineCode">OneHotEncoder</code> module from <code class="inlineCode">scikit-learn</code>. One-hot encoding was briefly mentioned in <em class="chapterRef">Chapter 1</em>, <em class="italic">Getting Started with Machine Learning and Python</em>. To recap, it basically converts a categorical feature with <em class="italic">k</em> possible values into <em class="italic">k</em> binary features. For example, the site category feature with three possible values, <code class="inlineCode">news</code>, <code class="inlineCode">education</code>, and <code class="inlineCode">sports</code>, will be encoded into three binary features, such as <code class="inlineCode">is_news</code>, <code class="inlineCode">is_education</code>, and <code class="inlineCode">is_sports</code>, whose values are either <code class="inlineCode">1</code> or <code class="inlineCode">0</code>.</p>
+    <p class="normal">We initialize a <code class="inlineCode">OneHotEncoder</code> object as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.preprocessing </span><span class="hljs-con-keyword">import</span><span class="language-python"> OneHotEncoder</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">enc = OneHotEncoder(handle_unknown=</span><span class="hljs-con-string">'ignore'</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">We fit it on the training set as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train_enc = enc.fit_transform(X_train)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train_enc[</span><span class="hljs-con-number">0</span><span class="language-python">]</span>
+&lt;1x8385 sparse matrix of type '&lt;class 'numpy.float64'&gt;'
+with 19 stored elements in Compressed Sparse Row format&gt;
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(X_train_enc[</span><span class="hljs-con-number">0</span><span class="language-python">])</span>
+  (0, 2)		1.0
+  (0, 6)		1.0
+  (0, 188)		1.0
+  (0, 2608)		1.0
+  (0, 2679)		1.0
+  (0, 3771)		1.0
+  (0, 3885)		1.0
+  (0, 3929)		1.0
+  (0, 4879)		1.0
+  (0, 7315)		1.0
+  (0, 7319)		1.0
+  (0, 7475)		1.0
+  (0, 7824)		1.0
+  (0, 7828)		1.0
+  (0, 7869)		1.0
+  (0, 7977)		1.0
+  (0, 7982)		1.0
+  (0, 8021)		1.0
+  (0, 8189)		1.0
+</code></pre>
+    <p class="normal">Each converted sample is a sparse vector.</p>
+    <p class="normal">We transform the testing set using the trained one-hot encoder as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_test_enc = enc.transform(X_test)</span>
+</code></pre>
+    <p class="normal">Remember, we <a id="_idIndexMarker340"/>specified the <code class="inlineCode">handle_unknown='ignore'</code> parameter in the one-hot encoder earlier. This is to prevent errors due to any unseen categorical values. To use the previous site category example, if there is a sample with the value <code class="inlineCode">movie</code>, all of the three converted binary features (<code class="inlineCode">is_news</code>, <code class="inlineCode">is_education</code>, and <code class="inlineCode">is_sports</code>) become <code class="inlineCode">0</code>. If we do not specify <code class="inlineCode">ignore</code>, an error will be raised.</p>
+    <p class="normal">The way<a id="_idIndexMarker341"/> we have conducted cross-validation so far is to explicitly split data into folds and repetitively write a <code class="inlineCode">for</code> loop to consecutively examine each hyperparameter. To make this less redundant, we’ll introduce a more elegant approach utilizing the <code class="inlineCode">GridSearchCV</code> module from scikit-learn. <code class="inlineCode">GridSearchCV</code> handles the entire process implicitly, including data splitting, fold generation, cross-training and validation, and finally, an exhaustive search over the best set of parameters. What is left for us is just to specify the hyperparameter(s) to tune and the values to explore for each individual hyperparameter. For demonstration purposes, we will only tweak the <code class="inlineCode">max_depth</code> hyperparameter (other hyperparameters, such as <code class="inlineCode">min_samples_split</code> and <code class="inlineCode">class_weight</code>, are also highly recommended):</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.tree </span><span class="hljs-con-keyword">import</span><span class="language-python"> DecisionTreeClassifier</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">parameters = {</span><span class="hljs-con-string">'max_depth'</span><span class="language-python">: [</span><span class="hljs-con-number">3</span><span class="language-python">, </span><span class="hljs-con-number">10</span><span class="language-python">, </span><span class="hljs-con-literal">None</span><span class="language-python">]}</span>
+</code></pre>
+    <p class="normal">We pick three options for the maximal depth – <code class="inlineCode">3</code>, <code class="inlineCode">10</code>, and unbounded. We initialize a decision tree model with Gini Impurity as the metric and <code class="inlineCode">30</code> as the minimum number of samples required to split further:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">decision_tree = DecisionTreeClassifier(criterion=</span><span class="hljs-con-string">'gini'</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                                       min_samples_split=</span><span class="hljs-con-number">30</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">The <a id="_idIndexMarker342"/>classification metric should be the AUC of the ROC curve, as it is an imbalanced binary case (only 51,211 out of 300,000 training <a id="_idIndexMarker343"/>samples are clicks, which is a 17% positive CTR; I encourage you to figure out the class distribution yourself). As for grid search, we use three-fold (as the training set is relatively small) cross-validation and select the best-performing hyperparameter measured by the AUC:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search = GridSearchCV(decision_tree, parameters,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                           n_jobs=-</span><span class="hljs-con-number">1</span><span class="language-python">, cv=</span><span class="hljs-con-number">3</span><span class="language-python">, scoring=</span><span class="hljs-con-string">'roc_auc'</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">Note, <code class="inlineCode">n_jobs=-1</code> means that we use all of the available CPU processors:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search.fit(X_train, y_train)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(grid_search.best_params_)</span>
+{'max_depth': 10}
+</code></pre>
+    <p class="normal">We use the model with the optimal parameter to predict any future test cases as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">decision_tree_best = grid_search.best_estimator_</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pos_prob = decision_tree_best.predict_proba(X_test)[:, </span><span class="hljs-con-number">1</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.metrics </span><span class="hljs-con-keyword">import</span><span class="language-python"> roc_auc_score</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'The ROC AUC on testing set is: </span><span class="hljs-con-subst">{roc_auc_score(Y_test,</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-subst">          pos_prob):</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+The ROC AUC on testing set is: 0.719
+</code></pre>
+    <p class="normal">The AUC we can achieve with the optimal decision tree model is 0.72. This does not seem to be very high, but click-through involves many intricate human factors, which is why predicting it is not an easy task. Although we can further optimize the hyperparameters, an AUC of 0.72 is actually pretty good. As a comparison, randomly selecting 17% of the samples to be clicked on will generate an AUC of <code class="inlineCode">0.499</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pos_prob = np.zeros(</span><span class="hljs-con-built_in">len</span><span class="language-python">(Y_test))</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">click_index = np.random.choice(</span><span class="hljs-con-built_in">len</span><span class="language-python">(Y_test),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                  </span><span class="hljs-con-built_in">int</span><span class="language-python">(</span><span class="hljs-con-built_in">len</span><span class="language-python">(Y_test) * </span><span class="hljs-con-number">51211.0</span><span class="language-python">/</span><span class="hljs-con-number">300000</span><span class="language-python">),</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                  replace=</span><span class="hljs-con-literal">False</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pos_prob[click_index] = </span><span class="hljs-con-number">1</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'The ROC AUC on testing set using random selection is: </span><span class="hljs-con-subst">{roc_auc_score(Y_test, pos_prob):</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+The ROC AUC on testing set using random selection is: 0.499
+</code></pre>
+    <p class="normal">Our <a id="_idIndexMarker344"/>decision tree model significantly outperforms the random predictor. Looking back, we can see that a decision tree is <a id="_idIndexMarker345"/>a sequence of greedy searches for the best splitting point at each step, based on the training dataset. However, this tends to cause overfitting as it is likely that the optimal points only work well for the training samples. Fortunately, ensembling is the technique to correct this, and random forest is an ensemble tree model that usually outperforms a simple decision tree.</p>
+    <div class="note">
+      <p class="normal"><strong class="keyWord">Best practice</strong></p>
+      <p class="normal">Here are two best practices for getting data ready for tree-based algorithms:</p>
+      <ul>
+        <li class="bulletList"><strong class="keyWord">Encode categorical features</strong>: As mentioned earlier, we need to encode categorical features before feeding them into the models. One-hot encoding and label encoding are popular choices.</li>
+        <li class="bulletList"><strong class="keyWord">Scale numerical features</strong>: We need to pay attention to the scales of numerical features to prevent features with larger scales from dominating the splitting decisions in the tree. Normalization or standardization are commonly used for this purpose.</li>
+      </ul>
+    </div>
+    <h1 class="heading-1" id="_idParaDest-90">Ensembling decision trees – random forests</h1>
+    <p class="normal">The <strong class="keyWord">ensemble</strong> technique of <strong class="keyWord">bagging</strong> (which stands for <strong class="keyWord">bootstrap aggregating</strong>), which I briefly <a id="_idIndexMarker346"/>mentioned in <em class="chapterRef">Chapter 1</em>, <em class="italic">Getting Started with Machine Learning and Python</em>, can effectively overcome overfitting. To recap, different sets of training<a id="_idIndexMarker347"/> samples are randomly drawn with replacements from the original training data; each resulting set is used to fit an individual classification model. The results of these separately trained models are then combined together through a <strong class="keyWord">majority vote</strong> to make the final decision.</p>
+    <p class="normal">Tree bagging, as <a id="_idIndexMarker348"/>described in the preceding paragraph, reduces <a id="_idIndexMarker349"/>the high variance that a decision tree model suffers from and, hence, in general, performs better than a single tree. However, in some cases, where one or more features are strong indicators, individual trees are constructed largely based on these features and, as a result, become highly correlated. Aggregating multiple correlated trees will not make much difference. To force each tree to become uncorrelated, random forest only considers a random subset of the features when searching for the best splitting point at each node. Individual trees are now trained based on different sequential sets of features, which guarantees more diversity and better performance. Random forest is a variant of the tree bagging model with <a id="_idIndexMarker350"/>additional <strong class="keyWord">feature-based bagging</strong>.</p>
+    <p class="normal">To employ<a id="_idIndexMarker351"/> random forest in our click-through prediction project, we can use the package from scikit-learn. Similarly to the way we implemented the decision tree in the preceding section, we only tweak the <code class="inlineCode">max_depth</code> parameter:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.ensemble </span><span class="hljs-con-keyword">import</span><span class="language-python"> RandomForestClassifier</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">random_forest = RandomForestClassifier(n_estimators=</span><span class="hljs-con-number">100</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    criterion=</span><span class="hljs-con-string">'gini'</span><span class="language-python">, min_samples_split=</span><span class="hljs-con-number">30</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    n_jobs=-</span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">Besides <code class="inlineCode">max_depth</code>, <code class="inlineCode">min_samples_split</code>, and <code class="inlineCode">class_weight</code>, which are important hyperparameters related to a single decision tree, hyperparameters that are related to a random forest (a set of trees) such as <code class="inlineCode">n_estimators</code> are also highly recommended. We fine-tune <code class="inlineCode">max_depth</code> as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search = GridSearchCV(random_forest, parameters,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                           n_jobs=-</span><span class="hljs-con-number">1</span><span class="language-python">, cv=</span><span class="hljs-con-number">3</span><span class="language-python">, scoring=</span><span class="hljs-con-string">'roc_auc'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search.fit(X_train, y_train)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(grid_search.best_params_)</span>
+{'max_depth': None}
+</code></pre>
+    <p class="normal">We use the model with the optimal parameter <code class="inlineCode">None</code> for <code class="inlineCode">max_depth</code> (the nodes are expanded until another stopping criterion is met) to predict any future unseen cases:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">random_forest_best = grid_search.best_estimator_</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pos_prob = random_forest_best.predict_proba(X_test)[:, </span><span class="hljs-con-number">1</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span>(<span class="hljs-con-string">f'The ROC AUC on testing set using random forest is: {roc_auc_</span>
+<span class="hljs-con-meta">...</span><span class="hljs-con-string">       score(Y_test, pos_prob):.3f}'</span>)
+The ROC AUC on testing set using random forest is: 0.759
+</code></pre>
+    <p class="normal">It turns <a id="_idIndexMarker352"/>out that the random forest model gives a substantial lift to the performance.</p>
+    <p class="normal">Let’s summarize several critical hyperparameters to tune:</p>
+    <ul>
+      <li class="bulletList"><code class="inlineCode">max_depth</code>: This is the deepest individual tree. It tends to overfit if it is too deep or underfit if it is too shallow.</li>
+      <li class="bulletList"><code class="inlineCode">min_samples_split</code>: This hyperparameter represents the minimum number of samples required for further splitting at a node. Too small a value tends to cause overfitting, while too large a value is likely to introduce underfitting. <code class="inlineCode">10</code>, <code class="inlineCode">30</code>, and <code class="inlineCode">50</code> might be good options to start with.</li>
+    </ul>
+    <p class="normal">The preceding two <a id="_idIndexMarker353"/>hyperparameters are generally related to individual decision trees. The following two parameters are more related to a random forest or collection of trees:</p>
+    <ul>
+      <li class="bulletList"><code class="inlineCode">max_features</code>: This parameter represents the number of features to consider for each best splitting point search. Typically, for an <em class="italic">m</em>-dimensional dataset, <img alt="" role="presentation" src="../Images/B21047_03_010.png"/> (rounded) is a recommended value for <code class="inlineCode">max_features</code>. This can be specified as <code class="inlineCode">max_features="sqrt"</code> in scikit-learn. Other options include <code class="inlineCode">log2</code>, 20%, and 50% of the original features.</li>
+      <li class="bulletList"><code class="inlineCode">n_estimators</code>: This parameter represents the number of trees considered for majority voting. Generally speaking, the more trees, the better the performance but the longer the computation time. It is usually set as <code class="inlineCode">100</code>, <code class="inlineCode">200</code>, <code class="inlineCode">500</code>, and so on.</li>
+    </ul>
+    <p class="normal">Next, we’ll discuss gradient-boosted trees.</p>
+    <h1 class="heading-1" id="_idParaDest-91">Ensembling decision trees – gradient-boosted trees</h1>
+    <p class="normal"><strong class="keyWord">Boosting</strong>, which is<a id="_idIndexMarker354"/> another ensemble technique, takes an <a id="_idIndexMarker355"/>iterative approach instead of combining multiple learners in parallel. In boosted trees, individual trees are no longer trained separately. Specifically, in <strong class="keyWord">Gradient-Boosted Trees</strong> (<strong class="keyWord">GBT</strong>) (also called <strong class="keyWord">Gradient-Boosting Machines</strong>), individual trees are trained in succession where a tree aims to correct the errors made by the previous tree. The <a id="_idIndexMarker356"/>following two diagrams illustrate the difference between random forest and GBT.</p>
+    <p class="normal">The random forest model builds each tree independently using a different subset of the dataset, and then <a id="_idIndexMarker357"/>combines the results at the end by majority votes or averaging:</p>
+    <figure class="mediaobject"><img alt="A diagram of a tree  Description automatically generated with low confidence" src="../Images/B21047_03_14.png"/></figure>
+    <p class="packt_figref">Figure 3.14: The random forest workflow</p>
+    <p class="normal">The GBT model<a id="_idIndexMarker358"/> builds one tree at a time and combines the results along the way:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_03_15.png"/></figure>
+    <p class="packt_figref">Figure 3.15: The GBT workflow</p>
+    <p class="normal">GBT works by <a id="_idIndexMarker359"/>iteratively improving the ensemble’s predictions through the addition of sequentially trained decision trees, with each tree focusing on the residuals of the previous ones. Here’s how it works:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">Initialization</strong>: The process starts with an initial simple model, often a single decision tree, which serves as the starting point for the ensemble.</li>
+      <li class="bulletList"><strong class="keyWord">Sequential training</strong>: Subsequent decision trees are trained sequentially, with each tree attempting to correct the errors of the previous ones. Each new tree is trained on the residuals (the differences between the actual and predicted values) of the ensemble’s predictions from the previous trees.</li>
+      <li class="bulletList"><strong class="keyWord">Additive modeling</strong>: Each new decision tree is added to the ensemble in a way that minimizes the overall error. The trees are typically shallow, with a limited number of nodes, to avoid overfitting and improve generalization.</li>
+      <li class="bulletList"><strong class="keyWord">Learning rate</strong>: GBT introduces a learning rate parameter, which controls the contribution of each tree to the ensemble. A lower learning rate leads to slower learning but can enhance the overall performance and stability of the ensemble.</li>
+      <li class="bulletList"><strong class="keyWord">Ensemble prediction</strong>: The <a id="_idIndexMarker360"/>final prediction is made by combining the predictions of all the trees in the ensemble.</li>
+    </ul>
+    <p class="normal">We will <a id="_idIndexMarker361"/>use the <code class="inlineCode">XGBoost</code> package (<a href="https://xgboost.readthedocs.io/en/latest/"><span class="url">https://xgboost.readthedocs.io/en/latest/</span></a>) to implement GBT. We first install the <code class="inlineCode">XGBoost Python API</code> via the following command with <code class="inlineCode">conda</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con">conda install -c conda-forge xgboost
+</code></pre>
+    <p class="normal">We can also use <code class="inlineCode">pip</code>, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con">pip install xgboost
+</code></pre>
+    <p class="normal">If you run into a problem, please install or upgrade <code class="inlineCode">CMake</code> (a cross-platform build system generator), as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con">pip install CMake
+</code></pre>
+    <p class="normal">Let’s now take a look at the <a id="_idIndexMarker362"/>following steps. You will see how we predict clicks using GBT:</p>
+    <ol>
+      <li class="numberedList" value="1">We import XGBoost and initialize a GBT model:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> xgboost </span><span class="hljs-con-keyword">as</span><span class="language-python"> xgb</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">model = xgb.XGBClassifier(learning_rate=</span><span class="hljs-con-number">0.1</span><span class="language-python">, max_depth=</span><span class="hljs-con-number">10</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                          n_estimators=</span><span class="hljs-con-number">1000</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We set the learning rate to <code class="inlineCode">0.1</code>, which determines how fast or slow we want to proceed with learning in each step (in each tree, in GBT). We will discuss the learning rate in more detail in <em class="chapterRef">Chapter 4</em>, <em class="italic">Predicting Online Ad Click-Through with Logistic Regression</em>. <code class="inlineCode">max_depth</code> for individual trees is set to 10. Additionally, 1,000 trees will be trained in sequence in our GBT model.</p>
+    <ol>
+      <li class="numberedList" value="2">Next, we <a id="_idIndexMarker363"/>train the GBT model on the training set we prepared previously:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">model.fit(X_train_enc, Y_train)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We use <a id="_idIndexMarker364"/>the trained model to make predictions on the testing set and calculate the ROC AUC accordingly:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pos_prob = model.predict_proba(X_test_enc)[:, </span><span class="hljs-con-number">1</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'The ROC AUC on testing set using GBT is: </span><span class="hljs-con-subst">{roc_auc_score(Y_test, pos_prob):</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+The ROC AUC on testing set using GBT is: 0.771
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal">We are able to achieve <code class="inlineCode">0.77</code> AUC using the XGBoost GBT model.</p>
+    <p class="normal">In this section, you learned about another type of tree ensembling, GBT, and applied it to our ad click-through prediction.</p>
+    <div class="note">
+      <p class="normal"> <strong class="keyWord">Best practice</strong></p>
+      <p class="normal">So, you’ve learned about several tree-based algorithms in the chapter – awesome! But picking the right one can be tricky. Here is a practical guide:</p>
+      <ul>
+        <li class="bulletList"><strong class="keyWord">Decision tree (CART)</strong>: This is the most simple and interpretable algorithm. We usually use it for smaller datasets.</li>
+        <li class="bulletList"><strong class="keyWord">Random forest</strong>: This is more robust to overfitting, and can handle larger or complex datasets well.</li>
+        <li class="bulletList"><strong class="keyWord">GBT</strong>: This is considered the most powerful algorithm for complex problems, and the most popular tree-based algorithm in the industry. At the same time, however, it can be prone to overfitting. Hence, using hyperparameter tuning and regularization techniques to avoid overfitting is recommended.</li>
+      </ul>
+    </div>
+    <h1 class="heading-1" id="_idParaDest-92">Summary</h1>
+    <p class="normal">In this chapter, we started with an introduction to a typical machine learning problem, online ad click-through prediction, and its inherent challenges, including categorical features. We then looked at tree-based algorithms that can take in both numerical and categorical features.</p>
+    <p class="normal">Next, we had an in-depth discussion about the decision tree algorithm: its mechanics, its different types, how to construct a tree, and two metrics (Gini Impurity and entropy) that measure the effectiveness of a split at a node. After constructing a tree by hand, we implemented the algorithm from scratch.</p>
+    <p class="normal">You also learned how to use the decision tree package from scikit-learn and applied it to predict the CTR. We continued to improve performance by adopting the feature-based random forest bagging algorithm. Finally, the chapter ended with several ways in which to tune a random forest model, along with two different ways of ensembling decision trees, random forest and GBT modeling. Bagging and boosting are two approaches to model ensembling that can improve learning performance.</p>
+    <p class="normal">More practice is always good for honing your skills. I recommend that you complete the following exercises before moving on to the next chapter, where we will solve ad click-through prediction using another algorithm: <strong class="keyWord">logistic regression</strong>.</p>
+    <h1 class="heading-1" id="_idParaDest-93">Exercises</h1>
+    <ol>
+      <li class="numberedList" value="1">In the decision tree click-through prediction project, can you also tweak other hyperparameters, such as <code class="inlineCode">min_samples_split</code> and <code class="inlineCode">class_weight</code>? What is the highest AUC you are able to achieve?</li>
+      <li class="numberedList">In the random forest-based click-through prediction project, can you also tweak other hyperparameters, such as <code class="inlineCode">min_samples_split</code>, <code class="inlineCode">max_features</code>, and <code class="inlineCode">n_estimators</code>, in scikit-learn? What is the highest AUC you are able to achieve?</li>
+      <li class="numberedList">In the GBT-based click-through prediction project, what hyperparameters can you tweak? What is the highest AUC you are able to achieve? You can read <a href="https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn"><span class="url">https://xgboost.readthedocs.io/en/latest/python/python_api.html#module-xgboost.sklearn</span></a> to figure it out.</li>
+    </ol>
+    <h1 class="heading-1" id="_idParaDest-94">Join our book’s Discord space</h1>
+    <p class="normal">Join our community’s Discord space for discussions with the authors and other readers:</p>
+    <p class="normal"><a href="https://packt.link/yuxi"><span class="url">https://packt.link/yuxi</span></a></p>
+    <p class="normal"><img alt="" role="presentation" src="../Images/QR_Code1878468721786989681.png"/></p>
+  </div>
+</body></html>

@@ -1,0 +1,563 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Neural Networks</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter we will cover the following recipes:</p>
+<ul>
+<li><span>Perceptron classifier</span></li>
+<li>Neural network – multilayer perceptron</li>
+<li>Stacking with a neural network</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Introduction</h1>
+                </header>
+            
+            <article>
+                
+<p>Neural networks and deep learning have been incredibly popular recently as they have solved tough problems and perhaps have become a significant part of the public face of artificial intelligence. Let's explore the feed-forward neural networks available in scikit-learn.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Perceptron classifier</h1>
+                </header>
+            
+            <article>
+                
+<p>With scikit-learn, you can explore the perceptron classifier and relate it to other classification procedures within scikit-learn. Additionally, perceptrons are the building blocks of neural networks, which are a very prominent part of machine learning, particularly computer vision.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's get started. The process is as follows:</p>
+<ol>
+<li>Load the UCI diabetes classification dataset.</li>
+<li>Split the dataset into training and test sets.</li>
+<li>Import a perceptron.</li>
+<li>Instantiate the perceptron.</li>
+<li>Then train the perceptron.</li>
+<li>Try the perceptron on the testing set or preferably compute <kbd>cross_val_score</kbd>.</li>
+</ol>
+<p>Load the UCI diabetes dataset:</p>
+<pre><strong>import numpy as np</strong><br/><strong>import pandas as pd</strong><br/><br/><strong>data_web_address = "https://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes/pima-indians-diabetes.data"</strong><br/><br/><strong>column_names = ['pregnancy_x',</strong><br/><strong>'plasma_con',</strong><br/><strong>'blood_pressure',</strong><br/><strong>'skin_mm',</strong><br/><strong>'insulin',</strong><br/><strong>'bmi',</strong><br/><strong>'pedigree_func',</strong><br/><strong>'age',</strong><br/><strong>'target']</strong><br/><br/><strong>feature_names = column_names[:-1]</strong><br/><br/><strong>all_data = pd.read_csv(data_web_address , names=column_names) </strong><br/><br/><strong>X = all_data[feature_names]</strong><br/><strong>y = all_data['target']</strong></pre>
+<p>You have loaded <kbd>X</kbd>, the set of input features, and <kbd>y</kbd>, the variable we desired to predict. Split <kbd>X</kbd> and <kbd>y</kbd> into testing and training sets. Do this by stratifying the target set, keeping the classes in balanced proportions in both training and testing sets:</p>
+<pre><strong>from sklearn.model_selection import train_test_split</strong><br/><strong>X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,stratify=y)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Scale the set of features. Perform the scaling operation on the training set only and then continue with the testing set:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.preprocessing import StandardScaler </strong><br/><br/><strong>scaler = StandardScaler()</strong><br/><strong>scaler.fit(X_train) </strong><br/><strong>X_train_scaled = scaler.transform(X_train)</strong><br/><strong>X_test_scaled = scaler.transform(X_test)</strong></pre>
+<ol start="2">
+<li>Instantiate and train the perceptron on the training set:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.linear_model import Perceptron</strong><br/><br/><strong>pr = Perceptron()</strong><br/><strong>pr.fit(X_train_scaled, y_train)<br/></strong><br/><strong>Perceptron(alpha=0.0001, class_weight=None, eta0=1.0, fit_intercept=True,</strong><br/><strong> n_iter=5, n_jobs=1, penalty=None, random_state=0, shuffle=True,</strong><br/><strong> verbose=0, warm_start=False)</strong></pre>
+<ol start="3">
+<li>Measure the cross-validation score. Pass <kbd>roc_auc</kbd> as the cross-validation scoring mechanism. Additionally, use a stratified k-fold by setting <kbd>cv=skf</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.model_selection import cross_val_score, StratifiedKFold</strong><br/><br/><strong>skf = StratifiedKFold(n_splits=3)</strong><br/><strong>cross_val_score(pr, X_train_scaled, y_train, cv=skf,scoring='roc_auc').mean()</strong><br/><br/><strong>0.76832628835771022</strong></pre>
+<ol start="4">
+<li>Measure the performance on the test set. Import two metrics, <kbd>accuracy_score</kbd> and <kbd>roc_auc_score</kbd>, from the <kbd>sklearn.metrics</kbd> module:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.metrics import accuracy_score, roc_auc_score</strong><br/><br/><strong>print "Classification accuracy : ", accuracy_score(y_test, pr.predict(X_test_scaled))</strong><br/><strong>print "ROC-AUC Score : ",roc_auc_score(y_test, pr.predict(X_test_scaled))</strong><br/><br/><strong>Classification accuracy : 0.681818181818</strong><br/><strong>ROC-AUC Score : 0.682592592593</strong></pre>
+<p>The test finished relatively quickly. It performed okay, a bit worse than logistic regression, which was 75% accurate (this is an estimate; we cannot compare the logistic regression from any previous chapter because the training/testing split is different).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The perceptron is a simplification of a neuron in the brain. In the following diagram, the perceptron receives inputs <em>x<sub>1</sub>,</em> and <em>x<sub>2</sub></em> from the left. A bias term<em>, w</em><sub>0</sub><em>,</em> and weights <em>w<sub>1</sub></em> and <em>w<sub>2</sub></em> are computed. The terms <em>x</em><sub>i</sub> and <em>w</em><sub>i</sub> form a linear function. This linear function is then passed to an activation function.</p>
+<p>In the following activation function, if the sum of the dot product of the weight and input vector is less than zero, an individual row is classified as 0; otherwise it is classified as 1:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/56833da2-8df6-4a37-a6cb-5133ddeda3c3.png"/></div>
+<p>This happens in a single epoch, or iteration, passing through the perceptron. The process repeats through several iterations and weights are readjusted each time, minimizing the loss function.</p>
+<p>With regard to perceptrons and the current state of neural networks, they work well as researchers have tried many things. In practice, they currently work well with the computational power available now.</p>
+<p>As computing power keeps increasing, neural networks and perceptrons become capable of solving increasingly difficult problems and training times keep decreasing and decreasing.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Try running a grid search by varying the perceptron's hyperparameters. Some notable parameters include regularization parameters, <kbd>penalty</kbd> and <kbd>alpha</kbd>, <kbd>class_weight</kbd>, and <kbd>max_iter</kbd>. The <kbd>class_weight</kbd> <span>parameter </span><span>deals well with unbalanced classes by giving more weight to the underrepresented classes. The</span> <kbd>max_iter</kbd><span> </span><span>parameter</span><span> </span><span>refers to the maximum number of passes through the perceptron. In general, the higher its value</span> <span>the better, so we set it to 50. (Note that this is the code for scikit-learn 0.19.0. In scikit-learn 0.18.1, use the</span> <kbd>n_iter</kbd> <span>parameter instead of the</span> <kbd>max_iter</kbd> <span>parameter.)</span></p>
+<p>Try the following grid search:</p>
+<pre class="mce-root"><strong>from sklearn.model_selection import GridSearchCV</strong><br/><br/><strong>param_dist = {'alpha': [0.1,0.01,0.001,0.0001], </strong><br/><strong> 'penalty': [None, 'l2','l1','elasticnet'],</strong><br/><strong> 'random_state': [7],</strong><br/><strong> 'class_weight':['balanced',None],'eta0': [0.25,0.5,0.75,1.0], </strong><br/><strong> 'warm_start':[True,False], 'max_iter':[50], 'tol':[1e-3]}</strong><br/><br/><strong>gs_perceptron = GridSearchCV(pr, param_dist, scoring='roc_auc',cv=skf).fit(X_train_scaled, y_train)</strong></pre>
+<p>Look at the best parameters and the best score:</p>
+<pre><strong>gs_perceptron.best_params_</strong><br/><br/><strong>{'alpha': 0.001,
+ 'class_weight': None,
+ 'eta0': 0.5,
+ 'max_iter': 50,
+ 'penalty': 'l2',
+ 'random_state': 7,
+ 'tol': 0.001,
+ 'warm_start': True}</strong><br/><br/><strong>gs_perceptron.best_score_</strong><br/><br/><strong>0.79221656570311072</strong></pre>
+<p>Varying hyperparameters using cross-validation has improved the results. Now try to use bagging with a set of perceptrons as follows. Start by noticing and picking the best perceptron from the perceptron grid search:</p>
+<pre><strong>best_perceptron = gs_perceptron.best_estimator_</strong></pre>
+<p>Perform the grid search:</p>
+<pre class="mce-root"><strong>from sklearn.ensemble import BaggingClassifier </strong><br/><br/><strong>from sklearn.ensemble import BaggingClassifier </strong><br/><strong>param_dist = {</strong><br/><strong> 'max_samples': [0.5,1.0],</strong><br/><strong> 'max_features' : [0.5,1.0],</strong><br/><strong> 'oob_score' : [True, False],</strong><br/><strong> 'n_estimators': [100],</strong><br/><strong> 'n_jobs':[-1],</strong><br/><strong> 'base_estimator__alpha': [0.001,0.002],</strong><br/><strong> 'base_estimator__penalty': [None, 'l2','l1','elasticnet'], }</strong><br/><br/><strong>ensemble_estimator = BaggingClassifier(base_estimator = best_perceptron)</strong><br/><strong>bag_perceptrons = GridSearchCV(ensemble_estimator, param_dist,scoring='roc_auc',cv=skf,n_jobs=-1).fit(X_train_scaled, y_train)</strong></pre>
+<p>Look at the new cross-validation score and best parameters:</p>
+<pre class="mce-root"><strong>bag_perceptrons.best_score_</strong><br/><br/><strong>0.83299842529587864</strong><br/><br/><strong>bag_perceptrons.best_params_</strong><br/><br/><strong>{'base_estimator__alpha': 0.001,
+ 'base_estimator__penalty': 'l1',
+ 'max_features': 1.0,
+ 'max_samples': 1.0,
+ 'n_estimators': 100,
+ 'n_jobs': -1,
+ 'oob_score': True}</strong></pre>
+<p>Thus, a bag of perceptrons scores better than a single perceptron for this dataset.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Neural network – multilayer perceptron</h1>
+                </header>
+            
+            <article>
+                
+<p>Using a neural network in scikit-learn is straightforward and proceeds as follows:</p>
+<ol>
+<li>Load the data.</li>
+<li>Scale the data with a standard scaler.</li>
+<li>Do a hyperparameter search. Begin by varying the alpha parameter.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Load the medium-sized California housing dataset that we used in <a href="9fdf265d-8934-4bbb-8b3a-dd5cd2c33cc7.xhtml" target="_blank">Chapter 9</a>, <em>Tree Algorithms and Ensembles</em>:</p>
+<pre class="mce-root"><strong>%matplotlib inline</strong><br/><br/><strong>import numpy as np</strong><br/><strong>import pandas as pd</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/><br/><strong>from sklearn.datasets import fetch_california_housing</strong><br/><br/><strong>cali_housing = fetch_california_housing()</strong><br/><br/><strong>X = cali_housing.data</strong><br/><strong>y = cali_housing.target</strong></pre>
+<p>Bin the target variable so that the target train set and target test set are a bit more similar. Then use a stratified train/test split:</p>
+<pre><strong>bins = np.arange(6)</strong><br/><strong>binned_y = np.digitize(y, bins)</strong><br/><br/><strong>from sklearn.model_selection import train_test_split</strong><br/><strong>X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,stratify=binned_y)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Begin by scaling the input variables. Train the scaler only on the training data:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.preprocessing import StandardScaler</strong><br/><br/><strong>scaler = StandardScaler()</strong><br/><strong>scaler.fit(X_train)</strong><br/><br/><strong>X_train_scaled = scaler.transform(X_train)</strong></pre>
+<ol start="2">
+<li>Then, perform the scaling on the test set:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>X_test_scaled = scaler.transform(X_test)</strong></pre>
+<ol start="3">
+<li>Finally, perform a randomized search (or grid search if you prefer) to find a reasonable value for <kbd>alpha</kbd>, one that scores well:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.model_selection import RandomizedSearchCV</strong><br/><strong>from sklearn.neural_network import MLPRegressor</strong><br/><br/><strong>param_grid = {'alpha': [10,1,0.1,0.01],</strong><br/><strong>               'hidden_layer_sizes' : [(50,50,50),(50,50,50,50,50)],</strong><br/><strong>               'activation': ['relu','logistic'],</strong><br/><strong>               'solver' : ['adam']</strong><br/><strong>               }</strong><br/><br/><strong>pre_gs_inst = RandomizedSearchCV(MLPRegressor(random_state=7),</strong><br/><strong>                                  param_distributions = param_grid,</strong><br/><strong>                                  cv=3,</strong><br/><strong>                                  n_iter=15,</strong><br/><strong>                                  random_state=7)</strong><br/><strong>pre_gs_inst.fit(X_train_scaled, y_train)</strong><br/><br/><strong>pre_gs_inst.best_score_</strong><br/><br/><strong>0.7729679848718175</strong><br/><br/><strong>pre_gs_inst.best_params_</strong><br/><br/><strong>{'activation': 'relu',</strong><br/><strong> 'alpha': 0.01,</strong><br/><strong> 'hidden_layer_sizes': (50, 50, 50),</strong><br/><strong> 'solver': 'adam'}</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the context of neural networks, the single perceptrons look like this:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="165" width="535" src="assets/a494cfb8-d5cd-4eea-8df9-c8190c0558f0.png"/></div>
+<p>The output is a function of a sum of the dot product of weights and inputs. The function <em>f</em> is the activation function and can be a sigmoid curve, for example. In the neural network, hyperparameter activation refers to this function. In scikit-learn, there are the options of identity, logistic, tanh, and relu, where logistic is the sigmoid curve.</p>
+<p>The whole network looks like this (the following is a diagram from the scikit documentation at <a href="http://scikit-learn.org/stable/modules/neural_networks_supervised.html" target="_blank">http://scikit-learn.org/stable/modules/neural_networks_supervised.html</a>):</p>
+<div class="CDPAlignCenter CDPAlign"><img height="300" width="285" src="assets/1eefe899-179d-46b0-81eb-c8adbda3965c.png"/></div>
+<p>It is instructive to use a neural network on a dataset we are familiar with, the California housing dataset. The California housing dataset seemed to favor nonlinear algorithms, particularly trees and ensembles of trees. Trees did well on the dataset and established a benchmark as to how well algorithms can do on that dataset.</p>
+<p>In the end, neural networks did okay but not nearly as well as gradient boosting machines. Additionally, they were computationally expensive.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Philosophical thoughts on neural networks</h1>
+                </header>
+            
+            <article>
+                
+<p>Neural networks are mathematically universal function approximators and can learn any function. Also, the hidden layers are often interpreted as the network learning the intermediate steps of a process without a human having to program the intermediate steps. This can come from convolutional neural networks in computer vision, where it is easy to see how the neural network figures out each layer.</p>
+<p>These facts make an interesting mental image and can be applied to other estimators. Many people do not tend to think of random forests as trees figuring out processes tree level by tree level, or tree by tree (perhaps because their structure is not as organized and random forests do not invoke visualizations of the biological brain). In more practical detail, if you wanted to organize random forests, you can limit their depth or perhaps use gradient boosting machines.</p>
+<p>Regardless of the hard facts present or not in the idea of a neural network truly being intelligent, it is helpful to carry around such mental images as the field progresses and machines become smarter and smarter. Carry the idea around, yet focus on the results as they are; that's what machine learning is about now.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Stacking with a neural network</h1>
+                </header>
+            
+            <article>
+                
+<p>The two most common meta-learning methods are bagging and boosting. Stacking is less widely used; yet it is powerful because one can combine models of different types. All three methods create a stronger estimator from a set of not-so-strong estimators. We tried the stacking procedure in <a href="9fdf265d-8934-4bbb-8b3a-dd5cd2c33cc7.xhtml" target="_blank">Chapter 9</a>, <em>Tree Algorithms and Ensembles</em>. <span class="cdp-organizer-chapter-title">Here, we try it with a neural network mixed with other models.</span></p>
+<p>The process for stacking is as follows:</p>
+<ol>
+<li>Split the dataset into training and testing sets.</li>
+<li>Split the training set into two sets.</li>
+</ol>
+<ol start="3">
+<li>Train base learners on the first part of the training set.</li>
+<li>Make predictions using the base learners on the second part of the training set. Store these prediction vectors.</li>
+<li>Take the stored prediction vectors as inputs and the target variable as output. Train a higher level learner (note that we are still on the second part of the training set).</li>
+</ol>
+<p>After that, you can view the results of the overall process on the test set (note that you cannot select a model by viewing results on the test set).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Import the California housing dataset and the libraries we have been using: <kbd>numpy</kbd>, <kbd>pandas</kbd>, and <kbd>matplotlib</kbd>. It is a medium-sized dataset but is large relative to the other scikit-learn datasets:</p>
+<pre><strong>from __future__ import division</strong><br/><strong>import numpy as np</strong><br/><strong>import pandas as pd</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/> <br/><strong>from sklearn.datasets import fetch_california_housing</strong><br/> <br/><strong>#From within an ipython notebook</strong><br/><strong>%matplotlib inline</strong><br/> <br/><strong>cali_housing = fetch_california_housing()</strong><br/> <br/><strong>X = cali_housing.data</strong><br/><strong>y = cali_housing.target</strong></pre>
+<p>Bin the target variable to increase the balance in splitting the dataset in regards to the target:</p>
+<pre><strong>bins = np.arange(6)</strong><br/><strong>binned_y = np.digitize(y, bins)</strong></pre>
+<p>Split the dataset <kbd>X</kbd> and <kbd>y</kbd> into three sets. <kbd>X_1</kbd> and <kbd>X_stack</kbd> refer to the input variables of the first and second training sets, respectively. <kbd>y_1</kbd> and <kbd>y_stack</kbd> refer to the output target variables of the first and second training sets respectively. The test set consists of <kbd>X_test_prin</kbd> and <kbd>y_test_prin</kbd>:</p>
+<pre class="mce-root"><strong>from sklearn.model_selection import train_test_split</strong><br/><strong>X_train_prin, X_test_prin, y_train_prin, y_test_prin = train_test_split(X, y,test_size=0.2,stratify=binned_y,random_state=7)</strong><br/><br/><strong>binned_y_train_prin = np.digitize(y_train_prin, bins)</strong><br/><br/><strong>X_1, X_stack, y_1, y_stack = train_test_split(X_train_prin,y_train_prin,test_size=0.33,stratify=binned_y_train_prin,random_state=7 )</strong></pre>
+<p>Another option is to use <kbd>StratifiedShuffleSplit</kbd> from the <kbd>model_selection</kbd> module in scikit-learn.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>We are going to use three base regressors: a neural network, a single gradient boosting machine, and a bag of gradient boosting machines.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">First base model – neural network</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Add a neural network by performing a cross-validated grid search on the first training set: <kbd>X_1</kbd>, the inputs, and <kbd>y_1</kbd> the target set. This will find the best parameters of the neural network for this dataset. We are only varying the <kbd>alpha</kbd> parameter in this example. Do not forget to scale the inputs or else the network will not run well:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.model_selection import GridSearchCV</strong><br/><strong>from sklearn.neural_network import MLPRegressor</strong><br/> <br/><strong>from sklearn.pipeline import Pipeline</strong><br/><strong>from sklearn.preprocessing import StandardScaler</strong><br/> <br/><strong>mlp_pipe = Pipeline(steps=[('scale', StandardScaler()), ('neural_net', MLPRegressor())])</strong><br/> <br/> <br/><strong>param_grid = {'neural_net__alpha': [0.02,0.01,0.005],</strong><br/><strong>               'neural_net__hidden_layer_sizes' : [(50,50,50)],</strong><br/><strong>               'neural_net__activation': ['relu'],</strong><br/><strong>               'neural_net__solver' : ['adam']</strong><br/><strong>               }</strong><br/> <br/><strong> neural_net_gs = GridSearchCV(mlp_pipe, param_grid = param_grid,cv=3, n_jobs=-1)</strong><br/><strong> neural_net_gs.fit(X_1, y_1)</strong></pre>
+<ol start="2">
+<li>View the best parameters and the best score of the grid search:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>neural_net_gs.best_params_</strong><br/><br/><strong> {'neural_net__activation': 'relu',</strong><br/><strong>  'neural_net__alpha': 0.01,</strong><br/><strong>  'neural_net__hidden_layer_sizes': (50, 50, 50),</strong><br/><strong>  'neural_net__solver': 'adam'}</strong><br/><br/><strong>neural_net_gs.best_score_</strong><br/><br/><strong> 0.77763106799320014</strong></pre>
+<ol start="3">
+<li>Pickle the neural network that performed the best during the grid search. This will save the training we have done so that we do not have to keep doing it several times:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>nn_best = neural_net_gs.best_estimator_</strong><br/><br/><strong>import pickle</strong><br/> <br/><strong>f = open('nn_best.save', 'wb')</strong><br/><strong>pickle.dump(nn_best, f, protocol = pickle.HIGHEST_PROTOCOL)</strong><br/><strong>f.close()</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Second base model – gradient boost ensemble</h1>
+                </header>
+            
+            <article>
+                
+<ol start="4">
+<li>Perform a randomized grid search on gradient-boosted trees:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.model_selection import RandomizedSearchCV</strong><br/><strong> from sklearn.ensemble import GradientBoostingRegressor</strong><br/> <br/> <br/><strong> param_grid = {'learning_rate': [0.1,0.05,0.03,0.01],</strong><br/><strong>               'loss': ['huber'],</strong><br/><strong>               'max_depth': [5,7,10],</strong><br/><strong>               'max_features': [0.4,0.6,0.8,1.0],</strong><br/><strong>               'min_samples_leaf': [2,3,5],</strong><br/><strong>               'n_estimators': [100],</strong><br/><strong>               'warm_start': [True], 'random_state':[7]</strong><br/><strong>               }</strong><br/> <br/><strong> boost_gs = RandomizedSearchCV(GradientBoostingRegressor(), param_distributions = param_grid,cv=3, n_jobs=-1,n_iter=25)</strong><br/><strong> boost_gs.fit(X_1, y_1)</strong></pre>
+<ol start="5">
+<li>View the best score and parameters:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>boost_gs.best_score_</strong><br/><br/><strong>0.82767651150013244</strong><br/><br/><strong>boost_gs.best_params_</strong><br/><br/><strong>{'learning_rate': 0.1, 'loss': 'huber', 'max_depth': 10, 'max_features': 0.4, 'min_samples_leaf': 5, 'n_estimators': 100, 'random_state': 7, 'warm_start': True}</strong></pre>
+<ol start="6">
+<li>Increase the number of estimators and train:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>gbt_inst = GradientBoostingRegressor(**{'learning_rate': 0.1,</strong><br/><strong> 'loss': 'huber',</strong><br/><strong> 'max_depth': 10,</strong><br/><strong> 'max_features': 0.4,</strong><br/><strong> 'min_samples_leaf': 5,</strong><br/><strong> 'n_estimators': 4000,</strong><br/><strong> 'warm_start': True, 'random_state':7}).fit(X_1, y_1)</strong></pre>
+<ol start="7">
+<li>Pickle the estimator. For convenience and reusability, the pickling code is wrapped into a single function:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>def pickle_func(filename, saved_object):</strong><br/><strong>     import pickle</strong><br/> <br/><strong>     f = open(filename, 'wb')</strong><br/><strong>     pickle.dump(saved_object, f, protocol = pickle.HIGHEST_PROTOCOL)</strong><br/><strong>     f.close()</strong><br/>     <br/><strong>     return None</strong><br/> <br/><strong>pickle_func('grad_boost.save', gbt_inst)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Third base model – bagging regressor of gradient boost ensembles</h1>
+                </header>
+            
+            <article>
+                
+<ol start="8">
+<li>Now, perform a small grid search for a bag of gradient-boosted trees. It is hard to know from a theoretical viewpoint whether this type of ensemble will do well. For the purpose of stacking, it will do well enough if it is not too correlated with the other base estimators:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.ensemble import BaggingRegressor,GradientBoostingRegressor</strong><br/><strong> from sklearn.model_selection import RandomizedSearchCV</strong><br/> <br/> <br/><strong> param_dist = {</strong><br/><strong>     'max_samples': [0.5,1.0],</strong><br/><strong>     'max_features' : [0.5,1.0],</strong><br/><strong>     'oob_score' : [True, False],</strong><br/><strong>     'base_estimator__min_samples_leaf': [4,5],</strong><br/><strong>     'n_estimators': [20]</strong><br/><strong> }</strong><br/> <br/> <br/><strong> single_estimator = GradientBoostingRegressor(**{'learning_rate': 0.1,</strong><br/><strong> 'loss': 'huber',</strong><br/><strong> 'max_depth': 10,</strong><br/><strong> 'max_features': 0.4,</strong><br/><strong> 'n_estimators': 20,</strong><br/><strong> 'warm_start': True, 'random_state':7})</strong><br/> <br/><strong> ensemble_estimator = BaggingRegressor(base_estimator = single_estimator)</strong><br/> <br/> <br/><strong> pre_gs_inst_bag = RandomizedSearchCV(ensemble_estimator,</strong><br/><strong>  param_distributions = param_dist,</strong><br/><strong>  cv=3,</strong><br/><strong>  n_iter = 5,</strong><br/><strong>  n_jobs=-1)</strong><br/> <br/><strong> pre_gs_inst_bag.fit(X_1, y_1)</strong></pre>
+<ol start="9">
+<li>View the best parameters and score:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>pre_gs_inst_bag.best_score_</strong><br/><br/><strong>0.78087218305611195</strong><br/><br/><strong>pre_gs_inst_bag.best_params_</strong><br/><br/><strong> {'base_estimator__min_samples_leaf': 5,</strong><br/><strong>  'max_features': 1.0,</strong><br/><strong>  'max_samples': 1.0,</strong><br/><strong>  'n_estimators': 20,</strong><br/><strong>  'oob_score': True}</strong></pre>
+<ol start="10">
+<li>Pickle the best estimator:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>pickle_func('bag_gbm.save', pre_gs_inst_bag.best_estimator_)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Some functions of the stacker</h1>
+                </header>
+            
+            <article>
+                
+<ol start="11">
+<li>Use functions similar to <a href="9fdf265d-8934-4bbb-8b3a-dd5cd2c33cc7.xhtml" target="_blank">Chapter 9</a>, <em>Tree Algorithms and Ensembles</em>. The <kbd>handle_X_set</kbd> function creates a dataframe of the prediction vectors on the <kbd>X_stack</kbd> set. Conceptually, it refers to the fourth step of predictions on the second part of the training set:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>def handle_X_set(X_train_set_in):</strong><br/><strong>    X_train_set = X_train_set_in.copy()</strong><br/>    <br/><strong>    y_pred_nn = neural_net.predict(X_train_set)</strong><br/><strong>    y_pred_gbt = gbt.predict(X_train_set)</strong><br/><strong>    y_pred_bag = bag_gbm.predict(X_train_set)</strong><br/>    <br/>    <br/><strong>    preds_df = pd.DataFrame(columns = ['nn', 'gbt','bag'])</strong><br/><br/><strong>    preds_df['nn'] = y_pred_nn</strong><br/><strong>    preds_df['gbt'] = y_pred_gbt</strong><br/><strong>    preds_df['bag'] = y_pred_bag</strong><br/> <br/><strong>    return preds_df</strong><br/><br/><strong>def predict_from_X_set(X_train_set_in):</strong><br/><strong>    X_train_set = X_train_set_in.copy()    </strong><br/><strong>    return final_etr.predict(handle_X_set(X_train_set))</strong> </pre>
+<ol start="12">
+<li>If you pickled the files previously and want to start at this step, unpickle the files. The following files are loaded with the correct filenames and variable names to perform the <kbd>handle_X_set</kbd> function:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>def pickle_load_func(filename):</strong><br/><strong>    f = open(filename, 'rb')</strong><br/><strong>    to_return = pickle.load(f)</strong><br/><strong>    f.close()</strong><br/>    <br/><strong>    return to_return</strong><br/><br/><strong>neural_net = pickle_load_func('nn_best.save')</strong><br/><strong>gbt = pickle_load_func('grad_boost.save')</strong><br/><strong>bag_gbm = pickle_load_func('bag_gbm.save')</strong></pre>
+<ol start="13">
+<li>Create a dataframe of predictions using the <kbd>handle_X_set</kbd> function. Print the Pearson correlation between the prediction vectors:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>preds_df = handle_X_set(X_stack)</strong><br/><strong>print (preds_df.corr())</strong><br/><br/><strong>           nn       gbt       bag</strong><br/><strong>nn   1.000000  0.867669  0.888655</strong><br/><strong>gbt  0.867669  1.000000  0.981368</strong><br/><strong>bag  0.888655  0.981368  1.000000</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Meta-learner – extra trees regressor</h1>
+                </header>
+            
+            <article>
+                
+<ol start="14">
+<li>Similar to <a href="9fdf265d-8934-4bbb-8b3a-dd5cd2c33cc7.xhtml" target="_blank">Chapter 9</a>, <em>Tree Algorithms and Ensembles</em>, train an extra tree regressor on the dataframe of predictions. Use <kbd>y_stack</kbd> as the target vector:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.ensemble import ExtraTreesRegressor</strong><br/><strong> from sklearn.model_selection import RandomizedSearchCV</strong><br/> <br/><strong> param_dist = {'max_features' : ['sqrt','log2',1.0],</strong><br/><strong>  'min_samples_leaf' : [1, 2, 3, 7, 11],</strong><br/><strong>  'n_estimators': [50, 100],</strong><br/><strong>  'oob_score': [True, False]}</strong><br/> <br/><strong> pre_gs_inst = RandomizedSearchCV(ExtraTreesRegressor(warm_start=True,bootstrap=True,random_state=7),</strong><br/><strong>  param_distributions = param_dist,</strong><br/><strong>  cv=3,</strong><br/><strong>  n_iter = 15,random_state=7)</strong><br/> <br/><strong> pre_gs_inst.fit(preds_df.values, y_stack)</strong></pre>
+<ol start="15">
+<li>View the best parameters:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>pre_gs_inst.best_params_</strong><br/><br/><strong>{'max_features': 1.0,
+ 'min_samples_leaf': 11,
+ 'n_estimators': 100,
+ 'oob_score': False}</strong></pre>
+<ol start="16">
+<li>Train the extra trees regressor but increase the number of estimators:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>final_etr = ExtraTreesRegressor(**{'max_features': 1.0,</strong><br/><strong>  'min_samples_leaf': 11,</strong><br/><strong>  'n_estimators': 3000,</strong><br/><strong>  'oob_score': False, 'random_state':7}).fit(preds_df.values, y_stack)</strong></pre>
+<ol start="17">
+<li>View the <kbd>final_etr</kbd> estimator's cross-validation performance:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.model_selection import cross_val_score</strong><br/><br/><strong>cross_val_score(final_etr, preds_df.values, y_stack, cv=3).mean()</strong><br/><br/><strong>0.82212054913537747</strong></pre>
+<ol start="18">
+<li>View the performance on the testing set:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>y_pred = predict_from_X_set(X_test_prin)</strong><br/> <br/><strong> from sklearn.metrics import r2_score, mean_absolute_error</strong><br/> <br/><strong> print "R-squared",r2_score(y_test_prin, y_pred)</strong><br/><strong> print "MAE : ",mean_absolute_error(y_test_prin, y_pred)</strong><br/><strong> print "MAPE : ",(np.abs(y_test_prin- y_pred)/y_test_prin).mean()</strong><br/><br/><strong>R-squared 0.839538887753
+MAE :  0.303109168851
+MAPE :  0.168643891048</strong></pre>
+<ol start="19">
+<li>Perhaps we can increase the results even further. Place the training columns alongside the prediction vectors. Start by modifying the functions we have been using:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>def handle_X_set_sp(X_train_set_in):</strong><br/><strong>    X_train_set = X_train_set_in.copy()</strong><br/>    <br/><strong>    y_pred_nn = neural_net.predict(X_train_set)</strong><br/><strong>    y_pred_gbt = gbt.predict(X_train_set)</strong><br/><strong>    y_pred_bag = bag_gbm.predict(X_train_set)</strong><br/>    <br/><strong>    #only change in function: include input vectors in training dataframe</strong><br/><strong>    preds_df = pd.DataFrame(X_train_set, columns = cali_housing.feature_names)</strong><br/>    <br/><strong>    preds_df['nn'] = y_pred_nn</strong><br/><strong>    preds_df['gbt'] = y_pred_gbt</strong><br/><strong>    preds_df['bag'] = y_pred_bag</strong><br/> <br/><strong>    return preds_df</strong><br/><br/><strong>def predict_from_X_set_sp(X_train_set_in):</strong><br/><strong>    X_train_set = X_train_set_in.copy()</strong><br/><br/><strong>    #change final estimator's name to final_etr_sp and use handle_X_set_sp within this function</strong><br/><strong>    return final_etr_sp.predict(handle_X_set_sp(X_train_set))</strong></pre>
+<ol start="20">
+<li>Continue the training of the extra trees regressor as before:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>preds_df_sp = handle_X_set_sp(X_stack)</strong><br/><br/><strong>from sklearn.ensemble import ExtraTreesRegressor</strong><br/><strong>from sklearn.model_selection import RandomizedSearchCV</strong><br/><br/><strong>param_dist = {'max_features' : ['sqrt','log2',1.0],</strong><br/><strong> 'min_samples_leaf' : [1, 2, 3, 7, 11],</strong><br/><strong> 'n_estimators': [50, 100],</strong><br/><strong> 'oob_score': [True, False]}</strong><br/><br/><strong>pre_gs_inst_2 = RandomizedSearchCV(ExtraTreesRegressor(warm_start=True,bootstrap=True,random_state=7),</strong><br/><strong> param_distributions = param_dist,</strong><br/><strong> cv=3,</strong><br/><strong> n_iter = 15,random_state=7)</strong><br/><br/><strong>pre_gs_inst_2.fit(preds_df_sp.values, y_stack)</strong></pre>
+<ol start="21">
+<li>We continue as we did previously. View the best parameters and train a model with more estimators:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>{'max_features': 'log2',
+ 'min_samples_leaf': 2,
+ 'n_estimators': 100,
+ 'oob_score': False}</strong><br/><br/><strong>final_etr_sp = ExtraTreesRegressor(**{'max_features': 'log2',</strong><br/><strong> 'min_samples_leaf': 2,</strong><br/><strong> 'n_estimators': 3000,</strong><br/><strong> 'oob_score': False,'random_state':7}).fit(preds_df_sp.values, y_stack)</strong></pre>
+<ol start="22">
+<li>View cross-validation performance:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.model_selection import cross_val_score</strong><br/><br/><strong>cross_val_score(final_etr_sp, preds_df_sp.values, y_stack, cv=3).mean()</strong><br/><br/><strong>0.82978653642597144</strong></pre>
+<ol start="23">
+<li>We included the original input columns in the training of the high-level learner of the stacker. The cross-validation performance has increased to 0.8297 from 0.8221. Thus, we conclude that the model that includes the input columns is the best model. Now, after we have selected this model as the final best model, we look at the performance of the estimator on the testing set:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>y_pred = predict_from_X_set_sp(X_test_prin)</strong><br/><br/><strong>from sklearn.metrics import r2_score, mean_absolute_error</strong><br/><br/><strong>print "R-squared",r2_score(y_test_prin, y_pred)</strong><br/><strong>print "MAE : ",mean_absolute_error(y_test_prin, y_pred)</strong><br/><strong>print "MAPE : ",(np.abs(y_test_prin- y_pred)/y_test_prin).mean()</strong><br/><br/><strong>R-squared 0.846455829258
+MAE :  0.295381654368
+MAPE :  0.163374936923</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>After trying out neural networks on scikit-learn, you can try packages such as <kbd>skflow</kbd>, which borrows the syntax of scikit-learn yet utilizes Google's powerful open source TensorFlow.</p>
+<p>In regards to stacking, you can try cross-validation performance and prediction on the whole training set <kbd>X_train_prin</kbd>, instead of splitting it into two parts, <kbd>X_1</kbd> and <kbd>X_stack</kbd>.</p>
+<p>A lot of packages in data science borrow heavily from either scikit-learn's or R's syntaxes.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

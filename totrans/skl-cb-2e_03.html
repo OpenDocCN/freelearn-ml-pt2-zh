@@ -1,0 +1,774 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Dimensionality Reduction</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we will cover the following recipes:</p>
+<ul>
+<li>Reducing dimensionality with PCA</li>
+<li>Using factor analysis for decomposition</li>
+<li>Using kernel PCA for nonlinear dimensionality reduction</li>
+<li>Using truncated SVD to reduce dimensionality</li>
+<li>Using decomposition to classify with DictionaryLearning</li>
+<li>Doing dimensionality reduction with manifolds – t-SNE</li>
+<li>Testing methods to reduce dimensionality with pipelines</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Introduction</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we will reduce the number of features or inputs into the machine learning models. This is a very important operation because sometimes datasets have a lot of input columns, and reducing the number of columns creates simpler models that take less computing power to predict.</p>
+<p>The main model used in this section is <strong>principal component analysis</strong> (<strong>PCA</strong>). You do not have to know how many features you can reduce the dataset to, thanks to PCA's explained variance. A similar model in performance is <strong>truncated singular value decomposition</strong> (<strong>truncated SVD</strong>). It is always best to first choose a linear model that allows you to know how many columns you can reduce the set to, such as PCA or truncated SVD.</p>
+<p>Later in the chapter, check out the modern method of <strong>t-distributed stochastic neighbor embedding</strong> (<strong>t-SNE</strong>), which makes features easier to visualize in lower dimensions. In the final recipe, you can examine a complex pipeline and grid search that finds the best composite estimator consisting of dimensionality reductions joined with several support vector machines.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Reducing dimensionality with PCA</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">Now it's time to take the math up a level! PCA is the first somewhat advanced technique discussed in this book. While everything else thus far has been simple statistics, PCA will combine statistics and linear algebra to produce a preprocessing step that can help to reduce dimensionality, which can be the enemy of a simple model.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">PCA is a member of the decomposition module of scikit-learn. There are several other decomposition methods available, which will be covered later in this recipe. Let's use the iris dataset, but it's better if you use your own data:</p>
+<pre class="mce-root"><strong>from sklearn import datasets</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/><strong>import numpy as np</strong><br/><strong>import pandas as pd</strong><br/><strong>%matplotlib inline</strong><br/><br/><strong>iris = datasets.load_iris()</strong><br/><strong>iris_X = iris.data</strong><br/><strong>y = iris.target</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Import the <kbd>decomposition</kbd> module:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import decomposition</strong></pre>
+<ol start="2">
+<li>Instantiate a default PCA object:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>pca = decomposition.PCA()</strong><br/><strong>pca</strong><br/><br/><strong>PCA(copy=True, iterated_power='auto', n_components=None, random_state=None,
+  svd_solver='auto', tol=0.0, whiten=False)</strong></pre>
+<ol start="3">
+<li>Compared to other objects in scikit-learn, the PCA object takes relatively few arguments. Now that the PCA object (an instance PCA) has been created, simply transform the data by calling the <kbd>fit_transform</kbd> method, with <kbd>iris_X</kbd> as the argument:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>iris_pca = pca.fit_transform(iris_X)</strong><br/><strong>iris_pca[:5]</strong><br/><br/><strong>array([[ -2.68420713e+00,   3.26607315e-01,  -2.15118370e-02,
+          1.00615724e-03],
+       [ -2.71539062e+00,  -1.69556848e-01,  -2.03521425e-01,
+          9.96024240e-02],
+       [ -2.88981954e+00,  -1.37345610e-01,   2.47092410e-02,
+          1.93045428e-02],
+       [ -2.74643720e+00,  -3.11124316e-01,   3.76719753e-02,
+         -7.59552741e-02],
+       [ -2.72859298e+00,   3.33924564e-01,   9.62296998e-02,
+         -6.31287327e-02]])</strong></pre>
+<ol start="4">
+<li>Now that the PCA object has been fitted, we can see how well it has done at explaining the variance (explained in the following <em>How it works...</em> section):</li>
+</ol>
+<pre style="padding-left: 60px"><strong>pca.explained_variance_ratio_</strong><br/><strong>array([ 0.92461621,  0.05301557,  0.01718514,  0.00518309])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>PCA has a general mathematical definition and a specific use case in data analysis. PCA finds the set of orthogonal directions that represent the original data matrix.</p>
+<p>Generally, PCA works by mapping the original dataset into a new space where each of the new column vectors of the matrix are orthogonal. From a data analysis perspective, PCA transforms the covariance matrix of the data into column vectors that can explain certain percentages of the variance. For example, with the iris dataset, 92.5 percent of the variance of the overall dataset can be explained by the first component.</p>
+<p>This is extremely useful because dimensionality is problematic in data analysis. Quite often, algorithms applied to high-dimensional datasets will overfit on the initial training, and thus lose generality to the test set. If most of the underlying structure of the data can be faithfully represented by fewer dimensions, then it's generally considered a worthwhile trade-off:</p>
+<pre><strong>pca = decomposition.PCA(n_components=2)</strong><br/><strong>iris_X_prime = pca.fit_transform(iris_X)</strong><br/><strong>iris_X_prime.shape</strong><br/><strong>(150L, 2L)</strong></pre>
+<p>Our data matrix is now 150 x 2, instead of 150 x 4. The separability of the classes remains even after reducing the dimensionality by two. We can see how much of the variance is represented by the two components that remain:</p>
+<pre><strong>pca.explained_variance_ratio_.sum()</strong><br/><strong>0.97763177502480336</strong></pre>
+<p>To visualize what PCA has done, let's plot the first two dimensions of the iris dataset with before-after pictures of the PCA transformation:</p>
+<pre><strong>fig = plt.figure(figsize=(20,7))</strong><br/><strong>ax = fig.add_subplot(121)</strong><br/><strong>ax.scatter(iris_X[:,0],iris_X[:,1],c=y,s=40)</strong><br/><strong>ax.set_title('Before PCA')</strong><br/><br/><strong>ax2 = fig.add_subplot(122)</strong><br/><strong>ax2.scatter(iris_X_prime[:,0],iris_X_prime[:,1],c=y,s=40)</strong><br/><strong>ax2.set_title('After PCA')</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/de1daad3-cf27-468d-95aa-895177d2e8e5.png"/></div>
+<p>The <kbd>PCA</kbd> object can also be created with the amount of explained variance in mind from the start. For example, if we want to be able to explain at least 98 percent of the variance, the <kbd>PCA</kbd> object will be created as follows:</p>
+<pre><strong>pca = decomposition.PCA(n_components=.98)</strong><br/><strong>iris_X_prime = pca.fit(iris_X).transform(iris_X)</strong><br/><strong>pca.explained_variance_ratio_.sum()</strong><br/><strong>0.99481691454981014</strong></pre>
+<p class="mce-root">Since we wanted to explain variance slightly more than the two component examples, a third was included.</p>
+<div class="packt_tip">Even though the final dimensions of the data are two or three, these two or three columns contain information from all four original columns.</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>It is recommended that PCA is scaled beforehand. Do so as follows:</p>
+<pre><strong>from sklearn import preprocessing</strong><br/><br/><strong>iris_X_scaled = preprocessing.scale(iris_X)</strong><br/><strong>pca = decomposition.PCA(n_components=2)</strong><br/><strong>iris_X_scaled = pca.fit_transform(iris_X_scaled)</strong></pre>
+<p>This leads to the following graph:</p>
+<pre><strong>fig = plt.figure(figsize=(20,7))</strong><br/><strong>ax = fig.add_subplot(121)</strong><br/><strong>ax.scatter(iris_X_prime[:,0],iris_X_prime[:,1],c=y,s=40)</strong><br/><strong>ax.set_title('Regular PCA')</strong><br/><br/><strong>ax2 = fig.add_subplot(122)</strong><br/><strong>ax2.scatter(iris_X_scaled[:,0],iris_X_scaled[:,1],c=y,s=40)</strong><br/><strong>ax2.set_title('Scaling followed by PCA')</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/f1597dbd-7243-49f4-a582-d7d3c68c63ce.png"/></div>
+<p>This looks a bit worse. Regardless, you should always consider the scaled PCA if you consider PCA. Preferably, you can scale with a pipeline as follows:</p>
+<pre><strong>from sklearn.pipeline import Pipeline</strong><br/><strong>from sklearn.preprocessing import StandardScaler</strong><br/><br/><strong>pipe = Pipeline([('scaler', StandardScaler()), ('pca',decomposition.PCA(n_components=2))])</strong><br/><strong>iris_X_scaled = pipe.fit_transform(iris_X)</strong></pre>
+<p>Using pipelines prevents errors and reduces the amount of debugging of complex code.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using factor analysis for decomposition</h1>
+                </header>
+            
+            <article>
+                
+<p>Factor analysis is another technique that we can use to reduce dimensionality. However, factor analysis makes assumptions and PCA does not. The basic assumption is that there are implicit features responsible for the features of the dataset.</p>
+<p>This recipe will boil down to the explicit features from our samples in an attempt to understand the independent variables as much as the dependent variables.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>To compare PCA and factor analysis, let's use the iris dataset again, but we'll first need to load the <kbd>FactorAnalysis</kbd> class:</p>
+<pre class="mce-root"><strong>from sklearn import datasets</strong><br/><strong>iris = datasets.load_iris()</strong><br/><strong>iris_X = iris.data</strong><br/><strong>from sklearn.decomposition import FactorAnalysis</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>From a programming perspective, factor analysis isn't much different from PCA:</p>
+<pre><strong>fa = FactorAnalysis(n_components=2)</strong><br/><strong>iris_two_dim = fa.fit_transform(iris.data)</strong><br/><strong>iris_two_dim[:5]</strong><br/><strong>array([[-1.33125848, -0.55846779],
+       [-1.33914102,  0.00509715],
+       [-1.40258715,  0.307983  ],
+       [-1.29839497,  0.71854288],
+       [-1.33587575, -0.36533259]])</strong></pre>
+<p>Compare the following plot to the plot in the last section:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/46688b30-dcfe-4db6-8ce7-df0ecc70da1a.png"/></div>
+<p>Since factor analysis is a probabilistic transform, we can examine different aspects, such as the log likelihood of the observations under the model, and better still, compare the log likelihoods across models.</p>
+<p>Factor analysis is not without flaws. The reason is that you're not fitting a model to predict an outcome, you're fitting a model as a preparation step. This isn't a bad thing, but errors here are compounded when training the actual model.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Factor analysis is similar to PCA, which was covered previously. However, there is an important distinction to be made. PCA is a linear transformation of the data to a different space where the first component explains the variance of the data, and each subsequent component is orthogonal to the first component.</p>
+<p>For example, you can think of PCA as taking a dataset of <em>N</em> dimensions and going down to some space of <em>M</em> dimensions, where <em>M</em> &lt; <em>N</em>.</p>
+<p>Factor analysis, on the other hand, works under the assumption that there are only <em>M</em> important features and a linear combination of these features (plus noise) creates the dataset in <em>N</em> dimensions. To put it another way, you don't do regression on an outcome variable, you do regression on the features to determine the latent factors of the dataset.</p>
+<p>Additionally, a big drawback is that you do not know how many columns you can reduce the data to. PCA gives you the explained variance metric to guide you through the process.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using kernel PCA for nonlinear dimensionality reduction</h1>
+                </header>
+            
+            <article>
+                
+<p>Most of the techniques in statistics are linear by nature, so in order to capture nonlinearity, we might need to apply some transformation. PCA is, of course, a linear transformation. In this recipe, we'll look at applying nonlinear transformations, and then apply PCA for dimensionality reduction.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Life would be so easy if data was always linearly separable, but unfortunately, it's not. Kernel PCA can help to circumvent this issue. Data is first run through the kernel function that projects the data onto a different space; then, PCA is performed.</p>
+<p>To familiarize yourself with the kernel functions, it will be a good exercise to think of how to generate data that is separable by the kernel functions available in the kernel PCA. Here, we'll do that with the cosine kernel. This recipe will have a bit more theory than the previous recipes.</p>
+<p>Before starting, load the iris dataset:</p>
+<pre class="mce-root"><strong>from sklearn import datasets, decomposition</strong><br/><strong>iris = datasets.load_iris()</strong><br/><strong>iris_X = iris.data</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>The cosine kernel works by comparing the angle between two samples represented in the feature space. It is useful when the magnitude of the vector perturbs the typical distance measure used to compare samples. As a reminder, the cosine between two vectors is given by the following formula:</p>
+<div class="mce-root CDPAlignCenter CDPAlign"><img height="46" width="145" class="fm-editor-equation" src="assets/232fac96-295d-456a-b747-3919da10a26d.png"/></div>
+<p>This means that the cosine between <em>A</em> and <em>B</em> is the dot product of the two vectors normalized by the product of the individual norms. The magnitude of vectors <em>A</em> and <em>B</em> have no influence on this calculation.<br/>
+<br/>
+So, let's go back to the iris dataset to use it for visual comparisons:</p>
+<pre><strong>kpca = decomposition.KernelPCA(kernel='cosine', n_components=2)</strong><br/><strong>iris_X_prime = kpca.fit_transform(iris_X)</strong></pre>
+<p>Then, visualize the result:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/2fbf706e-bfd2-42eb-89bb-f052348e25b8.png"/></div>
+<p>The result looks slightly better, although we would have to measure it to know for sure.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>There are several different kernels available besides the cosine kernel. You can even write your own kernel function. The available kernels are as follows:</p>
+<ul>
+<li>Poly (polynomial)</li>
+<li>RBF (radial basis function)</li>
+<li>Sigmoid</li>
+<li>Cosine</li>
+<li>Pre-computed</li>
+</ul>
+<p>There are also options that are contingent on the kernel choice. For example, the degree argument will specify the degree for the poly, RBF, and sigmoid kernels; also, gamma will affect the RBF or poly kernels.</p>
+<p>The recipe on SVM will cover the RBF kernel function in more detail.</p>
+<div class="packt_tip">Kernel methods are great to create separability, but they can also cause overfitting if used without care. Make sure to train-test them properly.</div>
+<p>Luckily, the available kernels are smooth, continuous, and differentiable functions. They do not create the jagged edges of regression trees.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using truncated SVD to reduce dimensionality</h1>
+                </header>
+            
+            <article>
+                
+<p>Truncated SVD is a matrix factorization technique that factors a matrix <em>M</em> into the three matrices <em>U</em>, Σ, and <em>V</em>. This is very similar to PCA, except that the factorization for SVD is done on the data matrix, whereas for PCA, the factorization is done on the covariance matrix. Typically, SVD is used under the hood to find the principle components of a matrix.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Truncated SVD is different from regular SVDs in that it produces a factorization where the number of columns is equal to the specified truncation. For example, given an <em>n</em> x <em>n</em> matrix, SVD will produce matrices with <em>n</em> columns, whereas truncated SVD will produce matrices with the specified number of columns. This is how the dimensionality is reduced. Here, we'll again use the iris dataset so that you can compare this outcome against the PCA outcome:</p>
+<pre><strong>from sklearn.datasets import load_iris</strong><br/><strong>iris = load_iris()</strong><br/><strong>iris_X = iris.data</strong><br/><strong>y = iris.target</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>This object follows the same form as the other objects we've used.</p>
+<p>First, we'll import the required object, then we'll fit the model and examine the results:</p>
+<pre><strong>from sklearn.decomposition import TruncatedSVD</strong><br/><strong>svd = TruncatedSVD(2)</strong><br/><strong>iris_transformed = svd.fit_transform(iris_X)</strong></pre>
+<p>Then, visualize the results:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/72fd3041-d160-41b6-b57b-97cee44d0df9.png"/></div>
+<p>The results look pretty good. Like PCA, there is explained variance with <kbd>explained_variance_ratio_</kbd>:</p>
+<pre><strong>svd.explained_variance_ratio_</strong><br/><strong>array([ 0.53028106,  0.44685765])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we've walked through how, is performed in scikit-learn, let's look at how we can use only SciPy, and learn a bit in the process.</p>
+<p>First, we need to use <span>SciPy's</span><span> </span><kbd>linalg</kbd><span> to perform SVD:</span></p>
+<pre><strong>from scipy.linalg import svd</strong><br/><strong>import numpy as np</strong><br/><strong>D = np.array([[1, 2], [1, 3], [1, 4]])</strong><br/><strong>D</strong><br/><br/><strong>array([[1, 2],</strong><br/><strong>[1, 3],</strong><br/><strong>[1, 4]])</strong><br/><br/><strong>U, S, V = svd(D, full_matrices=False)</strong><br/><br/><strong>U.shape, S.shape, V.shape</strong><br/><strong>((3L, 2L), (2L,), (2L, 2L))</strong></pre>
+<p>We can reconstruct the original matrix <kbd>D</kbd> to confirm <kbd>U</kbd>, <kbd>S</kbd>, and <kbd>V</kbd> as a decomposition:</p>
+<pre><strong>np.dot(U.dot(np.diag(S)), V)</strong><br/><br/><strong>array([[1, 2],</strong><br/><strong>[1, 3],</strong><br/><strong>[1, 4]])</strong></pre>
+<p>The matrix that is actually returned by truncated SVD is the dot product of the <kbd>U</kbd> and <kbd>S</kbd> matrices. If we want to simulate the truncation, we will drop the smallest singular values and the corresponding column vectors of <kbd>U</kbd>. So, if we want a single component here, we do the following:</p>
+<pre><strong>new_S = S[0]</strong><br/><strong>new_U = U[:, 0]</strong><br/><strong>new_U.dot(new_S)</strong><br/><br/><strong>array([-2.20719466, -3.16170819, -4.11622173])</strong></pre>
+<p>In general, if we want to truncate to some dimensionality, for example, <em>t</em>, we drop <em>N - t</em> singular values.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Truncated SVD has a few miscellaneous things that are worth noting with respect to the method.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Sign flipping</h1>
+                </header>
+            
+            <article>
+                
+<p>There's a gotcha with truncated SVDs. Depending on the state of the random number generator, successive fittings of truncated SVD can flip the signs of the output. In order to avoid this, it's advisable to fit truncated SVD once, and then use transforms from then on. This is another good reason for pipelines!</p>
+<p>To carry this out, do the following:</p>
+<pre><strong>tsvd = TruncatedSVD(2)</strong><br/><strong>tsvd.fit(iris_X)</strong><br/><strong>tsvd.transform(iris_X)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Sparse matrices</h1>
+                </header>
+            
+            <article>
+                
+<p>One advantage of truncated SVD over PCA is that truncated SVD can operate on sparse matrices, while PCA cannot. This is due to the fact that the covariance matrix must be computed for PCA, which requires operating on the entire matrix.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using decomposition to classify with DictionaryLearning</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll show how a decomposition method can actually be used for classification. <kbd>DictionaryLearning</kbd> attempts to take a dataset and transform it into a sparse representation.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>With <kbd>DictionaryLearning</kbd>, the idea is that the features are the basis for the resulting datasets. Load the iris dataset:</p>
+<pre><strong>from sklearn.datasets import load_iris</strong><br/><strong>iris = load_iris()</strong><br/><strong>iris_X = iris.data</strong><br/><strong>y = iris.target</strong></pre>
+<p>Additionally, create a training set by taking every other element of <kbd>iris_X</kbd> and <kbd>y</kbd>. Take the remaining elements for testing:</p>
+<pre><strong>X_train = iris_X[::2]</strong><br/><strong>X_test = iris_X[1::2]</strong><br/><strong>y_train = y[::2]</strong><br/><strong>y_test = y[1::2]</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Import <kbd>DictionaryLearning</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.decomposition import DictionaryLearning</strong></pre>
+<ol start="2">
+<li>Use three components to represent the three species of iris:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>dl = DictionaryLearning(3)</strong></pre>
+<ol start="3">
+<li>Transform every other data point so that we can test the classifier on the resulting data points after the learner is trained:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>transformed = dl.fit_transform(X_train)</strong><br/><strong>transformed[:5]</strong><br/><br/><strong>array([[ 0.        ,  6.34476574,  0.        ],
+       [ 0.        ,  5.83576461,  0.        ],
+       [ 0.        ,  6.32038375,  0.        ],
+       [ 0.        ,  5.89318572,  0.        ],
+       [ 0.        ,  5.45222715,  0.        ]])</strong></pre>
+<ol start="4">
+<li>Now test the transform simply by typing the following:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>test_transform = dl.transform(X_test)</strong></pre>
+<p>We can visualize the output. Notice how each value is sited on the <em>x</em>, <em>y</em>, or <em>z</em> axis, along with the other values and zero; this is called sparseness:</p>
+<pre><strong>from mpl_toolkits.mplot3d import Axes3D</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/><br/><strong>fig = plt.figure(figsize=(14,7))</strong><br/><strong>ax = fig.add_subplot(121, projection='3d')</strong><br/><strong>ax.scatter(transformed[:,0],transformed[:,1],transformed[:,2],c=y_train,marker = '^')</strong><br/><strong>ax.set_title("Training Set")</strong><br/><br/><strong>ax2 = fig.add_subplot(122, projection='3d')</strong><br/><strong>ax2.scatter(test_transform[:,0],test_transform[:,1],test_transform[:,2],c=y_test,marker = '^')</strong><br/><strong>ax2.set_title("Testing Set")</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/c4c5530f-20de-4344-aa5b-67921fe012e5.png"/></div>
+<p><br/>
+If you look closely, you can see there was a training error. One of the classes was misclassified. Only being wrong once isn't a big deal, though. There was also an error in the classification. If you remember some of the other visualizations, the red and green classes were the two classes that often appeared close together.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p><kbd>DictionaryLearning</kbd> has a background in signal processing and neurology. The idea is that only few features can be active at any given time. Therefore, <kbd>DictionaryLearning</kbd> attempts to find a suitable representation of the underlying data, given the constraint that most of the features should be zero.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Doing dimensionality reduction with manifolds – t-SNE</h1>
+                </header>
+            
+            <article>
+                
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>This is a short and practical recipe.</p>
+<p>If you read the rest of the chapter, we have been doing a lot of dimensionality reduction with the iris dataset. Let's continue the pattern for additional easy comparisons. Load the iris dataset:</p>
+<pre><strong>from sklearn.datasets import load_iris</strong><br/><strong>iris = load_iris()</strong><br/><strong>iris_X = iris.data</strong><br/><strong>y = iris.target</strong></pre>
+<p>Load <kbd>PCA</kbd> and some classes from the <kbd>manifold</kbd> module:</p>
+<pre><strong>from sklearn.decomposition import PCA</strong><br/><strong>from sklearn.manifold import TSNE, MDS, Isomap</strong><br/><br/><strong>#Load visualization library</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/><strong>%matplotlib inline</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Run all the transforms on <kbd>iris_X</kbd>. One of the transforms is t-SNE:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>iris_pca = PCA(n_components = 2).fit_transform(iris_X)</strong><br/><strong>iris_tsne = TSNE(learning_rate=200).fit_transform(iris_X)</strong><br/><br/><strong>iris_MDS = MDS(n_components = 2).fit_transform(iris_X)</strong><br/><strong>iris_ISO = Isomap(n_components = 2).fit_transform(iris_X)</strong></pre>
+<ol start="2">
+<li>Plot the results:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>plt.figure(figsize=(20, 10))</strong><br/><strong>plt.subplot(221)</strong><br/><strong>plt.title('PCA')</strong><br/><strong>plt.scatter(iris_pca [:, 0], iris_pca [:, 1], c=y)</strong><br/><br/><strong>plt.subplot(222)</strong><br/><strong>plt.scatter(iris_tsne[:, 0], iris_tsne[:, 1], c=y)</strong><br/><strong>plt.title('TSNE')</strong><br/><br/><strong>plt.subplot(223)</strong><br/><strong>plt.scatter(iris_MDS[:, 0], iris_MDS[:, 1], c=y)</strong><br/><strong>plt.title('MDS')</strong><br/><br/><strong>plt.subplot(224)</strong><br/><strong>plt.scatter(iris_ISO[:, 0], iris_ISO[:, 1], c=y)</strong><br/><strong>plt.title('ISO')</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/cf664e0a-cb29-454d-88ae-c57c6156f69c.png"/></div>
+<p>The t-SNE algorithm has been popular recently, yet it takes a lot of computing time and power. ISO produces an interesting graphic.</p>
+<p>Additionally, in cases where the dimensionality of the data is very high (more than 50 columns) the scikit-learn documentation suggests doing PCA or truncated SVD before t-SNE. The iris dataset is small, but we can write the syntax to perform t-SNE after PCA:</p>
+<pre><strong>iris_pca_then_tsne = TSNE(learning_rate=200).fit_transform(iris_pca)</strong><br/><strong>plt.figure(figsize=(10, 7))</strong><br/><strong>plt.scatter(iris_pca_then_tsne[:, 0], iris_pca_then_tsne[:, 1], c=y)</strong><br/><strong>plt.title("PCA followed by TSNE")</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/e1289eae-8719-49d6-a074-408e9ad9bc21.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In mathematics, a manifold is a space that is locally Euclidean at every point, yet is embedded in a higher-dimensional space. For example, the outer surface of a sphere is a two-dimensional manifold in three dimensions. When we walk around on the surface of the sphere of the Earth, we tend to perceive the 2D plane of the ground rather than all of 3D space. We navigate using 2D maps, not higher-dimensional ones.</p>
+<p>The <kbd>manifold</kbd> module in scikit-learn is useful for understanding high-dimensional spaces in two or three dimensions. The algorithms in the module gather information about the local structure around a point and seek to preserve it. What are the neighbors of a point? How far away are the neighbors of a point?</p>
+<p>For example, the Isomap algorithm attempts to preserve geodesic distances between all of the points in an algorithm, starting with a nearest neighbor search, followed by a graph search, and then a partial eigenvalue decomposition. The point of the algorithm is to preserve distances and a manifold's local geometric structure. The <strong>multi-dimensional scaling</strong> (<strong>MDS</strong>) algorithm also respects distances.</p>
+<p>t-SNE converts Euclidean distances between pairs of points in the dataset into probabilities. Around each point there is a Gaussian centered at that point, and the probability distribution represents the chance of any other point being a neighbor. Points very far away from each other have a low chance of being neighbors. Here, we have turned point locations into distances and then probabilities. t-SNE maintains the local structure very well by utilizing the probabilities of two points being neighbors.</p>
+<p>In a very general sense manifold methods start by examining the neighbors of every point, which represent the local structure of a manifold, and attempt to preserve that local structure in different ways. It is similar to you walking around your neighborhood or block constructing a 2D map of the local structure around you and focusing on two dimensions rather than three.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Testing methods to reduce dimensionality with pipelines</h1>
+                </header>
+            
+            <article>
+                
+<p>Here we will see how different estimators composed of dimensionality reduction and a support vector machine perform.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Load the iris dataset and some dimensionality reduction libraries. This is a big step for this particular recipe:</p>
+<pre><strong>import numpy as np</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/><strong>from sklearn.datasets import load_iris</strong><br/><strong>from sklearn.model_selection import GridSearchCV</strong><br/><strong>from sklearn.pipeline import Pipeline</strong><br/><strong>from sklearn.svm import SVC, LinearSVC</strong><br/><strong>from sklearn.decomposition import PCA, NMF, TruncatedSVD</strong><br/><strong>from sklearn.manifold import Isomap</strong><br/><strong>%matplotlib inline</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Instantiate a pipeline object with two main parts:
+<ul>
+<li>An object to reduce dimensionality</li>
+<li>An estimator with a predict method</li>
+</ul>
+</li>
+</ol>
+<pre style="padding-left: 120px"><strong>pipe = Pipeline([</strong><br/><strong>    ('reduce_dim', PCA()),</strong><br/><strong>    ('classify', SVC())</strong><br/><strong>])</strong></pre>
+<ol start="2">
+<li>Note in the following code that Isomap comes from the <kbd>manifold</kbd> module and that the <strong>n</strong><span><strong>on-negative matrix factorization</strong> </span>(<strong>NMF</strong>) algorithm utilizes SVDs to break up a matrix into non-negative factors, its main purpose in this section is to compare its performance with other algorithms, but it is useful in <strong>natural language processing</strong> (<strong>NLP</strong>) where matrix factorizations cannot be negative. Now type the following parameter grid:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>param_grid = [</strong><br/><strong>    {</strong><br/><strong>        'reduce_dim': [PCA(), NMF(),Isomap(),TruncatedSVD()],</strong><br/><strong>        'reduce_dim__n_components': [2, 3],</strong><br/><strong>        'classify' : [SVC(), LinearSVC()],</strong><br/><strong>        'classify__C': [1, 10, 100, 1000]</strong><br/><strong>    },</strong><br/><strong>]</strong></pre>
+<p style="padding-left: 60px">This parameter grid will allow scikit-learn to cycle through a few dimensionality reduction techniques coupled with two SVM types: linear SVC and SVC for classification.</p>
+<ol start="3">
+<li>Now run a grid search:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>grid = GridSearchCV(pipe, cv=3, n_jobs=-1, param_grid=param_grid)</strong><br/><strong>iris = load_iris()</strong><br/><strong>grid.fit(iris.data, iris.target)</strong></pre>
+<ol start="4">
+<li>Now look at the best parameters to determine the best model. A PCA with SVC was the best model:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>grid.best_params_</strong><br/><br/><strong>{'classify': SVC(C=10, cache_size=200, class_weight=None, coef0=0.0,
+   decision_function_shape=None, degree=3, gamma='auto', kernel='rbf',
+   max_iter=-1, probability=False, random_state=None, shrinking=True,
+   tol=0.001, verbose=False),
+ 'classify__C': 10,
+ 'reduce_dim': PCA(copy=True, iterated_power='auto', n_components=3, random_state=None,
+   svd_solver='auto', tol=0.0, whiten=False),
+ 'reduce_dim__n_components': 3}</strong><br/><br/><strong>grid.best_score_</strong><br/><br/><strong>0.97999999999999998</strong></pre>
+<ol start="5">
+<li>If you would like to create a dataframe of results, use the following command:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import pandas as pd</strong><br/><strong>results_df = pd.DataFrame(grid.cv_results_)</strong></pre>
+<ol start="6">
+<li>Finally, you can predict on an unseen instance with the <kbd>grid.predict(X_test)</kbd> method for a testing set <kbd>X_test</kbd>. We will do several grid searches in later chapters.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Grid search does cross-validation to determine the best score. In this case, all the data was used for three-fold cross-validation. For the rest of the book, we will save some data for testing to make sure the models do not run into anomalous behavior.</p>
+<p>A final note on the pipeline you just saw: the <kbd>sklearn.decomposition</kbd> methods will work for the first step of reducing dimensionality within the pipeline, but not all of the manifold methods were designed for pipelines.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

@@ -1,0 +1,897 @@
+<html><head></head><body>
+  <div class="Basic-Text-Frame" id="_idContainer213">
+    <h1 class="chapterNumber">5</h1>
+    <h1 class="chapterTitle" id="_idParaDest-113">Predicting Stock Prices with Regression Algorithms</h1>
+    <p class="normal">In the previous chapter, we predicted ad clicks using logistic regression. In this chapter, we will solve a problem that interests everyone—predicting stock prices. Getting wealthy by means of smart investment—who isn’t interested?! Stock market movements and stock price predictions have been actively researched by a large number of financial, trading, and even technology corporations. A variety of methods have been developed to predict stock prices using machine learning techniques. Herein, we will focus on learning several popular regression algorithms, including linear regression, regression trees and regression forests, and support vector regression, utilizing them to tackle this billion (or trillion)-dollar problem.</p>
+    <p class="normal">We will cover the following topics in this chapter:</p>
+    <ul>
+      <li class="bulletList">What is regression?</li>
+      <li class="bulletList">Mining stock price data</li>
+      <li class="bulletList">Getting started with feature engineering</li>
+      <li class="bulletList">Estimating with linear regression</li>
+      <li class="bulletList">Estimating with decision tree regression</li>
+      <li class="bulletList">Implementing a regression forest</li>
+      <li class="bulletList">Evaluating regression performance</li>
+      <li class="bulletList">Predicting stock prices with the three regression algorithms</li>
+    </ul>
+    <h1 class="heading-1" id="_idParaDest-114">What is regression?</h1>
+    <p class="normal"><strong class="keyWord">Regression</strong> is one of the main types of supervised learning in machine learning. In regression, the training set <a id="_idIndexMarker482"/>contains observations (also called features) and their <a id="_idIndexMarker483"/>associated <strong class="keyWord">continuous</strong> target values. The process of regression has two phases:</p>
+    <ul>
+      <li class="bulletList">The first phase is exploring the relationships between the observations and the targets. This is the training phase.</li>
+      <li class="bulletList">The second phase is using the patterns from the first phase to generate the target for a future observation. This is the prediction phase.</li>
+    </ul>
+    <p class="normal">The overall process is depicted in the following diagram:</p>
+    <figure class="mediaobject"><img alt="A picture containing text, screenshot, font, diagram  Description automatically generated" src="../Images/B21047_05_01.png"/></figure>
+    <p class="packt_figref">Figure 5.1: Training and prediction phase in regression</p>
+    <p class="normal">The major difference between regression and classification is that the output values in regression are continuous, while in classification they are discrete. This leads to different application areas for these two supervised learning methods. Classification is basically used to determine desired memberships or characteristics, as you’ve seen in previous chapters, such as email being spam or not, newsgroup topics, or ad click-through. Conversely, regression mainly involves estimating an outcome or forecasting a response.</p>
+    <p class="normal">An example of estimating continuous targets with linear regression is depicted as follows, where we try to fit a line against a set of two-dimensional data points:</p>
+    <figure class="mediaobject"><img alt="A picture containing screenshot, line, rectangle  Description automatically generated" src="../Images/B21047_05_02.png"/></figure>
+    <p class="packt_figref">Figure 5.2: Linear regression example</p>
+    <p class="normal">Typical machine learning regression<a id="_idIndexMarker484"/> problems include the following:</p>
+    <ul>
+      <li class="bulletList">Predicting house prices based on location, square footage, and the number of bedrooms and bathrooms</li>
+      <li class="bulletList">Estimating power consumption based on information about a system’s processes and memory</li>
+      <li class="bulletList">Forecasting demand in retail</li>
+      <li class="bulletList">Predicting stock prices</li>
+    </ul>
+    <p class="normal">I’ve talked about regression in this section and will briefly introduce its use in the stock market and trading in the next one.</p>
+    <h1 class="heading-1" id="_idParaDest-115">Mining stock price data</h1>
+    <p class="normal">In this chapter, we’ll work as a stock quantitative <a id="_idIndexMarker485"/>analyst/researcher, exploring how to predict stock prices with several typical machine learning regression algorithms. Let’s start with a brief overview of the stock market and stock prices.</p>
+    <h2 class="heading-2" id="_idParaDest-116">A brief overview of the stock market and stock prices</h2>
+    <p class="normal">The stock of a corporation signifies ownership in the corporation. A single share of the stock represents a claim on the fractional assets and the earnings of the corporation in proportion to the total number of shares. Stocks can be traded between shareholders and other parties via stock exchanges and organizations. Major stock exchanges include the New York Stock Exchange, the NASDAQ, London Stock Exchange Group, and the Hong Kong Stock Exchange. The prices that a stock is traded at fluctuate essentially due to the law of supply and demand.</p>
+    <p class="normal">In general, investors want to buy low and sell high. This sounds simple enough, but it’s very challenging to implement, as it’s monumentally difficult to say whether a stock price will go up or down. There are two main streams of studies that attempt to understand factors and conditions that lead<a id="_idIndexMarker486"/> to price changes, or even forecast future stock prices, <strong class="keyWord">fundamental analysis</strong> and <strong class="keyWord">technical analysis</strong>:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">Fundamental analysis</strong>: This stream focuses on underlying factors that influence a company’s value and business, including overall economy and industry conditions from macro perspectives, the company’s financial conditions, management, and competitors from micro perspectives.</li>
+      <li class="bulletList"><strong class="keyWord">Technical analysis</strong>: Conversely, this <a id="_idIndexMarker487"/>stream predicts future price movements through the statistical study of past trading activity, including price movement, volume, and market data. Predicting prices via machine learning techniques is an important topic in technical analysis nowadays.</li>
+    </ul>
+    <p class="normal">Many quantitative, or quant, trading firms use machine learning to empower automated and algorithmic trading.</p>
+    <p class="normal">In theory, we can apply regression techniques to predict the prices of a particular stock. However, it’s difficult to ensure the stock we pick is suitable for learning purposes—its price should follow some learnable patterns, and it can’t have been affected by unprecedented instances or irregular events. Hence, herein we’ll focus on one of the most popular <strong class="keyWord">stock indexes</strong> to better illustrate<a id="_idIndexMarker488"/> and generalize our price regression approach.</p>
+    <p class="normal">Let’s first cover what an index is. A stock index is a statistical measure of the value of a portion of the overall stock market. An index<a id="_idIndexMarker489"/> includes several stocks that are diverse enough to represent a section of the whole market. Also, the price of an index is typically computed as the weighted average of the prices of selected stocks.</p>
+    <p class="normal">The <strong class="keyWord">NASDAQ Composite</strong> is one of the<a id="_idIndexMarker490"/> longest-established and most commonly watched indexes in the world. It includes all the stocks listed on the NASDAQ exchange, covering a wide range of sectors. NASDAQ primarily lists stocks of technology companies, including established giants like Apple, Amazon, Microsoft, and Google (Alphabet), as well as emerging growth companies.</p>
+    <p class="normal">You can view its daily prices and performance on Yahoo Finance at <a href="https://finance.yahoo.com/quote/%5EIXIC/history?p=%5EIXIC"><span class="url">https://finance.yahoo.com/quote/%5EIXIC/history?p=%5EIXIC</span></a>. For example:</p>
+    <figure class="mediaobject"><img alt="A screenshot of a graph  Description automatically generated" src="../Images/B21047_05_03.png"/></figure>
+    <p class="packt_figref">Figure 5.3: Screenshot of daily prices and performance in Yahoo Finance</p>
+    <p class="normal">On each trading day, the price of stock changes and is recorded in real time. Five values illustrating the movements in price over one unit of time (usually one day, but it can also be one week or one month) are key trading indicators. They are as follows:</p>
+    <ul>
+      <li class="bulletList"><strong class="keyWord">Open</strong>: The starting price for a given trading day</li>
+      <li class="bulletList"><strong class="keyWord">Close</strong>: The final price on that day</li>
+      <li class="bulletList"><strong class="keyWord">High</strong>: The highest prices at which the stock traded on that day</li>
+      <li class="bulletList"><strong class="keyWord">Low</strong>: The lowest prices at which the stock traded on that day</li>
+      <li class="bulletList"><strong class="keyWord">Volume</strong>: The total number of shares traded before the market closed on that day</li>
+    </ul>
+    <p class="normal">We will focus on NASDAQ and use its historical prices and performance to predict future prices. In the following sections, we will explore how to develop price prediction models, specifically regression models, and what can be used as indicators or predictive features.</p>
+    <h1 class="heading-1" id="_idParaDest-117">Getting started with feature engineering</h1>
+    <p class="normal">When it comes to a machine learning algorithm, the first question to ask is usually what features are available or what the <a id="_idIndexMarker491"/>predictive variables are.</p>
+    <p class="normal">The driving factors that are used to predict future prices of NASDAQ, the <strong class="keyWord">close</strong> prices, include historical and current <strong class="keyWord">open</strong> prices as well as historical performance (<strong class="keyWord">high</strong>, <strong class="keyWord">low</strong>, and <strong class="keyWord">volume</strong>). Note that current or same-day performance (<strong class="keyWord">high</strong>, <strong class="keyWord">low</strong>, and <strong class="keyWord">volume</strong>) shouldn’t be included because we simply can’t foresee the highest and lowest prices at which the stock traded, or the total number of shares traded before the market closed on that day.</p>
+    <p class="normal">Predicting the close price with only those preceding four indicators doesn’t seem promising and might lead to underfitting. So, we need to think of ways to generate more features in order to increase predictive power. In machine learning, <strong class="keyWord">feature engineering</strong> is the process of creating features in order to improve the performance of a machine learning algorithm. Feature engineering is essential in machine learning and is usually where we spend the most effort in solving a practical problem.</p>
+    <p class="normal">Feature engineering usually requires sufficient domain knowledge and can be very difficult and time-consuming. In reality, features used to solve a machine learning problem are not usually directly available and need to be specifically designed and constructed.</p>
+    <p class="normal">When making an investment decision, investors usually look at historical prices over a period of time, not just the price the day before. Therefore, in our stock price prediction case, we can compute the average close price over the past week (five trading days), over the past month, and over the past year as three new features. We can also customize the time window to the size we want, such as the past quarter or the past six months. On top of these three averaged price features, we can generate new features associated with the price trend by computing the ratios between each pair of average prices in the three different time frames, for instance, the ratio between the average price over the past week and the past year.</p>
+    <p class="normal">Besides prices, volume is<a id="_idIndexMarker492"/> another important factor that investors analyze. Similarly, we can generate new volume-based features by computing the average volumes in several different time frames and the ratios between each pair of averaged values.</p>
+    <p class="normal">Besides historical averaged values in a time window, investors also greatly consider stock volatility. Volatility describes the degree of variation of prices for a given stock or index over time. In statistical terms, it’s basically the standard deviation of the close prices. We can easily generate new sets of features by computing the standard deviation of close prices in a particular time frame, as well as the standard deviation of volumes traded. Similarly, ratios between each pair of standard deviation values can be included in our engineered feature pool.</p>
+    <p class="normal">Last but not least, return is a significant financial metric that investors closely watch for. Return is the gain or loss percentage of a close price for a stock/index in a particular period. For example, daily return and annual return are financial terms we frequently hear. </p>
+    <p class="normal">They are calculated as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_05_001.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_05_002.png"/></p>
+    <p class="normal">Here, <em class="italic">price</em><sub class="subscript-italic" style="font-style: italic;">i</sub> is the price on the <em class="italic">i</em><sup class="superscript">th</sup> day and <em class="italic">price</em><sub class="subscript-italic" style="font-style: italic;">i</sub><sub class="subscript">-1</sub> is the price on the day before. Weekly and monthly returns can be computed similarly. Based on daily returns, we can produce a moving average over a particular number of days.</p>
+    <p class="normal">For instance, given the daily<a id="_idIndexMarker493"/> returns of the past week, <em class="italic">return</em><sub class="subscript-italic" style="font-style: italic;">i:i-1</sub>, <em class="italic">return</em><sub class="subscript-italic" style="font-style: italic;">i-1:i-2</sub>, <em class="italic">return</em><sub class="subscript-italic" style="font-style: italic;">i-2:i-3</sub>, <em class="italic">return</em><sub class="subscript-italic" style="font-style: italic;">i-3:i-4</sub>, and <em class="italic">return</em><sub class="subscript">i-4:i-5</sub>, we can calculate the moving average over that week as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_05_003.png"/></p>
+    <p class="normal">In summary, we can generate the following predictive variables by applying feature engineering techniques:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_05_04.png"/></figure>
+    <p class="packt_figref">Figure 5.4: Generated features (1)</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_05_05.png"/></figure>
+    <p class="packt_figref">Figure 5.5: Generated features (2)</p>
+    <p class="normal">Eventually, we are able to generate, in total, 31 sets of features, along with the following six original features:</p>
+    <ul>
+      <li class="bulletList">OpenPrice<sub class="subscript-italic" style="font-style: italic;">i</sub>: This feature represents the open price</li>
+      <li class="bulletList">OpenPrice<sub class="subscript-italic" style="font-style: italic;">i-1</sub>: This feature represents the open price on the past day</li>
+      <li class="bulletList">ClosePrice<sub class="subscript-italic" style="font-style: italic;">i-1</sub>: This feature <a id="_idIndexMarker494"/>represents the close price on the past day</li>
+      <li class="bulletList">HighPrice<sub class="subscript-italic" style="font-style: italic;">i-1</sub>: This feature represents the highest price on the past day</li>
+      <li class="bulletList">LowPrice<sub class="subscript-italic" style="font-style: italic;">i-1</sub>: This feature represents the lowest price on the past day</li>
+      <li class="bulletList">Volume<sub class="subscript-italic" style="font-style: italic;">i-1</sub>: This feature represents the volume on the past day</li>
+    </ul>
+    <h2 class="heading-2" id="_idParaDest-118">Acquiring data and generating features</h2>
+    <p class="normal">For easier reference, we <a id="_idIndexMarker495"/>will implement the code to generate features here rather<a id="_idIndexMarker496"/> than in later sections. We will start by obtaining the dataset we need for our project.</p>
+    <p class="normal">Throughout the project, we will acquire stock index price and performance data from Yahoo Finance. For example, on the Historical Data <a href="https://finance.yahoo.com/quote/%5EIXIC/history?p=%5EIXIC"><span class="url">https://finance.yahoo.com/quote/%5EIXIC/history?p=%5EIXIC</span></a>, we can change the <code class="inlineCode">Time Period</code> to <code class="inlineCode">Dec 01, 2005 – Dec10, 2005</code>, select <code class="inlineCode">Historical Prices</code> in <code class="inlineCode">Show</code> and <code class="inlineCode">Daily</code> in <code class="inlineCode">Frequency</code> (or open this link directly: <a href="https://finance.yahoo.com/quote/%5EIXIC/history?period1=1133395200&amp;period2=1134172800&amp;interval=1d&amp;filter=history&amp;frequency=1d&amp;includeAdjustedClose=true"><span class="url">https://finance.yahoo.com/quote/%5EIXIC/history?period1=1133395200&amp;period2=1134172800&amp;interval=1d&amp;filter=history&amp;frequency=1d&amp;includeAdjustedClose=true</span></a>), and then click on the <strong class="keyWord">Apply</strong> button. Click the <strong class="keyWord">Download data</strong> button to download the data and name the file <code class="inlineCode">20051201_20051210.csv</code>.</p>
+    <p class="normal">We can load the data we just downloaded as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">mydata = pd.read_csv(</span><span class="hljs-con-string">'20051201_20051210.csv'</span><span class="language-python">, index_col=</span><span class="hljs-con-string">'Date'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">mydata</span>
+               Open         High         Low          Close
+Date
+2005-12-01 2244.850098  2269.389893	2244.709961	2267.169922	
+2005-12-02 2266.169922	 2273.610107	2261.129883	2273.370117
+2005-12-05 2269.070068	 2269.479980	2250.840088	2257.639893
+2005-12-06 2267.760010	 2278.159912	2259.370117	2260.760010
+2005-12-07 2263.290039	 2264.909912	2244.620117	2252.010010
+2005-12-08 2254.800049	 2261.610107	2233.739990	2246.459961
+2005-12-09 2247.280029	 2258.669922	2241.030029	2256.729980
+              Adj Close  Volume    
+Date
+2005-12-01 2267.169922	  2010420000
+2005-12-02 2273.370117	  1758510000
+2005-12-05 2257.639893	  1659920000
+2005-12-06 2260.760010	  1788200000
+2005-12-07 2252.010010	  1733530000
+2005-12-08 2246.459961	  1908360000
+2005-12-09 2256.729980	  1658570000
+</code></pre>
+    <p class="normal">Note that the output is a pandas DataFrame object. The <code class="inlineCode">Date</code> column is the index column, and the rest of the columns are the corresponding financial variables. In the following lines of code, you will see how <a id="_idIndexMarker497"/>powerful pandas is at simplifying data analysis and transformation on <strong class="keyWord">relational</strong> (or table-like) data.</p>
+    <p class="normal">First, we implement feature <a id="_idIndexMarker498"/>generation by starting with a sub-function that directly creates features from the original six features, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">add_original_feature</span><span class="language-python">(</span><span class="hljs-con-params">df, df_new</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'open'</span><span class="language-python">] = df[</span><span class="hljs-con-string">'Open'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'open_1'</span><span class="language-python">] = df[</span><span class="hljs-con-string">'</span><span class="hljs-con-string">Open'</span><span class="language-python">].shift(</span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'close_1'</span><span class="language-python">] = df[</span><span class="hljs-con-string">'Close'</span><span class="language-python">].shift(</span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'high_1'</span><span class="language-python">] = df[</span><span class="hljs-con-string">'</span><span class="hljs-con-string">High'</span><span class="language-python">].shift(</span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'low_1'</span><span class="language-python">] = df[</span><span class="hljs-con-string">'Low'</span><span class="language-python">].shift(</span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'volume_1'</span><span class="language-python">] = df[</span><span class="hljs-con-string">'</span><span class="hljs-con-string">Volume'</span><span class="language-python">].shift(</span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">Then, we develop a sub-function that generates six features related to average close prices:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">add_avg_price</span><span class="language-python">(</span><span class="hljs-con-params">df, df_new</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'avg_price_5'</span><span class="language-python">] =</span>
+                     df['Close'].rolling(5).mean().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'avg_price_30'</span><span class="language-python">] =</span>
+                     df['Close'].rolling(21).mean().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'avg_price_365'</span><span class="language-python">] =</span>
+                     df['Close'].rolling(252).mean().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'ratio_avg_price_5_30'</span><span class="language-python">] =</span>
+                 df_new['avg_price_5'] / df_new['avg_price_30']
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'ratio_avg_price_5_365'</span><span class="language-python">] =</span>
+                 df_new['avg_price_5'] / df_new['avg_price_365']
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'ratio_avg_price_30_365'</span><span class="language-python">] =</span>
+                df_new['avg_price_30'] / df_new['avg_price_365']
+</code></pre>
+    <p class="normal">Similarly, a sub-function that generates six features related to average volumes is as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">add_avg_volume</span><span class="language-python">(</span><span class="hljs-con-params">df, df_new</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'avg_volume_5'</span><span class="language-python">] =</span>
+                  df['Volume'].rolling(5).mean().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'avg_volume_30'</span><span class="language-python">] = </span>
+                  df['Volume'].rolling(21).mean().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'avg_volume_365'</span><span class="language-python">] =</span>
+                      df['Volume'].rolling(252).mean().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'ratio_avg_volume_5_30'</span><span class="language-python">] =</span>
+                df_new['avg_volume_5'] / df_new['avg_volume_30']
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'ratio_avg_volume_5_365'</span><span class="language-python">] =</span>
+               df_new['avg_volume_5'] / df_new['avg_volume_365']
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'ratio_avg_volume_30_365'</span><span class="language-python">] =</span>
+               df_new['avg_volume_30'] / df_new['avg_volume_365']
+</code></pre>
+    <p class="normal">As for the standard deviation, we <a id="_idIndexMarker499"/>develop the following sub-function for the <a id="_idIndexMarker500"/>price-related features:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">add_std_price</span><span class="language-python">(</span><span class="hljs-con-params">df, df_new</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'std_price_5'</span><span class="language-python">] =</span>
+               df['Close'].rolling(5).std().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'std_price_30'</span><span class="language-python">] =</span>
+               df['Close'].rolling(21).std().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'std_price_365'</span><span class="language-python">] =</span>
+               df['Close'].rolling(252).std().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'ratio_std_price_5_30'</span><span class="language-python">] =</span>
+               df_new['std_price_5'] / df_new['std_price_30']
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'ratio_std_price_5_365'</span><span class="language-python">] =</span>
+               df_new['std_price_5'] / df_new['std_price_365']
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'</span><span class="hljs-con-string">ratio_std_price_30_365'</span><span class="language-python">] =</span>
+               df_new['std_price_30'] / df_new['std_price_365']
+</code></pre>
+    <p class="normal">Similarly, a sub-function that generates six volume-based standard deviation features is as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">add_std_volume</span><span class="language-python">(</span><span class="hljs-con-params">df, df_new</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'std_volume_5'</span><span class="language-python">] =</span>
+                 df['Volume'].rolling(5).std().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'std_volume_30'</span><span class="language-python">] =</span>
+                 df['Volume'].rolling(21).std().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'std_volume_365'</span><span class="language-python">] =</span>
+                 df['Volume'].rolling(252).std().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'ratio_std_volume_5_30'</span><span class="language-python">] =</span>
+                df_new['std_volume_5'] / df_new['std_volume_30']
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'</span><span class="hljs-con-string">ratio_std_volume_5_365'</span><span class="language-python">] =</span>
+                df_new['std_volume_5'] / df_new['std_volume_365']
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'ratio_std_volume_30_365'</span><span class="language-python">] =</span>
+               df_new['std_volume_30'] / df_new['std_volume_365']
+</code></pre>
+    <p class="normal">Seven return-based features are<a id="_idIndexMarker501"/> generated using the following sub-function:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">add_return_feature</span><span class="language-python">(</span><span class="hljs-con-params">df, df_new</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'return_1'</span><span class="language-python">] = ((df[</span><span class="hljs-con-string">'Close'</span><span class="language-python">] - df[</span><span class="hljs-con-string">'Close'</span><span class="language-python">].shift(</span><span class="hljs-con-number">1</span><span class="language-python">))  </span>
+                               / df['Close'].shift(1)).shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'return_5'</span><span class="language-python">] = ((df[</span><span class="hljs-con-string">'Close'</span><span class="language-python">] - df[</span><span class="hljs-con-string">'Close'</span><span class="language-python">].shift(</span><span class="hljs-con-number">5</span><span class="language-python">))</span>
+                               / df['Close'].shift(5)).shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'return_30'</span><span class="language-python">] = ((df[</span><span class="hljs-con-string">'Close'</span><span class="language-python">] -</span>
+           df['Close'].shift(21)) / df['Close'].shift(21)).shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'return_365'</span><span class="language-python">] = ((df[</span><span class="hljs-con-string">'Close'</span><span class="language-python">] -</span>
+         df['Close'].shift(252)) / df['Close'].shift(252)).shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'moving_avg_5'</span><span class="language-python">] =</span>
+                    df_new['return_1'].rolling(5).mean().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'moving_avg_30'</span><span class="language-python">] =</span>
+                    df_new['return_1'].rolling(21).mean().shift(1)
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'moving_avg_365'</span><span class="language-python">] =</span>
+                   df_new['return_1'].rolling(252).mean().shift(1)
+</code></pre>
+    <p class="normal">Finally, we put together the <a id="_idIndexMarker502"/>main feature generation function that calls all the preceding sub-functions:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">generate_features</span><span class="language-python">(</span><span class="hljs-con-params">df</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Generate features for a stock/index based on historical price and performance</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param df: dataframe with columns "Open", "Close", "High", "Low", "Volume", "Adj Close"</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @return: dataframe, data set with new features</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new = pd.DataFrame()</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># 6 original features</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    add_original_feature(df, df_new)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># 31 generated features</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    add_avg_price(df, df_new)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    add_avg_volume(df, df_new)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    add_std_price(df, df_new)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    add_std_volume(df, df_new)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    add_return_feature(df, df_new)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># the target</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new[</span><span class="hljs-con-string">'close'</span><span class="language-python">] = df[</span><span class="hljs-con-string">'Close'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    df_new = df_new.dropna(axis=</span><span class="hljs-con-number">0</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> df_new</span>
+</code></pre>
+    <div class="note">
+      <p class="normal">Note that the window sizes here are <code class="inlineCode">5</code>, <code class="inlineCode">21</code>, and <code class="inlineCode">252</code>, instead of <code class="inlineCode">7</code>, <code class="inlineCode">30</code>, and <code class="inlineCode">365</code>, representing the weekly, monthly, and yearly windows respectively. This is because there are 252 (rounded) trading days in a year, 21 trading days in a month, and 5 in a week.</p>
+    </div>
+    <p class="normal">We can apply this feature <a id="_idIndexMarker503"/>engineering strategy on the NASDAQ Composite data queried from 1990 <a id="_idIndexMarker504"/>to the first half of 2023, as follows (or directly download it from this page: <a href="https://finance.yahoo.com/quote/%5EIXIC/history?period1=631152000&amp;period2=1688083200&amp;interval=1d&amp;filter=history&amp;frequency=1d&amp;includeAdjustedClose=true"><span class="url">https://finance.yahoo.com/quote/%5EIXIC/history?period1=631152000&amp;period2=1688083200&amp;interval=1d&amp;filter=history&amp;frequency=1d&amp;includeAdjustedClose=true</span></a>):</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">data_raw = pd.read_csv(</span><span class="hljs-con-string">'19900101_20230630.csv'</span><span class="language-python">, index_col=</span><span class="hljs-con-string">'Date'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">data = generate_features(data_raw)</span>
+</code></pre>
+    <p class="normal">Take a look at what the data with the new features looks like:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(data.</span><span class="hljs-con-built_in">round</span><span class="language-python">(decimals=</span><span class="hljs-con-number">3</span><span class="language-python">).head(</span><span class="hljs-con-number">5</span><span class="language-python">))</span>
+</code></pre>
+    <p class="normal">The preceding command line generates the following output:</p>
+    <figure class="mediaobject"><img alt="A screenshot of a computer  Description automatically generated" src="../Images/B21047_05_06.png"/></figure>
+    <p class="packt_figref">Figure 5.6: Printout of the first five rows of the DataFrame</p>
+    <p class="normal">Since all the features and <a id="_idIndexMarker505"/>driving factors are ready, we will now focus on regression algorithms that <a id="_idIndexMarker506"/>estimate the continuous target variables based on these predictive features.</p>
+    <h1 class="heading-1" id="_idParaDest-119">Estimating with linear regression</h1>
+    <p class="normal">The first regression model that comes to mind is <strong class="keyWord">linear regression</strong>. Does this mean fitting data points using a linear function, as its name implies? Let’s explore it.</p>
+    <h2 class="heading-2" id="_idParaDest-120">How does linear regression work?</h2>
+    <p class="normal">In simple terms, linear regression tries to fit as many of the data points as possible, with a straight line in two-dimensional space or <a id="_idIndexMarker507"/>a plane in three-dimensional space. It explores the linear relationship between observations and targets, and the relationship is represented in a linear equation or weighted sum function. Given a data sample <em class="italic">x</em> with <em class="italic">n</em> features, <em class="italic">x</em><sub class="subscript-italic" style="font-style: italic;">1</sub>, <em class="italic">x</em><sub class="subscript-italic" style="font-style: italic;">2</sub>, …, <em class="italic">x</em><sub class="subscript-italic" style="font-style: italic;">n</sub> (<em class="italic">x</em> represents a feature vector and <em class="italic">x = (x</em><sub class="subscript-italic" style="font-style: italic;">1</sub><em class="italic">, x</em><sub class="subscript-italic" style="font-style: italic;">2</sub><em class="italic">, …, x</em><sub class="subscript-italic" style="font-style: italic;">n</sub><em class="italic">)</em>), and <a id="_idIndexMarker508"/>weights (also called <strong class="keyWord">coefficients</strong>) of the linear regression model <em class="italic">w</em> (<em class="italic">w</em> represents a vector (<em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">1</sub>, <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">2</sub>, …, <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">n</sub>)), the target <em class="italic">y</em> is expressed as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_05_004.png"/></p>
+    <p class="normal">Also, sometimes the linear regression model comes with an intercept (also called bias), <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">0</sub>, so the preceding linear relationship becomes as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_05_005.png"/></p>
+    <p class="normal">Does it look familiar? The <strong class="keyWord">logistic regression</strong> algorithm <a id="_idIndexMarker509"/>you learned in <em class="chapterRef">Chapter 4</em>, <em class="italic">Predicting Online Ad Click-Through with Logistic Regression</em>, is just an addition of logistic transformation on top of the linear regression, which maps the continuous weighted sum to the <em class="italic">0</em> (negative) or <em class="italic">1</em> (positive) class. Similarly, a linear regression model, or specifically its weight vector, <em class="italic">w</em>, is learned from the training data, with the goal of minimizing the estimation error <a id="_idIndexMarker510"/>defined as the <strong class="keyWord">mean squared error</strong> (<strong class="keyWord">MSE</strong>), which measures the average of squares of difference between the truth and prediction. Given <em class="italic">m</em> training samples, (<em class="italic">x</em><sup class="superscript">(1)</sup>, <em class="italic">y</em><sup class="superscript">(1)</sup>), (<em class="italic">x</em><sup class="superscript">(2)</sup>, <em class="italic">y</em><sup class="superscript">(2)</sup>), … (<em class="italic">x</em><sup class="superscript">(i)</sup>, <em class="italic">y</em><sup class="superscript">(i)</sup>)…, (<em class="italic">x</em><sup class="superscript">(m)</sup>, <em class="italic">y</em><sup class="superscript">(m)</sup>), the loss function <em class="italic">J(w)</em> regarding the weights to be optimized is expressed as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_05_006.png"/></p>
+    <p class="normal">Here, <img alt="" role="presentation" src="../Images/B21047_05_007.png"/> is the prediction.</p>
+    <p class="normal">Again, we can obtain the optimal <em class="italic">w</em> so that <em class="italic">J</em>(<em class="italic">w</em>) is minimized using gradient descent. The first-order derivative, the gradient <img alt="" role="presentation" src="../Images/B21047_04_027.png"/>, is derived as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_05_009.png"/></p>
+    <p class="normal">Combined with the gradient <a id="_idIndexMarker511"/>and learning rate <img alt="" role="presentation" src="../Images/B21047_05_010.png"/>, the weight vector <em class="italic">w</em> can be updated in each step as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_05_011.png"/></p>
+    <p class="normal">After a substantial number of iterations, the learned <em class="italic">w</em> is then used to predict a new sample <em class="italic">x’</em>, as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_05_012.png"/></p>
+    <p class="normal">After learning about the mathematical theory behind linear regression, let’s implement it from scratch in the next section.</p>
+    <h2 class="heading-2" id="_idParaDest-121">Implementing linear regression from scratch</h2>
+    <p class="normal">Now that you have a thorough <a id="_idIndexMarker512"/>understanding of gradient-descent-based linear regression, we’ll implement it from scratch.</p>
+    <p class="normal">We start by defining the function computing the prediction,<img alt="" role="presentation" src="../Images/B21047_05_013.png"/>, with the current weights:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">compute_prediction</span><span class="language-python">(</span><span class="hljs-con-params">X, weights</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Compute the prediction y_hat based on current weights</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> np.dot(X, weights)</span>
+</code></pre>
+    <p class="normal">Then, we continue with the function updating the weight, <em class="italic">w</em>, with one step in a gradient descent manner, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">update_weights_gd</span><span class="language-python">(</span><span class="hljs-con-params">X_train, y_train, weights,</span>
+learning_rate):
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    predictions = compute_prediction(X_train, weights)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    weights_delta = np.dot(X_train.T, y_train - predictions)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    m = y_train.shape[</span><span class="hljs-con-number">0</span><span class="hljs-con-params">]</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    weights += learning_rate / </span><span class="hljs-con-built_in">float</span><span class="hljs-con-params">(m) * weights_delta</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-keyword">return</span><span class="hljs-con-params"> weights</span>
+</code></pre>
+    <p class="normal">Next, we add the function that <a id="_idIndexMarker513"/>calculates the loss <em class="italic">J(w)</em> as well:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">compute_loss</span><span class="language-python">(</span><span class="hljs-con-params">X, y, weights</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Compute the loss J(w)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    predictions = compute_prediction(X, weights)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> np.mean((predictions - y) ** </span><span class="hljs-con-number">2</span><span class="language-python"> / </span><span class="hljs-con-number">2.0</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">Now, put all functions together with a model training function by performing the following tasks:</p>
+    <ol>
+      <li class="numberedList" value="1">Update the weight vector in each iteration</li>
+      <li class="numberedList">Print out the current cost for every 500 (or it can be any number) iterations to ensure cost is decreasing and things are on the right track</li>
+    </ol>
+    <p class="normal">Let’s see how it’s done by executing the following commands:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">train_linear_regression</span><span class="language-python">(</span><span class="hljs-con-params">X_train, y_train, max_iter, learning_rate, fit_intercept=</span><span class="hljs-con-literal">False</span><span class="hljs-con-params">, display_loss=</span><span class="hljs-con-number">500</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Train a linear regression model with gradient descent, and return trained model</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> fit_intercept:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        intercept = np.ones((X_train.shape[</span><span class="hljs-con-number">0</span><span class="language-python">], </span><span class="hljs-con-number">1</span><span class="language-python">))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        X_train = np.hstack((intercept, X_train))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    weights = np.zeros(X_train.shape[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">for</span><span class="language-python"> iteration </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(max_iter):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        weights = update_weights_gd(X_train, y_train,</span>
+                                       weights, learning_rate)
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-comment"># Check the cost for every 500 (by default) iterations</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> iteration % </span><span class="hljs-con-number">500</span><span class="language-python"> == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-built_in">print</span><span class="language-python">(compute_loss(X_train, y_train, weights))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> weights</span>
+</code></pre>
+    <p class="normal">Finally, predict the results of new input values using the trained model as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">predict</span><span class="language-python">(</span><span class="hljs-con-params">X, weights</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> X.shape[</span><span class="hljs-con-number">1</span><span class="language-python">] == weights.shape[</span><span class="hljs-con-number">0</span><span class="language-python">] - </span><span class="hljs-con-number">1</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        intercept = np.ones((X.shape[</span><span class="hljs-con-number">0</span><span class="language-python">], </span><span class="hljs-con-number">1</span><span class="language-python">))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        X = np.hstack((intercept, X))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> compute_prediction(X, weights)</span>
+</code></pre>
+    <p class="normal">Implementing linear <a id="_idIndexMarker514"/>regression is very similar to logistic regression, as you just saw. Let’s examine it with a small example:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = np.array([[</span><span class="hljs-con-number">6</span><span class="language-python">], [</span><span class="hljs-con-number">2</span><span class="language-python">], [</span><span class="hljs-con-number">3</span><span class="language-python">], [</span><span class="hljs-con-number">4</span><span class="language-python">], [</span><span class="hljs-con-number">1</span><span class="language-python">],</span>
+                        [5], [2], [6], [4], [7]])
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_train = np.array([</span><span class="hljs-con-number">5.5</span><span class="language-python">, </span><span class="hljs-con-number">1.6</span><span class="language-python">, </span><span class="hljs-con-number">2.2</span><span class="language-python">, </span><span class="hljs-con-number">3.7</span><span class="language-python">, </span><span class="hljs-con-number">0.8</span><span class="language-python">,</span>
+                        5.2, 1.5, 5.3, 4.4, 6.8])
+</code></pre>
+    <p class="normal">Train a linear regression model with <code class="inlineCode">100</code> iterations, at a learning rate of <code class="inlineCode">0.01</code>, based on intercept-included weights:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">weights = train_linear_regression(X_train, y_train,</span>
+            max_iter=100, learning_rate=0.01, fit_intercept=True)
+</code></pre>
+    <p class="normal">Check the model’s performance on new samples as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_test = np.array([[</span><span class="hljs-con-number">1.3</span><span class="language-python">], [</span><span class="hljs-con-number">3.5</span><span class="language-python">], [</span><span class="hljs-con-number">5.2</span><span class="language-python">], [</span><span class="hljs-con-number">2.8</span><span class="language-python">]])</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions = predict(X_test, weights)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> matplotlib.pyplot </span><span class="hljs-con-keyword">as</span><span class="language-python"> plt</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.scatter(X_train[:, </span><span class="hljs-con-number">0</span><span class="language-python">], y_train, marker=</span><span class="hljs-con-string">'o'</span><span class="language-python">, c=</span><span class="hljs-con-string">'b'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.scatter(X_test[:, </span><span class="hljs-con-number">0</span><span class="language-python">], predictions, marker=</span><span class="hljs-con-string">'*'</span><span class="language-python">, c=</span><span class="hljs-con-string">'k'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.xlabel(</span><span class="hljs-con-string">'x'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylabel(</span><span class="hljs-con-string">'y'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.show()</span>
+</code></pre>
+    <p class="normal">Refer to the following screenshot for the result:</p>
+    <figure class="mediaobject"><img alt="A picture containing screenshot, display, rectangle, square  Description automatically generated" src="../Images/B21047_05_07.png"/></figure>
+    <p class="packt_figref">Figure 5.7: Linear regression on a toy dataset</p>
+    <p class="normal">The model we trained correctly<a id="_idIndexMarker515"/> predicts new samples (depicted by the stars).</p>
+    <p class="normal">Let’s try it on another dataset, the diabetes dataset from scikit-learn:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn </span><span class="hljs-con-keyword">import</span><span class="language-python"> datasets</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">diabetes = datasets.load_diabetes()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(diabetes.data.shape)</span>
+(442, 10)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">num_test = </span><span class="hljs-con-number">30</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = diabetes.data[:-num_test, :]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_train = diabetes.target[:-num_test]</span>
+</code></pre>
+    <p class="normal">Train a linear regression model with <code class="inlineCode">5000</code> iterations, at a learning rate of <code class="inlineCode">1</code>, based on intercept-included weights (the loss is displayed every <code class="inlineCode">500</code> iterations):</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">weights = train_linear_regression(X_train, y_train,</span>
+              max_iter=5000, learning_rate=1, fit_intercept=True)
+2960.1229915
+1539.55080927
+1487.02495658
+1480.27644342
+1479.01567047
+1478.57496091
+1478.29639883
+1478.06282572
+1477.84756968
+1477.64304737
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_test = diabetes.data[-num_test:, :]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_test = diabetes.target[-num_test:]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions = predict(X_test, weights)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(predictions)</span>
+[ 232.22305668 123.87481969 166.12805033 170.23901231
+  228.12868839 154.95746522 101.09058779 87.33631249
+  143.68332296 190.29353122 198.00676871 149.63039042
+   169.56066651 109.01983998 161.98477191 133.00870377
+   260.1831988 101.52551082 115.76677836 120.7338523
+   219.62602446 62.21227353 136.29989073 122.27908721
+   55.14492975 191.50339388 105.685612 126.25915035
+   208.99755875 47.66517424]
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(y_test)</span>
+[ 261. 113. 131. 174. 257. 55. 84. 42. 146. 212. 233.
+  91. 111. 152. 120. 67. 310. 94. 183. 66. 173. 72.
+  49. 64. 48. 178. 104. 132. 220. 57.]
+</code></pre>
+    <p class="normal">The estimate is pretty close to the ground truth.</p>
+    <p class="normal">Next, let’s utilize scikit-learn to<a id="_idIndexMarker516"/> implement linear regression.</p>
+    <h2 class="heading-2" id="_idParaDest-122">Implementing linear regression with scikit-learn</h2>
+    <p class="normal">So far, we have used gradient <a id="_idIndexMarker517"/>descent in weight optimization, but like with logistic regression, linear regression is also open to <strong class="keyWord">Stochastic Gradient Descent</strong> (<strong class="keyWord">SGD</strong>). To use<a id="_idIndexMarker518"/> it, we can simply replace the <code class="inlineCode">update_weights_gd</code> function with the <code class="inlineCode">update_weights_sgd</code> function we created in <em class="chapterRef">Chapter 4</em>, <em class="italic">Predicting Online Ad Click-Through with Logistic Regression</em>.</p>
+    <p class="normal">We can also directly use the SGD-based regression algorithm, <code class="inlineCode">SGDRegressor</code>, from scikit-learn:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.linear_model </span><span class="hljs-con-keyword">import</span><span class="language-python"> SGDRegressor</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">regressor = SGDRegressor(loss=</span><span class="hljs-con-string">'squared_error'</span><span class="language-python">,</span>
+                         penalty='l2',
+                         alpha=0.0001,
+                         learning_rate='constant',
+                         eta0=0.2,
+                         max_iter=100,
+                         random_state=42)
+</code></pre>
+    <p class="normal">Here, <code class="inlineCode">'squared_error'</code> for the <code class="inlineCode">loss</code> parameter indicates that the cost function is MSE; <code class="inlineCode">penalty</code> is the regularization term, and it can be <code class="inlineCode">None</code>, <code class="inlineCode">l1</code>, or <code class="inlineCode">l2</code>, which is similar to <code class="inlineCode">SGDClassifier</code> in <em class="chapterRef">Chapter 4</em>, <em class="italic">Predicting Online Ad Click-Through with Logistic Regression</em>, in order to reduce overfitting; <code class="inlineCode">max_iter</code> is the number of iterations; and the remaining two parameters <a id="_idIndexMarker519"/>mean the learning rate is <code class="inlineCode">0.2</code> and unchanged during the course of training over, at most, <code class="inlineCode">100</code> iterations. Train the model and output predictions on the testing set of the diabetes dataset, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">regressor.fit(X_train, y_train)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions = regressor.predict(X_test)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(predictions)</span>
+[213.10213626 108.68382244 152.18820636 153.81308148 208.42650616 137.24771808  88.91487772  73.83269079 131.35148348 173.65164632 178.16029669 135.26642772 152.92346973  89.39394334 149.98088897 117.62875063 241.90665387  86.59992328 101.90393228 105.13958969 202.13586812  50.60429115 121.43542595 106.34058448  41.11664041 172.53683431  95.43229463 112.59395222 187.40792     36.1586737 ]
+</code></pre>
+    <p class="normal">You can also implement linear regression with TensorFlow. Let’s see this in the next section.</p>
+    <h2 class="heading-2" id="_idParaDest-123">Implementing linear regression with TensorFlow</h2>
+    <p class="normal">First, we import TensorFlow and<a id="_idIndexMarker520"/> construct the<a id="_idIndexMarker521"/> model:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> tensorflow </span><span class="hljs-con-keyword">as</span><span class="language-python"> tf</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">layer0 = tf.keras.layers.Dense(units=</span><span class="hljs-con-number">1</span><span class="language-python">,</span>
+                      input_shape=[X_train.shape[1]])
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">model = tf.keras.Sequential(layer0)</span>
+</code></pre>
+    <p class="normal">It uses a linear layer (or you can think of it as a linear function) to connect the input in the <code class="inlineCode">X_train.shape[1]</code> dimension and the output in the <code class="inlineCode">1</code> dimension.</p>
+    <p class="normal">Next, we specify the loss<a id="_idIndexMarker522"/> function, the MSE, and a gradient <a id="_idIndexMarker523"/>descent optimizer, <code class="inlineCode">Adam</code>, with a learning rate of <code class="inlineCode">1</code>:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">model.</span><span class="hljs-con-built_in">compile</span><span class="language-python">(loss=</span><span class="hljs-con-string">'mean_squared_error'</span><span class="language-python">,</span>
+             optimizer=tf.keras.optimizers.Adam(1))
+</code></pre>
+    <p class="normal">Now, we train the model on the<a id="_idIndexMarker524"/> diabetes dataset for 100 iterations, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">model.fit(X_train, y_train, epochs=</span><span class="hljs-con-number">100</span><span class="language-python">, verbose=</span><span class="hljs-con-literal">True</span><span class="language-python">)</span>
+Epoch 1/100
+412/412 [==============================] - 1s 2ms/sample - loss: 27612.9129
+Epoch 2/100
+412/412 [==============================] - 0s 44us/sample - loss: 23802.3043
+Epoch 3/100
+412/412 [==============================] - 0s 47us/sample - loss: 20383.9426
+Epoch 4/100
+412/412 [==============================] - 0s 51us/sample - loss: 17426.2599
+Epoch 5/100
+412/412 [==============================] - 0s 44us/sample - loss: 14857.0057
+……
+Epoch 96/100
+412/412 [==============================] - 0s 55us/sample - loss: 2971.6798
+Epoch 97/100
+412/412 [==============================] - 0s 44us/sample - loss: 2970.8919
+Epoch 98/100
+412/412 [==============================] - 0s 52us/sample - loss: 2970.7903
+Epoch 99/100
+412/412 [==============================] - 0s 47us/sample - loss: 2969.7266
+Epoch 100/100
+412/412 [==============================] - 0s 46us/sample - loss: 2970.4180
+</code></pre>
+    <p class="normal">This also prints out the loss for <a id="_idIndexMarker525"/>every iteration. Finally, we make<a id="_idIndexMarker526"/> predictions using the trained model:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions = model.predict(X_test)[:, </span><span class="hljs-con-number">0</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(predictions)</span>
+[231.52155  124.17711  166.71492  171.3975   227.70126  152.02522
+ 103.01532   91.79277  151.07457  190.01042  190.60373  152.52274
+ 168.92166  106.18033  167.02473  133.37477  259.24756  101.51256
+ 119.43106  120.893005 219.37921   64.873634 138.43217  123.665634
+  56.33039  189.27441  108.67446  129.12535  205.06857   47.99469 ]
+</code></pre>
+    <p class="normal">The next regression algorithm <a id="_idIndexMarker527"/>you will learn about is decision tree regression.</p>
+    <h1 class="heading-1" id="_idParaDest-124">Estimating with decision tree regression</h1>
+    <p class="normal"><strong class="keyWord">Decision tree regression</strong> is also called a <strong class="keyWord">regression tree</strong>. It is <a id="_idIndexMarker528"/>easy to understand a regression tree by <a id="_idIndexMarker529"/>comparing it with its sibling, the classification tree, which you are already familiar with. In this section, we will delve into employing decision tree algorithms for regression tasks.</p>
+    <h2 class="heading-2" id="_idParaDest-125">Transitioning from classification trees to regression trees</h2>
+    <p class="normal">In classification, a decision tree is constructed by recursive binary splitting and growing each node into left and right children. In each <a id="_idIndexMarker530"/>partition, it greedily searches for the most significant combination of features and its value as the optimal splitting point. The quality of separation is measured by the weighted purity of the labels of the two resulting children, specifically via Gini Impurity or Information Gain.</p>
+    <p class="normal">In regression, the tree construction process is almost identical to the classification one, with only two differences because the target becomes continuous:</p>
+    <ul>
+      <li class="bulletList">The quality of the splitting point is now measured by the weighted MSE of two children; the MSE of a child is equivalent to the variance of all target values, and the smaller the weighted MSE, the better the split</li>
+      <li class="bulletList">The <strong class="keyWord">average</strong> value of targets in a terminal node becomes the leaf value, instead of the majority of labels in the classification tree</li>
+    </ul>
+    <p class="normal">To make sure you understand regression trees, let’s work on a small house price estimation example using the <strong class="keyWord">house type</strong> and <strong class="keyWord">number of bedrooms</strong>:</p>
+    <figure class="mediaobject"><img alt="A picture containing text, screenshot, number, font  Description automatically generated" src="../Images/B21047_05_08.png"/></figure>
+    <p class="packt_figref">Figure 5.8: Toy dataset of house prices</p>
+    <p class="normal">We first define the MSE and<a id="_idIndexMarker531"/> weighted MSE computation functions that will be used in our calculation:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">mse</span><span class="language-python">(</span><span class="hljs-con-params">targets</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># When the set is empty</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> targets.size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">return</span><span class="language-python"> </span><span class="hljs-con-number">0</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> np.var(targets)</span>
+</code></pre>
+    <p class="normal">Then, we define the weighted MSE after a split in a node:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">weighted_mse</span><span class="language-python">(</span><span class="hljs-con-params">groups</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    total = </span><span class="hljs-con-built_in">sum</span><span class="language-python">(</span><span class="hljs-con-built_in">len</span><span class="language-python">(group) </span><span class="hljs-con-keyword">for</span><span class="language-python"> group </span><span class="hljs-con-keyword">in</span><span class="language-python"> groups)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    weighted_sum = </span><span class="hljs-con-number">0.0</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">for</span><span class="language-python"> group </span><span class="hljs-con-keyword">in</span><span class="language-python"> groups:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        weighted_sum += </span><span class="hljs-con-built_in">len</span><span class="language-python">(group) / </span><span class="hljs-con-built_in">float</span><span class="language-python">(total) * mse(group)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> weighted_sum</span>
+</code></pre>
+    <p class="normal">Test things out by executing the following commands:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'</span><span class="hljs-con-subst">{mse(np.array([</span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">2</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">3</span><span class="hljs-con-subst">])):</span><span class="hljs-con-number">.4</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+0.6667
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'</span><span class="hljs-con-subst">{weighted_mse([np.array([</span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">2</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">3</span><span class="hljs-con-subst">]), np.array([</span><span class="hljs-con-number">1</span><span class="hljs-con-subst">, </span><span class="hljs-con-number">2</span><span class="hljs-con-subst">])]):</span><span class="hljs-con-number">.4</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+0.5000
+</code></pre>
+    <p class="normal">To build the house price regression tree, we first exhaust all possible feature and value pairs, and we compute the corresponding MSE:</p>
+    <pre class="programlisting code"><code class="hljs-code">MSE(<span class="hljs-built_in">type</span>, semi) = weighted_mse([[<span class="hljs-number">600</span>, <span class="hljs-number">400</span>, <span class="hljs-number">700</span>], [<span class="hljs-number">700</span>, <span class="hljs-number">800</span>]]) = <span class="hljs-number">10333</span>
+MSE(bedroom, <span class="hljs-number">2</span>) = weighted_mse([[<span class="hljs-number">700</span>, <span class="hljs-number">400</span>], [<span class="hljs-number">600</span>, <span class="hljs-number">800</span>, <span class="hljs-number">700</span>]]) = <span class="hljs-number">13000</span>
+MSE(bedroom, <span class="hljs-number">3</span>) = weighted_mse([[<span class="hljs-number">600</span>, <span class="hljs-number">800</span>], [<span class="hljs-number">700</span>, <span class="hljs-number">400</span>, <span class="hljs-number">700</span>]]) = <span class="hljs-number">16000</span>
+MSE(bedroom, <span class="hljs-number">4</span>) = weighted_mse([[<span class="hljs-number">700</span>], [<span class="hljs-number">600</span>, <span class="hljs-number">700</span>, <span class="hljs-number">800</span>, <span class="hljs-number">400</span>]]) = <span class="hljs-number">17500</span>
+</code></pre>
+    <p class="normal">The lowest MSE is achieved <a id="_idIndexMarker532"/>with the <code class="inlineCode">type, semi</code> pair, and the root node is then formed by this splitting point. The result of this partition is as follows:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_05_09.png"/></figure>
+    <p class="packt_figref">Figure 5.9: Splitting using (type=semi)</p>
+    <p class="normal">If we are satisfied with a one-level regression tree, we can stop here by assigning both branches as leaf nodes, with the value as the average of the targets of the samples included. Alternatively, we can go further down the road by constructing the second level from the right branch (the left branch can’t be split further):</p>
+    <pre class="programlisting code"><code class="hljs-code">MSE(bedroom, <span class="hljs-number">2</span>) = weighted_mse([[], [<span class="hljs-number">600</span>, <span class="hljs-number">400</span>, <span class="hljs-number">700</span>]]) = <span class="hljs-number">15556</span>
+MSE(bedroom, <span class="hljs-number">3</span>) = weighted_mse([[<span class="hljs-number">400</span>], [<span class="hljs-number">600</span>, <span class="hljs-number">700</span>]]) = <span class="hljs-number">1667</span>
+MSE(bedroom, <span class="hljs-number">4</span>) = weighted_mse([[<span class="hljs-number">400</span>, <span class="hljs-number">600</span>], [<span class="hljs-number">700</span>]]) = <span class="hljs-number">6667</span>
+</code></pre>
+    <p class="normal">With the second splitting point specified by the <code class="inlineCode">bedroom, 3</code> pair (whether it has at least three bedrooms or not) with the lowest MSE, our tree becomes as shown in the following diagram:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_05_10.png"/></figure>
+    <p class="packt_figref">Figure 5.10: Splitting using (bedroom&gt;=3)</p>
+    <p class="normal">We can finish up the tree by<a id="_idIndexMarker533"/> assigning average values to both leaf nodes.</p>
+    <h2 class="heading-2" id="_idParaDest-126">Implementing decision tree regression</h2>
+    <p class="normal">Now that you’re clear about the<a id="_idIndexMarker534"/> regression tree construction process, it’s time for coding.</p>
+    <p class="normal">The node splitting utility function we will define in this section is identical to what we used in <em class="chapterRef">Chapter 3</em>, <em class="italic">Predicting Online Ad Click-Through with Tree-Based Algorithms</em>, which separates samples in a node into left and right branches, based on a feature and value pair:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">split_node</span><span class="language-python">(</span><span class="hljs-con-params">X, y, index, value</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    x_index = X[:, index]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># if this feature is numerical</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> </span><span class="hljs-con-built_in">type</span><span class="language-python">(X[</span><span class="hljs-con-number">0</span><span class="language-python">, index]) </span><span class="hljs-con-keyword">in</span><span class="language-python"> [</span><span class="hljs-con-built_in">int</span><span class="language-python">, </span><span class="hljs-con-built_in">float</span><span class="language-python">]:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        mask = x_index &gt;= value</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># if this feature is categorical</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        mask = x_index == value</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># split into left and right child</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    left = [X[~mask, :], y[~mask]]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    right = [X[mask, :], y[mask]]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> left, right</span>
+</code></pre>
+    <p class="normal">Next, we define the greedy search function, trying out all the possible splits and returning the one with the<a id="_idIndexMarker535"/> least weighted MSE:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">get_best_split</span><span class="language-python">(</span><span class="hljs-con-params">X, y</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Obtain the best splitting point and resulting children for the data set X, y</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @return: {index: index of the feature, value: feature value, children: left and right children}</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    best_index, best_value, best_score, children =</span>
+                                     None, None, 1e10, None
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">for</span><span class="language-python"> index </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(</span><span class="hljs-con-built_in">len</span><span class="language-python">(X[</span><span class="hljs-con-number">0</span><span class="language-python">])):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">for</span><span class="language-python"> value </span><span class="hljs-con-keyword">in</span><span class="language-python"> np.sort(np.unique(X[:, index])):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            groups = split_node(X, y, index, value)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            impurity = weighted_mse(</span>
+                                [groups[0][1], groups[1][1]])
+<span class="hljs-con-meta">...</span> <span class="language-python">            </span><span class="hljs-con-keyword">if</span><span class="language-python"> impurity &lt; best_score:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                best_index, best_value, best_score, children</span>
+                                   = index, value, impurity, groups
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> {</span><span class="hljs-con-string">'index'</span><span class="language-python">: best_index, </span><span class="hljs-con-string">'value'</span><span class="language-python">: best_value,</span>
+                'children': children}
+</code></pre>
+    <p class="normal">The preceding selection and splitting process occurs recursively in each of the subsequent children. When a stopping criterion is met, the process at a node stops, and the mean value of the sample, <code class="inlineCode">targets</code>, will be assigned to this terminal node:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">get_leaf</span><span class="language-python">(</span><span class="hljs-con-params">targets</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># Obtain the leaf as the mean of the targets</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> np.mean(targets)</span>
+</code></pre>
+    <p class="normal">And finally, here is the recursive function, <code class="inlineCode">split</code>, that links it all together. It checks whether any stopping<a id="_idIndexMarker536"/> criteria are met and assigns the leaf node if so, proceeding with further separation otherwise:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">split</span><span class="language-python">(</span><span class="hljs-con-params">node, max_depth, min_size, depth</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Split children of a node to construct new nodes or assign them terminals</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param node: dict, with children info</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param max_depth: maximal depth of the tree</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param min_size: minimal samples required to further split a child</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    @param depth: current depth of the node</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    left, right = node[</span><span class="hljs-con-string">'children'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">del</span><span class="language-python"> (node[</span><span class="hljs-con-string">'children'</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> left[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        node[</span><span class="hljs-con-string">'right'</span><span class="language-python">] = get_leaf(right[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">return</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> right[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        node[</span><span class="hljs-con-string">'</span><span class="hljs-con-string">left'</span><span class="language-python">] = get_leaf(left[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">return</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># Check if the current depth exceeds the maximal depth</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> depth &gt;= max_depth:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        node[</span><span class="hljs-con-string">'left'</span><span class="language-python">], node[</span><span class="hljs-con-string">'right'</span><span class="language-python">] = get_leaf(</span>
+                             left[1]), get_leaf(right[1])
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">return</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># Check if the left child has enough samples</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> left[</span><span class="hljs-con-number">1</span><span class="language-python">].size &lt;= min_size:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        node[</span><span class="hljs-con-string">'left'</span><span class="language-python">] = get_leaf(left[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-comment"># It has enough samples, we further split it</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        result = get_best_split(left[</span><span class="hljs-con-number">0</span><span class="language-python">], left[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        result_left, result_right = result[</span><span class="hljs-con-string">'children'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> result_left[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'left'</span><span class="language-python">] = get_leaf(result_right[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">elif</span><span class="language-python"> result_right[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'left'</span><span class="language-python">] = get_leaf(result_left[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'left'</span><span class="language-python">] = result</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            split(node[</span><span class="hljs-con-string">'left'</span><span class="language-python">], max_depth, min_size, depth + </span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-comment"># Check if the right child has enough samples</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> right[</span><span class="hljs-con-number">1</span><span class="language-python">].size &lt;= min_size:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        node[</span><span class="hljs-con-string">'right'</span><span class="language-python">] = get_leaf(right[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-comment"># It has enough samples, we further split it</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        result = get_best_split(right[</span><span class="hljs-con-number">0</span><span class="language-python">], right[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        result_left, result_right = result[</span><span class="hljs-con-string">'children'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> result_left[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'right'</span><span class="language-python">] = get_leaf(result_right[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">elif</span><span class="language-python"> result_right[</span><span class="hljs-con-number">1</span><span class="language-python">].size == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'right'</span><span class="language-python">] = get_leaf(result_left[</span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            node[</span><span class="hljs-con-string">'right'</span><span class="language-python">] = result</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            split(node[</span><span class="hljs-con-string">'right'</span><span class="language-python">], max_depth, min_size,</span>
+                       depth + 1)
+</code></pre>
+    <p class="normal">The entry point of the regression tree construction is as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">train_tree</span><span class="language-python">(</span><span class="hljs-con-params">X_train, y_train, max_depth, min_size</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    root = get_best_split(X_train, y_train)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    split(root, max_depth, min_size, </span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> root</span>
+</code></pre>
+    <p class="normal">Now, let’s test it with a<a id="_idIndexMarker537"/> hand-calculated example:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = np.array([[</span><span class="hljs-con-string">'semi'</span><span class="language-python">, </span><span class="hljs-con-number">3</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-string">'detached'</span><span class="language-python">, </span><span class="hljs-con-number">2</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-string">'detached'</span><span class="language-python">, </span><span class="hljs-con-number">3</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-string">'semi'</span><span class="language-python">, </span><span class="hljs-con-number">2</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-string">'semi'</span><span class="language-python">, </span><span class="hljs-con-number">4</span><span class="language-python">]], dtype=</span><span class="hljs-con-built_in">object</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_train = np.array([</span><span class="hljs-con-number">600</span><span class="language-python">, </span><span class="hljs-con-number">700</span><span class="language-python">, </span><span class="hljs-con-number">800</span><span class="language-python">, </span><span class="hljs-con-number">400</span><span class="language-python">, </span><span class="hljs-con-number">700</span><span class="language-python">])</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">tree = train_tree(X_train, y_train, </span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-number">2</span><span class="language-python">)</span>
+</code></pre>
+    <p class="normal">To verify that the trained tree is identical to what we constructed by hand, we write a function displaying the tree:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">CONDITION = {</span><span class="hljs-con-string">'numerical'</span><span class="language-python">: {</span><span class="hljs-con-string">'yes'</span><span class="language-python">: </span><span class="hljs-con-string">'&gt;='</span><span class="language-python">, </span><span class="hljs-con-string">'no'</span><span class="language-python">: </span><span class="hljs-con-string">'&lt;'</span><span class="language-python">},</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">             </span><span class="hljs-con-string">'categorical'</span><span class="language-python">: {</span><span class="hljs-con-string">'yes'</span><span class="language-python">: </span><span class="hljs-con-string">'is'</span><span class="language-python">, </span><span class="hljs-con-string">'no'</span><span class="language-python">: </span><span class="hljs-con-string">'is not'</span><span class="language-python">}}</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">visualize_tree</span><span class="language-python">(</span><span class="hljs-con-params">node, depth=</span><span class="hljs-con-number">0</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> </span><span class="hljs-con-built_in">isinstance</span><span class="language-python">(node, </span><span class="hljs-con-built_in">dict</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> </span><span class="hljs-con-built_in">type</span><span class="language-python">(node[</span><span class="hljs-con-string">'value'</span><span class="language-python">]) </span><span class="hljs-con-keyword">in</span><span class="language-python"> [</span><span class="hljs-con-built_in">int</span><span class="language-python">, </span><span class="hljs-con-built_in">float</span><span class="language-python">]:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            condition = CONDITION[</span><span class="hljs-con-string">'numerical'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            condition = CONDITION[</span><span class="hljs-con-string">'categorical'</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'{}|- X{} {} {}'</span><span class="language-python">.</span><span class="hljs-con-built_in">format</span><span class="language-python">(depth * </span><span class="hljs-con-string">' '</span><span class="language-python">,</span>
+                  node['index'] + 1, condition['no'],
+                  node['value']))
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> </span><span class="hljs-con-string">'left'</span><span class="language-python"> </span><span class="hljs-con-keyword">in</span><span class="language-python"> node:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            visualize_tree(node[</span><span class="hljs-con-string">'left'</span><span class="language-python">], depth + </span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'{}|- X{} {} {}'</span><span class="language-python">.</span><span class="hljs-con-built_in">format</span><span class="language-python">(depth * </span><span class="hljs-con-string">' '</span><span class="language-python">,</span>
+                 node['index'] + 1, condition['yes'],
+                 node['value']))
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-keyword">if</span><span class="language-python"> </span><span class="hljs-con-string">'right'</span><span class="language-python"> </span><span class="hljs-con-keyword">in</span><span class="language-python"> node:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">            visualize_tree(node[</span><span class="hljs-con-string">'right'</span><span class="language-python">], depth + </span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">else</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'{}[{}]'</span><span class="language-python">.</span><span class="hljs-con-built_in">format</span><span class="language-python">(depth * </span><span class="hljs-con-string">' '</span><span class="language-python">, node))</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">visualize_tree(tree)</span>
+|- X1 is not detached
+  |- X2 &lt; 3
+    [400.0]
+  |- X2 &gt;= 3
+    [650.0]
+|- X1 is detached
+  [750.0]
+</code></pre>
+    <p class="normal">Now that you have a better <a id="_idIndexMarker538"/>understanding of the regression tree after implementing it from scratch, we can directly use the <code class="inlineCode">DecisionTreeRegressor</code> package (<a href="https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeRegressor.html"><span class="url">https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeRegressor.html</span></a>) from scikit-learn. Let’s apply it to an example of predicting California house prices. The dataset contains a median house value as the target variable, median income, housing median age, total rooms, total bedrooms, population, households, latitude, and longitude as features. It was obtained from the StatLib repository (<a href="https://www.dcc.fc.up.pt/~ltorgo/Regression/cal_housing.html"><span class="url">https://www.dcc.fc.up.pt/~ltorgo/Regression/cal_housing.html</span></a>) and can be directly loaded using the <code class="inlineCode">sklearn.datasets.fetch_california_housing</code> function, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">housing = datasets.fetch_california_housing()</span>
+</code></pre>
+    <p class="normal">We take the last 10 samples for testing and the rest to train a <code class="inlineCode">DecisionTreeRegressor</code> decision tree, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">num_test = </span><span class="hljs-con-number">10</span><span class="language-python"> </span><span class="hljs-con-comment"># the last 10 samples as testing set</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = housing.data[:-num_test, :]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_train = housing.target[:-num_test]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_test = housing.data[-num_test:, :]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_test = housing.target[-num_test:]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.tree </span><span class="hljs-con-keyword">import</span><span class="language-python"> DecisionTreeRegressor</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">regressor = DecisionTreeRegressor(max_depth=</span><span class="hljs-con-number">10</span><span class="language-python">,</span>
+                                      min_samples_split=3,
+                                      random_state=42)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">regressor.fit(X_train, y_train)</span>
+</code></pre>
+    <p class="normal">We then apply the trained decision tree to the test set:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions = regressor.predict(X_test)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(predictions)</span>
+[1.29568298 1.29568298 1.29568298 1.11946842 1.29568298 0.66193704 0.82554167 0.8546936  0.8546936  0.8546936 ]
+</code></pre>
+    <p class="normal">Compare predictions with the ground truth, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(y_test)</span>
+[1.12  1.072 1.156 0.983 1.168 0.781 0.771 0.923 0.847 0.894]
+</code></pre>
+    <p class="normal">We see the predictions are <a id="_idIndexMarker539"/>quite accurate.</p>
+    <p class="normal">We have implemented a regression tree in this section. Is there an ensemble version of the regression tree? Let’s see next.</p>
+    <h1 class="heading-1" id="_idParaDest-127">Implementing a regression forest</h1>
+    <p class="normal">In <em class="chapterRef">Chapter 3</em>, <em class="italic">Predicting Online Ad Click-Through with Tree-Based Algorithms</em>, we explored <strong class="keyWord">random forests</strong> as<a id="_idIndexMarker540"/> an ensemble learning method, by combining multiple decision trees that are separately<a id="_idIndexMarker541"/> trained and randomly subsampling training features in each node of a tree. In classification, a random forest makes a final decision by a majority vote of all tree decisions. Applied to regression, a<a id="_idIndexMarker542"/> random forest regression model (also called a <strong class="keyWord">regression forest</strong>) assigns the average of regression results from all decision trees to the final decision.</p>
+    <p class="normal">Here, we will use the regression forest package, <code class="inlineCode">RandomForestRegressor</code>, from scikit-learn and deploy it in our California house price prediction example:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.ensemble </span><span class="hljs-con-keyword">import</span><span class="language-python"> RandomForestRegressor</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">regressor = RandomForestRegressor(n_estimators=</span><span class="hljs-con-number">100</span><span class="language-python">,</span>
+                                  max_depth=10,
+                                  min_samples_split=3,
+                                  random_state=42)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">regressor.fit(X_train, y_train)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions = regressor.predict(X_test)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(predictions)</span>
+[1.31785493 1.29359614 1.24146512 1.06039979 1.24015576 0.7915538 0.90307069 0.83535894 0.8956997  0.91264529]
+</code></pre>
+    <p class="normal">You’ve learned about three regression algorithms. So, how should we evaluate regression performance? Let’s find <a id="_idIndexMarker543"/>out in the next section.</p>
+    <h1 class="heading-1" id="_idParaDest-128">Evaluating regression performance</h1>
+    <p class="normal">So far, we’ve covered three popular regression algorithms in depth and implemented them from scratch by using several prominent libraries. Instead of judging how well a model works on testing sets by <a id="_idIndexMarker544"/>printing out the prediction, we need to evaluate its performance with the following metrics, which give us better insights:</p>
+    <ul>
+      <li class="bulletList">The MSE, as I mentioned, measures the squared loss corresponding to the expected value. Sometimes, the square root is taken on top of the MSE in order to convert the value back into the original scale of the target variable being estimated. This<a id="_idIndexMarker545"/> yields the <strong class="keyWord">Root Mean Squared Error</strong> (<strong class="keyWord">RMSE</strong>). Also, the RMSE has the benefit of penalizing large errors more, since we first calculate the square of an error.</li>
+      <li class="bulletList">Conversely, the <strong class="keyWord">Mean Absolute Error</strong> (<strong class="keyWord">MAE</strong>) measures the absolute loss. It uses the same scale as the target <a id="_idIndexMarker546"/>variable and gives us an idea of how close the predictions are to the actual values.</li>
+    </ul>
+    <p class="normal-one">For both the MSE and MAE, the smaller the value, the better the regression model.</p>
+    <ul>
+      <li class="bulletList">R<sup class="superscript">2</sup> (pronounced <strong class="keyWord">r squared</strong>) indicates<a id="_idIndexMarker547"/> the goodness of the fit of a regression model. It is the fraction of the dependent variable variation that a regression model is able to explain. It ranges from <code class="inlineCode">0</code> to <code class="inlineCode">1</code>, representing from no fit to a perfect prediction. There is a variant of R<sup class="superscript">2</sup> called <strong class="keyWord">adjusted</strong> R<sup class="superscript">2</sup>. It adjusts<a id="_idIndexMarker548"/> for the number of features in a model relative to the number of data points.</li>
+    </ul>
+    <p class="normal">Let’s compute these three measurements on a linear regression model, using corresponding functions from scikit-learn:</p>
+    <ol>
+      <li class="numberedList" value="1">We will work on the diabetes dataset again and fine-tune the parameters of the linear regression model, using the grid search technique:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">diabetes = datasets.load_diabetes()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">num_test = </span><span class="hljs-con-number">30</span><span class="language-python"> </span><span class="hljs-con-comment"># the last 30 samples as testing set</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = diabetes.data[:-num_test, :]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_train = diabetes.target[:-num_test]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_test = diabetes.data[-num_test:, :]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_test = diabetes.target[-num_test:]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">param_grid = {</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"alpha"</span><span class="language-python">: [</span><span class="hljs-con-number">1e-07</span><span class="language-python">, </span><span class="hljs-con-number">1e-06</span><span class="language-python">, </span><span class="hljs-con-number">1e-05</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"penalty"</span><span class="language-python">: [</span><span class="hljs-con-literal">None</span><span class="language-python">, </span><span class="hljs-con-string">"l2"</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"eta0"</span><span class="language-python">: [</span><span class="hljs-con-number">0.03</span><span class="language-python">, </span><span class="hljs-con-number">0.05</span><span class="language-python">, </span><span class="hljs-con-number">0.1</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"max_iter"</span><span class="language-python">: [</span><span class="hljs-con-number">500</span><span class="language-python">, </span><span class="hljs-con-number">1000</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">}</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.model_selection </span><span class="hljs-con-keyword">import</span><span class="language-python"> GridSearchCV</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">regressor = SGDRegressor(loss=</span><span class="hljs-con-string">'squared_error'</span><span class="language-python">,</span>
+                             learning_rate='constant',
+                             random_state=42)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search = GridSearchCV(regressor, param_grid, cv=</span><span class="hljs-con-number">3</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We obtain the optimal <a id="_idIndexMarker549"/>set of parameters:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search.fit(X_train, y_train)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(grid_search.best_params_)</span>
+{'alpha': 1e-07, 'eta0': 0.05, 'max_iter': 500, 'penalty': None}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">regressor_best = grid_search.best_estimator_</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We predict the testing set with the optimal model:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions = regressor_best.predict(X_test)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We evaluate the performance on testing sets based on the MSE, MAE, and R<sup class="superscript">2</sup> metrics:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.metrics </span><span class="hljs-con-keyword">import</span><span class="language-python"> mean_squared_error,</span>
+    mean_absolute_error, r2_score
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(mean_squared_error(y_test, predictions))</span>
+1933.3953304460413
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(mean_absolute_error(y_test, predictions))</span>
+35.48299900764652
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(r2_score(y_test, predictions))</span>
+0.6247444629690868
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal">Now that you’ve learned about three (or four, you could say) commonly used and powerful regression algorithms <a id="_idIndexMarker550"/>and performance evaluation metrics, let’s utilize each of them to solve our stock price prediction problem.</p>
+    <h1 class="heading-1" id="_idParaDest-129">Predicting stock prices with the three regression algorithms</h1>
+    <p class="normal">Here are the steps to predict the stock price:</p>
+    <ol>
+      <li class="numberedList" value="1">Earlier, we generated features based on<a id="_idIndexMarker551"/> data from 1990 to the first half of 2023, and we will now continue to construct the training set with data from 1990 to 2022 and the testing set with data from the first half of 2023:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">data_raw = pd.read_csv(</span><span class="hljs-con-string">'19900101_20230630.csv'</span><span class="language-python">, index_col=</span><span class="hljs-con-string">'Date'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">data = generate_features(data_raw)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">start_train = </span><span class="hljs-con-string">'1990-01-01'</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">end_train = </span><span class="hljs-con-string">'2022-12-31'</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">start_test = </span><span class="hljs-con-string">'2023-01-01'</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">end_test = </span><span class="hljs-con-string">'2023-06-30'</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">data_train = data.loc[start_train:end_train]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = data_train.drop(</span><span class="hljs-con-string">'close'</span><span class="language-python">, axis=</span><span class="hljs-con-number">1</span><span class="language-python">).values</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_train = data_train[</span><span class="hljs-con-string">'close'</span><span class="language-python">].values</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(X_train.shape)</span>
+(8061, 37)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(y_train.shape)</span>
+(8061,)
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">All fields in the <code class="inlineCode">dataframe</code> data except <code class="inlineCode">'close'</code> are feature columns, and <code class="inlineCode">'close'</code> is the target column. We have <code class="inlineCode">8,061</code> training samples and each sample is <code class="inlineCode">37</code>-dimensional. We also have <code class="inlineCode">124</code> testing samples:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">data_train = data.loc[start_train:end_train]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = data_train.drop(</span><span class="hljs-con-string">'close'</span><span class="language-python">, axis=</span><span class="hljs-con-number">1</span><span class="language-python">).values</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_train = data_train[</span><span class="hljs-con-string">'close'</span><span class="language-python">].values</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(X_test.shape)</span>
+(124, 37)
+</code></pre>
+    <div class="note-one">
+      <p class="normal"><strong class="keyWord">Best practice</strong></p>
+      <p class="normal">Time series data often exhibits temporal dependencies, where values at one time point are influenced by previous values. Ignoring these dependencies can lead to poor model performance. We need to use a train-test split to evaluate models, ensuring that the test set contains data from a later time period than the training set to simulate real-world forecasting scenarios.</p>
+    </div>
+    <ol>
+      <li class="numberedList" value="2">We will first experiment with SGD-based linear regression. Before we train the model, you should realize that SGD-based algorithms are sensitive to data with features at <a id="_idIndexMarker552"/>very different scales; for example, in our case, the average value of the <code class="inlineCode">open</code> feature is around 3,777, while that of the <code class="inlineCode">moving_avg_365</code> feature is 0.00052 or so. Hence, we need to normalize features into the same or a comparable scale. We do so by removing the mean and rescaling to unit variance with <code class="inlineCode">StandardScaler</code>:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.preprocessing </span><span class="hljs-con-keyword">import</span><span class="language-python"> StandardScaler</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">scaler = StandardScaler()</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We rescale both sets with <code class="inlineCode">scaler</code>, taught by the training set:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_scaled_train = scaler.fit_transform(X_train)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_scaled_test = scaler.transform(X_test)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Now, we can search for the SGD-based linear regression with the optimal set of parameters. We specify <code class="inlineCode">l2</code> regularization and <code class="inlineCode">5000</code> maximal iterations and we tune the regularization term multiplier, <code class="inlineCode">alpha</code>, and initial learning rate, <code class="inlineCode">eta0</code>:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">param_grid = {</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"alpha"</span><span class="language-python">: [</span><span class="hljs-con-number">1e-4</span><span class="language-python">, </span><span class="hljs-con-number">3e-4</span><span class="language-python">, </span><span class="hljs-con-number">1e-3</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"eta0"</span><span class="language-python">: [</span><span class="hljs-con-number">0.01</span><span class="language-python">, </span><span class="hljs-con-number">0.03</span><span class="language-python">, </span><span class="hljs-con-number">0.1</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">}</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">lr = SGDRegressor(penalty=</span><span class="hljs-con-string">'l2'</span><span class="language-python">, max_iter=</span><span class="hljs-con-number">5000</span><span class="language-python">, random_state=</span><span class="hljs-con-number">42</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">For cross-validation, we need to ensure that the training data in each split comes before the corresponding test data, preserving the temporal order of the time series. Here, we use the <code class="inlineCode">TimeSeriesSplit</code> method from scikit-learn:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.model_selection </span><span class="hljs-con-keyword">import</span><span class="language-python"> TimeSeriesSplit</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">tscv = TimeSeriesSplit(n_splits=</span><span class="hljs-con-number">3</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search = GridSearchCV(lr, param_grid, cv=tscv, scoring=</span><span class="hljs-con-string">'r2'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search.fit(X_scaled_train, y_train)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, we create a 3-fold time series-specific cross-validator and employ it in grid search.</p>
+    <ol>
+      <li class="numberedList" value="6">Select the best linear<a id="_idIndexMarker553"/> regression model and make predictions of the testing samples:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(grid_search.best_params_)</span>
+{'alpha': 0.0001, 'eta0': 0.1}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">lr_best = grid_search.best_estimator_</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions_lr = lr_best.predict(X_scaled_test)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Measure the prediction performance via R<sup class="superscript">2</sup>:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'R^2: </span><span class="hljs-con-subst">{r2_score(y_test, predictions_lr):</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+R^2: 0.959
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We achieve an R<sup class="superscript">2</sup> of <code class="inlineCode">0.959</code> with a fine-tuned linear regression model.</p>
+    <div class="note-one">
+      <p class="normal"><strong class="keyWord">Best practice</strong></p>
+      <p class="normal">With time series data, there is a risk of overfitting due to the potential complexity of temporal patterns. Models may capture noise instead of genuine patterns if not regularized properly. We need to apply regularization techniques like L1 or L2 regularization to prevent overfitting. Also, when you perform cross-validation for hyperparameter tuning, consider using time series-specific cross-validation methods to assess model performance while preserving temporal order.</p>
+    </div>
+    <ol>
+      <li class="numberedList" value="8">Similarly, let’s experiment with a decision tree. We tune the maximum depth of the tree, <code class="inlineCode">max_depth</code>; the minimum number of samples required to further split a node, <code class="inlineCode">min_samples_split</code>; and the minimum number of samples required to form a leaf node, <code class="inlineCode">min_samples_leaf</code>, as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">param_grid = {</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">'</span><span class="hljs-con-string">max_depth'</span><span class="language-python">: [</span><span class="hljs-con-number">20</span><span class="language-python">, </span><span class="hljs-con-number">30</span><span class="language-python">, </span><span class="hljs-con-number">50</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">'min_samples_split'</span><span class="language-python">: [</span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-number">5</span><span class="language-python">, </span><span class="hljs-con-number">10</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">'min_samples_leaf'</span><span class="language-python">: [</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">3</span><span class="language-python">, </span><span class="hljs-con-number">5</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">}</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dt = DecisionTreeRegressor(random_state=</span><span class="hljs-con-number">42</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search = GridSearchCV(dt, param_grid, cv=tscv,</span>
+                               scoring='r2', n_jobs=-1)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search.fit(X_train, y_train)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Note this may take a while; hence, we use all available CPU cores for training.</p>
+    <ol>
+      <li class="numberedList" value="9">Select the best regression<a id="_idIndexMarker554"/> forest model and make predictions of the testing samples:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(grid_search.best_params_)</span>
+{'max_depth': 30, 'min_samples_leaf': 3, 'min_samples_split': 2}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dt_best = grid_search.best_estimator_</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions_dt = dt_best.predict(X_test)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Measure the prediction performance as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'R^2: </span><span class="hljs-con-subst">{r2_score(y_test, predictions_rf):</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+R^2: 0.912
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">An R<sup class="superscript">2</sup> of <code class="inlineCode">0.912</code> is obtained with a tweaked decision tree.</p>
+    <ol>
+      <li class="numberedList" value="11">Finally, we experiment with a random forest. We specify 30 decision trees to ensemble and tune the same set of hyperparameters used in each tree, as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">param_grid = {</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">'max_depth'</span><span class="language-python">: [</span><span class="hljs-con-number">20</span><span class="language-python">, </span><span class="hljs-con-number">30</span><span class="language-python">, </span><span class="hljs-con-number">50</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">'min_samples_split'</span><span class="language-python">: [</span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-number">5</span><span class="language-python">, </span><span class="hljs-con-number">10</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">'min_samples_leaf'</span><span class="language-python">: [</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">3</span><span class="language-python">, </span><span class="hljs-con-number">5</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">}</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">rf = RandomForestRegressor(n_estimators=</span><span class="hljs-con-number">30</span><span class="language-python">, n_jobs=-</span><span class="hljs-con-number">1</span><span class="language-python">, random_state=</span><span class="hljs-con-number">42</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search = GridSearchCV(rf, param_grid, cv=tscv,</span>
+                               scoring='r2', n_jobs=-1)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search.fit(X_train, y_train)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Note this may take a while; hence, we use all available CPU cores for training (indicated by <code class="inlineCode">n_jobs=-1</code>).</p>
+    <ol>
+      <li class="numberedList" value="12">Select the best regression forest model and make predictions of the testing samples:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(grid_search.best_params_)</span>
+{'max_depth': 30, 'min_samples_leaf': 1, 'min_samples_split': 5}
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">rf_best = grid_search.best_estimator_</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions_rf = rf_best.predict(X_test)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Measure the prediction performance as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'R^2: </span><span class="hljs-con-subst">{r2_score(y_test, predictions_rf):</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+R^2: 0.937
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">An R<sup class="superscript">2</sup> of <code class="inlineCode">0.937</code> is obtained with a tweaked forest regressor.</p>
+    <ol>
+      <li class="numberedList" value="14">We also plot the prediction<a id="_idIndexMarker555"/> generated by each of the three algorithms, along with the ground truth:</li>
+    </ol>
+    <figure class="mediaobject"><img alt="A graph with numbers and lines  Description automatically generated" src="../Images/B21047_05_11.png"/></figure>
+    <p class="packt_figref">Figure 5.11: Predictions using the three algorithms versus the ground truth</p>
+    <p class="normal">The visualization is produced by the<a id="_idIndexMarker556"/> following code:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.rc(</span><span class="hljs-con-string">'xtick'</span><span class="language-python">, labelsize=</span><span class="hljs-con-number">10</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.rc(</span><span class="hljs-con-string">'ytick'</span><span class="language-python">, labelsize=</span><span class="hljs-con-number">10</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.plot(data_test.index, y_test, c=</span><span class="hljs-con-string">'k'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.plot(data_test.index, predictions_lr, c=</span><span class="hljs-con-string">'b'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.plot(data_test.index, predictions_dt, c=</span><span class="hljs-con-string">'g'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.plot(data_test.index, predictions_rf, c=</span><span class="hljs-con-string">'r'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.xticks(</span><span class="hljs-con-built_in">range</span><span class="language-python">(</span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">130</span><span class="language-python">, </span><span class="hljs-con-number">10</span><span class="language-python">), rotation=</span><span class="hljs-con-number">60</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.xlabel(</span><span class="hljs-con-string">'Date'</span><span class="language-python">, fontsize=</span><span class="hljs-con-number">10</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylabel(</span><span class="hljs-con-string">'Close price'</span><span class="language-python">, fontsize=</span><span class="hljs-con-number">10</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.legend([</span><span class="hljs-con-string">'Truth'</span><span class="language-python">, </span><span class="hljs-con-string">'Linear regression'</span><span class="language-python">, </span><span class="hljs-con-string">'Decision tree'</span><span class="language-python">, </span><span class="hljs-con-string">'Random forest'</span><span class="language-python">], fontsize=</span><span class="hljs-con-number">10</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.show()</span>
+</code></pre>
+    <p class="normal">We’ve built a stock predictor using three regression algorithms individually in this section. Overall, linear regression outperforms the other two algorithms.</p>
+    <p class="normal">Stock markets are known for<a id="_idIndexMarker557"/> their wild swings. Unlike more stable systems or a well-defined project in this chapter, stock prices are volatile and influenced by complex factors that are hard to quantify. Also, their behavior is not easily captured by even the most sophisticated models. Hence, it is notoriously difficult to accurately predict the stock market in the real world. This makes it a fascinating challenge to explore the capabilities of different machine learning models.</p>
+    <h1 class="heading-1" id="_idParaDest-130">Summary</h1>
+    <p class="normal">In this chapter, we worked on the project of predicting stock (specifically stock index) prices using machine learning regression techniques. Regression estimates a continuous target variable, as opposed to discrete output in classification</p>
+    <p class="normal">We started with a short introduction to the stock market and the factors that influence trading prices. We followed this with an in-depth discussion of three popular regression algorithms, linear regression, regression trees, and regression forests. We covered their definitions, mechanics, and implementations from scratch with several popular frameworks, including scikit-learn and TensorFlow, along with applications on toy datasets. You also learned the metrics used to evaluate a regression model. Finally, we applied what was covered in this chapter to solve our stock price prediction problem.</p>
+    <p class="normal">In the next chapter, we will continue working on the stock price prediction project, but with powerful <strong class="keyWord">neural networks</strong>. We will see whether they can beat what we have achieved with the three regression models in this chapter.</p>
+    <h1 class="heading-1" id="_idParaDest-131">Exercises</h1>
+    <ol>
+      <li class="numberedList" value="1">As mentioned, can you add more signals to our stock prediction system, such as the performance of other major indexes? Does this improve prediction?</li>
+      <li class="numberedList">Try to ensemble those three regression models, for example, by averaging the predictions, and see whether you can perform better.</li>
+    </ol>
+    <h1 class="heading-1" id="_idParaDest-132">Join our book’s Discord space</h1>
+    <p class="normal">Join our community’s Discord space for discussions with the authors and other readers:</p>
+    <p class="normal"><a href="https://packt.link/yuxi"><span class="url">https://packt.link/yuxi</span></a></p>
+    <p class="normal"><img alt="" role="presentation" src="../Images/QR_Code187846872178698968.png"/></p>
+  </div>
+</body></html>

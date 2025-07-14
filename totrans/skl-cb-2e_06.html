@@ -1,0 +1,1013 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Building Models with Distance Metrics</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">This chapter will cover the following recipes:</p>
+<ul>
+<li class="mce-root">Using k-means to cluster data</li>
+<li class="mce-root">Optimizing the number of centroids</li>
+<li class="mce-root">Assessing cluster correctness</li>
+<li class="mce-root">Using MiniBatch k-means to handle more data</li>
+<li class="mce-root">Quantizing an image with k-means clustering</li>
+<li class="mce-root">Finding the closest objects in the feature space</li>
+<li class="mce-root">Probabilistic clustering with Gaussian Mixture Models</li>
+<li class="mce-root">Using k-means for outlier detection</li>
+<li class="mce-root">Using KNN for regression</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Introduction</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we'll cover clustering. Clustering is often grouped with unsupervised techniques. These techniques assume that we do not know the outcome variable. This leads to ambiguity in outcomes and objectives in practice, but nevertheless, clustering can be useful. As we'll see, we can use clustering to localize our estimates in a supervised setting. This is perhaps why clustering is so effective; it can handle a wide range of situations, and often the results are, for the lack of a better term, sane.</p>
+<p>We'll walk through a wide variety of applications in this chapter, from image processing to regression and outlier detection. Clustering is related to classification of categories. You have a finite set of blobs or categories. Unlike classification, you do not know the categories in advance. Additionally, clustering can often be viewed through a continuous and probabilistic or optimization lens.</p>
+<p>Different interpretations lead to various trade-offs. We'll walk through how to fit the models here so that you'll have the tools to try out many models when faced with a clustering problem.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using k-means to cluster data</h1>
+                </header>
+            
+            <article>
+                
+<p>In a dataset, we observe sets of points gathered together. With k-means, we will categorize all the points into groups, or clusters.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>First, let's walk through some simple clustering; then we'll talk about how k-means works:</p>
+<pre><strong>import numpy as np</strong><br/><strong>import pandas as pd</strong><br/> <br/><strong>from sklearn.datasets import make_blobs</strong><br/><strong>blobs, classes = make_blobs(500, centers=3)</strong></pre>
+<p>Also, since we'll be doing some plotting, import <kbd>matplotlib</kbd> as shown:</p>
+<pre><strong>import matplotlib.pyplot as plt</strong><br/><strong>%matplotlib inline  #Within an ipython notebook</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<p>We are going to walk through a simple example that clusters blobs of fake data. Then we'll talk a little bit about how k-means works to find the optimal number of blobs:</p>
+<ol>
+<li>Looking at our blobs, we can see that there are three distinct clusters:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>f, ax = plt.subplots(figsize=(7.5, 7.5))</strong><br/><strong>rgb = np.array(['r', 'g', 'b'])</strong><br/><strong>ax.scatter(blobs[:, 0], blobs[:, 1], color=rgb[classes])</strong><br/><strong>ax.set_title("Blobs")</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="437" width="433" src="assets/c3a55fba-8576-4348-98e5-b471123d27d2.png"/></div>
+<p style="padding-left: 90px">Now we can use k-means to find the centers of these clusters.</p>
+<ol start="2">
+<li>In the first example, we'll pretend we know that there are three centers:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.cluster import KMeans</strong><br/><strong>kmean = KMeans(n_clusters=3)</strong><br/><br/><strong>kmean.fit(blobs)</strong><br/><strong>KMeans(algorithm='auto', copy_x=True, init='k-means++', max_iter=300,
+    n_clusters=3, n_init=10, n_jobs=1, precompute_distances='auto',
+    random_state=None, tol=0.0001, verbose=0)</strong><br/><strong>kmean.cluster_centers_ </strong><br/><strong>array([[ 3.48939154, -0.92786786],</strong><br/><strong>        [-2.05114953,  1.58697731],</strong><br/><strong>        [ 1.58182736, -6.80678064]])</strong><br/><strong>f, ax = plt.subplots(figsize=(7.5, 7.5))</strong><br/><strong>ax.scatter(blobs[:, 0], blobs[:, 1], color=rgb[classes])</strong><br/><strong>ax.scatter(kmean.cluster_centers_[:, 0],kmean.cluster_centers_[:, 1], marker='*', s=250,color='black', label='Centers')</strong><br/><strong>ax.set_title("Blobs")</strong><br/><strong>ax.legend(loc='best')</strong></pre>
+<ol start="3">
+<li>The following screenshot shows the output:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="398" width="399" src="assets/887c0b1a-c85f-42f3-bb92-ac9ab324c15d.png"/></div>
+<ol start="4">
+<li>Other attributes are useful too. For instance, the <kbd>labels_</kbd> attribute will produce the expected label for each point:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>kmean.labels_[:5]</strong><br/><strong>array([2, 0, 1, 1, 0])</strong></pre>
+<div class="output_subarea output_text output_result">
+<p style="padding-left: 90px">We can check whether <kbd>kmean.labels_</kbd> is the same as the classes, but because k-means has no knowledge of the classes going in, it cannot assign the sample index values to both classes:</p>
+<pre style="padding-left: 60px"><strong>classes[:5]</strong><br/><strong>array([2, 0, 1, 1, 0])</strong></pre>
+<p style="padding-left: 90px">Feel free to swap <kbd>1</kbd> and <kbd>0</kbd> in classes to check whether it matches up with <kbd>labels_</kbd>. The transform function is quite useful in the sense that it will output the distance between each point and the centroid:</p>
+<pre><strong>kmean.transform(blobs)[:5]</strong><br/><strong>array([[ 6.75214231, 9.29599311, 0.71314755], [ 3.50482136, 6.7010513 , 9.68538042], [ 6.07460324, 1.91279125, 7.74069472], [ 6.29191797, 0.90698131, 8.68432547], [ 2.84654338, 6.07653639, 3.64221613]])</strong></pre></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p class="output_subarea output_text output_result"/>
+<p>k-means is actually a very simple algorithm that works to minimize the within-cluster sum of squares of distances from the mean. We'll be minimizing the sum of squares yet again!</p>
+<p>It does this by first setting a prespecified number of clusters, K, and then alternating between the following:</p>
+<ul>
+<li>Assigning each observation to the nearest cluster</li>
+<li>Updating each centroid by calculating the mean of each observation assigned to this cluster</li>
+</ul>
+<p>This happens until some specified criterion is met. Centroids are difficult to interpret, and it can also be very difficult to determine whether we have the correct number of centroids. It's important to understand whether your data is unlabeled or not as this will directly influence the evaluation measures you can use.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Optimizing the number of centroids</h1>
+                </header>
+            
+            <article>
+                
+<p>When doing k-means clustering, we really do not know the right number of clusters in advance, so finding this out is an important step. Once we know (or estimate) the number of centroids, the problem will start to look more like a classification one as our knowledge to work with will have increased substantially.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Evaluating the model performance for unsupervised techniques is a challenge. Consequently, <kbd>sklearn</kbd> has several methods for evaluating clustering when a ground truth is known, and very few for when it isn't.</p>
+<div class="output_subarea output_text output_result">
+<p>We'll start with a single cluster model and evaluate its similarity. This is more for the purpose of mechanics as measuring the similarity of one cluster count is clearly not useful in finding the ground truth number of clusters.</p>
+</div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<div class="output_subarea output_text output_result">
+<ol>
+<li>To get started, we'll create several blobs that can be used to simulate clusters of data:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.datasets import make_blobs</strong><br/><strong>import numpy as np</strong><br/><strong>blobs, classes = make_blobs(500, centers=3)</strong><br/><br/><strong>from sklearn.cluster import KMeans</strong><br/><strong>kmean = KMeans(n_clusters=3)</strong><br/><strong>kmean.fit(blobs)</strong><br/><strong>KMeans(algorithm='auto', copy_x=True, init='k-means++', max_iter=300,</strong><br/><strong>     n_clusters=3, n_init=10, n_jobs=1, precompute_distances='auto',</strong><br/><strong>     random_state=None, tol=0.0001, verbose=0)</strong></pre></div>
+<ol start="2">
+<li>First, we'll look at the silhouette distance. Silhouette distance is the ratio of the difference between the in-cluster dissimilarity and the closest out-of-cluster dissimilarity, and the maximum of these two values. It can be thought of as a measure of how separate the clusters are. Let's look at the distribution of distances from the points to the cluster centers; it's useful to understand silhouette distances:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import metrics</strong><br/><strong>silhouette_samples = metrics.silhouette_samples(blobs, kmean.labels_)</strong><br/><strong>np.column_stack((classes[:5], silhouette_samples[:5]))</strong><br/><strong>array([[ 0.        ,  0.69568017],
+       [ 0.        ,  0.76789931],
+       [ 0.        ,  0.62470466],
+       [ 0.        ,  0.6266658 ],
+       [ 2.        ,  0.63975981]])</strong></pre>
+<ol start="3">
+<li>The following is part of the output:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="244" width="446" src="assets/b217e764-86a9-4ccc-adf8-e51a507c9209.png"/></div>
+<ol start="4">
+<li>Notice that generally, the higher the number of coefficients close to 1 (which is good), the better the score.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The average of the silhouette coefficients is often used to describe the entire model's fit:</p>
+<pre class="mce-root"><strong>silhouette_samples.mean()</strong><br/><strong>0.5633513643546264</strong></pre>
+<p>It's very common; in fact, the metrics module exposes a function to arrive at the value we just got:</p>
+<pre><strong>metrics.silhouette_score(blobs, kmean.labels_)</strong><br/><strong>0.5633513643546264</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/><strong>%matplotlib inline</strong><br/><br/><strong>blobs, classes = make_blobs(500, centers=10)</strong><br/><strong>silhouette_avgs = []</strong><br/><strong>for k in range(2, 60):</strong><br/><strong>     kmean = KMeans(n_clusters=k).fit(blobs)</strong><br/><strong>     silhouette_avgs.append(metrics.silhouette_score(blobs, kmean.labels_))</strong><br/><br/><strong>f, ax = plt.subplots(figsize=(7, 5))</strong><br/><strong>ax.plot(silhouette_avgs)</strong></pre>
+<p>The following is the output:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="245" width="343" src="assets/7c24ff17-ff8d-4555-ad8c-89dd97bac11f.png"/></div>
+<p>This plot shows that the silhouette averages as the number of centroids increase. We can see that the optimum number, according to the data generating process, is 3; but here it looks like it's around 7 or 8. This is the reality of clustering; quite often, we won't get the correct number of clusters. We can only really hope to estimate the number of clusters to some approximation.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Assessing cluster correctness</h1>
+                </header>
+            
+            <article>
+                
+<p>We talked a little bit about assessing clusters when the ground truth is not known. However, we have not yet talked about assessing k-means when the cluster is known. In a lot of cases, this isn't knowable; however, if there is outside annotation, we will know the ground truth or at least the proxy sometimes.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>So, let's assume a world where we have an outside agent supplying us with the ground truth.</p>
+<p>We'll create a simple dataset, evaluate the measures of correctness against the ground truth in several ways, and then discuss them:</p>
+<pre><strong>from sklearn import datasets</strong><br/><strong>from sklearn import cluster</strong><br/><br/><strong>blobs, ground_truth = datasets.make_blobs(1000, centers=3,cluster_std=1.75)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Before we walk through the metrics, let's take a look at the dataset:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>%matplotlib inline</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/> <br/><strong>f, ax = plt.subplots(figsize=(7, 5))</strong><br/><strong>colors = ['r', 'g', 'b']</strong><br/><strong>for i in range(3):</strong><br/><strong>     p = blobs[ground_truth == i]</strong><br/><strong>     ax.scatter(p[:,0], p[:,1], c=colors[i],</strong><br/><strong>     label="Cluster {}".format(i))</strong><br/><strong>ax.set_title("Cluster With Ground Truth")</strong><br/><strong>ax.legend()</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="264" width="354" src="assets/fc26c78b-07e5-41d5-a23c-15fea61431ae.png"/></div>
+<ol start="2">
+<li>In order to fit a k-means model, we'll create a <kbd>KMeans</kbd> object from the cluster module:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>kmeans = cluster.KMeans(n_clusters=3)</strong><br/><strong>kmeans.fit(blobs)</strong><br/><strong>KMeans(algorithm='auto', copy_x=True, init='k-means++', max_iter=300,</strong><br/><strong>     n_clusters=3, n_init=10, n_jobs=1, precompute_distances='auto',</strong><br/><strong>     random_state=None, tol=0.0001, verbose=0)</strong><br/><strong>kmeans.cluster_centers_</strong><br/><strong>array([[ 3.61594791, -6.6125572 ],
+       [-0.76071938, -2.73916602],
+       [-3.64641767, -6.23305142]])</strong></pre>
+<ol start="3">
+<li>Now that we've fit the model, let's have a look at the cluster centroids:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>f, ax = plt.subplots(figsize=(7, 5))</strong><br/><strong>colors = ['r', 'g', 'b']</strong><br/><strong>for i in range(3): </strong><br/><strong>     p = blobs[ground_truth == i]</strong><br/><strong>     ax.scatter(p[:,0], p[:,1], c=colors[i], label="Cluster {}".format(i))</strong></pre>
+<p style="padding-left: 120px">The following is the output:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/a43c8911-edf8-4152-a51c-17a20fd4c660.png"/></div>
+<ol start="4">
+<li>Now that we can view the clustering performance as a classification exercise, the metrics that are useful in its context are also useful here:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>for i in range(3):</strong><br/><strong>     print (kmeans.labels_ == ground_truth)[ground_truth == i].astype(int).mean()</strong><br/><strong>0.946107784431
+0.135135135135
+0.0750750750751</strong></pre>
+<p style="padding-left: 90px">Clearly, we have some backward clusters. So, let's get this straightened out first, and then we'll look at the accuracy:</p>
+<pre style="padding-left: 60px"><strong>new_ground_truth = ground_truth.copy()</strong><br/><strong>new_ground_truth[ground_truth == 1] = 2</strong><br/><strong>new_ground_truth[ground_truth == 2] = 1</strong><br/><strong>0.946107784431
+0.852852852853
+0.891891891892</strong></pre>
+<p style="padding-left: 90px">So, we're roughly correct 90% of the time. The second measure of similarity we'll look at is the mutual information score:</p>
+<pre style="padding-left: 60px"><strong>from sklearn import metrics</strong><br/><strong>metrics.normalized_mutual_info_score(ground_truth, kmeans.labels_)</strong><br/><strong>0.66467613668253844</strong></pre>
+<p style="padding-left: 90px">As the score tends to be 0, the label assignments are probably not generated through similar processes; however, a score closer to 1 means that there is a large amount of agreement between the two labels.</p>
+<p style="padding-left: 90px">For example, let's look at what happens when the mutual information score itself:</p>
+<pre style="padding-left: 60px"><strong>metrics.normalized_mutual_info_score(ground_truth, ground_truth)</strong><br/><strong>1.0</strong></pre>
+<p style="padding-left: 60px">Given the name, we can tell that there is probably an unnormalized <kbd>mutual_info_score</kbd>:</p>
+<pre style="padding-left: 60px"><strong>metrics.mutual_info_score(ground_truth, kmeans.labels_)</strong><br/><strong>0.72971342940406325</strong></pre>
+<p>These are very close; however, normalized mutual information is the mutual information divided by the root of the product of the entropy of each set truth and assigned label.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>One cluster metric we haven't talked about yet, and one that is not reliant on the ground truth, is inertia. It is not very well documented as a metric at the moment. However, it is a metric that k-means minimizes.</p>
+<p>Inertia is the sum of the squared difference between each point and its assigned cluster. We can use a bite of NumPy to determine this:</p>
+<pre><strong>kmeans.inertia_</strong><br/><strong>4849.9842988128385</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using MiniBatch k-means to handle more data</h1>
+                </header>
+            
+            <article>
+                
+<p>K-means is a nice method to use; however, it is not ideal for a lot of data. This is due to the complexity of k-means. This said, we can get approximate solutions with much better algorithmic complexity using MiniBatch k-means.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>MiniBatch k-means is a faster implementation of k-means. K-means is computationally very expensive; the problem is NP-hard.</p>
+<p>However, using MiniBatch k-means, we can speed up k-means by orders of magnitude. This is achieved by taking many subsamples that are called MiniBatches. Given the convergence properties of subsampling, a close approximation to regular k-means is achieved provided there are good initial conditions.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol start="1">
+<li>Let's do some very high-level profiling of MiniBatch clustering. First, we'll look at the overall speed difference, and then we'll look at the errors in the estimates:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import numpy as np</strong><br/><strong>from sklearn.datasets import make_blobs</strong><br/><strong>blobs, labels = make_blobs(int(1e6), 3)</strong><br/> <br/><strong>from sklearn.cluster import KMeans, MiniBatchKMeans</strong><br/><strong>kmeans = KMeans(n_clusters=3)</strong><br/><strong>minibatch = MiniBatchKMeans(n_clusters=3)</strong></pre>
+<div class="packt_infobox">Understand that these metrics are meant to expose the issue. Therefore, great care is taken to ensure the highest accuracy of the benchmarks. There is a lot of information available on this topic; if you really want to get to the heart of why MiniBatch k-means is better at scaling, it will be a good idea to review what's available.</div>
+<ol start="2">
+<li>Now that the setup is complete, we can measure the time difference:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>%time kmeans.fit(blobs) #IPython Magic</strong><br/><strong>Wall time: 7.88 s
+</strong><br/><strong>KMeans(algorithm='auto', copy_x=True, init='k-means++', max_iter=300,
+    n_clusters=3, n_init=10, n_jobs=1, precompute_distances='auto',
+    random_state=None, tol=0.0001, verbose=0)</strong><br/><strong>%time minibatch.fit(blobs)</strong><br/><strong>Wall time: 2.66 s
+</strong><br/><strong>MiniBatchKMeans(batch_size=100, compute_labels=True, init='k-means++',
+        init_size=None, max_iter=100, max_no_improvement=10, n_clusters=3,
+        n_init=3, random_state=None, reassignment_ratio=0.01, tol=0.0,
+        verbose=0)</strong></pre>
+<ol start="3">
+<li>There's a large difference in CPU times. The difference in the clustering performance is shown as follows:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>kmeans.cluster_centers_</strong><br/><strong>array([[-3.74304286, -0.4289715 , -8.69684375],
+       [-5.73689621, -6.39166391,  6.18598804],
+       [ 0.63866644, -9.93289824,  3.24425045]])</strong><br/><strong>minibatch.cluster_centers_</strong><br/><strong>array([[-3.72580548, -0.46135647, -8.63339789],
+       [-5.67140979, -6.33603949,  6.21512625],
+       [ 0.64819477, -9.87197712,  3.26697532]])</strong></pre>
+<ol start="4">
+<li>Look at the two arrays; the located centers are ordered the same. This is random—the clusters do not have to be ordered the same. Look at the distance between the first cluster centers:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.metrics import pairwise</strong><br/><strong>pairwise.pairwise_distances(kmeans.cluster_centers_[0].reshape(1, -1), minibatch.cluster_centers_[0].reshape(1, -1))</strong><br/><strong>array([[ 0.07328909]])</strong></pre>
+<ol start="5">
+<li>This seems to be very close. The diagonals will contain the cluster center differences:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>np.diag(pairwise.pairwise_distances(kmeans.cluster_centers_, minibatch.cluster_centers_))</strong><br/><strong>array([ 0.07328909,  0.09072807,  0.06571599])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The batches here are key. Batches are iterated through to find the batch mean; for the next iteration, the prior batch mean is updated in relation to the current iteration. There are several options that dictate the general k-means behavior and parameters that determine how MiniBatch k-means gets updated.</p>
+<p>The <kbd>batch_size</kbd> parameter determines how large the batches should be. Just for fun, let's run MiniBatch; however, this time we set the batch size to be the same as the dataset size:</p>
+<pre><strong>minibatch = MiniBatchKMeans(batch_size=len(blobs))</strong><br/><strong>%time minibatch.fit(blobs)</strong><br/><strong>Wall time: 1min
+</strong><br/><strong>MiniBatchKMeans(batch_size=1000000, compute_labels=True, init='k-means++',
+        init_size=None, max_iter=100, max_no_improvement=10, n_clusters=8,
+        n_init=3, random_state=None, reassignment_ratio=0.01, tol=0.0,
+        verbose=0)</strong></pre>
+<p>Clearly, this is against the spirit of the problem, but it does illustrate an important point. Choosing poor initial conditions can affect how well models, particularly clustering models, converge. With MiniBatch k-means, there is no guarantee that the global optimum will be achieved.</p>
+<p>There are many powerful lessons in MiniBatch k-means. It uses the power of many random samples, similar to bootstrapping. When creating an algorithm for big data, you can use many random samples on many machines processing in parallel.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Quantizing an image with k-means clustering</h1>
+                </header>
+            
+            <article>
+                
+<p>Image processing is an important topic in which clustering has some application. It's worth pointing out that there are several very good image processing libraries in Python. <kbd>scikit-image</kbd> is a sister project of scikit-learn. It's worth taking a look at if you want to do anything complicated.</p>
+<p>A big point of this chapter is that images are data as well and clustering can be used to try to guess where some objects in an image<span> </span><span>are</span><span>. Clustering can be part of an image processing pipeline.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We will have some fun in this recipe. The goal is to use a cluster to blur an image. First, we'll make use of SciPy to read the image. The image is translated in a three-dimensional array; the <kbd>x</kbd> and <kbd>y</kbd> coordinates describe the height and width, and the third dimension represents the RGB values for each image.</p>
+<p>Begin by downloading or moving an <kbd>.jpg</kbd> image to the folder where your IPython notebook is located. You can use a picture of yours. I use a picture of myself named <kbd>headshot.jpg</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How do it…</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Now, let's read the image in Python:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>%matplotlib inline</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/><strong>from scipy import ndimage</strong><br/><strong>img = ndimage.imread("headshot.jpg")</strong><br/><strong>plt.figure(figsize = (10,7))</strong><br/><strong>plt.imshow(img)</strong></pre>
+<p style="padding-left: 90px">The following image is seen:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/e2fd4a5a-4121-49f4-9ccc-15c8cb68a495.png"/></div>
+<ol start="2">
+<li>That's me! Now that we have the image, let's check its dimensions:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>img.shape</strong><br/><strong>(379L, 337L, 3L)</strong></pre>
+<p style="padding-left: 60px">To actually quantize the image, we need to convert it into a two-dimensional array, with the length being 379 x 337 and the width being the RGB values. A better way to think about this is to have a bunch of data points in three-dimensional space and cluster the points to reduce the number of distant colors in the image—a simple way to do quantization.</p>
+<ol start="3">
+<li>First, let's reshape our array; it is a NumPy array, and thus simple to work with:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>x, y, z = img.shape</strong><br/><strong>long_img = img.reshape(x*y, z)</strong><br/><strong>long_img.shape</strong><br/><strong>(127723L, 3L)</strong></pre>
+<ol start="4">
+<li>Now we can start the clustering process. First, let's import the cluster module and create a k-means object. We'll pass <kbd>n_clusters=5</kbd> so that we have five clusters, or really, five distinct colors. This will be a good recipe to practice using silhouette distance, which we reviewed in the <em>Optimizing the number of centroids</em> recipe:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn import cluster</strong><br/><strong>k_means = cluster.KMeans(n_clusters=5)</strong><br/><strong>k_means.fit(long_img)</strong><br/><strong>centers = k_means.cluster_centers_</strong><br/><strong>centers</strong><br/><strong>array([[ 169.01964615,  123.08399844,   99.6097561 ],
+       [  45.79271071,   94.56844879,  120.00911162],
+       [ 218.74043562,  202.152748  ,  184.14355039],
+       [  67.51082485,  151.50671141,  201.9408963 ],
+       [ 169.69235986,  189.63274724,  143.75511521]])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works…</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we have the centers, the next thing we need is the labels. This will tell us which points should be associated with which clusters:</p>
+<pre><strong>labels = k_means.labels_</strong><br/><strong>labels</strong><br/><strong>array([4, 4, 4, ..., 3, 3, 3])</strong></pre>
+<p>At this point, we require the simplest of NumPy array manipulation followed by a bit of reshaping, and we'll have the new image:</p>
+<pre><strong>plt.figure(figsize = (10,7))</strong><br/><strong>plt.imshow(centers[labels].reshape(x, y, z))</strong></pre>
+<p>The following is the resultant image:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="307" width="280" src="assets/eb03efc6-0bd1-4c20-9351-d62bdde53ca8.png"/></div>
+<p>The clustering separated the image into a few regions.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Finding the closest object in the feature space</h1>
+                </header>
+            
+            <article>
+                
+<p>Sometimes, the easiest thing to do is to find the distance between two objects. We just need to find some distance metric, compute the pairwise distances, and compare the outcomes with what is expected.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>A lower level utility in scikit-learn is <kbd>sklearn.metrics.pairwise</kbd>. It contains server functions used to compute distances between vectors in a matrix X or between vectors in X and Y easily. This can be useful for information retrieval. For example, given a set of customers with attributes of X, we might want to take a reference customer and find the closest customers to this customer.</p>
+<p>In fact, we might want to rank customers by the notion of similarity measured by a distance function. The quality of similarity depends upon the feature space selection as well as any transformation we might do on the space. We'll walk through several different scenarios of measuring distance.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>We will use the <kbd>pairwise_distances</kbd> function to determine the closeness of objects. Remember that the closeness is just similarity, which we <span>grade </span><span>using our distance function:</span></p>
+<ol start="1">
+<li>First, let's import the pairwise distance function from the metrics module and create a dataset to play with:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import numpy as np</strong><br/> <br/><strong>from sklearn.metrics import pairwise</strong><br/><strong>from sklearn.datasets import make_blobs</strong><br/><strong>points, labels = make_blobs()</strong></pre>
+<ol start="2">
+<li>The simplest way to check the distances is <kbd>pairwise_distances</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>distances = pairwise.pairwise_distances(points)</strong></pre>
+<p style="padding-left: 90px"><kbd>distances</kbd> is an N x N matrix with 0s along the diagonals. In the simplest case, let's see the distances between each point and the first point:</p>
+<pre style="padding-left: 60px"><strong>np.diag(distances) [:5] </strong><br/><strong>distances[0][:5]</strong><br/><strong>array([ 0. , 4.24926332, 8.8630893 , 5.01378992, 10.05620093])</strong></pre>
+<ol start="3">
+<li>Ranking the points by closeness is very easy with np.argsort:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>ranks = np.argsort(distances[0])</strong><br/><strong>ranks[:5]</strong><br/><strong>array([ 0, 63, 6, 21, 17], dtype=int64)</strong></pre>
+<ol start="4">
+<li>The great thing about <kbd>argsort</kbd> is that now we can sort our <kbd>points</kbd> matrix to get the actual points:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>points[ranks][:5]</strong><br/><strong> array([[-0.15728042, -5.76309092],</strong><br/><strong> [-0.20720885, -5.52734277],</strong><br/><strong> [-0.08686778, -6.42054076],</strong><br/><strong> [ 0.33493582, -6.29824601],</strong><br/><strong> [-0.89842683, -5.78335127]])</strong><br/><strong>sp_points = points[ranks][:5]</strong></pre>
+<ol start="5">
+<li>It's useful to see what the closest points look like as follows. The chosen point, points [0], is colored green. The closest points are colored red (except for the chosen point).</li>
+</ol>
+<p style="padding-left: 90px">Note that other than some assurances, this works as intended:</p>
+<pre style="padding-left: 60px"><strong>import matplotlib.pyplot as plt</strong><br/><strong>%matplotlib inline</strong><br/> <br/><strong>plt.figure(figsize=(10,7))</strong><br/><strong>plt.scatter(points[:,0], points[:,1], label = 'All Points')</strong><br/><strong>plt.scatter(sp_points[:,0],sp_points[:,1],color='red', label='Closest Points')</strong><br/><strong>plt.scatter(points[0,0],points[0,1],color='green', label = 'Chosen Point')</strong><br/> <br/><strong>plt.legend()</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="338" width="464" src="assets/99cb8345-f0b7-419b-be50-5e78e4f0da9d.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Given some distance function, each point is measured in a pairwise function. Consider two points represented as vectors in N-dimensional space with components <em>p<sub>i</sub></em> and <em>q<sub>i</sub></em>; the default is the Euclidean distance, which is as follows:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="69" width="217" class="fm-editor-equation" src="assets/015397b7-7363-4a0b-b2f5-b324b967fe94.png"/></div>
+<p>Verbally, this takes the difference between each component of the two vectors, squares these differences, sums them all, and then finds the square root. This looks very familiar as we used something very similar when looking at the mean squared error. If we take the square root, we have the same thing. In fact, a metric used often is root mean square deviation (RMSE), which is just the applied distance function.</p>
+<p>In Python, this looks like the following:</p>
+<pre><strong>def euclid_distances(x, y):</strong><br/><strong>     return np.power(np.power(x - y, 2).sum(), .5)</strong><br/><strong>euclid_distances(points[0], points[1])</strong><br/><strong>4.249263322917467 </strong> </pre>
+<p>There are several other functions available in scikit-learn, but scikit-learn will also use distance functions of SciPy. At the time of writing this book, the scikit-learn distance functions support sparse matrixes. Check out the SciPy documentation for more information on the distance functions:</p>
+<ul>
+<li><kbd>cityblock</kbd></li>
+<li><kbd>cosine</kbd></li>
+<li><kbd>euclidean</kbd></li>
+<li><kbd>l1</kbd></li>
+<li><kbd>l2</kbd></li>
+<li><kbd>manhattan</kbd></li>
+</ul>
+<p>We can now solve problems. For example, if we were standing on a grid at the origin and the lines were the streets, how far would we have to travel to get to point <em>(5, 5)</em>?</p>
+<pre><strong> pairwise.pairwise_distances([[0, 0], [5, 5]], metric='cityblock')[0]</strong><br/><strong>array([  0.,  10.])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Using pairwise distances, we can find the similarity between bit vectors. For N-dimensional vectors <em>p</em> and <em>q</em>, it's a matter of finding the hamming distance, which is defined as follows:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="73" width="186" class="fm-editor-equation" src="assets/afd3edd0-ade2-460c-9b74-0916c44bb4ae.png"/></div>
+<p>Use the following command:</p>
+<pre><strong>X = np.random.binomial(1, .5, size=(2, 4)).astype(np.bool)</strong><br/><strong>X</strong><br/><strong>array([[False, False, False, False],</strong><br/><strong> [False, True, True, True]], dtype=bool)</strong><br/><strong>pairwise.pairwise_distances(X, metric='hamming')</strong><br/><strong>array([[ 0. , 0.75],</strong><br/><strong> [ 0.75, 0. ]])</strong></pre>
+<p>Note that scikit-learn's <kbd>hamming</kbd> metric returns the hamming distance divided by the length of the vectors, <kbd>4</kbd> in this case.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Probabilistic clustering with Gaussian mixture models</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In k-means, we assume that the variance of the clusters is equal. This leads to a subdivision of space that determines how the clusters are assigned; but what about a situation where the variances are not equal and each cluster point has some probabilistic association with it?</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">There's a more probabilistic way of looking at k-means clustering. Hard k-means clustering is the same as applying a Gaussian mixture model with a covariance matrix, <kbd>S</kbd>, which can be factored to the error times of the identity matrix. This is the same covariance structure for each cluster. It leads to spherical clusters. However, if we allow S to vary, a GMM can be estimated and used for prediction. We'll look at how this works in a univariate sense and then expand to more dimensions.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li class="mce-root">First, we need to create some data. For example, let's simulate heights of both women and men. We'll use this example throughout this recipe. It's a simple example, but hopefully it will illustrate what we're trying to accomplish in an N-dimensional space, which is a little easier to visualize:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import numpy as np</strong><br/> <br/><strong>N = 1000</strong><br/><strong>in_m = 72</strong><br/><strong>in_w = 66</strong><br/><strong>s_m = 2</strong><br/><strong>s_w = s_m</strong><br/><strong>m = np.random.normal(in_m, s_m, N)</strong><br/><strong>w = np.random.normal(in_w, s_w, N)</strong><br/><strong>from matplotlib import pyplot as plt</strong><br/><strong>%matplotlib inline</strong><br/><strong>f, ax = plt.subplots(figsize=(7, 5))</strong><br/><strong>ax.set_title("Histogram of Heights")</strong><br/><strong>ax.hist(m, alpha=.5, label="Men");</strong><br/><strong>ax.hist(w, alpha=.5, label="Women");</strong><br/><strong>ax.legend()</strong></pre>
+<p style="padding-left: 90px" class="mce-root">This is the output:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/4b0ba254-044d-48b7-9e75-3e3e53127334.png"/></div>
+<ol start="2">
+<li>Next, we might be interested in subsampling the group, fitting the distribution, and then predicting the remaining groups:</li>
+</ol>
+<pre style="padding-left: 60px"><strong> random_sample = np.random.choice([True, False], size=m.size)</strong><br/><strong> m_test = m[random_sample]</strong><br/><strong> m_train = m[~random_sample]</strong><br/><strong> w_test = w[random_sample]</strong><br/><strong> w_train = w[~random_sample]</strong></pre>
+<ol start="3">
+<li>Now we need to get the empirical distribution of the heights of both men and women based on the training set:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from scipy import stats</strong><br/><strong>m_pdf = stats.norm(m_train.mean(), m_train.std())</strong><br/><strong>w_pdf = stats.norm(w_train.mean(), w_train.std())</strong></pre>
+<p style="padding-left: 90px">For the test set, we will calculate based on the likelihood that the data point was generated from either distribution, and the most likely distribution will get the appropriate label assigned.</p>
+<ol start="4">
+<li>We will, of course, look at how accurate we were:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>m_pdf.pdf(m[0])</strong><br/><strong>0.19762291119664221</strong><br/><strong>w_pdf.pdf(m[0])</strong><br/><strong>0.00085042279862613103</strong></pre>
+<ol start="5">
+<li>Notice the difference in likelihoods. Assume that we guess situations when the men's probability is higher, but we overwrite them if the women's probability is higher:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>guesses_m = np.ones_like(m_test)</strong><br/><strong>guesses_m[m_pdf.pdf(m_test) &amp;lt; w_pdf.pdf(m_test)] = 0</strong></pre>
+<ol start="6">
+<li>Obviously, the question is how accurate we are. Since <kbd>guesses_m</kbd> will be <em>1</em> if we are correct and <em>0</em> if we aren't, we take the mean of the vector and get the accuracy:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>guesses_m.mean()</strong><br/><strong>0.94176706827309242</strong></pre>
+<ol start="7">
+<li>Not too bad! Now, to see how well we did with the women's group, we use the following commands:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>guesses_w = np.ones_like(w_test)</strong><br/><strong>guesses_w[m_pdf.pdf(w_test) &gt; w_pdf.pdf(w_test)] = 0</strong><br/><strong>guesses_w.mean()</strong><br/><strong> 0.93775100401606426</strong></pre>
+<ol start="8">
+<li>Let's allow the variance to differ between groups. First, create some new data:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>s_m = 1</strong><br/><strong>s_w = 4</strong><br/><strong>m = np.random.normal(in_m, s_m, N)</strong><br/><strong>w = np.random.normal(in_w, s_w, N)</strong></pre>
+<ol start="9">
+<li>Then, create a training set:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>m_test = m[random_sample]</strong><br/><strong>m_train = m[~random_sample]</strong><br/><strong>w_test = w[random_sample]</strong><br/><strong>w_train = w[~random_sample]</strong><br/><strong>f, ax = plt.subplots(figsize=(7, 5))</strong><br/><strong>ax.set_title("Histogram of Heights")</strong><br/><strong>ax.hist(m_train, alpha=.5, label="Men");</strong><br/><strong>ax.hist(w_train, alpha=.5, label="Women");</strong><br/><strong>ax.legend()</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/2ae342ce-0c92-4060-a6de-dd66b8de5179.png"/></div>
+<ol start="10">
+<li>Now we can create the same PDFs:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>m_pdf = stats.norm(m_train.mean(), m_train.std())</strong><br/><strong>w_pdf = stats.norm(w_train.mean(), w_train.std())</strong><br/> <br/><strong>x = np.linspace(50,80,300)</strong><br/><strong>plt.figure(figsize=(8,5))</strong><br/><strong>plt.title('PDF of Heights')</strong><br/><strong>plt.plot(x, m_pdf.pdf(x), 'k', linewidth=2, color='blue', label='Men')</strong><br/><strong>plt.plot(x, w_pdf.pdf(x), 'k', linewidth=2, color='green',label='Women')</strong></pre>
+<ol start="11">
+<li>The following is the output:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/6f93504d-a8a5-4578-8ba0-0f545236ba50.png"/></div>
+<p style="padding-left: 90px">You can imagine this in a multidimensional space:</p>
+<pre style="padding-left: 60px"><strong>class_A = np.random.normal(0, 1, size=(100, 2))</strong><br/><strong>class_B = np.random.normal(4, 1.5, size=(100, 2))</strong><br/><strong>f, ax = plt.subplots(figsize=(8, 5))</strong><br/><strong>plt.title('Random 2D Normal Draws')</strong><br/><strong>ax.scatter(class_A[:,0], class_A[:,1], label='A', c='r')</strong><br/><strong>ax.scatter(class_B[:,0], class_B[:,1], label='B')</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/550cf069-4940-4f13-9035-935e2ae9d0bb.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>Okay, so now that we've looked at how we can classify points based on distribution, let's look at how we can do this in scikit-learn:</p>
+<pre class="mce-root"><strong>from sklearn.mixture import GaussianMixture</strong><br/><strong>gmm = GaussianMixture(n_components=2)</strong><br/><strong>X = np.row_stack((class_A, class_B))</strong><br/><strong>y = np.hstack((np.ones(100), np.zeros(100)))</strong></pre>
+<p class="mce-root">Since we're conscientious data scientists, we'll create a training set:</p>
+<pre class="mce-root"><strong>train = np.random.choice([True, False], 200)</strong><br/><strong>gmm.fit(X[train])</strong><br/><strong>GaussianMixture(covariance_type='full', init_params='kmeans', max_iter=100,</strong><br/><strong> means_init=None, n_components=2, n_init=1, precisions_init=None,</strong><br/><strong> random_state=None, reg_covar=1e-06, tol=0.001, verbose=0,</strong><br/><strong> verbose_interval=10, warm_start=False, weights_init=None)</strong></pre>
+<p class="mce-root">Fitting and predicting is done in the same way as fitting is done for many of the other objects in scikit-learn:</p>
+<pre class="mce-root"><strong>gmm.fit(X[train])</strong><br/><strong>gmm.predict(X[train])[:5]</strong><br/><strong>array([0, 0, 0, 0, 0], dtype=int64)</strong></pre>
+<p class="mce-root">There are other methods worth looking at now that the model has been fit. For example, using <kbd>score_samples</kbd>, we can actually get the per-sample likelihood for each label.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using k-means for outlier detection</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In this recipe, we'll look at both the debate and mechanics of k-means for outlier detection. It can be useful to isolate some types of errors, but care should be taken when using it.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">We'll use k-means to do outlier detection on a cluster of points. It's important to note that there are many camps when it comes to outliers and outlier detection. On one hand, we're potentially removing points that were generated by the data-generating process by removing outliers. On the other hand, outliers can be due to a measurement error or some other outside factor.</p>
+<p class="mce-root">This is the most credence we'll give to the debate. The rest of this recipe is about finding outliers; we'll work under the assumption that our choice to remove outliers is justified. The act of outlier detection is a matter of finding the centroids of the clusters and then identifying points that are potential outliers by their distances from the centroid.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li class="mce-root">First, we'll generate a single blob of 100 points, and then we'll identify the five points that are furthest from the centroid. These are the potential outliers:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.datasets import make_blobs</strong><br/><strong>X, labels = make_blobs(100, centers=1)</strong><br/><strong>import numpy as np</strong></pre>
+<ol start="2">
+<li class="mce-root">It's important that the k-means cluster has a single center. This idea is similar to a one-class SVM that is used for outlier detection:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.cluster import KMeans</strong><br/><strong>kmeans = KMeans(n_clusters=1)</strong><br/><strong>kmeans.fit(X)</strong><br/><strong>KMeans(algorithm='auto', copy_x=True, init='k-means++', max_iter=300,</strong><br/><strong> n_clusters=1, n_init=10, n_jobs=1, precompute_distances='auto',</strong><br/><strong> random_state=None, tol=0.0001, verbose=0)</strong></pre>
+<ol start="3">
+<li class="mce-root">Now, let's look at the plot. Those playing along at home, try to guess which points will be identified as one of the five outliers:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>import matplotlib.pyplot as plt</strong><br/><strong>%matplotlib inline</strong><br/><br/><strong>f, ax = plt.subplots(figsize=(8, 5))</strong><br/><strong>ax.set_title("Blob")</strong><br/><strong>ax.scatter(X[:, 0], X[:, 1], label='Points')</strong><br/><strong>ax.scatter(kmeans.cluster_centers_[:, 0],kmeans.cluster_centers_[:, 1], label='Centroid',color='r')</strong><br/><strong>ax.legend()</strong></pre>
+<p style="padding-left: 90px" class="mce-root">The following is the output:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/327feae1-f9d0-414f-9203-c236df182253.png"/></div>
+<ol start="4">
+<li>Now, let's identify the five closest points:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>distances = kmeans.transform(X)</strong><br/><br/><strong># argsort returns an array of indexes which will sort the array in ascending order</strong><br/><strong># so we reverse it via [::-1] and take the top five with [:5]</strong><br/> <br/><strong>sorted_idx = np.argsort(distances.ravel())[::-1][:5]</strong></pre>
+<ol start="5">
+<li>Let's see which plots are the farthest away:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>f, ax = plt.subplots(figsize=(7, 5))</strong><br/><strong>ax.set_title("Single Cluster")</strong><br/><strong>ax.scatter(X[:, 0], X[:, 1], label='Points')</strong><br/><strong>ax.scatter(kmeans.cluster_centers_[:, 0],kmeans.cluster_centers_[:, 1],label='Centroid', color='r')</strong><br/><strong>ax.scatter(X[sorted_idx][:, 0], X[sorted_idx][:, 1],label='Extreme Value', edgecolors='g',facecolors='none', s=100)</strong><br/><strong>ax.legend(loc='best')</strong></pre>
+<p style="padding-left: 90px">The following is the output:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/2912168d-0c4d-4153-8eeb-df2038428a22.png"/></div>
+<ol start="6">
+<li>It's easy to remove these points if we like:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>new_X = np.delete(X, sorted_idx, axis=0)</strong> </pre>
+<p style="padding-left: 90px">Also, the centroid clearly changes with the removal of these points:</p>
+<pre style="padding-left: 60px"><strong>new_kmeans = KMeans(n_clusters=1)</strong><br/><strong>new_kmeans.fit(new_X)</strong></pre>
+<ol start="7">
+<li>Let's visualize the difference between the old and new centroids:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>f, ax = plt.subplots(figsize=(7, 5))</strong><br/><strong>ax.set_title("Extreme Values Removed")</strong><br/><strong>ax.scatter(new_X[:, 0], new_X[:, 1], label='Pruned Points')</strong><br/><strong>ax.scatter(kmeans.cluster_centers_[:, 0],kmeans.cluster_centers_[:, 1], label='Old Centroid',color='r',s=80, alpha=.5)</strong><br/><strong>ax.scatter(new_kmeans.cluster_centers_[:, 0],new_kmeans.cluster_centers_[:, 1], label='New Centroid',color='m', s=80, alpha=.5)</strong><br/><strong> ax.legend(loc='best')</strong></pre>
+<p style="padding-left: 90px">The following is the output:</p>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/497f4845-bb5c-42b0-9a6a-67cc2ae16000.png"/></div>
+<p>Clearly, the centroid hasn't moved much, which is to be expected only <span>when</span><span> </span><span>removing the five most extreme values. This process can be repeated until we're satisfied that the data is representative of the process.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>As we've already seen, there is a fundamental connection between the Gaussian distribution and the k-means clustering. Let's create an empirical Gaussian based on the centroid and sample covariance matrix and look at the probability of each point—theoretically, the five points we removed. This just shows that we have, in fact, removed the values with the least likelihood. This idea between distances and likelihoods is very important and will come around quite often in your machine learning training. Use the following command to create an empirical Gaussian:</p>
+<pre><strong>from scipy import stats</strong><br/><strong>emp_dist = stats.multivariate_normal(kmeans.cluster_centers_.ravel())</strong><br/><strong>lowest_prob_idx = np.argsort(emp_dist.pdf(X))[:5]</strong><br/><strong>np.all(X[sorted_idx] == X[lowest_prob_idx])    </strong><br/><br/><strong>True</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using KNN for regression</h1>
+                </header>
+            
+            <article>
+                
+<p>Regression is covered elsewhere in the book, but we might also want to run a regression on pockets of the feature space. We can think that our dataset is subject to several data processes. If this is true, only training on similar data points is a good idea.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Our old friend, regression, can be used in the context of clustering. Regression is obviously a supervised technique, so we'll use <strong>K-Nearest Neighbors</strong> (<strong>KNN</strong>) clustering rather than k-means. For KNN regression, we'll use the K closest points in the feature space to build the regression rather than using the entire space as in regular regression.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it…</h1>
+                </header>
+            
+            <article>
+                
+<p>For this recipe, we'll use the <kbd>iris</kbd> dataset. If we want to predict something such as the petal width for each flower, clustering by iris species can potentially give us better results. The KNN regression won't cluster by the species, but we'll work under the assumption that the Xs will be close for the same species, in this case, the petal length:</p>
+<ol>
+<li>We'll use the <kbd>iris</kbd> dataset for this recipe:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import numpy as np</strong><br/><strong>from sklearn import datasets</strong><br/><strong>iris = datasets.load_iris()</strong><br/><strong>iris.feature_names</strong></pre>
+<ol start="2">
+<li>We'll try to predict the petal length based on the sepal length and width. We'll also fit a regular linear regression to see how well the KNN regression does in comparison:</li>
+</ol>
+<pre style="padding-left: 60px"><strong> X = iris.data[:,:2]</strong><br/><strong> y = iris.data[:,2]</strong><br/> <br/><strong> from sklearn.linear_model import LinearRegression</strong><br/><strong> lr = LinearRegression()</strong><br/><strong> lr.fit(X, y)</strong><br/><strong> print "The MSE is: {:.2}".format(np.power(y - lr.predict(X),2).mean())</strong><br/><br/><strong>The MSE is: 0.41</strong></pre>
+<ol start="3">
+<li>Now, for the KNN regression, use the following code:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.neighbors import KNeighborsRegressor</strong><br/><strong>knnr = KNeighborsRegressor(n_neighbors=10)</strong><br/><strong>knnr.fit(X, y)</strong><br/><strong>print "The MSE is: {:.2}".format(np.power(y - knnr.predict(X),2).mean()) </strong><br/><br/><strong>The MSE is: 0.17</strong></pre>
+<ol start="4">
+<li>Let's look at what the KNN regression does when we tell it to use the 10 closest points for regression:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>f, ax = plt.subplots(nrows=2, figsize=(7, 10))</strong><br/><strong>ax[0].set_title("Predictions")</strong><br/><strong>ax[0].scatter(X[:, 0], X[:, 1], s=lr.predict(X)*80, label='LR Predictions', color='c', edgecolors='black')</strong><br/><strong>ax[1].scatter(X[:, 0], X[:, 1], s=knnr.predict(X)*80, label='k-NN Predictions', color='m', edgecolors='black')</strong><br/><strong>ax[0].legend()</strong><br/><strong>ax[1].legend()</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/8fd74776-d305-48be-bb6d-549028459772.png"/></div>
+<ol start="5">
+<li>It might be completely clear that the predictions are close for the most part, but let's look at the predictions for the Setosa species as compared to the actuals:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>setosa_idx = np.where(iris.target_names=='setosa')</strong><br/><strong>setosa_mask = iris.target == setosa_idx[0]</strong><br/><strong>y[setosa_mask][:5]</strong><br/><strong>array([ 1.4,  1.4,  1.3,  1.5,  1.4])</strong><br/><strong>knnr.predict(X)[setosa_mask][:5]</strong><br/><strong>array([ 1.46,  1.47,  1.51,  1.42,  1.48])</strong><br/><strong>lr.predict(X)[setosa_mask][:5]</strong><br/><strong>array([ 1.83762646,  2.1510849 ,  1.52707371,  1.48291658,  1.52562087])</strong></pre>
+<ol start="6">
+<li>Looking at the plots again, we see that the setosa species (upper-left cluster) is largely overestimated by linear regression, and KNN is fairly close to the actual values.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works..</h1>
+                </header>
+            
+            <article>
+                
+<p>KNN regression is very simple to calculate by taking the average of the <em>K</em> closest points to the point being tested. Let's manually predict a single point:</p>
+<pre><strong> example_point = X[0]</strong></pre>
+<p>Now, we need to get the 10 closest points to our <kbd>example_point</kbd>:</p>
+<pre>from sklearn.metrics import pairwise<br/>distances_to_example = pairwise.pairwise_distances(X)[0]<br/>ten_closest_points = X[np.argsort(distances_to_example)][:10]<br/>ten_closest_y = y[np.argsort(distances_to_example)][:10]<br/>ten_closest_y.mean() <br/><br/>1.46</pre>
+<p>We can see that this is very close to what was expected.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

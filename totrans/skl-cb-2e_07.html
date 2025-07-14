@@ -1,0 +1,1388 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Cross-Validation and Post-Model Workflow</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we will cover the following recipes:</p>
+<ul>
+<li>Selecting a model with cross-validation</li>
+<li>K-fold cross-validation</li>
+<li>Balanced cross-validation</li>
+<li>Cross-validation with ShuffleSplit</li>
+<li>Time series cross-validation</li>
+<li>Grid search with scikit-learn</li>
+<li>Randomized search with scikit-learn</li>
+<li>Classification metrics</li>
+<li>Regression metrics</li>
+<li>Clustering metrics</li>
+<li>Using dummy estimators to compare results</li>
+<li>Feature selection</li>
+<li>Feature selection on L1 norms</li>
+<li>Persisting models with joblib or pickle</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Introduction</h1>
+                </header>
+            
+            <article>
+                
+<p>This is perhaps the most important chapter. The fundamental question addressed in this chapter is as follows:</p>
+<ul>
+<li>How do we select a model that predicts well?</li>
+</ul>
+<p>This is the purpose of cross-validation, regardless of what the model is. This is slightly different from traditional statistics, which is perhaps more concerned with how we understand a phenomenon better. (Why would I limit my quest for understanding? Well, because there is more and more data, we cannot necessarily look at it all, reflect upon it, and create a theoretical model.)</p>
+<p>Machine learning is concerned with prediction and how a machine learning algorithm processes new unseen data and arrives at predictions. Even if it does not seem like traditional statistics, you can use interpretation and domain understanding to create new columns (features) and make even better predictions. You can use traditional statistics to create new columns.</p>
+<p>Very early in the book, we started with training/testing splits. Cross-validation is the iteration of many crucial training and testing splits to maximize prediction performance.</p>
+<p>This chapter examines the following:</p>
+<ul>
+<li>Cross-validation schemes</li>
+<li>Grid searches—what are the best parameters within an estimator?</li>
+<li>Metrics that compare <kbd>y_test</kbd> with <kbd>y_pred</kbd>—the real target set versus the predicted target set</li>
+</ul>
+<p>The following line contains the cross-validation scheme <kbd>cv = 10</kbd> for the scoring mechanism <kbd>neg_log_lost</kbd>, which is built from the <kbd>log_loss</kbd> <span>metric:</span></p>
+<pre><strong><span class="n">cross_val_score</span><span class="p">(</span><span class="n">SVC()</span><span class="p">,</span> <span class="n">X_train</span><span class="p">,</span> <span class="n">y_train</span><span class="p">,</span> cv = 10, <span class="n">scoring</span><span class="o">=</span><span class="s1">'neg_log_loss'</span><span class="p">)</span></strong></pre>
+<p>Part of the power of scikit-learn is including so much information in a single line. Additionally, we will also see a dummy estimator, have a look at feature selection, and save trained models. These methods are what really make machine learning what it is.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Selecting a model with cross-validation</h1>
+                </header>
+            
+            <article>
+                
+<p>We saw automatic cross-validation, the <kbd>cross_val_score</kbd> function, in <a href="9a5af114-e518-47ef-ac63-edf9ae69384c.xhtml" target="_blank">Chapter 1</a>, <em>High-Performance Machine Learning – NumPy</em>. This will be very similar, except we will use the last two columns of the iris dataset as the data. The purpose of this section is to select the best model we can.</p>
+<p>Before starting, we will define the best model as the one that scores the highest. If there happens to be a tie, we will choose the model that has the best score with the least volatility.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe we will do the following:</p>
+<ul>
+<li>Load the last two features (columns) of the iris dataset</li>
+<li>Split the data into training and testing data</li>
+<li>Instantiate two <strong>k-nearest neighbors</strong> (<strong>KNN</strong>) algorithms, with three and five neighbors</li>
+<li>Score both algorithms</li>
+<li>Select the model that scores the best</li>
+</ul>
+<p>Start by loading the dataset:</p>
+<pre class="mce-root"><strong>from sklearn import datasets</strong><br/><br/><strong>iris = datasets.load_iris()</strong><br/><strong>X = iris.data[:,2:]</strong><br/><strong>y = iris.target</strong></pre>
+<p>Split the data into training and testing. The samples are stratified, the default throughout the book. Stratified means that the proportions of the target variable are the same in both the training and testing sets (also, <kbd>random_state</kbd> is set to <kbd>7</kbd>):</p>
+<pre><br/><strong>from sklearn.model_selection import train_test_split</strong><br/><br/><strong>X_train, X_test, y_train, y_test = train_test_split(X, y, stratify = y,random_state = 7)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>First, instantiate two nearest-neighbor algorithms:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.neighbors import KNeighborsClassifier</strong><br/><br/><strong>kn_3 = KNeighborsClassifier(n_neighbors = 3)</strong><br/><strong>kn_5 = KNeighborsClassifier(n_neighbors = 5)</strong></pre>
+<ol start="2">
+<li>Now, score both algorithms using <kbd>cross_val_score</kbd>. View <kbd>kn_3_scores</kbd>, a list of scores:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.model_selection import cross_val_score</strong><br/><br/><strong>kn_3_scores = cross_val_score(kn_3, X_train, y_train, cv=4)</strong><br/><strong>kn_5_scores = cross_val_score(kn_5, X_train, y_train, cv=4)</strong><br/><strong>kn_3_scores</strong><br/><br/><strong>array([ 0.9 , 0.92857143, 0.92592593, 1. ])</strong></pre>
+<ol start="3">
+<li>View <kbd>kn_5_scores</kbd>, the other list of scores:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>kn_5_scores</strong><br/><br/><strong>array([ 0.96666667, 0.96428571, 0.88888889, 1. ])</strong></pre>
+<ol start="4">
+<li>View basic statistics of both lists. View the means:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>print "Mean of kn_3: ",kn_3_scores.mean()</strong><br/><strong>print "Mean of kn_5: ",kn_5_scores.mean()</strong><br/><br/><strong>Mean of kn_3: 0.938624338624</strong><br/><strong>Mean of kn_5: 0.95496031746</strong></pre>
+<ol start="5">
+<li>View the spreads, looking at the standard deviations:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>print "Std of kn_3: ",kn_3_scores.std()</strong><br/><strong>print "Std of kn_5: ",kn_5_scores.std()</strong><br/><br/><strong>Std of kn_3: 0.037152126551</strong><br/><strong>Std of kn_5: 0.0406755710299</strong></pre>
+<p style="padding-left: 60px" class="mce-root">Overall, <kbd>kn_5</kbd>, when the algorithm is set to five neighbors, performs a little better than three neighbors, yet it is less stable (its scores are a bit more all over the place).</p>
+<ol start="6">
+<li>Let's now do the final step: select the model that scores the highest. We select <kbd>kn_5</kbd> because it scores the highest. (This model has the highest score under cross-validation. Note that the scores involved are the nearest neighbors default accuracy score: the proportion of correct classifications divided by all of the classifications attempted.)</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>This is an example of 4-fold cross-validation because in the <kbd>cross_val_score</kbd> function, <kbd>cv = 4</kbd>. We split the training data, or <strong>CV Set</strong> (<kbd>X_train</kbd>), into four parts, or folds. We iterate by rotating each fold as the testing set. At first, fold 1 is the testing set while folds 2, 3, and 4 are together the training set. Then fold 2 is the testing set while folds 1, 3, and 4 are the training set. We do this procedure with folds 3 and 4 as well:</p>
+<div class="mce-root CDPAlignCenter CDPAlign"><img height="150" width="227" src="assets/1f4fc2e4-4e98-4165-9467-bafb11dff24c.png"/></div>
+<p class="mce-root">Once we split the dataset into folds, we score the algorithm four times:</p>
+<ol>
+<li class="mce-root">We train one of the nearest neighbors algorithm on folds 2, 3, and 4.</li>
+<li class="mce-root">Then we predict on fold 1, the test fold.</li>
+<li>We measure the classification accuracy: compare the test fold with the predicted results on that fold. This is the first of the classification scores on the list.</li>
+</ol>
+<p>The process is performed four times. The final output is a list of four scores.</p>
+<p>Overall, we did the whole process twice, once for <kbd>kn_3</kbd> and once for <kbd>kn_5</kbd>, and produced two lists to select the best model. The module we imported from is called <kbd>model_selection</kbd> because it is helping us select the best model.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">K-fold cross validation</h1>
+                </header>
+            
+            <article>
+                
+<p>In the quest to find the best model, you can view the indices of cross-validation folds and see what data is in each fold.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Create a toy dataset that is very small:</p>
+<pre><strong>import numpy as np</strong><br/><strong>X = np.array([[1, 2], [3, 4], [5, 6], [7, 8],[1, 2], [3, 4], [5, 6], [7, 8]])</strong><br/><strong>y = np.array([1, 2, 1, 2, 1, 2, 1, 2])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it..</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Import <kbd>KFold</kbd> and select the number of splits:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.model_selection import KFold</strong><br/><br/><strong>kf= KFold(n_splits = 4)</strong></pre>
+<ol start="2">
+<li>You can iterate through the generator and print out the indices:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>cc = 1</strong><br/><strong>for train_index, test_index in kf.split(X):</strong><br/><strong>      print "Round : ",cc,": ",</strong><br/><strong>      print "Training indices :", train_index,</strong><br/><strong>      print "Testing indices :", test_index</strong><br/><strong>      cc += 1</strong><br/><br/><strong>Round 1 : Training indices : [2 3 4 5 6 7] Testing indices : [0 1]</strong><br/><strong>Round 2 : Training indices : [0 1 4 5 6 7] Testing indices : [2 3]</strong><br/><strong>Round 3 : Training indices : [0 1 2 3 6 7] Testing indices : [4 5]</strong><br/><strong>Round 4 : Training indices : [0 1 2 3 4 5] Testing indices : [6 7]</strong></pre>
+<p style="padding-left: 60px">You can see, for example, how in the first round there are two testing indices, <kbd>0</kbd> and <kbd>1</kbd>. <kbd>[0 1]</kbd> constitutes the first fold. <kbd>[2 3 4 5 6 7]</kbd> are folds 2, 3, and 4 put together.</p>
+<ol start="3">
+<li>You can also view the number of splits:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>kf.get_n_splits()</strong><br/><br/><strong>4</strong></pre>
+<p>The number of splits is <kbd>4</kbd>, which we set when we instantiated the <kbd>KFold</kbd> class.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>If you want, you can view the data in the folds themselves. Store the generator as a list:</p>
+<pre><strong>indices_list = list(kf.split(X))</strong></pre>
+<p>Now, <kbd>indices_list</kbd> is a list of tuples. View the information for the fourth fold:</p>
+<pre><strong>indices_list[3] #the list is indexed from 0 to 3</strong><br/><br/><strong>(array([0, 1, 2, 3, 4, 5], dtype=int64), array([6, 7], dtype=int64))</strong></pre>
+<p>This information matches the information from the preceding printout, except it is in the form of a tuple of two NumPy arrays. View the actual data from the fourth fold. View the training data for the fourth fold:</p>
+<pre style="padding-left: 30px"><strong>train_indices, test_indices = indices_list[3]</strong><br/><br/><strong>X[train_indices]</strong><br/><br/><strong>array([[1, 2],</strong><br/><strong> [3, 4],</strong><br/><strong> [5, 6],</strong><br/><strong> [7, 8],</strong><br/><strong> [1, 2],</strong><br/><strong> [3, 4]])</strong><br/><br/><strong>y[train_indices]</strong><br/><br/><strong>array([1, 2, 1, 2, 1, 2])</strong></pre>
+<p>View the test data:</p>
+<pre class="mce-root"><strong>X[test_indices]</strong><br/><br/><strong>array([[5, 6],</strong><br/><strong> [7, 8]])</strong><br/><br/><strong>y[test_indices]</strong><br/><br/><strong>array([1, 2])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Balanced cross-validation</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">While splitting the different folds in various datasets, you might wonder: couldn't the different sets in each fold of k-fold cross-validation be very different? The distributions could be very different in each fold, and these differences could lead to volatility in the scores.</p>
+<p>There is a solution for this, using stratified cross-validation. The subsets of the dataset will look like smaller versions of the whole dataset (at least in the target variable).</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Create a toy dataset as follows:</p>
+<pre><strong>import numpy as np</strong><br/><strong>X = np.array([[1, 2], [3, 4], [5, 6], [7, 8],[1, 2], [3, 4], [5, 6], [7, 8]])</strong><br/><strong>y = np.array([1, 1, 1, 1, 2, 2, 2, 2])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>If we perform 4-fold cross-validation on this miniature toy dataset, each of the four testing folds will have only one value for the target. This can be remedied using <kbd>StratifiedKFold</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.model_selection import StratifiedKFold</strong><br/><br/><strong>skf = StratifiedKFold(n_splits = 4)</strong></pre>
+<ol start="2">
+<li>Print out the indices of the folds:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>cc = 1</strong><br/><strong>for train_index, test_index in skf.split(X,y):</strong><br/><strong>      print "Round",cc,":",</strong><br/><strong>      print "Training indices :", train_index,</strong><br/><strong>      print "Testing indices :", test_index</strong><br/><strong>      cc += 1</strong><br/><br/><strong>Round 1 : Training indices : [1 2 3 5 6 7] Testing indices : [0 4]</strong><br/><strong>Round 2 : Training indices : [0 2 3 4 6 7] Testing indices : [1 5]</strong><br/><strong>Round 3 : Training indices : [0 1 3 4 5 7] Testing indices : [2 6]</strong><br/><strong>Round 4 : Training indices : [0 1 2 4 5 6] Testing indices : [3 7]</strong></pre>
+<p>Observe that the <kbd>split</kbd> method of the <kbd>skf</kbd> <span>class</span><span>, the stratified k-fold split, has two arguments, <kbd>X</kbd> and <kbd>y</kbd>. It tries to distribute the target <kbd>y</kbd> with the same distribution in each of the fold sets. In this case, every subset has 50% <kbd>1</kbd> and 50% <kbd>2</kbd>, just like the whole target set <kbd>y</kbd>.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>You can use <kbd>StratifiedShuffleSplit</kbd> to reshuffle the stratified fold. Note that this does not try to make four folds with testing sets that are mutually exclusive:</p>
+<pre><strong>from sklearn.model_selection import StratifiedShuffleSplit</strong><br/><br/><strong>sss = StratifiedShuffleSplit(n_splits = 5,test_size=0.25)</strong><br/><br/><strong>cc = 1</strong><br/><strong>for train_index, test_index in sss.split(X,y):</strong><br/><strong>     print "Round",cc,":",</strong><br/><strong>     print "Training indices :", train_index,</strong><br/><strong>     print "Testing indices :", test_index</strong><br/><strong>     cc += 1</strong><br/><br/><strong>Round 1 : Training indices : [1 6 5 7 0 2] Testing indices : [4 3]</strong><br/><strong>Round 2 : Training indices : [3 2 6 7 5 0] Testing indices : [1 4]</strong><br/><strong>Round 3 : Training indices : [2 1 4 7 0 6] Testing indices : [3 5]</strong><br/><strong>Round 4 : Training indices : [4 2 7 6 0 1] Testing indices : [5 3]</strong><br/><strong>Round 5 : Training indices : [1 2 0 5 4 7] Testing indices : [6 3]</strong><br/><strong>Round 6 : Training indices : [0 6 5 1 7 3] Testing indices : [2 4]</strong><br/><strong>Round 7 : Training indices : [1 7 3 6 2 5] Testing indices : [0 4]</strong></pre>
+<p>The splits are not splits of the dataset but iterations of a random procedure, each one with a training set size of 75% of the whole dataset and a testing set size of 25%. All of the iterations are stratified.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Cross-validation with ShuffleSplit</h1>
+                </header>
+            
+            <article>
+                
+<p>The ShuffleSplit is one of the simplest cross-validation techniques. Using this cross-validation technique will simply take a sample of the data for the number of iterations specified.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>The ShuffleSplit is a simple validation technique. We'll specify the total elements in the dataset, and it will take care of the rest. We'll walk through an example of estimating the mean of a univariate dataset. This is similar to resampling, but it'll illustrate why we want to use cross-validation while showing cross-validation.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>First, we need to create the dataset. We'll use NumPy to create a dataset in which we know the underlying mean. We'll sample half of the dataset to estimate the mean and see how close it is to the underlying mean. Generate a normally distributed random sample with a mean of 1,000 and a scale (standard deviation) of 10:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>%matplotlib inline</strong><br/><br/><strong>import numpy as np</strong><br/><strong>true_mean = 1000</strong><br/><strong>true_std = 10</strong><br/><strong>N = 1000</strong><br/><strong>dataset = np.random.normal(loc= true_mean, scale = true_std, size=N)</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/><strong>f, ax = plt.subplots(figsize=(10, 7))</strong><br/><strong>ax.hist(dataset, color='k', alpha=.65, histtype='stepfilled',bins=50)</strong><br/><strong>ax.set_title("Histogram of dataset")</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/201288c4-5c4a-4e64-bb84-2d2395182bc7.png"/></div>
+<ol start="2">
+<li>Estimate the mean of half of the dataset:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>holdout_set = dataset[:500]</strong><br/><strong>fitting_set = dataset[500:]</strong><br/><strong>estimate = fitting_set[:N/2].mean()</strong><br/><strong>estimate</strong><br/><br/><strong>999.69789261486721</strong></pre>
+<ol start="3">
+<li>You can also get the mean of the whole dataset:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>data_mean = dataset.mean()</strong><br/><strong>data_mean</strong><br/><br/><strong>999.55177343767843</strong></pre>
+<ol start="4">
+<li>It is not 1,000 because random points were selected to create the dataset. To observe the behavior of <kbd>ShuffleSplit</kbd>, write the following and make a plot:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.model_selection import ShuffleSplit</strong><br/><strong>shuffle_split = ShuffleSplit(n_splits=100, test_size=.5, random_state=0)</strong><br/><strong>mean_p = []</strong><br/><strong>estimate_closeness = []</strong><br/><strong>for train_index, not_used_index in shuffle_split.split(fitting_set):</strong><br/><strong>      mean_p.append(fitting_set[train_index].mean())</strong><br/><strong>      shuf_estimate = np.mean(mean_p)</strong><br/><strong>      estimate_closeness.append(np.abs(shuf_estimate - dataset.mean()))</strong><br/><br/><strong>plt.figure(figsize=(10,5))</strong><br/><strong>plt.plot(estimate_closeness)</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/7de5d845-f9e0-4854-ba09-c8bc4998efea.png"/></div>
+<p>The estimated mean keeps getting closer to the data's mean of 999.55177343767843 and then plateaus at being 0.1 away from the data's mean. It is a bit closer than the estimate of the mean, with half the dataset, to the mean of the data.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Time series cross-validation</h1>
+                </header>
+            
+            <article>
+                
+<p>scikit-learn can perform cross-validation for time series data such as stock market data. We will do so with a time series split, as we would like the model to predict the future, not have an information data leak from the future.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>We will create the indices for a time series split. Start by creating a small toy dataset:</p>
+<pre><strong>from sklearn.model_selection import TimeSeriesSplit</strong><br/><strong>import numpy as np</strong><br/><strong>X = np.array([[1, 2], [3, 4], [1, 2], [3, 4],[1, 2], [3, 4], [1, 2], [3, 4]])</strong><br/><strong>y = np.array([1, 2, 3, 4, 1, 2, 3, 4])</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Now create a time series split object:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>tscv = TimeSeriesSplit(n_splits=7)</strong></pre>
+<ol start="2">
+<li>Iterate through it:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>for train_index, test_index in tscv.split(X):</strong><br/> <br/><strong>      X_train, X_test = X[train_index], X[test_index]</strong><br/><strong>      y_train, y_test = y[train_index], y[test_index]</strong><br/> <br/><strong>      print "Training indices:", train_index, "Testing indices:", test_index</strong><br/><br/><strong>Training indices: [0] Testing indices: [1]</strong><br/><strong>Training indices: [0 1] Testing indices: [2]</strong><br/><strong>Training indices: [0 1 2] Testing indices: [3]</strong><br/><strong>Training indices: [0 1 2 3] Testing indices: [4]</strong><br/><strong>Training indices: [0 1 2 3 4] Testing indices: [5]</strong><br/><strong>Training indices: [0 1 2 3 4 5] Testing indices: [6]</strong><br/><strong>Training indices: [0 1 2 3 4 5 6] Testing indices: [7]</strong></pre>
+<ol start="3">
+<li>You can also save the indices by creating a list of tuples from the generator:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>tscv_list = list(tscv.split(X))</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>You can create rolling windows with NumPy or pandas as well. The main requirement of time series cross-validation is that the test set appears after the training set in time; otherwise, you would be predicting the past from the future.</p>
+<p>Time series cross-validation is interesting because depending on the dataset, the influence of time varies. Sometimes, you do not have to put data rows in time-sequential order, yet you can never assume you know the future in the past.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Grid search with scikit-learn</h1>
+                </header>
+            
+            <article>
+                
+<p>At the beginning of the model selection and cross-validation chapter we tried to select the best nearest-neighbor model for the two last features of the iris dataset. We will refocus on that now with <kbd>GridSearchCV</kbd> in scikit-learn.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>First, load the last two features of the iris dataset. Split the data into training and testing sets:</p>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn import datasets</strong><br/><br/><strong>iris = datasets.load_iris()</strong><br/><strong>X = iris.data[:,2:]</strong><br/><strong>y = iris.target</strong><br/><br/><strong>from sklearn.model_selection import train_test_split, cross_val_score</strong><br/><br/><strong>X_train, X_test, y_train, y_test = train_test_split(X, y, stratify = y,random_state = 7)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Instantiate a nearest neighbors classifier:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.neighbors import KNeighborsClassifier</strong><br/><br/><strong>knn_clf = KNeighborsClassifier()</strong></pre>
+<ol start="2">
+<li>Prepare a parameter grid, which is necessary for a grid search. A parameter grid is a dictionary with the parameter setting you would like to try:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>param_grid = {'n_neighbors': list(range(3,9,1))}</strong></pre>
+<ol start="3">
+<li>Instantiate a grid search passing the following as arguments:
+<ul>
+<li>The estimator</li>
+<li>The parameter grid</li>
+<li>A type of cross-validation, <kbd><span>cv=10</span></kbd></li>
+</ul>
+</li>
+</ol>
+<pre style="padding-left: 120px" class="mce-root"><strong>from sklearn.model_selection import GridSearchCV</strong><br/><strong>gs = GridSearchCV(knn_clf,param_grid,cv=10)</strong></pre>
+<ol start="4">
+<li>Fit the grid search estimator:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>gs.fit(X_train, y_train)</strong></pre>
+<ol start="5">
+<li>View the results:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>gs.best_params_</strong><br/><br/><strong>{'n_neighbors': 3}</strong><br/><br/><strong>gs.cv_results_['mean_test_score']</strong><br/><br/><strong>zip(gs.cv_results_['params'],gs.cv_results_['mean_test_score'])</strong><br/><br/><strong>[({'n_neighbors': 3}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 4}, 0.9375),</strong><br/><strong> ({'n_neighbors': 5}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 6}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 7}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 8}, 0.9553571428571429)]</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the first chapter, we tried the brute force method, that is, scanning for the best score with Python:</p>
+<pre><strong>all_scores = []</strong><br/><strong>for n_neighbors in range(3,9,1):</strong><br/><strong> knn_clf = KNeighborsClassifier(n_neighbors = n_neighbors)</strong><br/><strong>      all_scores.append((n_neighbors, cross_val_score(knn_clf, X_train, y_train, cv=10).mean()))</strong><br/><strong>      sorted(all_scores, key = lambda x:x[1], reverse = True)</strong><br/><br/><strong>[(3, 0.95666666666666667),</strong><br/><strong> (5, 0.95666666666666667),</strong><br/><strong> (6, 0.95666666666666667),</strong><br/><strong> (7, 0.95666666666666667),</strong><br/><strong> (8, 0.95666666666666667),</strong><br/><strong> (4, 0.94000000000000006)]</strong></pre>
+<p>The problem with this approach is that it is more time consuming and error prone, especially if there are more parameters involved or additional transformations, such as those involved in using pipelines.</p>
+<p>Note that the grid search and brute force approaches both scan all of the possible values of the parameters.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Randomized search with scikit-learn</h1>
+                </header>
+            
+            <article>
+                
+<p>From a practical standpoint, <kbd>RandomizedSearchCV</kbd> is more important than a regular grid search. This is because with a medium amount of data, or with a model involving a few parameters, it is too computationally expensive to try every parameter combination involved in a complete grid search.</p>
+<p>Computational resources are probably better spent stratifying sampling very well, or improving randomization procedures.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>As before, load the last two features of the iris dataset. Split the data into training and testing sets:</p>
+<pre class="mce-root"><strong>from sklearn import datasets</strong><br/><br/><strong>iris = datasets.load_iris()</strong><br/><strong>X = iris.data[:,2:]</strong><br/><strong>y = iris.target</strong><br/><br/><strong>from sklearn.model_selection import train_test_split</strong><br/><br/><strong>X_train, X_test, y_train, y_test = train_test_split(X, y, stratify = y,random_state = 7)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Instantiate a nearest neighbors classifier:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.neighbors import KNeighborsClassifier</strong><br/><br/><strong>knn_clf = KNeighborsClassifier()</strong></pre>
+<ol start="2">
+<li>Prepare a parameter distribution, which is necessary for a randomized grid search. A parameter distribution is a dictionary with the parameter setting you would like to try randomly:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>param_dist = {'n_neighbors': list(range(3,9,1))}</strong></pre>
+<ol start="3">
+<li>Instantiate a randomized grid search passing the following as arguments:
+<ul>
+<li>The estimator</li>
+<li>The parameter distribution</li>
+<li>A type of cross-validation, <kbd><span>cv=10</span></kbd></li>
+<li>The number of times to run the procedure, <kbd><span>n_iter</span></kbd><em><br/></em></li>
+</ul>
+</li>
+</ol>
+<pre style="padding-left: 120px" class="mce-root"><strong>from sklearn.model_selection import RandomizedSearchCV</strong><br/><strong>rs = RandomizedSearchCV(knn_clf,param_dist,cv=10,n_iter=6)</strong></pre>
+<ol start="4">
+<li>Fit the randomized grid search estimator:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>rs.fit(X_train, y_train)</strong></pre>
+<ol start="5">
+<li>View the results:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>rs.best_params_</strong><br/><br/><strong>{'n_neighbors': 3}</strong><br/><br/><strong>zip(rs.cv_results_['params'],rs.cv_results_['mean_test_score'])</strong><br/><br/><strong>[({'n_neighbors': 3}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 4}, 0.9375),</strong><br/><strong> ({'n_neighbors': 5}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 6}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 7}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 8}, 0.9553571428571429)]</strong></pre>
+<ol start="6">
+<li>In this case, we actually ran a grid search through all six of the parameters. You could have scanned a larger parameter space, however:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>param_dist = {'n_neighbors': list(range(3,50,1))}</strong><br/><strong>rs = RandomizedSearchCV(knn_clf,param_dist,cv=10,n_iter=15)</strong><br/><strong>rs.fit(X_train,y_train)</strong><br/><br/><strong>rs.best_params_</strong><br/><br/><strong>{'n_neighbors': 16}</strong></pre>
+<ol start="7">
+<li>Try timing this procedure with IPython:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>%timeit rs.fit(X_train,y_train)</strong><br/><br/><strong>1 loop, best of 3: 1.06 s per loop</strong></pre>
+<ol start="8">
+<li class="mce-root">Time the grid search procedure:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.model_selection import GridSearchCV</strong><br/><strong>param_grid = {'n_neighbors': list(range(3,50,1))}</strong><br/><strong>gs = GridSearchCV(knn_clf,param_grid,cv=10)</strong><br/><br/><strong>%timeit gs.fit(X_train,y_train)</strong><br/><br/><strong>1 loop, best of 3: 3.24 s per loop</strong></pre>
+<ol start="9">
+<li>Look at the grid search's best parameters:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>gs.best_params_ </strong><br/><br/><strong>{'n_neighbors': 3}</strong></pre>
+<ol start="10">
+<li>It turns out that 3-nearest neighbors scores the same as 16-nearest neighbors:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>zip(gs.cv_results_['params'],gs.cv_results_['mean_test_score'])</strong><br/><br/><strong>[({'n_neighbors': 3}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 4}, 0.9375),</strong><br/><strong> ...</strong><br/><strong> ({'n_neighbors': 14}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 15}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 16}, 0.9553571428571429),</strong><br/><strong> ({'n_neighbors': 17}, 0.9464285714285714),</strong><br/><strong> ...</strong></pre>
+<p>Thus, we got the same score in one-third of the time.</p>
+<div class="packt_infobox">Whether to use randomized search or not is a decision you have to make on a case-by-case basis. You should use a randomized search to try to get a feel for an algorithm. It is possible that it performs poorly no matter what the parameters are, so then you can move on to a different algorithm. If the algorithm performs very well, you can use a complete grid search to find the best parameters.</div>
+<p>Additionally, instead of focusing on exhaustive searches, you could bag, stack, or mix a set of reasonably good algorithms.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Classification metrics</h1>
+                </header>
+            
+            <article>
+                
+<p>Earlier in the chapter, we explored choosing the best of a few nearest neighbors instances based on the number of neighbors, <kbd>n_neighbors</kbd>, parameter. This is the main parameter in nearest neighbors classification: classify a point based on the label of KNN. So, for 3-nearest neighbors, classify a point based on the label of the three nearest points. Take a majority vote of the three nearest points.</p>
+<p>The classification metric in this case was the internal metric <kbd>accuracy_score</kbd>, which is defined as the number of classifications that were correct divided by the total number of classifications. There are alternate metrics, and we will explore them here.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>To start, load the Pima diabetes dataset from the UCI repository:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>import pandas as pd</strong><br/><br/><strong>data_web_address = "https://archive.ics.uci.edu/ml/machine-learning-databases/pima-indians-diabetes/pima-indians-diabetes.data"</strong><br/><br/><strong>column_names = ['pregnancy_x',</strong><br/><strong>'plasma_con',</strong><br/><strong>'blood_pressure',</strong><br/><strong>'skin_mm',</strong><br/><strong>'insulin',</strong><br/><strong>'bmi',</strong><br/><strong>'pedigree_func',</strong><br/><strong>'age',</strong><br/><strong>'target']</strong><br/><br/><strong>feature_names = column_names[:-1]</strong><br/><strong>all_data = pd.read_csv(data_web_address , names=column_names)</strong></pre>
+<ol start="2">
+<li>Split the data into training and testing sets:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>import numpy as np</strong><br/><strong>import pandas as pd</strong><br/><br/><strong>X = all_data[feature_names]</strong><br/><strong>y = all_data['target']</strong><br/><br/><strong>from sklearn.model_selection import train_test_split</strong><br/><strong>X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=7,stratify=y)</strong></pre>
+<ol start="3">
+<li>To review the previous section, run a randomized search using the KNN algorithm:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.neighbors import KNeighborsClassifier</strong><br/><strong>from sklearn.model_selection import RandomizedSearchCV</strong><br/><br/><strong>knn_clf = KNeighborsClassifier()</strong><br/><br/><strong>param_dist = {'n_neighbors': list(range(3,20,1))}</strong><br/><br/><strong>rs = RandomizedSearchCV(knn_clf,param_dist,cv=10,n_iter=17)</strong><br/><strong>rs.fit(X_train, y_train)</strong></pre>
+<ol start="4">
+<li>Then display the best accuracy score:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>rs.best_score_</strong><br/><br/><strong>0.75407166123778502</strong></pre>
+<ol start="5">
+<li>Additionally, look at the confusion matrix on the test set:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>y_pred = rs.predict(X_test)</strong><br/><br/><strong>from sklearn.metrics import confusion_matrix</strong><br/><br/><strong>confusion_matrix(y_test, y_pred)</strong><br/><br/><strong>array([[84, 16],</strong><br/><strong>       [27, 27]])</strong></pre>
+<p>The confusion matrix gives more specific information about how the model performed. There were 27 times when the model predicted someone did not have diabetes even though they did. This is a more serious mistake than the 16 people thought to have diabetes that really did not.</p>
+<p>In this situation, we want to maximize sensitivity or recall. While examining linear models, we looked at the definition of recall, or sensitivity:</p>
+<div class="mce-root CDPAlignCenter CDPAlign"><img height="35" width="360" class="fm-editor-equation" src="assets/f1a676a1-db39-4460-b560-18ba206d5bd6.png"/></div>
+<p>Thus, the sensitivity score in this case is 27/ (27 + 27) = 0.5. With scikit-learn, we can conveniently compute this as follows.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Import from the metrics module <kbd>recall_score</kbd>. Measure the sensitivity of the set using <kbd>y_test</kbd> and <kbd>y_pred</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.metrics import recall_score</strong><br/><br/><strong>recall_score(y_test, y_pred)</strong><br/><br/><strong>0.5</strong></pre>
+<p style="padding-left: 60px">We recovered the recall score we computed by hand beforehand. In the randomized search, we could have used the <kbd>recall_score</kbd> to find the nearest neighbor instance with the highest recall.</p>
+<ol start="2">
+<li>Import <kbd>make_scorer</kbd> and use the function with two arguments, <kbd>recall_score</kbd> and <kbd>greater_is_better</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.metrics import make_scorer</strong><br/><br/><strong>recall_scorer = make_scorer(recall_score, greater_is_better=True)</strong></pre>
+<ol start="3">
+<li>Now perform a randomized grid search:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.neighbors import KNeighborsClassifier</strong><br/><strong>from sklearn.model_selection import RandomizedSearchCV</strong><br/><br/><strong>knn_clf = KNeighborsClassifier()</strong><br/><br/><strong>param_dist = {'n_neighbors': list(range(3,20,1))}</strong><br/><br/><strong>rs = RandomizedSearchCV(knn_clf,param_dist,cv=10,n_iter=17,scoring=recall_scorer)</strong><br/><br/><strong>rs.fit(X_train, y_train)</strong></pre>
+<ol start="4">
+<li>Now look at the highest score:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>rs.best_score_</strong><br/><br/><strong>0.5649632669176643</strong></pre>
+<ol start="5">
+<li>Look at the recall score:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>y_pred = rs.predict(X_test)</strong><br/><strong>recall_score(y_test,y_pred)</strong><br/><br/><strong>0.5</strong></pre>
+<ol start="6">
+<li>It is the same as before. In the randomized search you could have tried the <kbd>roc_auc_score</kbd>, the ROC area under the curve:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.metrics import roc_auc_score</strong><br/><br/><strong>rs = RandomizedSearchCV(knn_clf,param_dist,cv=10,n_iter=17,scoring=make_scorer(roc_auc_score,greater_is_better=True))</strong><br/><br/><strong>rs.fit(X_train, y_train)</strong><br/><br/><strong>rs.best_score_</strong><br/><br/><strong>0.7100264217324479</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>You could design your own scorer for classification. Suppose that you are an insurance company and that you have associated costs for each cell in the confusion matrix. The relative costs are as follows:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="227" width="439" src="assets/b8334234-cca1-421f-8d45-e157d3765ba8.png"/></div>
+<p>The cost for the confusion matrix we were looking at can be computed as follows:</p>
+<pre><strong>costs_array = confusion_matrix(y_test, y_pred) * np.array([[1,2],</strong><br/><strong>                                            [100,20]])</strong><br/><strong>costs_array</strong><br/><br/><strong>array([[  84,   32],</strong><br/><strong>       [2700,  540]])</strong></pre>
+<p>Now add up the total cost:</p>
+<pre><strong>costs_array.sum()</strong><br/><br/><strong>3356</strong></pre>
+<p>Now place it in a scorer and run the grid search. The argument within the scorer <kbd>greater_is_better</kbd> is set to <kbd>False</kbd>, because costs should be as low as possible:</p>
+<pre class="mce-root"><strong>def costs_total(y_test, y_pred):</strong><br/> <br/><strong> return (confusion_matrix(y_test, y_pred) * np.array([[1,2],</strong><br/><strong> [100,20]])).sum()</strong><br/><br/><strong>costs_scorer = make_scorer(costs_total, greater_is_better=False)</strong><br/><br/><strong>rs = RandomizedSearchCV(knn_clf,param_dist,cv=10,n_iter=17,scoring=costs_scorer)</strong><br/><br/><strong>rs.fit(X_train, y_train)</strong><br/><br/><strong>rs.best_score_</strong><br/><br/><strong>-1217.5879478827362</strong></pre>
+<p>The score is negative because when the <span><kbd>greater_is_better</kbd> </span><span>argument in the <kbd>make_scorer</kbd> function is false, the score is multiplied by <kbd>-1</kbd>. The grid search attempts to maximize this score, thereby minimizing the absolute value of the score.</span></p>
+<p>The cost on the test set is as follows:</p>
+<pre><strong> costs_total(y_test,rs.predict(X_test)) </strong><br/><br/><strong>3356</strong></pre>
+<p>While looking at this number, do not forget to look at the number of individuals involved in the test set, which is 154. The average cost per person is about $21.8.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Regression metrics</h1>
+                </header>
+            
+            <article>
+                
+<p>Cross-validation with a regression metric is straightforward with scikit-learn. Either import a score function from <kbd>sklearn.metrics</kbd> and place it within a <kbd>make_scorer</kbd> function, or you could create a custom scorer for a particular data science problem.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Load a dataset that utilizes a regression metric. We will load the Boston housing dataset and split it into training and test sets:</p>
+<pre class="mce-root"><strong>from sklearn.datasets import load_boston</strong><br/><strong>boston = load_boston()</strong><br/><br/><strong>X = boston.data</strong><br/><strong>y = boston.target</strong><br/><br/><strong>from sklearn.model_selection import train_test_split, cross_val_score</strong><br/><strong>X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=7)</strong></pre>
+<p>We do not know much about the dataset. We can try a quick grid search using a high variance algorithm:</p>
+<pre class="mce-root"><strong>from sklearn.neighbors import KNeighborsRegressor</strong><br/><strong>from sklearn.model_selection import RandomizedSearchCV</strong><br/><br/><strong>knn_reg = KNeighborsRegressor()</strong><br/><strong>param_dist = {'n_neighbors': list(range(3,20,1))}</strong><br/><strong>rs = RandomizedSearchCV(knn_reg,param_dist,cv=10,n_iter=17)</strong><br/><strong>rs.fit(X_train, y_train)</strong><br/><strong>rs.best_score_</strong><br/><br/><strong>0.46455839325055914</strong></pre>
+<p>Try a different model, this time a linear model:</p>
+<pre class="mce-root"><strong>from sklearn.linear_model import Ridge</strong><br/><strong>cross_val_score(Ridge(),X_train,y_train,cv=10).mean()</strong><br/><br/><strong>0.7439511908709866</strong></pre>
+<p>Both regressors, by default, measure <kbd>r2_score</kbd>, R-squared, so the linear model is far better. Try a different complex model, an ensemble of trees:</p>
+<pre class="mce-root"><strong>from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor</strong><br/><strong>cross_val_score(GradientBoostingRegressor(max_depth=7),X_train,y_train,cv=10).mean()</strong><br/><br/><strong>0.83082671732165492</strong></pre>
+<p>The ensemble performs even better. You can try a random forest as well:</p>
+<pre><strong>cross_val_score(RandomForestRegressor(),X_train,y_train,cv=10).mean()</strong><br/><br/><strong>0.82474734196711685</strong></pre>
+<p>Now we could focus on making gradient boosting better with the current score mechanism by maximizing the internal R-squared gradient boosting scorer. Try one or two randomized searches. This is a second one:</p>
+<pre><strong>param_dist = {'n_estimators': [4000], 'learning_rate': [0.01], 'max_depth':[1,2,3,5,7]}</strong><br/><strong>rs_inst_a = RandomizedSearchCV(GradientBoostingRegressor(), param_dist, n_iter = 5, n_jobs=-1)</strong><br/><strong>rs_inst_a.fit(X_train, y_train)</strong></pre>
+<p>Optimizing for R-squared returned the following:</p>
+<pre><strong>rs_inst_a.best_params_</strong><br/><br/><strong>{'learning_rate': 0.01, 'max_depth': 3, 'n_estimators': 4000}</strong><br/><br/><strong>rs_inst_a.best_score_</strong><br/><br/><strong>0.88548410382780185</strong></pre>
+<p>The trees in the gradient boost have a depth of three.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Now we will do the following:</p>
+<ol>
+<li>Make a scoring function.</li>
+<li>Make a scikit-scorer with that function.</li>
+<li>Run a grid search to find the best gradient boost parameters to minimize the error function.</li>
+</ol>
+<p>Let's start:</p>
+<ol>
+<li>Make the mean percentage error scoring function with the Numba <strong>just-in-time</strong> (<strong>JIT</strong>) compiler. The original NumPy function looks like this:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>def mape_score(y_test, y_pred):</strong><br/><strong>     return (np.abs(y_test - y_pred)/y_test).mean()</strong></pre>
+<ol start="2">
+<li>Let's rewrite the function using the Numba JIT compiler to make things a bit faster. You can write C-like code, indexing arrays by location using Numba:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from numba import autojit</strong><br/><br/><strong>@autojit</strong><br/><strong>def mape_score(y_test, y_pred):</strong><br/><strong>      sum_total = 0</strong><br/><strong>      y_vec_length = len(y_test)</strong><br/><strong>      for index in range(y_vec_length):</strong><br/><strong>           sum_total += (1 - (y_pred[index]/y_test[index]))</strong><br/> <br/><strong>      return sum_total/y_vec_length</strong></pre>
+<ol start="3">
+<li>Now make a scorer. The lower the score the better, unlike R-squared, in which higher is better:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.metrics import make_scorer</strong><br/><strong>mape_scorer = make_scorer(mape_score, greater_is_better=False)</strong></pre>
+<ol start="4">
+<li>Now run a grid search:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>param_dist = {'n_estimators': [4000], 'learning_rate': [0.01], 'max_depth':[1,2,3,4,5]}</strong><br/><strong>rs_inst_b = RandomizedSearchCV(GradientBoostingRegressor(), param_dist, n_iter = 3, n_jobs=-1,scoring = mape_scorer)</strong><br/><strong>rs_inst_b.fit(X_train, y_train)</strong><br/><strong>rs_inst_b.best_score_</strong><br/><br/><strong>0.021086502313661441</strong><br/><br/><strong>rs_inst_b.best_params_</strong><br/><br/><strong>{'learning_rate': 0.01, 'max_depth': 1, 'n_estimators': 4000}</strong></pre>
+<p>Using this metric, the best score corresponds to a gradient boost with trees of depth one.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Clustering metrics</h1>
+                </header>
+            
+            <article>
+                
+<p>Measuring the performance of a clustering algorithm is a little trickier than classification or regression, because clustering is unsupervised machine learning. Thankfully, scikit-learn comes equipped to help us with this as well in a very straightforward manner.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>To measure clustering performance, start by loading the iris dataset. We will relabel the iris flowers as two types: type 0 is whenever the target is 0 and type 1 is when the target is 1 or 2:</p>
+<pre class="mce-root"><strong>from sklearn.datasets import load_iris</strong><br/><strong>import numpy as np</strong><br/><br/><strong>iris = load_iris()</strong><br/><strong>X = iris.data</strong><br/><strong>y = np.where(iris.target == 0,0,1)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Instantiate a k-means algorithm and train it. Since the algorithm is a clustering one, do not use the target in the training:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.cluster import KMeans</strong><br/><br/><strong>kmeans = KMeans(n_clusters=2,random_state=0)</strong><br/><strong>kmeans.fit(X)</strong> </pre>
+<ol start="2">
+<li>Now import everything necessary to score k-means through cross-validation. We will use the <kbd>adjusted_rand_score</kbd> clustering performance metric:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.metrics.cluster import adjusted_rand_score</strong><br/><strong>from sklearn.metrics import make_scorer</strong><br/><strong>from sklearn.model_selection import cross_val_score</strong><br/><br/><strong>cross_val_score(kmeans,X,y,cv=10,scoring=make_scorer(adjusted_rand_score)).mean()</strong><br/><br/><strong>0.8733695652173914</strong></pre>
+<p>Scoring a clustering algorithm is very similar to scoring a classification algorithm.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using dummy estimators to compare results</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">This recipe is about creating fake estimators; this isn't the pretty or exciting stuff, but it is worthwhile having a reference point for the model you'll eventually build.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In this recipe, we'll perform the following tasks:</p>
+<ol>
+<li class="mce-root">Create some random data.</li>
+<li class="mce-root">Fit the various dummy estimators.</li>
+</ol>
+<p>We'll perform these two steps for regression data and classification data.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li class="mce-root">First, we'll create the random data:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.datasets import make_regression, make_classification</strong><br/><br/><strong>X, y = make_regression()</strong><br/><strong>from sklearn import dummy</strong><br/><strong>dumdum = dummy.DummyRegressor()</strong><br/><strong>dumdum.fit(X, y)</strong><br/><br/><strong>DummyRegressor(constant=None, quantile=None, strategy='mean')</strong></pre>
+<ol start="2">
+<li class="mce-root">By default, the estimator will predict by just taking the mean of the values and outputting it multiple times::</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>dumdum.predict(X)[:5]</strong><br/><br/>&gt;<strong>array([-25.0450033, -25.0450033, -25.0450033, -25.0450033, -25.0450033])</strong></pre>
+<p style="padding-left: 60px" class="mce-root">There are other two other strategies we can try. We can predict a supplied constant (refer to <kbd>constant=None</kbd> in the first command block in this recipe). We can also predict the median value. Supplying a constant will only be considered if strategy is constant.</p>
+<ol start="3">
+<li class="mce-root">Let's have a look:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>predictors = [("mean", None),</strong><br/><strong>("median", None),</strong><br/><strong>("constant", 10)]</strong><br/><strong>for strategy, constant in predictors:</strong><br/><strong>      dumdum = dummy.DummyRegressor(strategy=strategy,</strong><br/><strong>      constant=constant)</strong><br/><strong>      dumdum.fit(X, y)</strong><br/><strong>      print "strategy: {}".format(strategy), ",".join(map(str, dumdum.predict(X)[:5]))</strong><br/><br/><strong>strategy: mean -25.0450032962,-25.0450032962,-25.0450032962,-25.0450032962,-25.0450032962</strong><br/><strong>strategy: median -37.734448002,-37.734448002,-37.734448002,-37.734448002,-37.734448002</strong><br/><strong>strategy: constant 10.0,10.0,10.0,10.0,10.0</strong></pre>
+<ol start="4">
+<li class="mce-root">We actually have four options for classifiers. These strategies are similar to the continuous case, it's just slanted toward classification problems:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>predictors = [("constant", 0),("stratified", None),("uniform", None),("most_frequent", None)]</strong><br/><strong>#We'll also need to create some classification data:</strong><br/><strong>X, y = make_classification()</strong><br/><strong>for strategy, constant in predictors:</strong><br/><strong>     dumdum = dummy.DummyClassifier(strategy=strategy,</strong><br/><strong>     constant=constant)</strong><br/><strong>     dumdum.fit(X, y)</strong><br/><strong>     print "strategy: {}".format(strategy), ",".join(map(str,dumdum.predict(X)[:5]))</strong><br/><br/><strong>strategy: constant 0,0,0,0,0</strong><br/><strong>strategy: stratified 1,0,1,1,1</strong><br/><strong>strategy: uniform 1,0,1,0,1</strong><br/><strong>strategy: most_frequent 0,0,0,0,0</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">It's always good to test your models against the simplest models, and that's exactly what the dummy estimators give you. For example, imagine a fraud model. In this model, only 5% of the dataset is fraudulent. Therefore, we can probably fit a pretty good model just by never guessing that the data is fraudulent.</p>
+<p class="mce-root">We can create this model by using the stratified strategy using the following command. We can also get a good example of why class imbalance causes problems:</p>
+<pre class="mce-root"><strong>X, y = make_classification(20000, weights=[.95, .05])</strong><br/><strong>dumdum = dummy.DummyClassifier(strategy='most_frequent')</strong><br/><strong>dumdum.fit(X, y)</strong><br/><br/><strong>DummyClassifier(constant=None, random_state=None, strategy='most_frequent')</strong><br/><br/><strong>from sklearn.metrics import accuracy_score</strong><br/><strong>print accuracy_score(y, dumdum.predict(X))</strong><br/><br/><strong>0.94615</strong></pre>
+<p class="mce-root">We were actually correct very often, but that's not the point. The point is that this is our baseline. If we cannot create a model for fraud that is more accurate than this, then it isn't worth our time.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Feature selection</h1>
+                </header>
+            
+            <article>
+                
+<p>This recipe, along with the two following it, will be centered around automatic feature selection. I like to think of this as the feature analog of parameter tuning. In the same way that we cross-validate to find an appropriately general parameter, we can find an appropriately general subset of features. This will involve several different methods.<br/>
+The simplest idea is univariate selection. The other methods involve working with a combination of features.</p>
+<p>An added benefit of feature selection is that it can ease the burden on the data collection. Imagine that you have built a model on a very small subset of the data. If all goes well, you might want to scale up to predict the model on the entire subset of data. If this is the case, you can ease the engineering effort of data collection at that scale.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>With univariate feature selection, scoring functions will come to the forefront again. This time, they will define the comparable measure by which we can eliminate features.</p>
+<p>In this recipe, we'll fit a regression model with around 10,000 features, but only 1,000 points. We'll walk through the various univariate feature selection methods:</p>
+<pre class="mce-root"><strong>from sklearn import datasets</strong><br/><strong> X, y = datasets.make_regression(1000, 10000)</strong></pre>
+<p class="mce-root">Now that we have the data, we will compare the features that are included with the various methods. This is actually a very common situation when you're dealing with text analysis or some areas of bioinformatics.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>First, we need to import the <kbd>feature_selection</kbd> module:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn import feature_selection</strong><br/><strong>f, p = feature_selection.f_regression(X, y)</strong></pre>
+<ol start="2">
+<li class="mce-root">Here, <kbd>f</kbd> is the <kbd>f</kbd> score associated with each linear model fit with just one of the features. We can then compare these features and based on this comparison, we can cull features. <kbd>p</kbd> is the <kbd>p</kbd> value associated with the <kbd>f</kbd> value. In statistics, the <kbd>p</kbd> value is the probability of a value more extreme than the current value of the test statistic. Here, the <kbd>f</kbd> value is the test statistic:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>f[:5]</strong><br/><br/><strong>array([ 1.23494617, 0.70831694, 0.09219176, 0.14583189, 0.78776466])</strong><br/><br/><strong>p[:5]</strong><br/><br/><strong>array([ 0.26671492, 0.40020473, 0.76147235, 0.7026321 , 0.37499074])</strong></pre>
+<ol start="3">
+<li class="mce-root">As we can see, many of the <kbd>p</kbd> values are quite large. We want the <kbd>p</kbd> values to be quite small. So, we can grab NumPy out of our toolbox and choose all the <kbd>p</kbd> values less than <kbd>.05</kbd>. These will be the features we'll use for our analysis:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>import numpy as np</strong><br/><strong>idx = np.arange(0, X.shape[1])</strong><br/><strong>features_to_keep = idx[p &lt; .05]</strong><br/><strong>len(features_to_keep)</strong><br/><br/><strong>496</strong></pre>
+<p style="padding-left: 60px" class="mce-root">As you can see, we're actually keeping a relatively large number of features. Depending on the context of the model, we can tighten this <kbd>p</kbd> value. This will lessen the number of features kept.</p>
+<p style="padding-left: 60px" class="mce-root">Another option is using the <kbd>VarianceThreshold</kbd> object. We've learned a bit about it, but it's important to understand that our ability to fit models is largely based on the variance created by features. If there is no variance, then our features cannot describe the variation in the dependent variable. A nice feature of this, as per the documentation, is that because it does not use the outcome variable, it can be used for unsupervised cases.</p>
+<ol start="4">
+<li>We will need to set the threshold for which we eliminate features. In order to do that, we just take the median of the feature variances and supply that:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>var_threshold = feature_selection.VarianceThreshold(np.median(np.var(X, axis=1)))</strong><br/><strong>var_threshold.fit_transform(X).shape</strong><br/><br/><strong>(1000L, 4888L)</strong></pre>
+<p class="mce-root">As we can see, we have eliminated roughly half the features, more or less what we would expect.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">In general, all these methods work by fitting a basic model with a single feature. Depending on whether we have a classification problem or a regression problem, we can use the appropriate scoring function.</p>
+<p class="mce-root">Let's look at a smaller problem and visualize how feature selection will eliminate certain features. We'll use the same scoring function from the first example, but just 20 features:</p>
+<pre><strong>X, y = datasets.make_regression(10000, 20)</strong><br/><strong>f, p = feature_selection.f_regression(X, y)</strong></pre>
+<p>Now let's plot the p values of the features. We can see which features will be eliminated and which will be kept:</p>
+<pre class="mce-root"><strong>%matplotlib inline</strong><br/><strong>from matplotlib import pyplot as plt</strong><br/><strong>f, ax = plt.subplots(figsize=(7, 5))</strong><br/><strong>ax.bar(np.arange(20), p, color='k')</strong><br/><strong>ax.set_title("Feature p values")</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="247" width="330" src="assets/a8f4c0f9-e43a-4714-8c0b-05890091b2d1.png"/></div>
+<p>As we can see, many of the features won't be kept, but several will be.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Feature selection on L1 norms</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">We're going to work with some ideas that are similar to those we saw in the recipe on LASSO regression. In that recipe, we looked at the number of features that had zero coefficients. Now we're going to take this a step further and use the sparseness associated with L1 norms to pre-process the features.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">We'll use the diabetes dataset to fit a regression. First, we'll fit a basic linear regression model with a ShuffleSplit cross-validation. After we do that, we'll use LASSO regression to find the coefficients that are zero when using an L1 penalty. This hopefully will help us to avoid overfitting (when the model is too specific to the data it was trained on). To put this another way, the model, if it overfits, does not generalize well to outside data.</p>
+<p class="mce-root">We're going to perform the following steps:</p>
+<ol>
+<li class="mce-root">Load the dataset.</li>
+<li class="mce-root">Fit a basic linear regression model.</li>
+<li class="mce-root">Use feature selection to remove uninformative features.</li>
+<li class="mce-root">Refit the linear regression and check to see how well it fits compared with the fully featured model.</li>
+</ol>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li class="mce-root">First, let's get the dataset:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>import sklearn.datasets as ds</strong><br/><strong>diabetes = ds.load_diabetes()</strong><br/><br/><strong>X = diabetes.data</strong><br/><strong>y = diabetes.target</strong></pre>
+<ol start="2">
+<li>Let's create the <kbd>LinearRegression</kbd> object:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.linear_model import LinearRegression</strong><br/><strong>lr = LinearRegression()</strong></pre>
+<ol start="3">
+<li class="mce-root">Let's also import from the metrics module the <kbd>mean_squared_error</kbd> function and <kbd>make_scorer</kbd> wrapper. From the <kbd>model_selection</kbd> module, import the <kbd>ShuffleSplit</kbd> cross-validation scheme and the <kbd>cross_val_score</kbd> cross-validation scorer. Go ahead and score the function with the <kbd>mean_squared_error</kbd> metric:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.metrics import make_scorer, mean_squared_error</strong><br/><strong>from sklearn.model_selection import cross_val_score,ShuffleSplit</strong><br/><br/><strong>shuff = ShuffleSplit(n_splits=10, test_size=0.25, random_state=0)</strong><br/><strong>score_before = cross_val_score(lr,X,y,cv=shuff,scoring=make_scorer(mean_squared_error,greater_is_better=False)).mean()</strong><br/><br/><strong>score_before</strong><br/><br/><strong>-3053.393446308266</strong></pre>
+<ol start="4">
+<li>So now that we have the regular fit, let's check it after eliminating any features with a zero for the coefficient. Let's fit the LASSO regression:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>from sklearn.linear_model import LassoCV</strong><br/><br/><strong>lasso_cv = LassoCV()</strong><br/><strong>lasso_cv.fit(X,y)</strong><br/><strong>lasso_cv.coef_</strong><br/><br/><strong>array([ -0. , -226.2375274 , 526.85738059, 314.44026013,</strong><br/><strong> -196.92164002, 1.48742026, -151.78054083, 106.52846989,</strong><br/><strong> 530.58541123, 64.50588257])</strong></pre>
+<ol start="5">
+<li>We'll remove the first feature. I'll use a NumPy array to represent the columns that are to be included in the model:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>import numpy as np</strong><br/><strong>columns = np.arange(X.shape[1])[lasso_cv.coef_ != 0]</strong><br/><strong>columns</strong></pre>
+<ol start="6">
+<li class="mce-root">Okay, so now we'll fit the model with the specific features (see the columns in the following code block):</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>score_afterwards = cross_val_score(lr,X[:,columns],y,cv=shuff, scoring=make_scorer(mean_squared_error,greater_is_better=False)).mean()</strong><br/><strong>score_afterwards</strong><br/><br/><strong>-3033.5012859289677</strong></pre>
+<p>The score afterwards is not much better than the score before, even though we eliminated an uninformative feature. We will see an additional example in the <em>There's more...</em> section.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>First, we're going to create a regression dataset with many uninformative features:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>X, y = ds.make_regression(noise=5)</strong></pre>
+<ol start="2">
+<li>Create a <kbd>ShuffleSplit</kbd> instance with 10 iterations, <kbd>n_splits=10</kbd>. Measure the cross-validation score of plain linear regression:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>shuff = ShuffleSplit(n_splits=10, test_size=0.25, random_state=0)</strong><br/><br/><strong>score_before = cross_val_score(lr,X,y,cv=shuff, scoring=make_scorer(mean_squared_error,greater_is_better=False)).mean()</strong></pre>
+<ol start="3">
+<li>Instantiate <kbd>LassoCV</kbd> to eliminate uninformative columns:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>lasso_cv = LassoCV()</strong><br/><strong>lasso_cv.fit(X,y)</strong></pre>
+<ol start="4">
+<li class="mce-root">Eliminate uninformative columns. Look at the final scores:</li>
+</ol>
+<pre style="padding-left: 60px" class="mce-root"><strong>columns = np.arange(X.shape[1])[lasso_cv.coef_ != 0]</strong><br/><strong>score_afterwards = cross_val_score(lr,X[:,columns],y,cv=shuff, scoring=make_scorer(mean_squared_error,greater_is_better=False)).mean()</strong><br/><strong>print "Score before:",score_before</strong><br/><strong>print "Score after: ",score_afterwards</strong><br/><br/><strong>Score before: -8891.35368845</strong><br/><strong>Score after: -22.3488585347</strong></pre>
+<p>The fit is a lot better at the end after we removed uninformative features.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Persisting models with joblib or pickle</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we're going to show how you can keep your model around for later use. For example, you might want to actually use a model to predict an outcome and automatically make a decision.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Create a dataset and train a classifier:</p>
+<pre class="mce-root"><strong>from sklearn.datasets import make_classification</strong><br/><strong>from sklearn.tree import DecisionTreeClassifier</strong><br/><br/><strong>X, y = make_classification()</strong><br/><strong>dt = DecisionTreeClassifier()</strong><br/><strong>dt.fit(X, y)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Save the training work the classifier has done with joblib:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.externals import joblib</strong><br/><strong>joblib.dump(dt, "dtree.clf")</strong><br/><br/><strong>['dtree.clf']</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Opening the saved model</h1>
+                </header>
+            
+            <article>
+                
+<ol start="2">
+<li>Load the model with joblib. Make a prediction with a set of inputs:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.externals import joblib</strong><br/><strong>pulled_model = joblib.load("dtree.clf")</strong><br/><strong>y_pred = pulled_model.predict(X)</strong></pre>
+<p>We did not have to train the model again, and have saved a lot of training time. We simply reloaded it with joblib and made a prediction.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>You can also use the <kbd>cPickle</kbd> module in Python 2.x or the <kbd>pickle</kbd> module in Python 3.x. Personally, I use this module for several types of Python classes and objects:</p>
+<ol>
+<li>Begin by importing <kbd>pickle</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import cPickle as pickle #Python 2.x</strong><br/><strong># import pickle          # Python 3.x</strong></pre>
+<ol start="2">
+<li>Use the <kbd>dump()</kbd> module method. It has three arguments: the data being saved, the file it is being saved to, and the pickle protocol. The following saves the trained tree to the <kbd>dtree.save</kbd> file:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>f = open("dtree.save", 'wb')</strong><br/><strong>pickle.dump(dt,f, protocol = pickle.HIGHEST_PROTOCOL)</strong><br/><strong>f.close()</strong></pre>
+<ol start="3">
+<li>Open <kbd>dtree.save</kbd> as follows:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>f = open("dtree.save", 'rb')</strong><br/><strong>return_tree = pickle.load(f)</strong><br/><strong>f.close()</strong></pre>
+<ol start="4">
+<li>View the tree:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>return_tree</strong><br/><br/><strong>DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=None,
+            max_features=None, max_leaf_nodes=None,
+            min_impurity_split=1e-07, min_samples_leaf=1,
+            min_samples_split=2, min_weight_fraction_leaf=0.0,
+            presort=False, random_state=None, splitter='best'</strong></pre>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

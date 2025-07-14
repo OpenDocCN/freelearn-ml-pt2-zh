@@ -1,0 +1,809 @@
+<html><head></head><body>
+  <div class="Basic-Text-Frame" id="_idContainer184">
+    <h1 class="chapterNumber">4</h1>
+    <h1 class="chapterTitle" id="_idParaDest-95">Predicting Online Ad Click-Through with Logistic Regression</h1>
+    <p class="normal">In the previous chapter, we predicted ad click-through using tree algorithms. In this chapter, we will continue our journey of tackling the billion-dollar problem. We will focus on learning a very (probably the most) scalable classification model – logistic regression. We will explore what the logistic function is, how to train a logistic regression model, adding regularization to the model, and variants of logistic regression that are applicable to very large datasets. Besides its application in classification, we will also discuss how logistic regression and random forest models are used to pick significant features. You won’t get bored as there will be lots of implementations from scratch with scikit-learn and TensorFlow.</p>
+    <p class="normal">In this chapter, we will cover the following topics:</p>
+    <ul>
+      <li class="bulletList">Converting categorical features to numerical – one-hot encoding and original encoding</li>
+      <li class="bulletList">Classifying data with logistic regression</li>
+      <li class="bulletList">Training a logistic regression model</li>
+      <li class="bulletList">Training on large datasets with online learning</li>
+      <li class="bulletList">Handling multiclass classification</li>
+      <li class="bulletList">Implementing logistic regression using TensorFlow</li>
+    </ul>
+    <h1 class="heading-1" id="_idParaDest-96">Converting categorical features to numerical – one-hot encoding and ordinal encoding</h1>
+    <p class="normal">In <em class="chapterRef">Chapter 3</em>, <em class="italic">Predicting Online Ad Click-Through with Tree-Based Algorithms</em>, I mentioned how <strong class="keyWord">one-hot encoding</strong> transforms categorical features to numerical features in order to use them in the tree<a id="_idIndexMarker365"/> algorithms in scikit-learn and TensorFlow. If we transform categorical features into numerical ones <a id="_idIndexMarker366"/>using one-hot encoding, we don’t limit our choice of algorithms to the tree-based ones that can work with categorical features.</p>
+    <p class="normal">The simplest solution we can think of in terms of transforming a categorical feature with <em class="italic">k</em> possible values is to map it to a numerical feature with values from 1 to <em class="italic">k</em>. For example, <code class="inlineCode">[Tech, Fashion, Fashion, Sports, Tech, Tech, Sports]</code> becomes <code class="inlineCode">[1, 2, 2, 3, 1, 1, 3]</code>. However, this will impose an ordinal characteristic, such as <code class="inlineCode">Sports</code> being greater than <code class="inlineCode">Tech</code>, and a distance property, such as <code class="inlineCode">Sports</code> being closer to <code class="inlineCode">Fashion</code><strong class="keyWord"> </strong>than to <code class="inlineCode">Tech</code>.</p>
+    <p class="normal">Instead, one-hot encoding converts the categorical feature to <em class="italic">k</em> binary features. Each binary feature indicates the presence or absence of a corresponding possible value. Hence, the preceding example becomes the following:</p>
+    <figure class="mediaobject"><img alt="A picture containing text, screenshot, number, display  Description automatically generated" src="../Images/B21047_04_01.png"/></figure>
+    <p class="packt_figref">Figure 4.1: Transforming user interest into numerical features with one-hot encoding</p>
+    <p class="normal">Previously, we used <code class="inlineCode">OneHotEncoder</code> from scikit-learn to convert a matrix of strings into a binary matrix, but here, let’s take a look at another module, <code class="inlineCode">DictVectorizer</code>, which also provides an efficient conversion. It transforms dictionary objects (categorical feature: value) into one-hot encoded vectors.</p>
+    <p class="normal">For example, take a look at the following code, which performs one-hot encoding on a list of dictionaries containing<a id="_idIndexMarker367"/> categorical features:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.feature_extraction </span><span class="hljs-con-keyword">import</span><span class="language-python"> DictVectorizer</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_dict = [{</span><span class="hljs-con-string">'interest'</span><span class="language-python">: </span><span class="hljs-con-string">'tech'</span><span class="language-python">, </span><span class="hljs-con-string">'occupation'</span><span class="language-python">: </span><span class="hljs-con-string">'professional'</span><span class="language-python">},</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          {</span><span class="hljs-con-string">'interest'</span><span class="language-python">: </span><span class="hljs-con-string">'fashion'</span><span class="language-python">, </span><span class="hljs-con-string">'occupation'</span><span class="language-python">: </span><span class="hljs-con-string">'</span><span class="hljs-con-string">student'</span><span class="language-python">},</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          {</span><span class="hljs-con-string">'interest'</span><span class="language-python">: </span><span class="hljs-con-string">'fashion'</span><span class="language-python">,</span><span class="hljs-con-string">'occupation'</span><span class="language-python">:</span><span class="hljs-con-string">'professional'</span><span class="language-python">},</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          {</span><span class="hljs-con-string">'interest'</span><span class="language-python">: </span><span class="hljs-con-string">'</span><span class="hljs-con-string">sports'</span><span class="language-python">, </span><span class="hljs-con-string">'occupation'</span><span class="language-python">: </span><span class="hljs-con-string">'student'</span><span class="language-python">},</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          {</span><span class="hljs-con-string">'interest'</span><span class="language-python">: </span><span class="hljs-con-string">'tech'</span><span class="language-python">, </span><span class="hljs-con-string">'occupation'</span><span class="language-python">: </span><span class="hljs-con-string">'student'</span><span class="language-python">},</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          {</span><span class="hljs-con-string">'interest'</span><span class="language-python">: </span><span class="hljs-con-string">'tech'</span><span class="language-python">, </span><span class="hljs-con-string">'occupation'</span><span class="language-python">: </span><span class="hljs-con-string">'retired'</span><span class="language-python">},</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">          {</span><span class="hljs-con-string">'interest'</span><span class="language-python">: </span><span class="hljs-con-string">'sports'</span><span class="language-python">,</span><span class="hljs-con-string">'occupation'</span><span class="language-python">: </span><span class="hljs-con-string">'</span><span class="hljs-con-string">professional'</span><span class="language-python">}]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">dict_one_hot_encoder = DictVectorizer(sparse=</span><span class="hljs-con-literal">False</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_encoded = dict_one_hot_encoder.fit_transform(X_dict)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(X_encoded)</span>
+[[ 0.  0. 1. 1.  0. 0.]
+ [ 1.  0. 0. 0.  0. 1.]
+ [ 1.  0. 0. 1.  0. 0.]
+ [ 0.  1. 0. 0.  0. 1.]
+ [ 0.  0. 1. 0.  0. 1.]
+ [ 0.  0. 1. 0.  1. 0.]
+ [ 0.  1. 0. 1.  0. 0.]]
+</code></pre>
+    <p class="normal">We can also see the mapping by executing the following:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(dict_one_hot_encoder.vocabulary_)</span>
+{'interest=fashion': 0, 'interest=sports': 1,
+'occupation=professional': 3, 'interest=tech': 2,
+'occupation=retired': 4, 'occupation=student': 5}
+</code></pre>
+    <p class="normal">When it comes to new<a id="_idIndexMarker368"/> data, we can transform it with the following:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">new_dict = [{</span><span class="hljs-con-string">'interest'</span><span class="language-python">: </span><span class="hljs-con-string">'sports'</span><span class="language-python">, </span><span class="hljs-con-string">'occupation'</span><span class="language-python">: </span><span class="hljs-con-string">'retired'</span><span class="language-python">}]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">new_encoded = dict_one_hot_encoder.transform(new_dict)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(new_encoded)</span>
+[[ 0. 1. 0. 0. 1. 0.]]
+</code></pre>
+    <p class="normal">We can inversely transform the encoded features back to the original features like this:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(dict_one_hot_encoder.inverse_transform(new_encoded))</span>
+[{'interest=sports': 1.0, 'occupation=retired': 1.0}]
+</code></pre>
+    <p class="normal">One important thing to note is that if a new (not seen in training data) category is encountered in new data, it<a id="_idIndexMarker369"/> should be ignored (otherwise, the encoder will complain about the unseen categorical value). <code class="inlineCode">DictVectorizer</code> handles this implicitly (while <code class="inlineCode">OneHotEncoder</code> needs <a id="_idIndexMarker370"/>to specify the <code class="inlineCode">ignore</code> parameter):</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">new_dict = [{</span><span class="hljs-con-string">'interest'</span><span class="language-python">: </span><span class="hljs-con-string">'unknown_interest'</span><span class="language-python">,</span>
+               <span class="hljs-con-string">'occupation'</span>: <span class="hljs-con-string">'retired'</span>},
+<span class="hljs-con-meta">...</span> <span class="language-python">            {</span><span class="hljs-con-string">'interest'</span><span class="language-python">: </span><span class="hljs-con-string">'tech'</span><span class="language-python">, </span><span class="hljs-con-string">'occupation'</span><span class="language-python">:</span>
+               <span class="hljs-con-string">'unseen_occupation'</span>}]
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">new_encoded = dict_one_hot_encoder.transform(new_dict)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(new_encoded)</span>
+[[ 0.  0. 0. 0.  1. 0.]
+ [ 0.  0. 1. 0.  0. 0.]]
+</code></pre>
+    <p class="normal">Sometimes, we prefer transforming a categorical feature with <em class="italic">k</em> possible values into a numerical feature with values<a id="_idIndexMarker371"/> ranging from <em class="italic">1</em> to <em class="italic">k</em>. This is <strong class="keyWord">ordinal encoding</strong> and we conduct it in order to employ ordinal or ranking knowledge <a id="_idIndexMarker372"/>in our learning; for example, large, medium, and small become 3, 2, and 1, respectively; good and bad become 1 and 0, while one-hot encoding fails to preserve such useful information. We can realize ordinal encoding easily through the use of <code class="inlineCode">pandas</code>, for example:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> pandas </span><span class="hljs-con-keyword">as</span><span class="language-python"> pd</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">df = pd.DataFrame({</span><span class="hljs-con-string">'score'</span><span class="language-python">: [</span><span class="hljs-con-string">'low'</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                             </span><span class="hljs-con-string">'high'</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                             </span><span class="hljs-con-string">'medium'</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                             </span><span class="hljs-con-string">'medium'</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                             </span><span class="hljs-con-string">'low'</span><span class="language-python">]})</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(df)</span>
+    score
+0     low
+1    high
+2  medium
+3  medium
+4     low
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">mapping = {</span><span class="hljs-con-string">'low'</span><span class="language-python">:</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-string">'medium'</span><span class="language-python">:</span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-string">'high'</span><span class="language-python">:</span><span class="hljs-con-number">3</span><span class="language-python">}</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">df[</span><span class="hljs-con-string">'</span><span class="hljs-con-string">score'</span><span class="language-python">] = df[</span><span class="hljs-con-string">'score'</span><span class="language-python">].replace(mapping)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(df)</span>
+   score
+0      1
+1      3
+2      2
+3      2
+4      1
+</code></pre>
+    <p class="normal">We convert the string feature into ordinal values based on the mapping we define.</p>
+    <div class="note">
+      <p class="normal"><strong class="keyWord">Best practice</strong></p>
+      <p class="normal">Handling high dimensionality resulting from one-hot encoding can be challenging. It may increase computational complexity or lead to overfitting. Here are some strategies to handle high dimensionality when using one-hot encoding:</p>
+      <ul>
+        <li class="bulletList"><strong class="keyWord">Feature selection</strong>: This can <a id="_idIndexMarker373"/>reduce the number of one-hot encoded features while retaining the most informative ones. </li>
+        <li class="bulletList"><strong class="keyWord">Dimensionality reduction</strong>: It<a id="_idIndexMarker374"/> transforms the high-dimensional feature space into a lower-dimensional representation. </li>
+        <li class="bulletList"><strong class="keyWord">Feature aggregation</strong>: Instead of <a id="_idIndexMarker375"/>one-hot encoding every category individually, consider aggregating categories that share similar characteristics. For example, group rare categories into an “Other” category.</li>
+      </ul>
+    </div>
+    <p class="normal">We’ve covered transforming <a id="_idIndexMarker376"/>categorical features into numerical ones. Next, we will talk about logistic regression, a classifier that only takes in numerical features.</p>
+    <h1 class="heading-1" id="_idParaDest-97">Classifying data with logistic regression</h1>
+    <p class="normal">In the last chapter, we<a id="_idIndexMarker377"/> trained tree-based models only based on the first 300,000 samples out of 40 million. We did so simply because training a tree on a large dataset is extremely computationally expensive and time consuming. Since we are not limited to algorithms directly taking in categorical features thanks to one-hot encoding, we should turn to a new algorithm with high scalability for large datasets. As mentioned, logistic regression is one of the most, or perhaps the most, scalable classification algorithms.</p>
+    <h2 class="heading-2" id="_idParaDest-98">Getting started with the logistic function</h2>
+    <p class="normal">Let’s start with an<a id="_idIndexMarker378"/> introduction to the <strong class="keyWord">logistic function</strong> (which is more commonly referred <a id="_idIndexMarker379"/>to as the <strong class="keyWord">sigmoid function</strong>) as the algorithm’s core before we dive into the algorithm itself. It basically maps an input to an output of a value between <em class="italic">0</em> and <em class="italic">1</em>, and is defined as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_001.png"/></p>
+    <p class="normal">We define the logistic function as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> numpy </span><span class="hljs-con-keyword">as</span><span class="language-python"> np</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> matplotlib.pyplot </span><span class="hljs-con-keyword">as</span><span class="language-python"> plt</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">sigmoid</span><span class="language-python">(</span><span class="hljs-con-built_in">input</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> </span><span class="hljs-con-number">1.0</span><span class="language-python"> / (</span><span class="hljs-con-number">1</span><span class="language-python"> + np.exp(-</span><span class="hljs-con-built_in">input</span><span class="language-python">))</span>
+</code></pre>
+    <p class="normal">Next, we visualize what it looks like with input variables from -<code class="inlineCode">8</code> to <code class="inlineCode">8</code>, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">z = np.linspace(-</span><span class="hljs-con-number">8</span><span class="language-python">, </span><span class="hljs-con-number">8</span><span class="language-python">, </span><span class="hljs-con-number">1000</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y = sigmoid(z)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.plot(z, y)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.axhline(y=</span><span class="hljs-con-number">0</span><span class="language-python">, ls=</span><span class="hljs-con-string">'</span><span class="hljs-con-string">dotted'</span><span class="language-python">, color=</span><span class="hljs-con-string">'k'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.axhline(y=</span><span class="hljs-con-number">0.5</span><span class="language-python">, ls=</span><span class="hljs-con-string">'dotted'</span><span class="language-python">, color=</span><span class="hljs-con-string">'k'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.axhline(y=</span><span class="hljs-con-number">1</span><span class="language-python">, ls=</span><span class="hljs-con-string">'</span><span class="hljs-con-string">dotted'</span><span class="language-python">, color=</span><span class="hljs-con-string">'k'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.yticks([</span><span class="hljs-con-number">0.0</span><span class="language-python">, </span><span class="hljs-con-number">0.25</span><span class="language-python">, </span><span class="hljs-con-number">0.5</span><span class="language-python">, </span><span class="hljs-con-number">0.75</span><span class="language-python">, </span><span class="hljs-con-number">1.0</span><span class="language-python">])</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.xlabel(</span><span class="hljs-con-string">'z'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylabel(</span><span class="hljs-con-string">'y(z)'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.show()</span>
+</code></pre>
+    <p class="normal">Refer to the following screenshot for the result:</p>
+    <figure class="mediaobject"><img alt="A picture containing text, line, screenshot, plot  Description automatically generated" src="../Images/B21047_04_02.png"/></figure>
+    <p class="packt_figref">Figure 4.2: The logistic function</p>
+    <p class="normal">In the S-shaped curve, all inputs are transformed into the range from 0 to 1. For positive inputs, a greater <a id="_idIndexMarker380"/>value results in an output closer to 1; for negative inputs, a smaller value generates an output closer to 0; when the input is 0, the output is the midpoint, 0.5.</p>
+    <h2 class="heading-2" id="_idParaDest-99">Jumping from the logistic function to logistic regression</h2>
+    <p class="normal">Now that you have some knowledge of the logistic function, it is easy to map it to the algorithm that stems from it. In<a id="_idIndexMarker381"/> logistic regression, the function<a id="_idIndexMarker382"/> input <em class="italic">z</em> becomes the weighted sum of features. Given a data sample <em class="italic">x</em> with <em class="italic">n</em> features, <em class="italic">x</em><sub class="subscript-italic" style="font-style: italic;">1</sub><em class="italic">, x</em><sub class="subscript-italic" style="font-style: italic;">2</sub><em class="italic">, …, x</em><sub class="subscript-italic" style="font-style: italic;">n</sub> (<em class="italic">x</em> represents a feature <a id="_idIndexMarker383"/>vector and <em class="italic">x</em> = (<em class="italic">x</em><sub class="subscript-italic" style="font-style: italic;">1</sub><em class="italic">, x</em><sub class="subscript-italic" style="font-style: italic;">2</sub><em class="italic">, …, x</em><sub class="subscript-italic" style="font-style: italic;">n</sub><em class="italic">)</em>), and <strong class="keyWord">weights </strong>(also <a id="_idIndexMarker384"/>called <strong class="keyWord">coefficients</strong>) of the model <em class="italic">w </em>(<em class="italic">w</em> represents a vector (<em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">1</sub><em class="italic">, w</em><sub class="subscript-italic" style="font-style: italic;">2</sub><em class="italic">, …, w</em><sub class="subscript-italic" style="font-style: italic;">n</sub>)), <em class="italic">z</em> is expressed as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_002.png"/></p>
+    <p class="normal">Here, <em class="italic">T</em> is the transpose operator.</p>
+    <p class="normal">Occasionally, the <a id="_idIndexMarker385"/>model comes with an <strong class="keyWord">intercept</strong> (also called <strong class="keyWord">bias</strong>), <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">0</sub>, which accounts for the inherent bias or <a id="_idIndexMarker386"/>baseline <a id="_idIndexMarker387"/>probability. In this instance, the preceding linear relationship becomes:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_003.png"/></p>
+    <p class="normal">As for the output <em class="italic">y</em>(<em class="italic">z</em>)<em class="italic"> </em>in the range of 0 to 1, in the algorithm, it becomes the probability of the target being <em class="italic">1</em> or the positive class:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_004.png"/></p>
+    <p class="normal">Hence, logistic regression is a probabilistic classifier, similar to the Naïve Bayes classifier.</p>
+    <p class="normal">A logistic regression model, or, more specifically, its weight vector <em class="italic">w</em>, is learned from the training data, with the goal of predicting a positive sample as close to <em class="italic">1</em> as possible and predicting a negative<a id="_idIndexMarker388"/> sample as close to 0 as possible. In mathematical <a id="_idIndexMarker389"/>language, the weights are trained to minimize the cost defined as the <strong class="keyWord">Mean Squared Error</strong> (<strong class="keyWord">MSE</strong>), which measures the average of squares of the difference between the truth and the prediction. Given <em class="italic">m</em> training samples:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_005.png"/></p>
+    <p class="normal">Here, <em class="italic">y</em><sup class="superscript-italic" style="font-style: italic;">(i)</sup> is either <code class="inlineCode">1</code> (positive class) or <code class="inlineCode">0</code> (negative class), and the cost function <em class="italic">J</em>(<em class="italic">w</em>) regarding the weights to be optimized is expressed as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_006.png"/></p>
+    <p class="normal">However, the preceding cost <a id="_idIndexMarker390"/>function is <strong class="keyWord">non-convex</strong>, which means that, when searching for the optimal <em class="italic">w</em>, many local (suboptimal) optimums are found and the function does not converge to a<a id="_idIndexMarker391"/> global optimum.</p>
+    <p class="normal">Examples of the <strong class="keyWord">convex</strong> and <strong class="keyWord">non-convex</strong> functions are <a id="_idIndexMarker392"/>plotted respectively in the following figure:</p>
+    <figure class="mediaobject"><img alt="A picture containing line, text, diagram, plot  Description automatically generated" src="../Images/B21047_04_03.png"/></figure>
+    <p class="packt_figref">Figure 4.3: Examples of convex and non-convex functions</p>
+    <p class="normal">In the convex example, there is only one global optimum, while there are two optimums in the non-convex<a id="_idIndexMarker393"/> example.</p>
+    <div class="note">
+      <p class="normal">For more about convex and <a id="_idIndexMarker394"/>non-convex functions, check out <a href="https://web.stanford.edu/class/ee364a/lectures/functions.pdf"><span class="url">https://web.stanford.edu/class/ee364a/lectures/functions.pdf</span></a>.</p>
+    </div>
+    <p class="normal">To overcome this, in practice, we use the cost function that results in a convex optimization problem, which is defined as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_007.png"/></p>
+    <p class="normal">We can take a closer look at the cost of a single training sample:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_008.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_009.png"/></p>
+    <p class="normal">When the ground truth <em class="italic">y</em><sup class="superscript-italic" style="font-style: italic;">(i)</sup><em class="italic"> = 1</em>, if the model predicts correctly with full confidence (the positive class with 100% probability), the <a id="_idIndexMarker395"/>sample cost <em class="italic">j</em> is <em class="italic">0</em>; the cost <em class="italic">j</em> increases when the predicted<a id="_idIndexMarker396"/> probability <img alt="" role="presentation" src="../Images/B21047_04_010.png"/> decreases. If the model incorrectly predicts that there is no chance of the positive class, the cost is infinitely high. We can visualize it as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_hat = np.linspace(</span><span class="hljs-con-number">0.001</span><span class="language-python">, </span><span class="hljs-con-number">0.999</span><span class="language-python">, </span><span class="hljs-con-number">1000</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">cost = -np.log(y_hat)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.plot(y_hat, cost)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.xlabel(</span><span class="hljs-con-string">'Prediction'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylabel(</span><span class="hljs-con-string">'Cost'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.xlim(</span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylim(</span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">7</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.show()</span>
+</code></pre>
+    <p class="normal">Refer to the following graph for the end result:</p>
+    <figure class="mediaobject"><img alt="A picture containing screenshot, display, line, plot  Description automatically generated" src="../Images/B21047_04_04.png"/></figure>
+    <p class="packt_figref">Figure 4.4: Cost function of logistic regression when y=1</p>
+    <p class="normal">On the contrary, when the ground truth <em class="italic">y</em><sup class="superscript-italic" style="font-style: italic;">(i)</sup><em class="italic"> = 0</em>, if the model predicts correctly with full confidence (the positive<a id="_idIndexMarker397"/> class with <em class="italic">0</em> probability, or the negative class with 100% probability), the <a id="_idIndexMarker398"/>sample cost <em class="italic">j</em> is <em class="italic">0</em>; the cost j increases when the predicted probability <img alt="" role="presentation" src="../Images/B21047_04_010.png"/> increases. When it incorrectly predicts that there is no chance of the negative class, the cost becomes infinitely high. We can visualize it using the following code:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_hat = np.linspace(</span><span class="hljs-con-number">0.001</span><span class="language-python">, </span><span class="hljs-con-number">0.999</span><span class="language-python">, </span><span class="hljs-con-number">1000</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">cost = -np.log(</span><span class="hljs-con-number">1</span><span class="language-python"> - y_hat)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.plot(y_hat, cost)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.xlabel(</span><span class="hljs-con-string">'Prediction'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylabel(</span><span class="hljs-con-string">'</span><span class="hljs-con-string">Cost'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.xlim(</span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.ylim(</span><span class="hljs-con-number">0</span><span class="language-python">, </span><span class="hljs-con-number">7</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.show()</span>
+</code></pre>
+    <p class="normal">The following graph is the <a id="_idIndexMarker399"/>resultant output:</p>
+    <figure class="mediaobject"><img alt="A picture containing screenshot, line, rectangle, plot  Description automatically generated" src="../Images/B21047_04_05.png"/></figure>
+    <p class="packt_figref">Figure 4.5: Cost function of logistic regression when y=0</p>
+    <p class="normal">Minimizing this <a id="_idIndexMarker400"/>alternative cost function is actually equivalent to minimizing the MSE-based cost function. The advantages of choosing it over the MSE version include the following:</p>
+    <ul>
+      <li class="bulletList">It is convex, so the optimal model weights can be found</li>
+      <li class="bulletList">A summation of the logarithms of prediction, which are as follows, simplifies the calculation of its derivative with respect to the weights, which we will talk about later:</li>
+    </ul>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_012.png"/></p>
+    <p class="normal-one">Or:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_013.png"/></p>
+    <ul>
+      <li class="bulletList">Due to the logarithmic <a id="_idIndexMarker401"/>function, the cost function, which is<a id="_idIndexMarker402"/> as follows, is also called <strong class="keyWord">logarithmic loss</strong>, or simply <strong class="keyWord">log loss</strong>:</li>
+    </ul>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_014.png"/></p>
+    <p class="normal">Now that <a id="_idIndexMarker403"/> the cost function is ready, how can we train the logistic regression model to minimize the cost function? Let’s see this in the next section.</p>
+    <h1 class="heading-1" id="_idParaDest-100">Training a logistic regression model</h1>
+    <p class="normal">Now, the question is as <a id="_idIndexMarker404"/>follows: how can we obtain the optimal <em class="italic">w</em> such that <em class="italic">J</em>(<em class="italic">w</em>) is minimized? We can do so using gradient descent.</p>
+    <h2 class="heading-2" id="_idParaDest-101">Training a logistic regression model using gradient descent</h2>
+    <p class="normal"><strong class="keyWord">Gradient descent</strong> (also called <strong class="keyWord">steepest descent</strong>) is a procedure for minimizing a loss function by first-order iterative <a id="_idIndexMarker405"/>optimization. In each iteration, the model parameters move a small step that is proportional to the negative derivative of<a id="_idIndexMarker406"/> the objective function at the current point. This means the to-be-optimal point iteratively moves downhill toward the minimal value of the objective function. The proportion<a id="_idIndexMarker407"/> we just mentioned is called the <strong class="keyWord">learning rate</strong>, or <strong class="keyWord">step size</strong>. It can be<a id="_idIndexMarker408"/> summarized in a mathematical equation as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_015.png"/></p>
+    <p class="normal">Here, the left <em class="italic">w</em> is the weight vector after a learning step, and the right <em class="italic">w</em> is the one before moving, <img alt="" role="presentation" src="../Images/B21047_04_016.png"/> is the learning rate, and <img alt="" role="presentation" src="../Images/B21047_04_017.png"/> is the first-order derivative, the gradient.</p>
+    <p class="normal">To train a logistic regression <a id="_idIndexMarker409"/>model using gradient descent, let’s start with the derivative of the cost function <em class="italic">J</em>(<em class="italic">w</em>) with respect to <em class="italic">w</em>. It might require some knowledge of calculus but don’t worry, we will walk through it step<a id="_idIndexMarker410"/> by step:</p>
+    <ol>
+      <li class="numberedList" value="1">We first calculate the derivative of <img alt="" role="presentation" src="../Images/B21047_04_018.png"/> with respect to <em class="italic">w</em>. We herein take the <em class="italic">j-th</em> weight, <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">j</sub>, as an example (note <em class="italic">z=w</em><sup class="superscript-italic" style="font-style: italic;">T</sup><em class="italic">x</em>, and we omit the <sup class="superscript-italic" style="font-style: italic;">(i)</sup> for simplicity):</li>
+    </ol>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_019.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_020.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_021.png"/></p>
+    <ol>
+      <li class="numberedList" value="2">Then, we calculate the derivative of the sample cost <em class="italic">J</em>(<em class="italic">w</em>) as follows:</li>
+    </ol>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_022.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_023.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_024.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_025.png"/></p>
+    <ol>
+      <li class="numberedList" value="3">Finally, we <a id="_idIndexMarker411"/>calculate the entire cost over <em class="italic">m</em> samples as<a id="_idIndexMarker412"/> follows:</li>
+    </ol>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_026.png"/></p>
+    <ol>
+      <li class="numberedList" value="4">We then generalize it to <img alt="" role="presentation" src="../Images/B21047_04_027.png"/>:</li>
+    </ol>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_028.png"/></p>
+    <ol>
+      <li class="numberedList" value="5">Combined with the preceding derivations, the weights can be updated as follows:</li>
+    </ol>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_029.png"/></p>
+    <p class="normal-one">Here, <em class="italic">w</em> gets updated in each iteration.</p>
+    <ol>
+      <li class="numberedList" value="6">After a substantial <a id="_idIndexMarker413"/>number of iterations, the learned parameter <em class="italic">w</em> is then used to classify a new sample <em class="italic">x</em>’ by means<a id="_idIndexMarker414"/> of the following equation:</li>
+    </ol>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_030.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_031.png"/></p>
+    <p class="normal">The decision threshold is <code class="inlineCode">0.5</code> by default, but it definitely can be other values. In cases where a false negative is supposed to be avoided, for example, when predicting fire occurrence (the positive class) for alerts, the decision threshold can be lower than <code class="inlineCode">0.5</code>, such as <code class="inlineCode">0.3</code>, depending on how paranoid we are and how proactively we want to prevent the positive event from happening. On the other hand, when the false positive class is the one that should be evaded, for instance, when predicting the product success (the positive class) rate for quality assurance, the decision threshold can be greater than <code class="inlineCode">0.5</code>, such as <code class="inlineCode">0.7</code>, or lower than <code class="inlineCode">0.5</code>, depending on how high a standard you set.</p>
+    <p class="normal">With a thorough understanding of the gradient descent-based training and predicting process, we will now implement the logistic regression algorithm from scratch:</p>
+    <ol>
+      <li class="numberedList" value="1">We begin by defining the function that computes the prediction <img alt="" role="presentation" src="../Images/B21047_04_032.png"/> with the current weights:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">compute_prediction</span><span class="language-python">(</span><span class="hljs-con-params">X, weights</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Compute the prediction y_hat based on current weights</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    z = np.dot(X, weights)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> sigmoid(z)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">With this, we are able to<a id="_idIndexMarker415"/> continue with the function updating the weights, which is as follows, by one step in a gradient descent manner:</li>
+    </ol>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_033.png"/></p>
+    <p class="normal-one">Take a look <a id="_idIndexMarker416"/>at the following code:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">update_weights_gd</span><span class="language-python">(</span><span class="hljs-con-params">X_train, y_train, weights,</span>
+                                           learning_rate):
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Update weights by one step</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    predictions = compute_prediction(X_train, weights)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    weights_delta = np.dot(X_train.T, y_train - predictions)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    m = y_train.shape[</span><span class="hljs-con-number">0</span><span class="hljs-con-params">]</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    weights += learning_rate / </span><span class="hljs-con-built_in">float</span><span class="hljs-con-params">(m) * weights_delta</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-keyword">return</span><span class="hljs-con-params"> weights</span>
+</code></pre>
+    <ol>
+      <li class="numberedList" value="3">Then, the function calculating the cost <em class="italic">J</em>(<em class="italic">w</em>) is implemented as well:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">compute_cost</span><span class="language-python">(</span><span class="hljs-con-params">X, y, weights</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-string">"""</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Compute the cost J(w)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    predictions = compute_prediction(X, weights)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    cost = np.mean(-y * np.log(predictions)</span>
+                      - (1 - y) * np.log(1 - predictions))
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> cost</span>
+</code></pre>
+      </li>
+      <li class="numberedList">Now, we connect all these functions to the model training function by executing the following:<ul>
+          <li class="bulletList level-2">Updating the <code class="inlineCode">weights</code> vector in each iteration</li>
+          <li class="bulletList level-2">Printing out the current cost for every <code class="inlineCode">100</code> (this can be another value) iterations to <a id="_idIndexMarker417"/>ensure <code class="inlineCode">cost</code> is decreasing and that things are on the right track</li>
+        </ul>
+      </li>
+    </ol>
+    <p class="normal-one">They are implemented in the following function:</p>
+    <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">train_logistic_regression</span><span class="language-python">(</span><span class="hljs-con-params">X_train, y_train, max_iter,</span>
+                                  learning_rate, fit_intercept=False):
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-string">""" Train a logistic regression model</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Args:</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">        X_train, y_train (numpy.ndarray, training data set)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">        max_iter (int, number of iterations)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">        learning_rate (float)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">        fit_intercept (bool, with an intercept w0 or not)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Returns:</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">        numpy.ndarray, learned weights</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-keyword">if</span><span class="hljs-con-params"> fit_intercept:</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        intercept = np.ones((X_train.shape[</span><span class="hljs-con-number">0</span><span class="hljs-con-params">], </span><span class="hljs-con-number">1</span><span class="hljs-con-params">))</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        X_train = np.hstack((intercept, X_train))</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    weights = np.zeros(X_train.shape[</span><span class="hljs-con-number">1</span><span class="hljs-con-params">])</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-keyword">for</span><span class="hljs-con-params"> iteration </span><span class="hljs-con-keyword">in</span><span class="hljs-con-params"> </span><span class="hljs-con-built_in">range</span><span class="hljs-con-params">(max_iter):</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        weights = update_weights_gd(X_train, y_train,</span>
+                                       weights, learning_rate)
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        </span><span class="hljs-con-comment"># Check the cost for every 100 (for example)      </span>
+             iterations
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        </span><span class="hljs-con-keyword">if</span><span class="hljs-con-params"> iteration % </span><span class="hljs-con-number">100</span><span class="hljs-con-params"> == </span><span class="hljs-con-number">0</span><span class="hljs-con-params">:</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">            </span><span class="hljs-con-built_in">print</span><span class="hljs-con-params">(compute_cost(X_train, y_train, weights))</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-keyword">return</span><span class="hljs-con-params"> weights</span>
+</code></pre>
+    <ol>
+      <li class="numberedList" value="5">Finally, we<a id="_idIndexMarker418"/> predict the results of new inputs using the trained model as follows:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">predict</span><span class="language-python">(</span><span class="hljs-con-params">X, weights</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> X.shape[</span><span class="hljs-con-number">1</span><span class="language-python">] == weights.shape[</span><span class="hljs-con-number">0</span><span class="language-python">] - </span><span class="hljs-con-number">1</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        intercept = np.ones((X.shape[</span><span class="hljs-con-number">0</span><span class="language-python">], </span><span class="hljs-con-number">1</span><span class="language-python">))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        X = np.hstack((intercept, X))</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">return</span><span class="language-python"> compute_prediction(X, weights)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal">Implementing logistic regression is very simple, as you just saw. Let’s now examine it using a toy example:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = np.array([[</span><span class="hljs-con-number">6</span><span class="language-python">, </span><span class="hljs-con-number">7</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-number">4</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-number">3</span><span class="language-python">, </span><span class="hljs-con-number">6</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-number">4</span><span class="language-python">, </span><span class="hljs-con-number">7</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">6</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-number">5</span><span class="language-python">, </span><span class="hljs-con-number">2</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-number">2</span><span class="language-python">, </span><span class="hljs-con-number">0</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-number">6</span><span class="language-python">, </span><span class="hljs-con-number">3</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-number">4</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    [</span><span class="hljs-con-number">7</span><span class="language-python">, </span><span class="hljs-con-number">2</span><span class="language-python">]])</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">y_train = np.array([</span><span class="hljs-con-number">0</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    </span><span class="hljs-con-number">0</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    </span><span class="hljs-con-number">0</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    </span><span class="hljs-con-number">0</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    </span><span class="hljs-con-number">0</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    </span><span class="hljs-con-number">1</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    </span><span class="hljs-con-number">1</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    </span><span class="hljs-con-number">1</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    </span><span class="hljs-con-number">1</span><span class="language-python">,</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                    </span><span class="hljs-con-number">1</span><span class="language-python">])</span>
+</code></pre>
+    <p class="normal">We train a logistic regression <a id="_idIndexMarker419"/>model for <code class="inlineCode">1000</code> iterations, at a<a id="_idIndexMarker420"/> learning rate of <code class="inlineCode">0.1</code> based on intercept-included weights:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">weights = train_logistic_regression(X_train, y_train,</span>
+             max_iter=1000, learning_rate=0.1, fit_intercept=True)
+0.574404237166
+0.0344602233925
+0.0182655727085
+0.012493458388
+0.00951532913855
+0.00769338806065
+0.00646209433351
+0.00557351184683
+0.00490163225453
+0.00437556774067
+</code></pre>
+    <p class="normal">The decreasing cost means that the model is being optimized over time. We can check the model’s performance on new samples as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_test = np.array([[</span><span class="hljs-con-number">6</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                   [</span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">3</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                   [</span><span class="hljs-con-number">3</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">                   [</span><span class="hljs-con-number">4</span><span class="language-python">, </span><span class="hljs-con-number">5</span><span class="language-python">]])</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">predictions = predict(X_test, weights)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(predictions)</span>
+array([ 0.9999478 , 0.00743991, 0.9808652 , 0.02080847])
+</code></pre>
+    <p class="normal">To visualize this, execute the following code using <code class="inlineCode">0.5</code> as the classification decision threshold:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.scatter(X_train[:</span><span class="hljs-con-number">5</span><span class="language-python">,</span><span class="hljs-con-number">0</span><span class="language-python">], X_train[:</span><span class="hljs-con-number">5</span><span class="language-python">,</span><span class="hljs-con-number">1</span><span class="language-python">], c=</span><span class="hljs-con-string">'b'</span><span class="language-python">, marker=</span><span class="hljs-con-string">'x'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.scatter(X_train[</span><span class="hljs-con-number">5</span><span class="language-python">:,</span><span class="hljs-con-number">0</span><span class="language-python">], X_train[</span><span class="hljs-con-number">5</span><span class="language-python">:,</span><span class="hljs-con-number">1</span><span class="language-python">], c=</span><span class="hljs-con-string">'k'</span><span class="language-python">, marker=</span><span class="hljs-con-string">'.'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> i, prediction </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">enumerate</span><span class="language-python">(predictions):</span>
+        marker = 'X' if prediction &lt; 0.5 else 'o'
+        c = 'b' if prediction &lt; 0.5 else 'k'
+        plt.scatter(X_test[i,0], X_test[i,1], c=c, marker=marker)
+</code></pre>
+    <p class="normal">Blue-filled crosses are testing samples predicted from class 0, while black-filled dots are those predicted from class 1:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">plt.show()</span>
+</code></pre>
+    <p class="normal">Refer to the following screenshot for the result:</p>
+    <figure class="mediaobject"><img alt="" role="presentation" src="../Images/B21047_04_06.png"/></figure>
+    <p class="packt_figref">Figure 4.6: Training and testing sets of the toy example</p>
+    <p class="normal">The model we trained <a id="_idIndexMarker421"/>correctly predicts classes of new <a id="_idIndexMarker422"/>samples (filled crosses and filled dots).</p>
+    <h2 class="heading-2" id="_idParaDest-102">Predicting ad click-through with logistic regression using gradient descent</h2>
+    <p class="normal">We will now deploy the algorithm we <a id="_idIndexMarker423"/>just developed <a id="_idIndexMarker424"/>in our click-through prediction project.</p>
+    <p class="normal">We will start with only 10,000 training samples (you will soon see why we don’t start with 270,000, as we did in the previous chapter):</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> pandas </span><span class="hljs-con-keyword">as</span><span class="language-python"> pd</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_rows = </span><span class="hljs-con-number">300000</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">df = pd.read_csv(</span><span class="hljs-con-string">"train.csv"</span><span class="language-python">, nrows=n_rows)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X = df.drop([</span><span class="hljs-con-string">'click'</span><span class="language-python">, </span><span class="hljs-con-string">'id'</span><span class="language-python">, </span><span class="hljs-con-string">'hour'</span><span class="language-python">, </span><span class="hljs-con-string">'device_id'</span><span class="language-python">, </span><span class="hljs-con-string">'device_ip'</span><span class="language-python">],</span>
+                                                     axis=1).values
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y = df[</span><span class="hljs-con-string">'click'</span><span class="language-python">].values</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_train = </span><span class="hljs-con-number">10000</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = X[:n_train]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y_train = Y[:n_train]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_test = X[n_train:]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y_test = Y[n_train:]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.preprocessing </span><span class="hljs-con-keyword">import</span><span class="language-python"> OneHotEncoder</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">enc = OneHotEncoder(handle_unknown=</span><span class="hljs-con-string">'ignore'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train_enc = enc.fit_transform(X_train)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_test_enc = enc.transform(X_test)</span>
+</code></pre>
+    <p class="normal">We train a logistic regression <a id="_idIndexMarker425"/>model over <code class="inlineCode">10000</code> iterations, at a learning rate of <code class="inlineCode">0.01</code> with bias:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> timeit</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">start_time = timeit.default_timer()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">weights = train_logistic_regression(X_train_enc.toarray(),</span>
+              Y_train, max_iter=10000, learning_rate=0.01,
+              fit_intercept=True)
+0.6820019456743648
+0.4608619713011896
+0.4503715555130051
+…
+…
+…
+0.41485094023829017
+0.41477416506724385
+0.41469802145452467
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f"--- </span><span class="hljs-con-subst">{(timeit.default_timer() - start_time :</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string"> seconds ---"</span><span class="language-python">)</span>
+--- 183.840 seconds ---
+</code></pre>
+    <p class="normal">It takes 184 seconds to optimize the model. The trained model performs on the testing set as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pred = predict(X_test_enc.toarray(), weights)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.metrics </span><span class="hljs-con-keyword">import</span><span class="language-python"> roc_auc_score</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'Training samples: </span><span class="hljs-con-subst">{n_train}</span><span class="hljs-con-string">, AUC on testing set: </span><span class="hljs-con-subst">{roc_auc_score(Y_test, pred):</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+Training samples: 10000, AUC on testing set: 0.703
+</code></pre>
+    <p class="normal">Now, let’s use 100,000 training samples (<code class="inlineCode">n_train = 100000</code>) and repeat the same process. It will take more than an hour – 22 times longer to fit data of 10 times the size. As I mentioned at the beginning of the<a id="_idIndexMarker426"/> chapter, the logistic regression classifier can be good at training on large<a id="_idIndexMarker427"/> datasets. But our testing results seem to contradict this. How could we handle even larger training datasets efficiently, not just 100,000 samples, but millions? Let’s look at a more efficient way to train a logistic regression model in the next section.</p>
+    <h2 class="heading-2" id="_idParaDest-103">Training a logistic regression model using stochastic gradient descent (SGD)</h2>
+    <p class="normal">In gradient descent-based logistic<a id="_idIndexMarker428"/> regression models, <strong class="keyWord">all</strong> training samples are used to update the weights in every single iteration. Hence, if the <a id="_idIndexMarker429"/>number of training samples is large, the whole training process will become very time consuming and computationally expensive, as you just witnessed in our last example.</p>
+    <p class="normal">Fortunately, a small tweak will make logistic regression suitable for large-sized datasets. For each weight update, <strong class="keyWord">only one</strong> training sample is consumed, instead of the <strong class="keyWord">complete</strong> training set. The model moves a step based on the error calculated by a single training sample. Once all samples are used, one iteration finishes. This advanced version of gradient descent is called <strong class="keyWord">SGD</strong>. Expressed in <a id="_idIndexMarker430"/>a formula, for each iteration, we do the following:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_034.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_035.png"/></p>
+    <p class="normal">SGD generally converges much faster than gradient descent where a large number of iterations is usually needed.</p>
+    <p class="normal">To implement SGD-based<a id="_idIndexMarker431"/> logistic regression, we just need to slightly modify the <code class="inlineCode">update_weights_gd</code> function:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">update_weights_sgd</span><span class="language-python">(</span><span class="hljs-con-params">X_train, y_train, weights,</span>
+                                           learning_rate):
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-string">""" One weight update iteration: moving weights by one</span>
+            step based on each individual sample
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Args:</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    X_train, y_train (numpy.ndarray, training data set)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    weights (numpy.ndarray)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    learning_rate (float)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Returns:</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    numpy.ndarray, updated weights</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-keyword">for</span><span class="hljs-con-params"> X_each, y_each </span><span class="hljs-con-keyword">in</span><span class="hljs-con-params"> </span><span class="hljs-con-built_in">zip</span><span class="hljs-con-params">(X_train, y_train):</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        prediction = compute_prediction(X_each, weights)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        weights_delta = X_each.T * (y_each - prediction)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        weights += learning_rate * weights_delta</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-keyword">return</span><span class="hljs-con-params"> weights</span>
+</code></pre>
+    <p class="normal">In the <code class="inlineCode">train_logistic_regression</code> function, SGD is <a id="_idIndexMarker432"/>applied:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">train_logistic_regression_sgd</span><span class="language-python">(</span><span class="hljs-con-params">X_train, y_train, max_iter,</span>
+                              learning_rate, fit_intercept=False):
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-string">""" Train a logistic regression model via SGD</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Args:</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    X_train, y_train (numpy.ndarray, training data set)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    max_iter (int, number of iterations)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    learning_rate (float)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    fit_intercept (bool, with an intercept w0 or not)</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    Returns:</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    numpy.ndarray, learned weights</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-string">    """</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-keyword">if</span><span class="hljs-con-params"> fit_intercept:</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        intercept = np.ones((X_train.shape[</span><span class="hljs-con-number">0</span><span class="hljs-con-params">], </span><span class="hljs-con-number">1</span><span class="hljs-con-params">))</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        X_train = np.hstack((intercept, X_train))</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    weights = np.zeros(X_train.shape[</span><span class="hljs-con-number">1</span><span class="hljs-con-params">])</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-keyword">for</span><span class="hljs-con-params"> iteration </span><span class="hljs-con-keyword">in</span><span class="hljs-con-params"> </span><span class="hljs-con-built_in">range</span><span class="hljs-con-params">(max_iter):</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        weights = update_weights_sgd(X_train, y_train, weights,</span>
+                                                     learning_rate)
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        </span><span class="hljs-con-comment"># Check the cost for every 2 (for example) iterations</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">        </span><span class="hljs-con-keyword">if</span><span class="hljs-con-params"> iteration % </span><span class="hljs-con-number">2</span><span class="hljs-con-params"> == </span><span class="hljs-con-number">0</span><span class="hljs-con-params">:</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">            </span><span class="hljs-con-built_in">print</span><span class="hljs-con-params">(compute_cost(X_train, y_train, weights))</span>
+<span class="hljs-con-meta">...</span> <span class="hljs-con-params">    </span><span class="hljs-con-keyword">return</span><span class="hljs-con-params"> weights                  </span>
+</code></pre>
+    <p class="normal">Now, let’s see how powerful SGD is. We will work with 100,000 training samples and choose <code class="inlineCode">10</code> as the number <a id="_idIndexMarker433"/>of iterations, <code class="inlineCode">0.01</code> as the learning rate, and print out the current costs for every other iteration:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">start_time = timeit.default_timer()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">weights = train_logistic_regression_sgd(X_train_enc.toarray(),</span>
+        Y_train, max_iter=10, learning_rate=0.01, fit_intercept=True)
+0.4127864859625796
+0.4078504597223988
+0.40545733114863264
+0.403811787845451
+0.4025431351250833
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f"--- </span><span class="hljs-con-subst">{(timeit.default_timer() - start_time)}</span><span class="hljs-con-string">.3fs seconds ---"</span><span class="language-python">)</span>
+--- 25.122 seconds ---
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pred = predict(X_test_enc.toarray(), weights)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'Training samples: </span><span class="hljs-con-subst">{n_train}</span><span class="hljs-con-string">, AUC on testing set: </span><span class="hljs-con-subst">{roc_auc_score(Y_test, pred):</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+Training samples: 100000, AUC on testing set: 0.732
+</code></pre>
+    <p class="normal">The training process finishes in just 25 seconds!</p>
+    <p class="normal">After successfully<a id="_idIndexMarker434"/> implementing the SGD-based logistic regression algorithm from scratch, we implement it using the <code class="inlineCode">SGDClassifier</code> module of scikit-learn:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.linear_model </span><span class="hljs-con-keyword">import</span><span class="language-python"> SGDClassifier</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">sgd_lr = SGDClassifier(loss=</span><span class="hljs-con-string">'log_loss'</span><span class="language-python">, penalty=</span><span class="hljs-con-literal">None</span><span class="language-python">,</span>
+             fit_intercept=True, max_iter=20,
+             learning_rate='constant', eta0=0.01)
+</code></pre>
+    <p class="normal">Here, <code class="inlineCode">'</code><code class="inlineCode">log_loss'</code> for the <code class="inlineCode">loss</code> parameter indicates that the cost function is log loss, <code class="inlineCode">penalty</code> is the regularization term to reduce overfitting, which we will discuss further in the next section, <code class="inlineCode">max_iter</code> is the number of iterations, and the remaining two parameters mean the learning rate is <code class="inlineCode">0.01</code> and unchanged during the course of training. It should be noted that the default <code class="inlineCode">learning_rate</code> is <code class="inlineCode">'optimal'</code>, where the learning rate slightly decreases as more and more updates are made. This can be beneficial for finding the optimal solution on<a id="_idIndexMarker435"/> large datasets.</p>
+    <p class="normal">Now, train the model and test it:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">sgd_lr.fit(X_train_enc.toarray(), Y_train)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pred = sgd_lr.predict_proba(X_test_enc.toarray())[:, </span><span class="hljs-con-number">1</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'Training samples: </span><span class="hljs-con-subst">{n_train}</span><span class="hljs-con-string">, AUC on testing set: </span><span class="hljs-con-subst">{roc_auc_score(Y_test, pred):</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+Training samples: 100000, AUC on testing set: 0.732
+</code></pre>
+    <p class="normal">Quick and <a id="_idIndexMarker436"/>easy!</p>
+    <h2 class="heading-2" id="_idParaDest-104">Training a logistic regression model with regularization</h2>
+    <p class="normal">As I briefly mentioned in the previous<a id="_idIndexMarker437"/> section, the <code class="inlineCode">penalty</code> parameter in<a id="_idIndexMarker438"/> the logistic regression <code class="inlineCode">SGDClassifier</code> is related to model <strong class="keyWord">regularization</strong>. There are two basic forms of<a id="_idIndexMarker439"/> regularization, <strong class="keyWord">L1</strong> (also called <strong class="keyWord">Lasso</strong>) and <strong class="keyWord">L2</strong> (also called <strong class="keyWord">Ridge</strong>). In either way, the regularization is an additional term <a id="_idIndexMarker440"/>on top of the original cost function:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_036.png"/></p>
+    <p class="normal">Here, <img alt="" role="presentation" src="../Images/B21047_04_037.png"/> is the constant that multiplies the regularization term, and <em class="italic">q</em> is either <em class="italic">1</em> or <em class="italic">2</em> representing L1 or L2 regularization where the following applies:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_038.png"/></p>
+    <p class="normal">Training a logistic regression model is the process of reducing the cost as a function of weights <em class="italic">w</em>. If it gets to a point where some weights, such as <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">i</sub>, <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">j</sub>, and <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">k</sub> are considerably large, the whole cost will be determined by these large weights. In this case, the learned model may just memorize the training set and fail to generalize to unseen data. The regularization term is introduced in order to penalize large weights, as the weights now become part of the cost to minimize. </p>
+    <p class="normal">Regularization as a result eliminates overfitting. Finally, parameter α provides a trade-off between log loss and generalization. If <em class="italic">α</em> is too small, it is not able to compress large weights and the model may suffer from high variance or overfitting; on the other hand, if <em class="italic">α</em> is too large, the model may become over-generalized and perform<a id="_idIndexMarker441"/> poorly in terms of fitting the dataset, which is the syndrome of underfitting. <em class="italic">α</em> is an important parameter to tune in order to obtain the best logistic regression model with regularization.</p>
+    <p class="normal">As for choosing between the L1 and L2 forms, the rule of thumb is based on whether <strong class="keyWord">feature selection</strong> is expected. In <strong class="keyWord">Machine</strong><strong class="keyWord"><a id="_idIndexMarker442"/></strong><strong class="keyWord"> Learning</strong> (<strong class="keyWord">ML</strong>) classification, feature selection is the process of picking a<a id="_idIndexMarker443"/> subset of significant features for use in better model construction. In practice, not every feature in a dataset carries information that is useful for discriminating samples; some features are either redundant or irrelevant and hence can be discarded with little loss.</p>
+    <p class="normal">In a logistic regression classifier, feature selection can only be achieved with L1 regularization. To understand this, let’s consider two weight vectors, <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">1</sub><em class="italic"> </em>= (<em class="italic">1, 0</em>) and <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">2</sub><em class="italic"> </em>= (<em class="italic">0.5, 0.5</em>); supposing they produce the same amount of log loss, the L1 and L2 regularization terms of each weight vector are as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_039.png"/></p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_040.png"/></p>
+    <p class="normal">The L1 term of both vectors is equivalent, while the L2 term of <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">2</sub> is less than that of <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">1</sub>. This indicates that L2 regularization penalizes weights composed of significantly large and small weights more than L1 regularization does. In other words, L2 regularization favors relatively small values for all weights, and avoids significantly large and small values for any weight, while L1 regularization allows some weights with a significantly small value and some with a<a id="_idIndexMarker444"/> significantly large value. Only with L1 regularization can some<a id="_idIndexMarker445"/> weights be compressed to close to or exactly <em class="italic">0</em>, which enables feature selection.</p>
+    <p class="normal">In scikit-learn, the regularization type can be specified by the <code class="inlineCode">penalty</code> parameter with the <code class="inlineCode">none</code> (without regularization), <code class="inlineCode">"l1"</code>, <code class="inlineCode">"l2"</code>, and <code class="inlineCode">"elasticnet"</code> (a mixture of L1 and L2) options, and the multiplier α can be specified by the alpha parameter.</p>
+    <h2 class="heading-2" id="_idParaDest-105">Feature selection using L1 regularization</h2>
+    <p class="normal">We herein examine L1 regularization <a id="_idIndexMarker446"/>for feature selection.</p>
+    <p class="normal">Initialize an SGD logistic regression<a id="_idIndexMarker447"/> model with<a id="_idIndexMarker448"/> L1 regularization, and train the model based on 10,000 samples:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">sgd_lr_l1 = SGDClassifier(loss=</span><span class="hljs-con-string">'log_loss'</span><span class="language-python">,</span>
+                          penalty='l1',
+                          alpha=0.0001,
+                          fit_intercept=True,
+                          max_iter=10,
+                          learning_rate='constant',
+                          eta0=0.01,
+                          random_state=42)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">sgd_lr_l1.fit(X_train_enc.toarray(), Y_train)</span>
+</code></pre>
+    <p class="normal">With the trained model, we obtain the absolute values of its coefficients:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">coef_abs = np.</span><span class="hljs-con-built_in">abs</span><span class="language-python">(sgd_lr_l1.coef_)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(coef_abs)</span>
+[[0. 0.16654682 0. ... 0. 0. 0.12803394]]
+</code></pre>
+    <p class="normal">The bottom <code class="inlineCode">10</code> coefficients and their values are printed as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(np.sort(coef_abs)[</span><span class="hljs-con-number">0</span><span class="language-python">][:</span><span class="hljs-con-number">10</span><span class="language-python">])</span>
+[0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">bottom_10 = np.argsort(coef_abs)[</span><span class="hljs-con-number">0</span><span class="language-python">][:</span><span class="hljs-con-number">10</span><span class="language-python">]</span>
+</code></pre>
+    <p class="normal">We can see what these 10<a id="_idIndexMarker449"/> features are using the following code:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">feature_names = enc.get_feature_names_out()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'10 least important features are:\n'</span><span class="language-python">, feature_names[bottom_10])</span>
+10 least important features are:
+ ['x0_1001' 'x8_84c2f017' 'x8_84ace234'  'x8_84a9d4ba' 'x8_84915a27'
+'x8_8441e1f3' 'x8_840161a0' 'x8_83fbdb80' 'x8_83fb63cd' 'x8_83ed0b87']
+</code></pre>
+    <p class="normal">They are <code class="inlineCode">1001</code> from the <code class="inlineCode">0</code> column (that is the <code class="inlineCode">C1</code> column) in <code class="inlineCode">X_train</code>, <code class="inlineCode">84c2f017</code> from the <code class="inlineCode">8</code> column (that is the <code class="inlineCode">device_model</code> column), and so on and so forth.</p>
+    <p class="normal">Similarly, the top 10 coefficients and<a id="_idIndexMarker450"/> their values can be obtained as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(np.sort(coef_abs)[</span><span class="hljs-con-number">0</span><span class="language-python">][-</span><span class="hljs-con-number">10</span><span class="language-python">:])</span>
+[0.67912376 0.70885933 0.75157162 0.81783177 0.94672827 1.00864062
+ 1.08152137 1.130848   1.14859459 1.37750805]
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">top_10 = np.argsort(coef_abs)[</span><span class="hljs-con-number">0</span><span class="language-python">][-</span><span class="hljs-con-number">10</span><span class="language-python">:]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'10 most important features are:\n'</span><span class="language-python">, feature_names[top_10])</span>
+10 most important features are:
+ ['x4_28905ebd' 'x3_7687a86e' 'x18_61' 'x18_15' 'x5_5e3f096f' 'x5_9c13b419' 'x2_763a42b5' 'x3_27e3c518' 'x2_d9750ee7' 'x5_1779deee']
+</code></pre>
+    <p class="normal">They are <code class="inlineCode">28905ebd</code> from the <code class="inlineCode">4</code> column (that is <code class="inlineCode">site_category</code>) in <code class="inlineCode">X_train</code>, <code class="inlineCode">7687a86e</code> from the <code class="inlineCode">3</code> column (that is <code class="inlineCode">site_domain</code>), and so on and so forth.</p>
+    <p class="normal">You have seen how feature<a id="_idIndexMarker451"/> selection works with L1-regularized logistic regression in this section, where weights of unimportant features are compressed to close to, or exactly, 0. Besides L1-regularized logistic regression, random forest is another frequently used feature selection technique. Let’s see more in the next section.</p>
+    <h2 class="heading-2" id="_idParaDest-106">Feature selection using random forest</h2>
+    <p class="normal">To recap, random forest is bagging over<a id="_idIndexMarker452"/> a set of individual <a id="_idIndexMarker453"/>decision trees. Each tree considers a random subset of the features when searching for the <a id="_idIndexMarker454"/>best splitting point at each node. In a decision tree, only those significant features (along with their splitting values) are used to constitute tree nodes. Consider the forest as a whole: the more frequently a feature is used in a tree node, the more important it is. </p>
+    <p class="normal">In other words, we can rank the importance of<a id="_idIndexMarker455"/> features based on their occurrences in nodes among all trees, and select the top most important ones.</p>
+    <p class="normal">The trained <code class="inlineCode">RandomForestClassifier</code> module in scikit-learn comes with an attribute, <code class="inlineCode">feature_importances_</code>, indicating the feature importance, which is calculated as the proportion of occurrences in tree <a id="_idIndexMarker456"/>nodes. Again, we will examine feature selection with random forest on the dataset with 100,000 ad click samples:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.ensemble </span><span class="hljs-con-keyword">import</span><span class="language-python"> RandomForestClassifier</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">random_forest = RandomForestClassifier(n_estimators=</span><span class="hljs-con-number">100</span><span class="language-python">,</span>
+                 criterion='gini', min_samples_split=30, n_jobs=-1)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">random_forest.fit(X_train_enc.toarray(), Y_train)</span>
+</code></pre>
+    <p class="normal">After fitting the random forest model, we obtain the feature importance scores with the following:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">feature_imp = random_forest.feature_importances_</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(feature_imp)</span>
+[1.22776093e-05 1.42544940e-03 8.11601536e-04 ... 7.51812083e-04 8.79340746e-04 8.49537255e-03]
+</code></pre>
+    <p class="normal">Take a look at the bottom 10 feature scores and the corresponding 10 least important features:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">feature_names = enc.get_feature_names()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(np.sort(feature_imp)[:</span><span class="hljs-con-number">10</span><span class="language-python">])</span>
+[0. 0. 0. 0. 0. 0. 0. 0. 0. 0.]
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">bottom_10 = np.argsort(feature_imp)[:</span><span class="hljs-con-number">10</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'10 least important features are:\n'</span><span class="language-python">, feature_names[bottom_10])</span>
+10 least important features are:
+ ['x5_f0222e42' 'x8_7d196936' 'x2_ba8f6070' 'x2_300ede9d' 'x5_72c55d0b' 'x2_4390d4c5' 'x5_69e5a5ec' 'x8_023a5294' 'x11_15541' 'x6_2022d54e']
+</code></pre>
+    <p class="normal">Now, take a look at the top 10<a id="_idIndexMarker457"/> feature scores and the corresponding 10 most important features:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(np.sort(feature_imp)[-</span><span class="hljs-con-number">10</span><span class="language-python">:])</span>
+[0.00849437 0.00849537 0.00872154 0.01010324 0.0109653  0.01099363 0.01319093 0.01471638 0.01802233 0.01889752]
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">top_10 = np.argsort(feature_imp)[-</span><span class="hljs-con-number">10</span><span class="language-python">:]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">'10 most important features are:\n'</span><span class="language-python">, feature_names[top_10])</span>
+10 most important features are:
+ ['x3_7687a86e' 'x18_157' 'x17_-1' 'x14_1993' 'x8_8a4875bd' 'x2_d9750ee7' 'x3_98572c79' 'x16_1063' 'x15_2' 'x18_33']
+</code></pre>
+    <p class="normal">In this section, we <a id="_idIndexMarker458"/>covered how random forest is used for feature selection. We ranked the features of the ad click data <a id="_idIndexMarker459"/>using a random forest. Can you use<a id="_idIndexMarker460"/> the top 10 or 20 features to build another logistic regression model for ad click prediction?</p>
+    <h1 class="heading-1" id="_idParaDest-107">Training on large datasets with online learning</h1>
+    <p class="normal">So far, we have trained our model on no more than 300,000 samples. If we go beyond this figure, memory might be overloaded<a id="_idIndexMarker461"/> since it holds too much data, and the program will crash. In this section, we will explore how to train on a large-scale dataset with <strong class="keyWord">online learning</strong>.</p>
+    <p class="normal">SGD evolves from gradient descent by sequentially updating the model with individual training samples one at a time, instead of the complete training set at once. We can scale up SGD further with online learning techniques. In online learning, new data for training is available in sequential order or in real time, as opposed to all at once in an offline learning environment. A relatively small chunk of data is loaded and preprocessed for training at a time, which releases the memory used to hold the entire large dataset. Besides better computational feasibility, online learning is also used because of its adaptability to cases where new data is generated in real time and is needed for modernizing the model. For instance, stock price prediction models are updated in an online learning manner with timely market data; click-through prediction models need to include the most recent data reflecting users’ latest behaviors and tastes; spam email detectors have to be reactive to ever-changing spammers by considering new features that are dynamically generated.</p>
+    <p class="normal">The existing model trained by previous datasets can now be updated based on the most recently available dataset only, instead of rebuilding it from scratch based on previous and recent datasets together, as is the case in offline learning:</p>
+    <figure class="mediaobject"><img alt="A diagram of a logistic process  Description automatically generated with low confidence" src="../Images/B21047_04_07.png"/></figure>
+    <p class="packt_figref">Figure 4.7: Online versus offline learning</p>
+    <p class="normal">In the preceding example, online learning allows the model to continue training with new arriving data. However, in offline learning, we have to retrain the whole model with the new arriving data along with the <a id="_idIndexMarker462"/>old data.</p>
+    <p class="normal">The <code class="inlineCode">SGDClassifier</code> module in scikit-learn implements online learning with the <code class="inlineCode">partial_fit</code> method (while the <code class="inlineCode">fit</code> method is applied in offline learning, as you have seen). We will train the model with 1,000,000 samples, where we feed in 100,000 samples at one time to simulate an online learning environment. Also, we will test the trained model on another 100,000 samples as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_rows = </span><span class="hljs-con-number">100000</span><span class="language-python"> * </span><span class="hljs-con-number">11</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">df = pd.read_csv(</span><span class="hljs-con-string">"train.csv"</span><span class="language-python">, nrows=n_rows)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X = df.drop([</span><span class="hljs-con-string">'click'</span><span class="language-python">, </span><span class="hljs-con-string">'id'</span><span class="language-python">, </span><span class="hljs-con-string">'hour'</span><span class="language-python">, </span><span class="hljs-con-string">'device_id'</span><span class="language-python">, </span><span class="hljs-con-string">'device_ip'</span><span class="language-python">],</span>
+                                                      axis=1).values
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y = df[</span><span class="hljs-con-string">'click'</span><span class="language-python">].values</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_train = </span><span class="hljs-con-number">100000</span><span class="language-python"> * </span><span class="hljs-con-number">10</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train = X[:n_train]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y_train = Y[:n_train]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_test = X[n_train:]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y_test = Y[n_train:]</span>
+</code></pre>
+    <p class="normal">Fit the encoder on the whole training set as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">enc = OneHotEncoder(handle_unknown=</span><span class="hljs-con-string">'ignore'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">enc.fit(X_train)</span>
+</code></pre>
+    <p class="normal">Initialize an SGD logistic regression<a id="_idIndexMarker463"/> model where we set the number of iterations to <code class="inlineCode">1</code> in order to partially fit the model and enable online learning:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">sgd_lr_online = SGDClassifier(loss=</span><span class="hljs-con-string">'log_loss'</span><span class="language-python">,</span>
+                              penalty=None,
+                              fit_intercept=True,
+                              max_iter=1,
+                              learning_rate='constant',
+                              eta0=0.01,
+                              random_state=42)
+</code></pre>
+    <p class="normal">Loop over every <code class="inlineCode">100000</code> samples and partially fit the model:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">start_time = timeit.default_timer()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> i </span><span class="hljs-con-keyword">in</span><span class="language-python"> </span><span class="hljs-con-built_in">range</span><span class="language-python">(</span><span class="hljs-con-number">10</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    x_train = X_train[i*</span><span class="hljs-con-number">100000</span><span class="language-python">:(i+</span><span class="hljs-con-number">1</span><span class="language-python">)*</span><span class="hljs-con-number">100000</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    y_train = Y_train[i*</span><span class="hljs-con-number">100000</span><span class="language-python">:(i+</span><span class="hljs-con-number">1</span><span class="language-python">)*</span><span class="hljs-con-number">100000</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    x_train_enc = enc.transform(x_train)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    sgd_lr_online.partial_fit(x_train_enc.toarray(), y_train,</span>
+                                                    classes=[0, 1])
+</code></pre>
+    <p class="normal">Again, we use the <code class="inlineCode">partial_fit</code> method for online learning. Also, we specify the <code class="inlineCode">classes</code> parameter, which is required in online learning:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f"--- </span><span class="hljs-con-subst">{(timeit.default_timer() - start_time):</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string"> seconds ---"</span><span class="language-python">)</span>
+--- 87.399s seconds ---
+</code></pre>
+    <p class="normal">Apply the trained model on the testing set, the next 100,000 samples, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">x_test_enc = enc.transform(X_test)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pred = sgd_lr_online.predict_proba(x_test_enc.toarray())[:, </span><span class="hljs-con-number">1</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'Training samples: </span><span class="hljs-con-subst">{n_train * </span><span class="hljs-con-number">10</span><span class="hljs-con-subst">}</span><span class="hljs-con-string">, AUC on testing set: </span><span class="hljs-con-subst">{roc_auc_score(Y_test, pred):</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+Training samples: 10000000, AUC on testing set: 0.762
+</code></pre>
+    <p class="normal">With online learning, training based on a total of 1 million samples only takes 87 seconds and yields better <a id="_idIndexMarker464"/>accuracy.</p>
+    <p class="normal">We have been using logistic regression for binary classification so far. Can we use it for multiclass cases? Yes. However, we do need to make some small tweaks. Let’s look at this in the next section.</p>
+    <h1 class="heading-1" id="_idParaDest-108">Handling multiclass classification</h1>
+    <p class="normal">One last thing worth noting is how logistic regression algorithms deal with multiclass classification. Although <a id="_idIndexMarker465"/>we interact with the scikit-learn classifiers in multiclass cases the same way as in binary cases, it is useful to understand how logistic regression works in multiclass classification.</p>
+    <p class="normal">Logistic regression for more than <a id="_idIndexMarker466"/>two classes is also called <strong class="keyWord">multinomial logistic regression</strong>, better known <a id="_idIndexMarker467"/>latterly as <strong class="keyWord">softmax regression</strong>. As you have seen in the binary case, the model is represented by one weight vector <em class="italic">w</em>, and the probability of the target being <em class="italic">1</em> or the positive class is written as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_041.png"/></p>
+    <p class="normal">In the <em class="italic">K</em> class case, the model is represented by <em class="italic">K</em> weight vectors, <em class="italic">w</em><sub class="subscript">1</sub>, <em class="italic">w</em><sub class="subscript">2</sub>, ..., <em class="italic">w</em><sub class="subscript-italic" style="font-style: italic;">K</sub>, and the probability of the target being class <em class="italic">k</em> is written as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_042.png"/></p>
+    <p class="normal">See the following term:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_043.png"/></p>
+    <p class="normal">The preceding term normalizes the following probabilities (<em class="italic">k</em> from <em class="italic">1</em> to <em class="italic">K</em>) so that they total <em class="italic">1</em>:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_044.png"/></p>
+    <p class="normal">The cost function in the <a id="_idIndexMarker468"/>binary case is expressed as follows:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_045.png"/></p>
+    <p class="normal">Similarly, the cost function in the multiclass case becomes the following:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_046.png"/></p>
+    <p class="normal">Here, the <img alt="" role="presentation" src="../Images/B21047_04_047.png"/> function is <em class="italic">1</em> only if <img alt="" role="presentation" src="../Images/B21047_04_048.png"/> is true, otherwise it’s 0.</p>
+    <p class="normal">With the cost function defined, we obtain the <img alt="" role="presentation" src="../Images/B21047_04_049.png"/> step for the <em class="italic">j</em> weight vector in the same way as we derived the step <img alt="" role="presentation" src="../Images/B21047_04_050.png"/> in the binary case:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_051.png"/></p>
+    <p class="normal">In a similar manner, all <em class="italic">K</em> weight vectors are updated in each iteration. After sufficient iterations, the<a id="_idIndexMarker469"/> learned weight vectors, <em class="italic">w</em><sub class="subscript">1</sub>, <em class="italic">w</em><sub class="subscript">2</sub>, ..., <em class="italic">w</em><sub class="subscript">K</sub>, are then used to classify a new sample <em class="italic">x</em>’ by means of the following equation:</p>
+    <p class="center"><img alt="" role="presentation" src="../Images/B21047_04_052.png"/></p>
+    <p class="normal">To have a better sense, let’s experiment with it with a classic dataset, the handwritten digits for classification:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn </span><span class="hljs-con-keyword">import</span><span class="language-python"> datasets</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">digits = datasets.load_digits()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_samples = </span><span class="hljs-con-built_in">len</span><span class="language-python">(digits.images)</span>
+</code></pre>
+    <p class="normal">As the image data is stored in 8*8 matrices, we need to flatten them, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X = digits.images.reshape((n_samples, -</span><span class="hljs-con-number">1</span><span class="language-python">))</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y = digits.target</span>
+</code></pre>
+    <p class="normal">We then split the data as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.model_selection </span><span class="hljs-con-keyword">import</span><span class="language-python"> train_test_split</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">X_train, X_test, Y_train, Y_test = train_test_split(X, Y,</span>
+                                    test_size=0.2, random_state=42)
+</code></pre>
+    <p class="normal">We then combine grid search and cross-validation to find the optimal multiclass logistic regression model, as follows:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">from</span><span class="language-python"> sklearn.model_selection </span><span class="hljs-con-keyword">import</span><span class="language-python"> GridSearchCV</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">parameters = {</span><span class="hljs-con-string">'penalty'</span><span class="language-python">: [</span><span class="hljs-con-string">'l2'</span><span class="language-python">, </span><span class="hljs-con-literal">None</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">              </span><span class="hljs-con-string">'alpha'</span><span class="language-python">: [</span><span class="hljs-con-number">1e-07</span><span class="language-python">, </span><span class="hljs-con-number">1e-06</span><span class="language-python">, </span><span class="hljs-con-number">1e-05</span><span class="language-python">, </span><span class="hljs-con-number">1e-04</span><span class="language-python">],</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">              </span><span class="hljs-con-string">'eta0'</span><span class="language-python">: [</span><span class="hljs-con-number">0.01</span><span class="language-python">, </span><span class="hljs-con-number">0.1</span><span class="language-python">, </span><span class="hljs-con-number">1</span><span class="language-python">, </span><span class="hljs-con-number">10</span><span class="language-python">]}</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">sgd_lr = SGDClassifier(loss=</span><span class="hljs-con-string">'log_loss'</span><span class="language-python">,</span>
+                       learning_rate='constant',
+                       fit_intercept=True,
+                       max_iter=50,
+                       random_state=42)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search = GridSearchCV(sgd_lr, parameters,</span>
+                               n_jobs=-1, cv=5)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">grid_search.fit(X_train, Y_train)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(grid_search.best_params_)</span>
+{'alpha': 1e-05, 'eta0': 0.01, 'penalty': 'l2' }
+</code></pre>
+    <p class="normal">We first define the hyperparameter grid we want to tune for the model. After initializing the classifier with <a id="_idIndexMarker470"/>some fixed parameters, we set up grid search cross-validation. We train on the training set and find the best set of hyperparameters.</p>
+    <p class="normal">To predict using the optimal model, we apply the following:</p>
+    <pre class="programlisting con"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">sgd_lr_best = grid_search.best_estimator_</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">accuracy = sgd_lr_best.score(X_test, Y_test)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'The accuracy on testing set is: </span><span class="hljs-con-subst">{accuracy*</span><span class="hljs-con-number">100</span><span class="hljs-con-subst">:</span><span class="hljs-con-number">.1</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">%'</span><span class="language-python">)</span>
+The accuracy on testing set is: 94.7%
+</code></pre>
+    <p class="normal">It doesn’t look much different from the previous example, since <code class="inlineCode">SGDClassifier</code> handles multiclass internally. Feel free to compute the confusion matrix as an exercise. It will be interesting to see how the model performs on individual classes.</p>
+    <p class="normal">The next section will be a bonus section where we will implement logistic regression with TensorFlow and use click prediction as an example.</p>
+    <h1 class="heading-1" id="_idParaDest-109">Implementing logistic regression using TensorFlow</h1>
+    <p class="normal">We’ll employ TensorFlow to<a id="_idIndexMarker471"/> implement logistic regression, utilizing<a id="_idIndexMarker472"/> click prediction as our illustrative example again. We use 90% of the first 100,000 samples for training and the remaining 10% for testing, and assume that <code class="inlineCode">X_train_enc</code>, <code class="inlineCode">Y_train</code>, <code class="inlineCode">X_test_enc</code>, and <code class="inlineCode">Y_test</code> contain the correct data:</p>
+    <ol>
+      <li class="numberedList" value="1">First, we import TensorFlow, transform <code class="inlineCode">X_train_enc</code> and <code class="inlineCode">X_test_enc</code> into a NumPy array, and cast <code class="inlineCode">X_train_enc</code>, <code class="inlineCode">Y_train</code>, <code class="inlineCode">X_test_enc</code>, and <code class="inlineCode">Y_test</code> to <code class="inlineCode">float32</code>:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">import</span><span class="language-python"> tensorflow </span><span class="hljs-con-keyword">as</span><span class="language-python"> tf</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> X_train_enc = enc.fit_transform(X_train).toarray().astype(<span class="hljs-con-string">'float32'</span>)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> X_test_enc = enc.transform(X_test).toarray().astype(<span class="hljs-con-string">'float32'</span>)
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y_train = Y_train.astype(</span><span class="hljs-con-string">'float32'</span><span class="language-python">)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">Y_test = Y_test.astype(</span><span class="hljs-con-string">'float32'</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">In TensorFlow, it’s common to work with data in the form of NumPy arrays. Additionally, TensorFlow operates with float32 by default for computational efficiency.</p>
+    <ol>
+      <li class="numberedList" value="2">We use the <code class="inlineCode">tf.data</code> module<a id="_idIndexMarker473"/> to shuffle and batch data:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">batch_size = </span><span class="hljs-con-number">1000</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">train_data = tf.data.Dataset.from_tensor_slices((X_train_enc, Y_train))</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">train_data = train_data.repeat().shuffle(</span><span class="hljs-con-number">5000</span><span class="language-python">).batch(batch_size).prefetch(</span><span class="hljs-con-number">1</span><span class="language-python">)</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">For each weight update, only <strong class="keyWord">one batch</strong> of samples is consumed, instead of the one sample or the complete training set. The model moves a step based on the error calculated by a batch of samples. The batch size is 1,000 in this example.</p>
+    <p class="normal-one"><code class="inlineCode">tf.data</code> provides a set <a id="_idIndexMarker474"/>of tools and utilities for efficiently loading and preprocessing data for ML modeling. It is designed to handle large datasets and enables efficient data pipeline construction for training and evaluation.</p>
+    <ol>
+      <li class="numberedList" value="3">Then, we define the weights and bias of the logistic regression model:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">n_features = X_train_enc.shape[</span><span class="hljs-con-number">1</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">W = tf.Variable(tf.zeros([n_features, </span><span class="hljs-con-number">1</span><span class="language-python">]))</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">b = tf.Variable(tf.zeros([</span><span class="hljs-con-number">1</span><span class="language-python">]))</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We then create a gradient descent optimizer that searches for the best coefficients by minimizing the loss. We use Adam (Adam: <em class="italic">A method for stochastic optimization</em>, Kingma, D. P., &amp; Ba, J. (2014)) as our optimizer, which is an advanced gradient descent with a learning rate (starting with <code class="inlineCode">0.001</code>) that is adaptive to gradients:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">learning_rate = </span><span class="hljs-con-number">0.001</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">optimizer = tf.optimizers.Adam(learning_rate)</span>
+</code></pre>
+      </li>
+      <li class="numberedList">We define the optimization process where we compute the current prediction and cost and update the model coefficients following the computed gradients:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">def</span><span class="language-python"> </span><span class="hljs-con-title">run_optimization</span><span class="language-python">(</span><span class="hljs-con-params">x, y</span><span class="language-python">):</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">with</span><span class="language-python"> tf.GradientTape() </span><span class="hljs-con-keyword">as</span><span class="language-python"> tape:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        logits = tf.add(tf.matmul(x, W), b)[:, </span><span class="hljs-con-number">0</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        loss = tf.reduce_mean(</span>
+                     tf.nn.sigmoid_cross_entropy_with_logits(
+                                         labels=y, logits=logits))
+        # Update the parameters with respect to the gradient calculations
+<span class="hljs-con-meta">...</span> <span class="language-python">    gradients = tape.gradient(loss, [W, b])</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    optimizer.apply_gradients(</span><span class="hljs-con-built_in">zip</span><span class="language-python">(gradients, [W, b]))</span>
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">Here, <code class="inlineCode">tf.GradientTape</code> allows us to track TensorFlow computations and calculate gradients with<a id="_idIndexMarker475"/> respect to the given variables.</p>
+    <ol>
+      <li class="numberedList" value="6">We run the<a id="_idIndexMarker476"/> training for 5,000 steps (one step is with one batch of random samples):
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">training_steps = </span><span class="hljs-con-number">5000</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-keyword">for</span><span class="language-python"> step, (batch_x, batch_y) </span><span class="hljs-con-keyword">in</span>
+              enumerate(train_data.take(training_steps), 1):
+<span class="hljs-con-meta">...</span> <span class="language-python">    run_optimization(batch_x, batch_y)</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">    </span><span class="hljs-con-keyword">if</span><span class="language-python"> step % </span><span class="hljs-con-number">500</span><span class="language-python"> == </span><span class="hljs-con-number">0</span><span class="language-python">:</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        logits = tf.add(tf.matmul(batch_x, W), b)[:, </span><span class="hljs-con-number">0</span><span class="language-python">]</span>
+<span class="hljs-con-meta">...</span> <span class="language-python">        loss = tf.reduce_mean(</span>
+                       tf.nn.sigmoid_cross_entropy_with_logits(
+                             labels=batch_y, logits=logits))
+<span class="hljs-con-meta">...</span> <span class="language-python">        </span><span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">"</span><span class="hljs-con-string">step: %i, loss: %f"</span><span class="language-python"> % (step, loss))</span>
+step: 500, loss: 0.448672
+step: 1000, loss: 0.389186
+step: 1500, loss: 0.413012
+step: 2000, loss: 0.445663
+step: 2500, loss: 0.361000
+step: 3000, loss: 0.417154
+step: 3500, loss: 0.359435
+step: 4000, loss: 0.393363
+step: 4500, loss: 0.402097
+step: 5000, loss: 0.376734
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">For every 500 steps, we compute and print out the current cost to check the training performance. As you can see, the training loss is decreasing overall.</p>
+    <ol>
+      <li class="numberedList" value="7">After the model is trained, we use it to make predictions on the testing set and report the AUC metric:
+        <pre class="programlisting con-one"><code class="hljs-con"><span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">logits = tf.add(tf.matmul(X_test_enc, W), b)[:, </span><span class="hljs-con-number">0</span><span class="language-python">]</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">pred = tf.nn.sigmoid(logits)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">auc_metric = tf.keras.metrics.AUC()</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="language-python">auc_metric.update_state(Y_test, pred)</span>
+<span class="hljs-con-meta">&gt;&gt;&gt;</span> <span class="hljs-con-built_in">print</span><span class="language-python">(</span><span class="hljs-con-string">f'AUC on testing set: </span><span class="hljs-con-subst">{auc_metric.result().numpy():</span><span class="hljs-con-number">.3</span><span class="hljs-con-subst">f}</span><span class="hljs-con-string">'</span><span class="language-python">)</span>
+AUC on testing set: 0.736
+</code></pre>
+      </li>
+    </ol>
+    <p class="normal-one">We are able to<a id="_idIndexMarker477"/> achieve an AUC of <code class="inlineCode">0.736</code> with<a id="_idIndexMarker478"/> the TensorFlow-based logistic regression model. You can also tweak the learning rate, the number of training steps, and other hyperparameters to obtain a better performance. This will be a fun exercise at the end of the chapter.</p>
+    <div class="note">
+      <p class="normal"><strong class="keyWord">Best practice</strong></p>
+      <p class="normal">The choice of the batch size in SGD can significantly impact the training process and the performance of the model. Here are some best practices for choosing the batch size:</p>
+      <ul>
+        <li class="bulletList"><strong class="keyWord">Consider computational resources</strong>: Larger batch sizes require more memory and computational<a id="_idIndexMarker479"/> resources, while smaller batch sizes may lead to slower convergence. Choose a batch size that fits within the memory constraints of your hardware while maximizing computational efficiency. </li>
+        <li class="bulletList"><strong class="keyWord">Empirical testing</strong>: Experiment with different batch sizes and evaluate model performance on a validation dataset. Choose the batch size that yields the best trade-off between convergence speed and model performance. </li>
+        <li class="bulletList"><strong class="keyWord">Batch size versus learning rate</strong>: The choice of batch size can interact with the learning rate. Larger batch sizes may require higher learning rates to prevent slow convergence, while smaller batch sizes may benefit from smaller learning rates to avoid instability. </li>
+        <li class="bulletList"><strong class="keyWord">Consider the nature of the data</strong>: The nature of the data can also influence the choice of batch size. For example, in tasks where the samples are highly correlated or exhibit temporal dependencies (e.g., time series data), smaller batch sizes may be more effective.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <p class="normal">You might be <a id="_idIndexMarker480"/>curious about how we can efficiently train the model on the entire dataset of 40 million samples. You will utilize tools <a id="_idIndexMarker481"/>such as <strong class="keyWord">Spark</strong> (<a href="https://spark.apache.org/"><span class="url">https://spark.apache.org/</span></a>) and the <code class="inlineCode">PySpark</code> module to scale up our solution.</p>
+    </div>
+    <h1 class="heading-1" id="_idParaDest-110">Summary</h1>
+    <p class="normal">In this chapter, we continued working on the online advertising click-through prediction project. This time, we overcame the categorical feature challenge by means of the one-hot encoding technique. We then resorted to a new classification algorithm, logistic regression, for its high scalability to large datasets. The in-depth discussion of the logistic regression algorithm started with the introduction of the logistic function, which led to the mechanics of the algorithm itself. This was followed by how to train a logistic regression model using gradient descent.</p>
+    <p class="normal">After implementing a logistic regression classifier by hand and testing it on our click-through dataset, you learned how to train the logistic regression model in a more advanced manner, using SGD, and we adjusted our algorithm accordingly. We also practiced how to use the SGD-based logistic regression classifier from scikit-learn and applied it to our project.</p>
+    <p class="normal">We then continued to tackle the problems we might face in using logistic regression, including L1 and L2 regularization for eliminating overfitting, online learning techniques for training on large-scale datasets, and handling multi-class scenarios. You also learned how to implement logistic regression with TensorFlow. Finally, the chapter ended with applying the random forest model to feature selection, as an alternative to L1-regularized logistic regression.</p>
+    <p class="normal">Looking back on our learning journey, we have been working on classification problems since <em class="chapterRef">Chapter 2</em>, <em class="italic">Building a Movie Recommendation Engine with Naïve Bayes</em>. We have now covered all the powerful and popular classification models in ML. We will move on to solving regression problems in the next chapter; regression is the sibling of classification in supervised learning. You will learn about regression models, including linear regression, and decision trees for regression.</p>
+    <h1 class="heading-1" id="_idParaDest-111">Exercises</h1>
+    <ol>
+      <li class="numberedList" value="1">In the logistic regression-based click-through prediction project, can you also tweak hyperparameters such as <code class="inlineCode">penalty</code>, <code class="inlineCode">eta0</code>, and <code class="inlineCode">alpha</code> in the <code class="inlineCode">SGDClassifier</code> model? What is the highest testing AUC you are able to achieve?</li>
+      <li class="numberedList">Can you try to use more training samples, for instance, 10 million samples, in the online learning solution?</li>
+      <li class="numberedList">In the TensorFlow-based solution, can you tweak the learning rate, the number of training steps, and other hyperparameters to obtain better performance?</li>
+    </ol>
+    <h1 class="heading-1" id="_idParaDest-112">Join our book’s Discord space</h1>
+    <p class="normal">Join our community’s Discord space for discussions with the authors and other readers:</p>
+    <p class="normal"><a href="https://packt.link/yuxi"><span class="url">https://packt.link/yuxi</span></a></p>
+    <p class="normal"><img alt="" role="presentation" src="../Images/QR_Code1878468721786989681.png"/></p>
+  </div>
+</body></html>

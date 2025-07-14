@@ -1,0 +1,876 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Linear Models with scikit-learn</h1>
+                </header>
+            
+            <article>
+                
+<p>This chapter contains the following recipes:</p>
+<ul>
+<li>Fitting a line through data</li>
+<li>Fitting a line through data with machine learning</li>
+<li>Evaluating the linear regression model</li>
+<li>Using ridge regression to overcome linear regression's shortfalls</li>
+<li>Optimizing the ridge regression parameter</li>
+<li>Using sparsity to regularize models</li>
+<li>Taking a more fundamental approach to regularization with LARS</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Introduction</h1>
+                </header>
+            
+            <article>
+                
+<p>I conjecture that we are built to perceive linear functions very well. They are very easy to visualize, interpret, and explain. Linear regression is very old and was probably the first statistical model.</p>
+<p>In this chapter, we will take a machine learning approach to linear regression.</p>
+<p>Note that this chapter, similar to the chapter on dimensionality reduction and PCA, involves selecting the best features using linear models. Even if you decide not to perform regression for predictions with linear models, you can select the most powerful features.</p>
+<p>Also note that linear models provide a lot of the intuition behind the use of many machine learning algorithms. For example, RBF-kernel SVMs have smooth boundaries, which when looked at up close, look like a line. Thus, SVMs are often easy to explain if, in the background, you remember your linear model intuition.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Fitting a line through data</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">Now we will start with some basic modeling with linear regression. Traditional linear regression is the first, and therefore, probably the most fundamental model—a straight line through data.</p>
+<p class="mce-root">Intuitively, it is familiar to a lot of the population: a change in one input variable proportionally changes the output variable. It is important that many people will have seen it in school, or in a newspaper data graphic, or in a presentation at work, and so on, as it will be easy for you to explain to colleagues and investors.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">The Boston dataset is perfect to play around with regression. The Boston dataset has the median home price of several areas in Boston. It also has other factors that might impact housing prices, for example, crime rate. First, import the <kbd>datasets</kbd> model, then we can load the dataset:</p>
+<pre><strong>from sklearn import datasets<br/></strong><strong>boston = datasets.load_boston()</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>Actually, using linear regression in scikit-learn is quite simple. The API for linear regression is basically the same API you're now familiar with from the previous chapter.</p>
+<ol start="1">
+<li>First, import the <kbd>LinearRegression</kbd> object and create an object:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.linear_model import LinearRegression<br/></strong><strong>lr = LinearRegression()</strong></pre>
+<ol start="2">
+<li>Now, it's as easy as passing the independent and dependent variables to the <kbd>fit</kbd> method of <kbd>LinearRegression</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>lr.fit(boston.data, boston.target)</strong><br/><strong>LinearRegression(copy_X=True, fit_intercept=True, n_jobs=1, normalize=False)</strong></pre>
+<ol start="3">
+<li>Now, to get the predictions, do the following:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>predictions = lr.predict(boston.data)</strong></pre>
+<ol start="4">
+<li>You have obtained the predictions produced by linear regression. Now, explore the <kbd>LinearRegression</kbd> class a bit more. Look at the residuals, the difference between the real target set and the predicted target set:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import numpy as np<br/></strong><strong>import pandas as pd<br/></strong><strong>import matplotlib.pyplot as plt<br/></strong><strong><br/>#within an Ipython notebook:<br/></strong><br/><strong>%matplotlib inline </strong><br/><br/><strong>pd.Series(boston.target - predictions).hist(bins=50)</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="236" width="348" src="assets/0af36255-f283-4278-97a1-dc8e72212c2d.png"/></div>
+<div style="padding-left: 90px" class="packt_tip">A common pattern to express the coefficients of features and their names is <kbd>zip(boston.feature_names, lr.coef_)</kbd>.</div>
+<ol start="5">
+<li>Find the coefficients of the linear regression by typing <kbd>lr.coef_</kbd>: </li>
+</ol>
+<pre style="padding-left: 60px"><strong>lr.coef_</strong><br/><br/><strong>array([ -1.07170557e-01,   4.63952195e-02,   2.08602395e-02,
+         2.68856140e+00,  -1.77957587e+01,   3.80475246e+00,
+         7.51061703e-04,  -1.47575880e+00,   3.05655038e-01,
+        -1.23293463e-02,  -9.53463555e-01,   9.39251272e-03,
+        -5.25466633e-01])</strong></pre>
+<p style="padding-left: 60px">So, going back to the data, we can see which factors have a negative relationship with the outcome, and also the factors that have a positive relationship. For example, and as expected, an increase in the per capita crime rate by town has a negative relationship with the price of a home in Boston. The per capita crime rate is the first coefficient in the regression.</p>
+<ol start="6">
+<li>You can also look at the intercept, the predicted value of the target, when all input variables are zero:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>lr.intercept_</strong><br/><br/><strong>36.491103280361955</strong></pre>
+<ol start="7">
+<li>If you forget the names of the coefficients or intercept attributes, type <kbd>dir(lr)</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>[... #partial output due to length</strong><br/><strong> 'coef_',
+ 'copy_X',
+ 'decision_function',
+ 'fit',
+ 'fit_intercept',
+ 'get_params',
+ 'intercept_',
+ 'n_jobs',
+ 'normalize',
+ 'predict',
+ 'rank_',
+ 'residues_',
+ 'score',
+ 'set_params',
+ 'singular_']</strong></pre>
+<p>For many scikit-learn predictors, parameters that consist of a word followed by a single <kbd>_</kbd>, such as <kbd>coef_</kbd> or <kbd>intercept_</kbd>, are of special interest. Using the <kbd>dir</kbd> command is a good way to check what is available within the scikit predictor implementation.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The basic idea of linear regression is to find the set of coefficients of <em>v</em> that satisfy <em>y = Xv</em>, where <em>X</em> is the data matrix. It's unlikely that, for the given values of <em>X</em>, we will find a set of coefficients that exactly satisfy the equation; an error term gets added if there is an inexact specification or measurement error.</p>
+<p>Therefore, the equation becomes <em>y = Xv + e</em>, where <em>e</em> is assumed to be normally distributed and independent of the <em>X</em> values. Geometrically, this means that the error terms are perpendicular to <em>X</em>. This is beyond the scope of this book, but it might be worth proving E(<em>Xv</em>) = 0 for yourself.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>The <kbd>LinearRegression</kbd> object can automatically normalize (or scale) inputs:</p>
+<pre><strong>lr2 = LinearRegression(normalize=True)</strong><br/><strong>lr2.fit(boston.data, boston.target)</strong><br/><strong>LinearRegression(copy_X=True, fit_intercept=True, normalize=True) </strong><br/><strong>predictions2 = lr2.predict(boston.data)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Fitting a line through data with machine learning</h1>
+                </header>
+            
+            <article>
+                
+<p>Linear regression with machine learning involves testing the linear regression algorithm on unseen data. Here, we will perform 10-fold cross-validation:</p>
+<ul>
+<li>Split the set into 10 parts</li>
+<li>Train on 9 of the parts and test on the one left over</li>
+<li>Repeat this 10 times so that every part gets to be a test set once</li>
+</ul>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p class="mce-root">As in the previous section, load the dataset you want to apply linear regression to, in this case, the Boston housing dataset:</p>
+<pre class="mce-root"><strong>from sklearn import datasets</strong><br/><strong>boston = datasets.load_boston()</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>The steps involved in performing linear regression are as follows:</p>
+<ol start="1">
+<li>Import the <kbd>LinearRegression</kbd> object and create an object:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.linear_model import LinearRegression</strong><br/><strong>lr = LinearRegression()</strong></pre>
+<ol start="2">
+<li>Pass the independent and dependent variables to the <kbd>fit</kbd> method of <kbd>LinearRegression</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>lr.fit(boston.data, boston.target)</strong><br/><br/><strong>LinearRegression(copy_X=True, fit_intercept=True, n_jobs=1, normalize=False)</strong></pre>
+<ol start="3">
+<li>Now, to get the 10-fold cross-validated predictions, do the following:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.model_selection import cross_val_predict</strong><br/><br/><strong>predictions_cv = cross_val_predict(lr, boston.data, boston.target, cv=10)</strong></pre>
+<ol start="4">
+<li>Looking at the residuals, the difference between the real data and the predictions, they are more normally distributed compared to the residuals in the previous section of linear regression without cross-validation:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import numpy as np</strong><br/><strong>import pandas as pd</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/> <br/><strong>#within Ipython</strong><br/><strong>%matplotlib inline </strong><br/> <br/><strong>pd.Series(boston.target - predictions_cv).hist(bins=50</strong><strong>)</strong><br/></pre>
+<ol start="5">
+<li>The following are the new residuals through cross-validation. The normal distribution is more symmetric than it was previously without cross-validation:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img height="227" width="334" src="assets/ff855a90-134d-47fc-8495-d3099653b95f.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Evaluating the linear regression model</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll look at how well our regression fits the underlying data. We fitted a regression in the last recipe, but didn't pay much attention to how well we actually did it. The first question after we fitted the model was clearly, how well does the model fit? In this recipe, we'll examine this question.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's use the <kbd>lr</kbd> object and Boston dataset—reach back into your code from the <em>Fitting a line through data</em> recipe. The <kbd>lr</kbd> object will have a lot of useful methods now that the model has been fit.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>Start within IPython with several imports, including <kbd>numpy</kbd>, <kbd>pandas</kbd>, and <kbd>matplotlib</kbd> for visualization: </li>
+</ol>
+<pre style="padding-left: 60px"><strong>import numpy as np</strong><br/><strong>import pandas as pd</strong><br/><strong>import matplotlib.pyplot as plt</strong><br/><br/><strong>%matplotlib inline</strong></pre>
+<ol start="2">
+<li>It is worth looking at a Q-Q plot. We'll use <kbd>scipy</kbd> here because it has a built-in probability plot:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from scipy.stats import probplot</strong><br/><strong>f = plt.figure(figsize=(7, 5))</strong><br/><strong>ax = f.add_subplot(111)</strong><br/><strong>tuple_out = probplot(boston.target - predictions_cv, plot=ax)</strong></pre>
+<p style="padding-left: 60px">The following screenshot shows the probability plot:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="283" width="376" src="assets/7a51e9fc-0f65-42bf-84f3-dc9f5278eedc.png"/></div>
+<ol start="3">
+<li>Type <kbd>tuple_out[1]</kbd> and you will get the following:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>(4.4568597454452306, -2.9208080837569337e-15, 0.94762914118318298)</strong></pre>
+<p style="padding-left: 60px">This is a tuple of the form <em>(slope, intercept, r)</em>, where <em>slope</em> and <em>intercept</em> come from the least-squares fit and <em>r</em> is the square root of the coefficient of determination.</p>
+<ol start="4">
+<li>Here, the skewed values we saw earlier are a bit clearer. We can also look at some other metrics of the fit; <strong>mean squared error</strong> (<strong>MSE</strong>) and <strong>mean absolute deviation</strong> (<strong>MAD</strong>) are two common metrics. Let's define each one in Python and use them.</li>
+</ol>
+<pre style="padding-left: 60px"><strong>def MSE(target, predictions):</strong><br/><strong>     squared_deviation = np.power(target - predictions, 2)</strong><br/><strong>     return np.mean(squared_deviation)</strong><br/><br/><strong>MSE(boston.target, predictions)</strong><br/><br/><strong>21.897779217687503</strong><br/><br/><strong>def MAD(target, predictions):</strong><br/><strong>     absolute_deviation = np.abs(target - predictions)</strong><br/><strong>     return np.mean(absolute_deviation)</strong><br/><br/><strong>MAD(boston.target, predictions)</strong><br/><br/><strong>3.2729446379969205</strong></pre>
+<ol start="5">
+<li>Now that you have seen the formulas in NumPy to get the errors, you can also use the <kbd>sklearn.metrics</kbd> module to get the errors quickly:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.metrics import mean_absolute_error, mean_squared_error</strong><br/> <br/><strong>print 'MAE: ', mean_absolute_error(boston.target, predictions)</strong><br/><strong>print 'MSE: ', mean_squared_error(boston.target, predictions)</strong><br/><br/><strong> 'MAE: ', 3.2729446379969205</strong><br/><strong> 'MSE: ', 21.897779217687503</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The formula for MSE is very simple:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="25" width="188" class="fm-editor-equation" src="assets/aaacc3fe-3001-4375-9d72-48862ed03c4e.png"/></div>
+<p>It takes each predicted value's deviance from the actual value, squares it, and then averages all the squared terms. This is actually what we optimized to find the best set of coefficients for linear regression. The Gauss-Markov theorem actually guarantees that the solution to linear regression is the best in the sense that the coefficients have the smallest expected squared error and are unbiased. In the next recipe, we'll look at what happens when we're OK with our coefficients being biased. MAD is the expected error for the absolute errors:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="25" width="191" class="fm-editor-equation" src="assets/1559fcfa-4342-4a4a-bf5c-44e51a33b72d.png"/></div>
+<p>MAD isn't used when fitting linear regression, but it's worth taking a look at. Why? Think about what each one is doing and which errors are more important in each case. For example, with MSE, the larger errors get penalized more than the other terms because of the square term. Outliers have the potential to skew results substantially.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>One thing that's been glossed over a bit is the fact that coefficients themselves are random variables, therefore, they have a distribution. Let's use bootstrapping to look at the distribution of the coefficient for the crime rate. Bootstrapping is a very common technique to get an understanding of the uncertainty of an estimate:</p>
+<pre><strong>n_bootstraps = 1000</strong><br/><strong>len_boston = len(boston.target)</strong><br/><strong>subsample_size = np.int(0.5*len_boston)</strong><br/><br/><strong>subsample = lambda: np.random.choice(np.arange(0, len_boston),size=subsample_size)</strong><br/><strong>coefs = np.ones(n_bootstraps) #pre-allocate the space for the coefs</strong><br/><strong>for i in range(n_bootstraps):</strong><br/><strong>    subsample_idx = subsample()</strong><br/><strong>    subsample_X = boston.data[subsample_idx]</strong><br/><strong>    subsample_y = boston.target[subsample_idx]</strong><br/><strong>    lr.fit(subsample_X, subsample_y)</strong><br/><strong>    coefs[i] = lr.coef_[0]</strong></pre>
+<p>Now, we can look at the distribution of the coefficient:</p>
+<pre><strong>import matplotlib.pyplot as plt</strong><br/><strong>f = plt.figure(figsize=(7, 5))</strong><br/><strong>ax = f.add_subplot(111)</strong><br/><strong>ax.hist(coefs, bins=50)</strong><br/><strong>ax.set_title("Histogram of the lr.coef_[0].")</strong></pre>
+<p>The following is the histogram that gets generated:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="289" width="377" src="assets/1d793d37-edad-4092-b816-524ee5c5470d.png"/></div>
+<p>We might also want to look at the bootstrapped confidence interval:</p>
+<pre><strong>np.percentile(coefs, [2.5, 97.5])</strong><br/><br/><strong>array([-0.18497204,  0.03231267])</strong></pre>
+<p>This is interesting; there's actually reason to believe that the crime rate might not have an impact on home prices. Notice how zero is within the <strong>confidence interval</strong> (<strong>CI</strong>) between -0.18 and 0.03, which means that it may not play a role. It's also worth pointing out that bootstrapping can potentially lead to better estimations for coefficients, because the bootstrapped mean with convergence to the true mean is faster than finding the coefficient using regular estimation.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using ridge regression to overcome linear regression's shortfalls</h1>
+                </header>
+            
+            <article>
+                
+<p>In this recipe, we'll learn about ridge regression. It is different from vanilla linear regression; it introduces a regularization parameter to shrink coefficients. This is useful when the dataset has collinear factors.</p>
+<div class="packt_tip"><span>Ridge regression is actually so powerful in the presence of collinearity that you can model polynomial features: vectors </span><em>x</em><span>, </span><em>x</em><sup>2</sup><span>,</span><em><span> </span>x</em><sup>3</sup>, <span>... which are highly collinear and correlated.</span></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's load a dataset that has a low effective rank and compare ridge regression with linear regression by way of the coefficients. If you're not familiar with rank, it's the smaller of the linearly independent columns and the linearly independent rows. One of the assumptions of linear regression is that the data matrix is full rank.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>First, use <kbd>make_regression</kbd> to create a simple dataset with three predictors, but an <kbd>effective_rank</kbd> of <kbd>2</kbd>. Effective rank means that, although technically the matrix is full rank, many of the columns have a high degree of collinearity:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.datasets import make_regression</strong><br/><strong>reg_data, reg_target = make_regression(n_samples=2000,n_features=3, effective_rank=2, noise=10)</strong></pre>
+<ol start="2">
+<li>First, let's take a look at regular linear regression with bootstrapping from the previous chapter:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import numpy as np</strong><br/><strong>n_bootstraps = 1000</strong><br/><strong>len_data = len(reg_data)</strong><br/><strong>subsample_size = np.int(0.5*len_data)</strong><br/><strong>subsample = lambda: np.random.choice(np.arange(0, len_data),size=subsample_size)</strong><br/> <br/><strong>coefs = np.ones((n_bootstraps, 3))</strong><br/><strong>for i in range(n_bootstraps):</strong><br/><strong>     subsample_idx = subsample()</strong><br/><strong>     subsample_X = reg_data[subsample_idx]</strong><br/><strong>     subsample_y = reg_target[subsample_idx]</strong><br/><strong>     lr.fit(subsample_X, subsample_y)</strong><br/><strong>     coefs[i][0] = lr.coef_[0]</strong><br/><strong>     coefs[i][1] = lr.coef_[1]</strong><br/><strong>     coefs[i][2] = lr.coef_[2]</strong></pre>
+<ol start="3">
+<li>Visualize the coefficients:</li>
+</ol>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/33cc9289-5560-49b7-b2d5-be71519cf3aa.png"/></div>
+<ol start="4">
+<li>Perform the same procedure with ridge regression:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.linear_model import Ridge</strong><br/><strong>r = Ridge()</strong><br/><strong>n_bootstraps = 1000</strong><br/><strong>len_data = len(reg_data)</strong><br/><strong>subsample_size = np.int(0.5*len_data)</strong><br/><strong>subsample = lambda: np.random.choice(np.arange(0, len_data),size=subsample_size)</strong><br/><br/><strong>coefs_r = np.ones((n_bootstraps, 3))</strong><br/><strong>for i in range(n_bootstraps):</strong><br/><strong>     subsample_idx = subsample()</strong><br/><strong>     subsample_X = reg_data[subsample_idx]</strong><br/><strong>     subsample_y = reg_target[subsample_idx]</strong><br/><strong>     r.fit(subsample_X, subsample_y)</strong><br/><strong>     coefs_r[i][0] = r.coef_[0]</strong><br/><strong>     coefs_r[i][1] = r.coef_[1]</strong><br/><strong>     coefs_r[i][2] = r.coef_[2]</strong></pre>
+<ol start="5">
+<li>Visualize the results:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import matplotlib.pyplot as plt</strong><br/><strong>plt.figure(figsize=(10, 5))</strong><br/> <br/><strong>ax1 = plt.subplot(311, title ='Coef 0')</strong><br/><strong>ax1.hist(coefs_r[:,0])</strong><br/> <br/><strong>ax2 = plt.subplot(312,sharex=ax1, title ='Coef 1')</strong><br/><strong>ax2.hist(coefs_r[:,1])</strong><br/> <br/><strong>ax3 = plt.subplot(313,sharex=ax1, title ='Coef 2')</strong><br/><strong>ax3.hist(coefs_r[:,2])</strong><br/><strong>plt.tight_layout()</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img src="assets/a70ee4ac-6a94-41f1-8f06-83a51681dbba.png"/></div>
+<p style="padding-left: 60px">Don't let the similar width of the plots fool you; the coefficients for ridge regression are much closer to zero.</p>
+<ol start="6">
+<li>Let's look at the average spread between the coefficients:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>np.var(coefs, axis=0)</strong><br/><br/><strong>array([ 228.91620444,  380.43369673,  297.21196544])</strong></pre>
+<p style="padding-left: 60px">So, on average, the coefficients for linear regression are much higher than the ridge regression coefficients. This difference is the bias in the coefficients (forgetting, for a second, the potential bias of the linear regression coefficients). So then, what is the advantage of ridge regression?</p>
+<ol start="7">
+<li>Well, let's look at the variance of our coefficients:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>np.var(coefs_r, axis=0) </strong><br/><br/><strong>array([ 19.28079241,  15.53491973,  21.54126386])</strong></pre>
+<p>The variance has been dramatically reduced. This is the bias-variance trade-off that is so often discussed in machine learning. The next recipe will introduce how to tune the regularization parameter in ridge regression, which is at the heart of this trade-off.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Optimizing the ridge regression parameter</h1>
+                </header>
+            
+            <article>
+                
+<p>Once you start using ridge regression to make predictions or learn about relationships in the system you're modeling, you'll start thinking about the choice of alpha.</p>
+<p>For example, using ordinary least squares (<strong>OLS</strong>) regression might show a relationship between two variables; however, when regularized by an alpha, the relationship is no longer significant. This can be a matter of whether a decision needs to be taken.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>Through cross-validation, we will tune the alpha parameter of ridge regression. If you remember, in ridge regression, the gamma parameter is typically represented as alpha in scikit-learn when calling <kbd>RidgeRegression</kbd>; so, the question that arises is what is the best alpha? Create a regression dataset, and then let's get started:</p>
+<pre><strong>from sklearn.datasets import make_regression</strong><br/><strong>reg_data, reg_target = make_regression(n_samples=100, n_features=2, effective_rank=1, noise=10)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>In the <kbd>linear_models</kbd> module, there is an object called <kbd>RidgeCV</kbd>, which stands for ridge cross-validation. This performs a cross-validation similar to <strong>leave-one-out cross-validation</strong> (<strong>LOOCV</strong>).</p>
+<ol>
+<li>Under the hood, it's going to train the model for all samples except one. It'll then evaluate the error in predicting this one test case:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.linear_model import RidgeCV</strong><br/><strong>rcv = RidgeCV(alphas=np.array([.1, .2, .3, .4]))</strong><br/><strong>rcv.fit(reg_data, reg_target)</strong></pre>
+<ol start="2">
+<li>After we fit the regression, the alpha attribute will be the best alpha choice:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>rcv.alpha_</strong><br/><br/><strong>0.10000000000000001</strong></pre>
+<ol start="3">
+<li>In the previous example, it was the first choice. We might want to hone in on something around <kbd>.1</kbd>:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>rcv2 = RidgeCV(alphas=np.array([.08, .09, .1, .11, .12]))</strong><br/><strong>rcv2.fit(reg_data, reg_target)</strong><br/><br/><strong>rcv2.alpha_</strong><br/><br/><strong>0.080000000000000002</strong></pre>
+<p>We could continue this hunt, but hopefully, the mechanics are clear.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>The mechanics might be clear, but we should talk a little more about why and define what was meant by best. At each step in the cross-validation process, the model scores an error against the test sample. By default, it's essentially a squared error.</p>
+<p>We can force the <kbd>RidgeCV</kbd> object to store the cross-validation values; this will let us visualize what it's doing:</p>
+<pre><strong>alphas_to_test = np.linspace(0.01, 1)</strong><br/><strong>rcv3 = RidgeCV(alphas=alphas_to_test, store_cv_values=True)</strong><br/><strong>rcv3.fit(reg_data, reg_target)</strong></pre>
+<p>As you can see, we test a bunch of points (50 in total) between <kbd>0.01</kbd> and <kbd>1</kbd>. Since we passed <kbd>store_cv_values</kbd> as <kbd>True</kbd>, we can access these values:</p>
+<pre><strong>rcv3.cv_values_.shape</strong><br/><br/><strong>(100L, 50L)</strong></pre>
+<p>So, we had 100 values in the initial regression and tested 50 different alpha values. We now have access to the errors of all 50 values. So, we can now find the smallest mean error and choose it as alpha:</p>
+<pre><strong>smallest_idx = rcv3.cv_values_.mean(axis=0).argmin()</strong><br/><strong>alphas_to_test[smallest_idx]</strong><br/><br/><strong>0.030204081632653063</strong></pre>
+<p>This matches the best value found by the <kbd>rcv3</kbd> instance of the class <kbd>RidgeCV</kbd>:</p>
+<pre><strong>rcv3.alpha_</strong><br/><br/><strong>0.030204081632653063</strong></pre>
+<p>It's also worthwhile visualizing what's going on. In order to do that, we'll plot the mean for all 50 test alphas:</p>
+<pre><strong>plt.plot(alphas_to_test, rcv3.cv_values_.mean(axis=0))</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="248" width="354" src="assets/0cb03c53-80ff-4cb2-96e8-6babd594555e.png"/></div>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>If we want to use our own scoring function, we can do that as well. Since we looked up MAD before, let's use it to score the differences. First, we need to define our loss function. We will import it from <kbd>sklearn.metrics</kbd>:</p>
+<pre><strong>from sklearn.metrics import mean_absolute_error</strong></pre>
+<p>After we define the loss function, we can employ the <kbd>make_scorer</kbd> function in <kbd>sklearn</kbd>. This will take care of standardizing our function so that scikit's objects know how to use it. Also, because this is a loss function and not a score function, the lower the better, and thus the need to let <kbd>sklearn</kbd> flip the sign to turn this from a maximization problem into a minimization problem:</p>
+<pre><strong>from sklearn.metrics import make_scorer</strong><br/><strong>MAD_scorer = make_scorer(mean_absolute_error, greater_is_better=False)</strong></pre>
+<p>Continue as before to find the minimum negative MAD score:</p>
+<pre><strong>rcv4 = RidgeCV(alphas=alphas_to_test, store_cv_values=True, scoring=MAD_scorer)</strong><br/><strong>rcv4.fit(reg_data, reg_target)</strong><br/><strong>smallest_idx = rcv4.cv_values_.mean(axis=0).argmin()</strong></pre>
+<p>Look at the lowest score:</p>
+<pre><strong>rcv4.cv_values_.mean(axis=0)[smallest_idx]</strong><br/><br/><strong>-0.021805192650070034</strong></pre>
+<p>It occurs at the alpha of <kbd>0.01</kbd>:</p>
+<pre><strong>alphas_to_test[smallest_idx]</strong><br/><br/><strong>0.01</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Bayesian ridge regression</h1>
+                </header>
+            
+            <article>
+                
+<p>Additionally, scikit-learn contains Bayesian ridge regression, which allows for easy estimates of confidence intervals. (Note that obtaining<span> the following </span><span>Bayesian ridge </span>confidence intervals specifically requires scikit-learn Version 0.19.0 or higher.)</p>
+<p>Create a line with a slope of <kbd>3</kbd> and no intercept for simplicity:</p>
+<pre><strong>X = np.linspace(0, 5)</strong><br/><strong>y_truth = 3 * X</strong><br/><strong>y_noise = np.random.normal(0, 0.5, len(y_truth)) #normally distributed noise with mean 0 and spread 0.1</strong><br/><strong>y_noisy = (y_truth + y_noise)</strong></pre>
+<p>Import, instantiate, and fit the Bayesian ridge model. Note that the one-dimensional <kbd>X</kbd> and <kbd>y</kbd> variables have to be reshaped:</p>
+<pre><strong>from sklearn.linear_model import BayesianRidge</strong><br/><strong>br_inst = BayesianRidge().fit(X.reshape(-1, 1), y_noisy)</strong></pre>
+<p>Write the following to get the error estimates on the regularized linear regression:</p>
+<pre><strong>y_pred, y_err = br_inst.predict(X.reshape(-1, 1), return_std=True)</strong></pre>
+<p>Plot the results. The noisy data is the blue dots and the green lines approximate it:</p>
+<pre><strong>plt.figure(figsize=(7, 5))</strong><br/><strong>plt.scatter(X, y_noisy)</strong><br/><strong>plt.title("Bayesian Ridge Line With Error Bars")</strong><br/><strong>plt.errorbar(X, y_pred, y_err, color='green')</strong></pre>
+<div class="CDPAlignCenter CDPAlign"><img height="258" width="352" src="assets/260b30a5-7c91-4a82-b2ef-d503cc670c5c.png"/></div>
+<p>As a final aside on Bayesian ridge, you can perform hyperparameter optimization on the parameters <kbd>alpha_1</kbd>, <kbd>alpha_2</kbd>, <kbd>lambda_1</kbd>, and <kbd>lambda_2</kbd> using a cross-validated grid search.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Using sparsity to regularize models</h1>
+                </header>
+            
+            <article>
+                
+<p>The <strong>least absolute shrinkage and selection operator</strong> (<strong>LASSO</strong>) method is very similar to ridge regression and <strong>l</strong><span><strong>east angle regression</strong> (</span><strong>LARS</strong>). It's similar to ridge regression in the sense that we penalize our regression by an amount, and it's similar to LARS in that it can be used as a parameter selection, typically leading to a sparse vector of coefficients. Both LASSO and LARS get rid of a lot of the features of the dataset, which is something you might or might not want to do depending on the dataset and how you apply it. (Ridge regression, on the other hand, preserves all features, which allows you to model polynomial functions or complex functions with correlated features.)</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>To be clear, LASSO regression is not a panacea. There can be computation consequences to using <span>LASSO</span> regression. As we'll see in this recipe, we'll use a loss function that isn't differential, and therefore requires special, and more importantly, performance-impairing workarounds.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<p>The steps involved in performing <span>LASSO</span> regression are as follows:</p>
+<ol>
+<li>Let's go back to the trusty <kbd>make_regression</kbd> function and create a dataset with the same parameters:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import numpy as np</strong><br/><strong>from sklearn.datasets import make_regression</strong><br/><strong>reg_data, reg_target = make_regression(n_samples=200, n_features=500, n_informative=5, noise=5)</strong></pre>
+<ol start="2">
+<li>Next, we need to import the <kbd>Lasso</kbd> object:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.linear_model import Lasso</strong><br/><strong>lasso = Lasso()</strong></pre>
+<ol start="3">
+<li><span>LASSO</span> contains many parameters, but the most interesting parameter is <kbd>alpha</kbd>. It scales the penalization term of the <kbd>Lasso</kbd> method. For now, leave it as one. As an aside, and much like ridge regression, if this term is zero, <span>LASSO</span> is equivalent to linear regression:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>lasso.fit(reg_data, reg_target)</strong></pre>
+<ol start="4">
+<li>Again, let's see how many of the coefficients remain nonzero:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>np.sum(lasso.coef_ != 0)</strong><br/><br/><strong>7</strong><br/><br/><strong>lasso_0 = Lasso(0)</strong><br/><strong>lasso_0.fit(reg_data, reg_target)</strong><br/><strong>np.sum(lasso_0.coef_ != 0)</strong><br/><br/><strong>500</strong></pre>
+<p>None of our coefficients turn out to be zero, which is what we expected. Actually, if you run this, you might get a warning from scikit-learn that advises you to choose <kbd>LinearRegression</kbd>.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">LASSO cross-validation – LASSOCV</h1>
+                </header>
+            
+            <article>
+                
+<p>Choosing the most appropriate lambda is a critical problem. We can specify the lambda ourselves or use cross-validation to find the best choice given the data at hand:</p>
+<pre><strong>from sklearn.linear_model import LassoCV</strong><br/><strong>lassocv = LassoCV()</strong><br/><strong>lassocv.fit(reg_data, reg_target)</strong></pre>
+<p>The LASSOCV will have, as an attribute, the most appropriate lambda. scikit-learn mostly uses alpha in its notation, but the literature uses lambda:</p>
+<pre><strong> lassocv.alpha_</strong><br/><br/><strong>0.75182924196508782</strong></pre>
+<p>The number of coefficients can be accessed in the regular manner:</p>
+<pre><strong>lassocv.coef_[:5]</strong><br/><br/><strong>array([-0., -0.,  0.,  0., -0.])</strong></pre>
+<p>Letting <span>LASSOCV</span> choose the appropriate best fit leaves us with <kbd>15</kbd> nonzero coefficients:</p>
+<pre><strong>np.sum(lassocv.coef_ != 0)</strong><br/><br/><strong>15</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">LASSO for feature selection</h1>
+                </header>
+            
+            <article>
+                
+<p><span>LASSO</span> can often be used for feature selection for other methods. For example, you might run <span>LASSO</span> regression to get the appropriate number of features, and then use those features in another algorithm.</p>
+<p>To get the features we want, create a masking array based on the columns that aren't zero, and then filter out the nonzero columns to keep the features we want:</p>
+<pre><strong>mask = lassocv.coef_ != 0</strong><br/><strong>new_reg_data = reg_data[:, mask]</strong><br/><strong>new_reg_data.shape</strong><br/><br/><strong>(200L, 15L)</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Taking a more fundamental approach to regularization with LARS</h1>
+                </header>
+            
+            <article>
+                
+<p>To borrow from Gilbert Strang's evaluation of the Gaussian elimination, LARS is an idea you probably would've considered eventually had it not already been discovered by Efron, Hastie, Johnstone, and Tibshirani in their work [1].</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Getting ready</h1>
+                </header>
+            
+            <article>
+                
+<p>LARS is a regression technique that is well suited to high-dimensional problems, that is, <em>p &gt;&gt; n</em>, where <em>p</em> denotes the columns or features and <em>n</em> is the number of samples.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How to do it...</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li>First, import the necessary objects. The data we use will have 200 data points and 500 features. We'll also choose low noise and a small number of informative features:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.datasets import make_regression</strong><br/><strong>reg_data, reg_target = make_regression(n_samples=200, n_features=500, n_informative=10, noise=2)</strong></pre>
+<ol start="2">
+<li>Since we used 10 informative features, let's also specify that we want 10 nonzero coefficients in LARS. We will probably not know the exact number of informative features beforehand, but it's useful for learning purposes:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from sklearn.linear_model import Lars</strong><br/><strong>lars = Lars(n_nonzero_coefs=10)</strong><br/><strong>lars.fit(reg_data, reg_target)</strong></pre>
+<ol start="3">
+<li>We can then verify that LARS returns the correct number of nonzero coefficients:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>np.sum(lars.coef_ != 0)</strong><br/><br/><strong> 10</strong></pre>
+<ol start="4">
+<li>The question then is why it is more useful to use a smaller number of features. To illustrate this, let's hold out half of the data and train two LARS models, one with 12 nonzero coefficients and another with no predetermined amount. We use 12 here because we might have an idea of the number of important features, but we might not be sure of the exact number:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>train_n = 100</strong><br/><strong>lars_12 = Lars(n_nonzero_coefs=12)</strong><br/><strong>lars_12.fit(reg_data[:train_n], reg_target[:train_n])</strong><br/><strong>lars_500 = Lars() # it's 500 by default</strong><br/><strong>lars_500.fit(reg_data[:train_n], reg_target[:train_n]);</strong><br/><br/><strong>np.mean(np.power(reg_target[train_n:] - lars_12.predict(reg_data[train_n:]), 2))</strong></pre>
+<ol start="5">
+<li>Now, to see how well each feature fits the unknown data, do the following:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>87.115080975821513</strong><br/><br/><strong>np.mean(np.power(reg_target[train_n:] - lars_500.predict(reg_data[train_n:]), 2))</strong><br/><br/><strong>2.1212501492030518e+41</strong></pre>
+<p>Look again if you missed it; the error on the test set was clearly very high. Herein lies the problem with high-dimensional datasets; given a large number of features, it's typically not too difficult to get a model of good fit on the train sample, but overfitting becomes a huge problem.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">How it works...</h1>
+                </header>
+            
+            <article>
+                
+<p>LARS works by iteratively choosing features that are correlated with the residuals. Geometrically, correlation is effectively the least angle between the feature and the residuals; this is how LARS got its name.</p>
+<p>After choosing the first feature, LARS will continue to move in the least angle direction until a different feature has the same amount of correlation with the residuals. Then, LARS will begin to move in the combined direction of both features. To visualize this, consider the following graph:</p>
+<div class="CDPAlignCenter CDPAlign"><img height="653" width="334" src="assets/8ff7d0c4-56ec-4028-b183-b1db7a6f4f9a.png"/></div>
+<p>So, we move along <strong>x1</strong> until we get to the point where the pull on <strong>x1</strong> by <strong>y</strong> is the same as the pull on <strong>x2</strong> by <strong>y</strong>. When this occurs, we move along the path that is equal to the angle between <strong>x1</strong> and <strong>x2</strong> divided by two.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">There's more...</h1>
+                </header>
+            
+            <article>
+                
+<p>Much in the same way as we used cross-validation to tune ridge regression, we can do the same with LARS:</p>
+<pre><strong>from sklearn.linear_model import LarsCV</strong><br/><strong>lcv = LarsCV()</strong><br/><strong>lcv.fit(reg_data, reg_target)</strong></pre>
+<p>Using cross-validation will help us to determine the best number of nonzero coefficients to use. Here, it turns out to be as shown:</p>
+<pre><strong>np.sum(lcv.coef_ != 0)</strong><br/><br/><strong>23</strong></pre>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">References</h1>
+                </header>
+            
+            <article>
+                
+<ol>
+<li><span>Bradley </span>Efron, <span>Trevor </span>Hastie, <span>Iain </span>Johnstone, and <span>Robert </span>Tibshirani, <em>Least angle regression</em>, The Annals of Statistics 32(2) 2004: pp. 407–499, doi:10.1214/009053604000000067, MR2060166.</li>
+</ol>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>
