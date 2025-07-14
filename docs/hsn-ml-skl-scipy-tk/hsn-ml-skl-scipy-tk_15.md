@@ -1,4 +1,4 @@
-异常检测 – 找出数据中的异常值
+# 异常检测 – 找出数据中的异常值
 
 检测数据中的异常是机器学习中的一个重复性主题。在[第十章](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=32&action=edit)[,](https://cdp.packtpub.com/hands_on_machine_learning_with_scikit_learn/wp-admin/post.php?post=32&action=edit)*Imbalanced Learning – Not Even 1% Win the Lottery*，我们学习了如何在数据中发现这些有趣的少数群体。那时，数据是有标签的，并且之前章节中的分类算法适用于该问题。除了**有标签异常检测**问题外，还有一些情况下数据是无标签的。
 
@@ -14,7 +14,7 @@
 
 +   使用隔离森林检测异常值
 
-# 第十六章：无标签异常检测
+# 无标签异常检测
 
 在本章中，我们将从一些无标签数据开始，我们需要在其中找到异常样本。我们可能只会得到正常数据（inliers），并希望从中学习正常数据的特征。然后，在我们对正常数据拟合一个模型后，给定新的数据，我们需要找出与已知数据不符的异常值（outliers）。这类问题被称为**新颖性检测**。另一方面，如果我们在一个包含正常数据和异常值的数据集上拟合我们的模型，那么这个问题被称为**异常值检测**问题。
 
