@@ -1,0 +1,712 @@
+<html><head></head><body>
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Build an App to Find Underpriced Apartments</h1>
+                </header>
+            
+            <article>
+                
+<p><span class="HeaderFooterPACKT">In <a href="32e9f384-e739-4a1c-833e-11ee40051ac8.xhtml" target="_blank">Chapter 1</a>, <em>The Python Machine Learning Ecosystem</em>, we learned the essentials for working with data. We'll now apply that knowledge to build out our first machine learning application. We'll begin with a minimal, but highly-practical example: building an application to identify underpriced apartments.</span></p>
+<p><span class="HeaderFooterPACKT">If you've ever searched for an apartment, you will appreciate just how frustrating the process can be. Not only is it time-consuming, but even when you do find an apartment you like, how do you know whether it's the right one?</span></p>
+<p><span class="HeaderFooterPACKT">Most likely, you have a target budget and a target location. But, if you are anything like me, you are also willing to make a few trade-offs. For example, I live in New York City, and being near an amenity like the subway is a big plus. But how much is that worth? Should I trade being in a building with an elevator for being closer to the train? How many minutes of walking to the train is worth walking up a flight of stairs? When renting, there are dozens of questions like this to consider. So how can we use machine learning to help us make these types of decisions?</span></p>
+<p><span class="HeaderFooterPACKT">We'll spend the remainder of this chapter exploring just that. We won't be able to get answers to all the questions we have (for reasons that will become clear later), but by the end of the chapter, we'll have created an application that will make finding the right apartment just a little bit easier.</span></p>
+<p><span class="HeaderFooterPACKT">Here's what we'll cover in this chapter:</span></p>
+<ul>
+<li>Sourcing apartment listing data</li>
+<li>Inspecting and preparing the data</li>
+<li>Visualizing the data</li>
+<li>Regression modeling</li>
+<li>Forecasting</li>
+</ul>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Sourcing apartment listing data</h1>
+                </header>
+            
+            <article>
+                
+<p>In the early 1970s, if you wanted to purchase a stock, you would need to engage a broker, who would charge you a fixed commission of nearly 1%. If you wanted to purchase an airline ticket, you would need to contact a travel agent, who would earn a commission of around 7%. And if you wanted to sell a home, you would contact a real estate agent, who would earn a commission of 6%. In 2018, you can do the first two essentially for free. The last one remains as it was in the 1970s.</p>
+<p>Why is this the case and, more importantly, what does any of this have to do with machine learning? The reality is, it all comes down to data, and who has access to that data.</p>
+<p>You might assume that you could easily access troves of real estate listing data quite easily through APIs or by <strong>web scraping</strong> real estate websites. You would be wrong. Well, wrong if you intend to follow the terms and conditions of those sites. Real estate data is tightly controlled by the <strong>National Association of Realtors</strong> (<strong>NAR</strong>), who run the <strong>Multiple Listing Service</strong> (<strong>MLS</strong>). This is a service that aggregates listing data, and is only <span>available to </span>brokers and agents at great expense. So, as you can imagine, they aren't too keen on letting just anyone download it <em>en masse</em>.</p>
+<p>This is unfortunate, since opening up this data would undoubtedly lead to useful consumer applications. This seems especially important for a purchase decision that represents the largest portion of a family's budget.</p>
+<p>With that said, not all hope is lost, as not every site explicitly bans scraping.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Pulling down listing data</h1>
+                </header>
+            
+            <article>
+                
+<p>We'll be using the RentHop site, <a href="https://www.renthop.com/" target="_blank"><span class="URLPACKT">http</span><span class="URLPACKT">://www.renthop.com</span></a>, to source our listing data. The following screenshot of the site shows the layout of the listings we'll be retrieving:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1035 image-border" src="assets/3ed2e732-72cd-481f-ac8d-1c37a4355b7b.png" style="width:151.83em;height:104.33em;"/></p>
+<p>What we can see is that the listings have the address, the price, the number of bedrooms, and the number of bathrooms. We'll start by retrieving this information for each listing.</p>
+<p>We are going to be using the Python Requests library for this task. Requests is dubbed <em>HTTP for humans</em>, and it makes it super easy to retrieve websites. If you want an overview on how to use Requests, the quick start guide is available at <a href="http://docs.python-requests.org/en/master/user/quickstart/" target="_blank"><span class="URLPACKT">http://docs.python-requests.org/en/master/user/quickstart/</span></a>. Follow these steps:</p>
+<ol>
+<li>So, the first step is to prepare our Jupyter Notebook with the imports we'll be using for this task. We do that in the following code snippet:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>import numpy as np 
+import pandas as pd 
+import requests 
+import matplotlib.pyplot as plt 
+%matplotlib inline</strong> </pre>
+<p style="padding-left: 60px">We'll likely need to import more libraries later on, but for now this should get us started.</p>
+<p class="mce-root"/>
+<ol start="2">
+<li>We are going to use NYC apartment data in our model. The URL for that data is <a href="https://www.renthop.com/nyc/apartments-for-rent" target="_blank"><span class="URLPACKT">https://www.renthop.com/nyc/apartments-for-rent</span></a>. Let's run a quick test and make sure we can retrieve that page. We do that in the following code:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>r = requests.get('https://www.renthop.com/nyc/apartments-for-rent') 
+r.content</strong> </pre>
+<ol start="3">
+<li>This code makes a call to the site, and retrieves the information, storing it in the <kbd>r</kbd> object. There are a number of attributes we could retrieve from that <kbd>r</kbd> object, but for now, we just want the page content. We can see the output of that in the following screenshot:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1036 image-border" src="assets/f91672bd-b5d9-4562-840b-65431127b904.png" style="width:162.50em;height:66.83em;"/></p>
+<ol start="4">
+<li>Upon inspection, it looks like everything we want is contained in this. To verify that, let's copy all of the HTML and paste it into a text editor, and then open it in a browser. I'm going to do that using <strong>Sublime Text</strong>, a popular text editor available at <span class="URLPACKT"><a href="https://www.sublimetext.com/" target="_blank">https://www.sublimetext.com/</a></span>.</li>
+</ol>
+<ol start="5">
+<li>In the following screenshot, you can see that I have pasted the copied HTML from the Jupyter output into Sublime Text and saved it as <kbd>test.html</kbd>:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1037 image-border" src="assets/1e5be5b0-f835-42f5-8f9a-527637540495.png" style="width:162.50em;height:100.17em;"/></p>
+<div class="CDPAlignCenter CDPAlign packt_figref">HTML text</div>
+<p class="mce-root"/>
+<ol start="6">
+<li>Next, we click on <span class="packt_screen">Open in Browser</span>, and we can see output that resembles the following image:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1038 image-border" src="assets/85ddd01e-3d57-4e79-b922-2a0fa4d63082.png" style="width:106.25em;height:94.08em;"/></p>
+<p>Notice that although the text doesn't render cleanly (due to the lack of CSS), all the data we are targeting is there. Fortunately for us, that means the RentHop site doesn't use any advanced JavaScript rendering, so that should make our job much easier. If it did, we'd have to use a different tool like Selenium.</p>
+<p>Let's now examine the page elements to see how we can parse the page data:</p>
+<ol>
+<li>Open the RentHop site in Chrome and right-click anywhere on the page.</li>
+<li>At the bottom of the context menu, you should see <span class="packt_screen">Inspect</span>. Click on that. The page should now resemble the following image:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1039 image-border" src="assets/9e9a1c0e-8312-4e60-87b5-8dc1cd532333.png" style="width:162.50em;height:79.75em;"/></p>
+<ol start="3">
+<li>In the tool that just opened, in the upper left-hand corner, there is a square with an arrow in the corner. Click that, and then click on the data on the page. It should look like the following:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1040 image-border" src="assets/d971858e-a691-4eae-94aa-b47f60d21317.png" style="width:159.17em;height:49.50em;"/></p>
+<p style="padding-left: 60px">We can see from this that each listing's data is in a table, and that the first <kbd>td</kbd> tag contains the price, the second contains the number of bedrooms, and the third contains the number of bathrooms. We will also want the address of the apartment that can be found in an anchor, or a tag.</p>
+<p>Let's now begin building out our code to test our parsing of the data. To do our HTML parsing, we are going to use a library call <strong>BeautifulSoup</strong>. The documentation for it can be found at <a href="https://www.crummy.com/software/BeautifulSoup/" target="_blank">https://www.crummy.com/software/BeautifulSoup/</a>. BeautifulSoup is a popular, easy-to-use Python HTML parsing library. It can be pip installed if you don't already have it. We are going to use it to pull out all of the individual specs for our apartment listings:</p>
+<ol>
+<li>To get started, we simply need to pass our page content into the <kbd>BeautifulSoup</kbd> class. This can be seen in the following code:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>from bs4 import BeautifulSoup 
+ 
+soup = BeautifulSoup(r.content, "html5lib")</strong> </pre>
+<ol start="2">
+<li>We now can use this <kbd>soup</kbd> object that we've created to begin parsing out our apartment data. The first thing we want to do is retrieve that <kbd>div</kbd> tag that contains our listing data on the page. We see that in the following code:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>listing_divs = soup.select('div[class*=search-info]') 
+listing_divs</strong> </pre>
+<p style="padding-left: 60px">What we've done in the preceding code is to select all <kbd>divs</kbd> that contain <kbd>search-info</kbd>. These are exactly the <kbd>divs</kbd> that have our data.</p>
+<ol start="3">
+<li>Next, we look at the output from this in the following screenshot:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1041 image-border" src="assets/354d6474-7e80-4967-8f21-1fa657ceb267.png" style="width:163.75em;height:71.00em;"/></p>
+<ol start="4">
+<li>Notice that we have a Python list of all the <kbd>div</kbd> tags we were seeking. We know from looking at the page that there should be twenty of these. Let's confirm that:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>len(listing_divs)</strong> </pre>
+<ol start="5">
+<li>We then see the following output, which confirms that we have captured them all as we wanted:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1042 image-border" src="assets/d65d3be9-fa3b-462d-84ad-ad353cb1087c.png" style="width:13.17em;height:4.83em;"/></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Pulling out the individual data points</h1>
+                </header>
+            
+            <article>
+                
+<p>Now that we have all the <kbd>divs</kbd> with our listing data for each apartment, we need to pull out the individual data points for each apartments.</p>
+<p>These are the points in each that we want to target:</p>
+<ul>
+<li>URL of the listing</li>
+<li>Address of the apartment</li>
+<li>Neighborhood</li>
+<li>Number of bedrooms</li>
+<li>Number of bathrooms</li>
+</ul>
+<p class="mce-root"/>
+<p>Obviously, we love to have way more info—things such as square footage, for example, but we'll have to make do with what we have.</p>
+<p>Let's begin by looking at the first listing:</p>
+<pre><strong>listing_divs[0]</strong> </pre>
+<p>The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1044 image-border" src="assets/d622f786-908e-4e9f-9578-cfc63d1c150d.png" style="width:145.42em;height:59.67em;"/></p>
+<p>Notice that this first <kbd>div</kbd> contains all of the data points we were looking for. We just now need to begin our parse to target them each individually. Let's look at the first one we want to retrieve, the URL.</p>
+<p>We can see that the URL for the page is with an anchor, or a tag. Let's parse that out now. We can do that with another <kbd>select</kbd> statement, as can be seen in the following code snippet:</p>
+<pre><strong>listing_divs[0].select('a[id*=title]')[0]['href']</strong> </pre>
+<p>We see the output in the following screenshot:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1045 image-border" src="assets/783a7653-3757-4149-bd8c-a5fdcb4a2a1e.png" style="width:43.92em;height:1.75em;"/></p>
+<p>This is exactly what we were hoping for. We can now continue to retrieve the other data points for the listing. We do that in the following code:</p>
+<pre><strong>href = current_listing.select('a[id*=title]')[0]['href'] 
+addy = current_listing.select('a[id*=title]')[0].string 
+hood = current_listing.select('div[id*=hood]')[0]\ 
+       .string.replace('\n','') </strong></pre>
+<p>Let's now verify this by printing out what we've captured. We do that in the following code:</p>
+<pre><strong>print(href) 
+print(addy) 
+print(hood) </strong></pre>
+<p>The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1046 image-border" src="assets/fc936587-2ea0-4ff4-983d-cf957338dd68.png" style="width:39.92em;height:4.25em;"/></p>
+<p>Based on this output, we are getting the data we need. Let's continue on with the last few items we need—the bedrooms, bathrooms, and the price.</p>
+<p>Since these items have a slightly different presentation in that they are in a <kbd>table</kbd> tag in our <kbd>div</kbd> and then inside a table row, or <kbd>tr</kbd>, we will need to iterate over each point to capture our data. We do that in the following code:</p>
+<pre><strong>listing_specs = listing_divs[0].select('table[id*=info] tr') 
+for spec in listing_specs: 
+    spec_data = spec.text.strip().replace(' ', '_').split() 
+    print(spec_data)</strong> </pre>
+<p>The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1047 image-border" src="assets/c9d91942-f5cd-48f0-b7ea-187affdea492.png" style="width:22.50em;height:2.08em;"/></p>
+<p>Again, this is exactly what we were looking for. We now have all the data that we were seeking. Let's now pull it all together in a loop so that we can pull the data from each listing and save it into a list.</p>
+<p class="mce-root"/>
+<p>In the following code, we will pull out all the data points for each listing:</p>
+<pre><strong>listing_list = [] 
+for idx in range(len(listing_divs)): 
+    indv_listing = [] 
+    current_listing = listing_divs[idx] 
+    href = current_listing.select('a[id*=title]')[0]['href'] 
+    addy = current_listing.select('a[id*=title]')[0].string 
+    hood = current_listing.select('div[id*=hood]')[0]\ 
+    .string.replace('\n','') 
+ </strong> <strong>   
+    indv_listing.append(href) 
+    indv_listing.append(addy) 
+    indv_listing.append(hood) 
+     
+    listing_specs = current_listing.select('table[id*=info] tr') 
+    for spec in listing_specs: 
+        try: 
+            indv_listing.extend(spec.text.strip()\ 
+                                .replace(' ', '_').split()) 
+        except: 
+            indv_listing.extend(np.nan) 
+    listing_list.append(indv_listing)     </strong></pre>
+<p>Let's unpack a bit what we did in the preceding code. We know we have 20 divs that contain the apartment listing on the page, so we create a <kbd>for</kbd> loop that goes through each one and pulls out the data and adds it to <kbd>indv_listing</kbd>. When that is complete, all the data for the individual listing is then added to the <kbd>listing_list</kbd>, which contains all the final info for the 20 apartment listings. We verify that with the following code:</p>
+<pre><strong>listing_list</strong> </pre>
+<p>The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1048 image-border" src="assets/829b00c3-db15-4c34-a87c-84e7244a8865.png" style="width:45.00em;height:26.08em;"/></p>
+<p>Again, we appear to be getting the results we expect, so we will continue on. A check of the number of items in <kbd>listing_list</kbd> also confirms we have all 20 apartments on the page.</p>
+<p>So far, we have successfully retrieved one page of data. While that is great, we are going to need far more apartments if we want to build any kind of meaningful model. To do this, we will need to iterate over a number of pages. To that end, we'll need to use the appropriate URLs. We can see that at the bottom of the listings, there is a button that says <span class="packt_screen">Next</span>. If you right-click on that button, and click <span class="packt_screen">Copy Link Address</span>, you see it looks like the following URL: <span class="URLPACKT"><a href="https://www.renthop.com/search/nyc?max_price=50000&amp;min_price=0&amp;page=2&amp;sort=hopscore&amp;q=&amp;search=0" target="_blank">https://www.renthop.com/search/nyc?max_price=50000&amp;min_price=0&amp;page=2&amp;sort=hopscore&amp;q=&amp;search=0</a>.</span></p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Parsing data</h1>
+                </header>
+            
+            <article>
+                
+<p>A basic analysis of the URL tells us that we are passing in parameters that include min price and max price, but most importantly, the page number. We can use this in our code, and just dynamically change that page number to pull additional pages using a loop.</p>
+<p>Let's try this with some sample code:</p>
+<pre><strong>url_prefix = "https://www.renthop.com/search/nyc?max_price=50000&amp;min_price=0&amp;page=" 
+page_no = 1 
+url_suffix = "&amp;sort=hopscore&amp;q=&amp;search=0" 
+  
+for i in range(3): 
+    target_page = url_prefix + str(page_no) + url_suffix 
+    print(target_page) 
+    page_no += 1</strong> </pre>
+<p>The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/439f0f72-5676-4282-85e4-1996bcd9e60d.png"/></p>
+<p>This looks like a success. Now we need to just put it all together. We'll start by turning our parsing loop into a proper function that we can call for each of the pages. We do that in the following code:</p>
+<pre><strong>def parse_data(listing_divs): 
+    listing_list = [] 
+    for idx in range(len(listing_divs)): 
+        indv_listing = [] 
+        current_listing = listing_divs[idx] 
+        href = current_listing.select('a[id*=title]')[0]['href'] 
+        addy = current_listing.select('a[id*=title]')[0].string 
+        hood = current_listing.select('div[id*=hood]')[0]\ 
+        .string.replace('\n','') 
+</strong> <strong>
+        indv_listing.append(href) 
+        indv_listing.append(addy) 
+        indv_listing.append(hood) 
+ 
+        listing_specs = current_listing.select('table[id*=info] tr') 
+        for spec in listing_specs: 
+            try: 
+                values = spec.text.strip().replace(' ', '_').split() 
+                clean_values = [x for x in values if x != '_'] 
+                indv_listing.extend(clean_values) 
+            except: 
+                indv_listing.extend(np.nan) 
+        listing_list.append(indv_listing) 
+    return listing_list</strong> </pre>
+<p>This function will take in a page full of <kbd>listing_divs</kbd> and return the data payload for each. We can then keep adding the data to our master list of apartment data. Notice that there is some additional code in there to validate and remove some erroneous <kbd>'_'</kbd> values that get added in the <kbd>listing_spec</kbd> loop. This was to avoid some bad parsing that added an additional column when there shouldn't have been one.</p>
+<p>Next, we will build the main loop that will retrieve each page, get the <kbd>listing_divs</kbd>, parse out the data points, and finally add all of the info to our final Python list of all data points for each listing. We do that in the following code:</p>
+<pre><strong>all_pages_parsed = [] 
+for i in range(100): 
+    target_page = url_prefix + str(page_no) + url_suffix 
+    print(target_page) 
+    r = requests.get(target_page) 
+     
+    soup = BeautifulSoup(r.content, 'html5lib') 
+     
+    listing_divs = soup.select('div[class*=search-info]') 
+     
+    one_page_parsed = parse_data(listing_divs) 
+     
+    all_pages_parsed.extend(one_page_parsed) 
+     
+    page_no += 1</strong> </pre>
+<p>Before trying this on 100 pages, you should confirm that it works on a much smaller number, like 3.</p>
+<p>You should have noticed the page being printed out as the code ran. If you used 30 pages, you should see that there are 2,000 listings in your <kbd>all_pages_parsed</kbd> list.</p>
+<p>Let's now move our data into a <kbd>pandas</kbd> DataFrame, so that we can work with it more easily. We do that in the following code:</p>
+<pre><strong>df = pd.DataFrame(all_pages_parsed, columns=['url', 'address', 'neighborhood', 'rent', 'beds', 'baths']) 
+ 
+df</strong> </pre>
+<p class="mce-root"/>
+<p>The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1049 image-border" src="assets/c5103f6c-211e-4b4a-a991-255f8cfd26f7.png" style="width:141.67em;height:55.58em;"/></p>
+<p>Now that we have all our data pulled down, parsed, and incorporated in a DataFrame, let's move on to cleansing and verifying our data.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Inspecting and preparing the data</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's begin by inspecting the data points for each of our columns. We want to look for odd and outlier values in our data. We will start by looking at the bedroom and bathroom columns:</p>
+<ol>
+<li>In the following code, we look at the unique values for bedrooms:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>df['beds'].unique()</strong> </pre>
+<p style="padding-left: 60px">The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1050 image-border" src="assets/10ec2364-5b9f-4e4c-b291-4b1e4a52813a.png" style="width:111.75em;height:7.00em;"/></p>
+<ol start="2">
+<li>Now, let's look at bathrooms. We do that in the following code:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>df['baths'].unique()</strong> </pre>
+<p class="mce-root"/>
+<p style="padding-left: 60px">The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1051 image-border" src="assets/6502f7a8-337c-47ad-8a37-379e3fc9a140.png" style="width:114.08em;height:10.00em;"/></p>
+<ol start="3">
+<li>Based on the output from the two preceding queries, we see that we need to correct some items that have a leading underscore. Let's do that now:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>df['beds'] = df['beds'].map(lambda x: x[1:] if x.startswith('_') else x) 
+df['baths'] = df['baths'].map(lambda x: x[1:] if x.startswith('_') else x)</strong> </pre>
+<ol start="4">
+<li>In the preceding code, we ran a pandas <kbd>map</kbd> function with a <kbd>lambda</kbd> function that essentially checks whether the element begins with an underscore and, if so, removes it. A quick check of the unique values for beds and baths should reveal that our erroneous starting underscores have been removed:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>df['beds'].unique()</strong> </pre>
+<p style="padding-left: 60px">The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1052 image-border" src="assets/b020bf80-3365-4261-b9fe-501c97c84d0f.png" style="width:110.33em;height:7.33em;"/></p>
+<p style="padding-left: 60px">Let's execute the following line of code and look at the results:</p>
+<pre style="padding-left: 60px"><strong>df['baths'].unique()</strong> </pre>
+<p style="padding-left: 60px">The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1053 image-border" src="assets/05be5f71-4fb5-49d7-932f-50ce674e00e3.png" style="width:111.50em;height:6.67em;"/></p>
+<ol start="5">
+<li>Next, we want to look at some descriptive statistics to better understand our data. One way to do that is with the <kbd>describe</kbd> method. Let's try that in the following code:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>df.describe()</strong> </pre>
+<p style="padding-left: 60px">The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1054 image-border" src="assets/b1e30c62-34f6-4ea3-bb92-c3870e31c936.png" style="width:143.25em;height:26.00em;"/></p>
+<p>While we were hoping to get metrics such as the average number of beds and baths, and things like the max rent, what we instead received was much less than that. The problem is that the data is not the correct data type for these operations. Pandas can't perform those types of operation on what are string objects. We will need to clean up our data further and set it to the correct data types. We will do that in the following code:</p>
+<pre><strong>df['rent'] = df['rent'].map(lambda x: str(x).replace('$','').replace(',','')).astype('int') 
+df['beds'] = df['beds'].map(lambda x: x.replace('_Bed', '')) 
+df['beds'] = df['beds'].map(lambda x: x.replace('Studio', '0')) 
+df['beds'] = df['beds'].map(lambda x: x.replace('Loft', '0')).astype('int') 
+df['baths'] = df['baths'].map(lambda x: x.replace('_Bath', '')).astype('float')</strong> </pre>
+<p>What we have done in the preceding code is to remove anything that is non-numeric from each of the values. You can see that we removed <kbd>_Bed</kbd> and <kbd>_Bath</kbd> to leave just the number, and that we replaced words such as <kbd>Studio</kbd> and <kbd>Loft</kbd> with the actual number of bedrooms, which is zero.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Sneak-peek at the data types</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's now look at our data types:</p>
+<pre><strong>df.dtypes</strong> </pre>
+<p class="mce-root"/>
+<p>The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1055 image-border" src="assets/004c3498-365f-4413-a374-cc313910ac25.png" style="width:16.17em;height:9.83em;"/></p>
+<p>This is what we want to see. Notice that since we can have a half bath, we needed a float there rather than an integer.</p>
+<p>Next, let's carry out an inspection. Let's get a count of the number of units in each neighborhood:</p>
+<pre><strong>df.groupby('neighborhood')['rent'].count().to_frame('count')\ 
+.sort_values(by='count', </strong><strong>ascending=False)</strong> </pre>
+<p>The preceding code generates the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1056 image-border" src="assets/0b82a455-5b59-4ba6-8f11-7783d31ab819.png" style="width:26.75em;height:21.83em;"/></p>
+<p>It looks like most of the units are in Manhattan, which is what we might expect. Let's make sure that our neighborhood strings are clean. We can do that by doing a number of <kbd>groupby</kbd> operations:</p>
+<pre><strong>df[df['neighborhood'].str.contains('Upper East Side')]['neighborhood'].value_counts()</strong> </pre>
+<p>The preceding code generates the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1057 image-border" src="assets/088f78f1-58b4-452b-8bef-d64b0bc2074a.png" style="width:40.83em;height:7.50em;"/></p>
+<p>It looks like we have some issues with leading and possibly trailing spaces. Let's clean that up. We do so in the following code:</p>
+<pre><strong>df['neighborhood'] = df['neighborhood'].map(lambda x: x.strip())</strong> </pre>
+<p>That should clear it up. Let's validate that:</p>
+<pre><strong>df[df['neighborhood'].str.contains('Upper East Side')]['neighborhood'].value_counts()</strong> </pre>
+<p>The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1058 image-border" src="assets/cd7f984d-69f4-4fcf-8d77-68be60114fe3.png" style="width:41.75em;height:6.67em;"/></p>
+<p>Perfect. Exactly what we want to see. At this point, we can do a few more inspections. Let's just take a look at the mean rent by neighborhood:</p>
+<pre><strong>df.groupby('neighborhood')['rent'].mean().to_frame('mean')\ 
+.sort_values(by='mean', ascending=False)</strong> </pre>
+<p class="mce-root"/>
+<p>The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1059 image-border" src="assets/7abacf8e-6a05-46a9-a20b-1a8f0672482b.png" style="width:35.33em;height:23.75em;"/></p>
+<p>We see that the Lincoln Square area appears to have the highest rent on average. At this point, we could continue on querying the data for interesting patterns, but let's move on to visualizing the data.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Visualizing our data</h1>
+                </header>
+            
+            <article>
+                
+<p>When dealing with geographic data, as we are here, it is immensely valuable to be able to plot that information. One way of doing that is with something called a <strong>choropleth</strong> map. A choropleth is essentially a geographic heat map. We are going to build a choropleth to create a heat map of average rental price by ZIP code.</p>
+<p>The first thing we will need to do this is the ZIP code. Unfortunately for us, our dataset does not contain ZIP code information. We do, however, have the address for the properties. With a little help from the Google Maps API, we can retrieve this information.</p>
+<p>Currently, the Google Maps API is a paid API. The rates are reasonable, 1,000 calls for $5, but they also give you a credit of $200 each month (at the time of writing). They also allow you to sign up for a free trial before they will start billing you, and they won't bill unless you explicitly give them the okay to do so. Since there really is no free alternative out there, we'll go ahead and sign up for an account. I'll walk you through the steps in the following:</p>
+<ol>
+<li>The first step is to go to the Google Maps API page at <span class="URLPACKT"><a href="https://developers.google.com/maps/documentation/geocoding/intro" target="_blank">https://developers.google.com/maps/documentation/geocoding/intro</a>:<a href="https://developers.google.com/maps/documentation/geocoding/intro" target="_blank"/></span></li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1060 image-border" src="assets/26646108-bf3e-4860-94b6-6cf5bcabdcb9.png" style="width:162.50em;height:84.50em;"/></p>
+<ol start="2">
+<li>Click on <span class="packt_screen">GET STARTED</span> in the upper right-hand corner. You'll next be prompted to create a project. Give it any name you like:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1061 image-border" src="assets/eb95ec16-8435-4b33-a113-4c8196564d63.png" style="width:33.42em;height:25.75em;"/></p>
+<div class="CDPAlignCenter CDPAlign packt_figref">Creating a project</div>
+<ol start="3">
+<li>Then you will enable billing:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1062 image-border" src="assets/38605d33-524b-4534-abb2-751e12451633.png" style="width:34.75em;height:12.67em;"/></p>
+<ol start="4">
+<li>Next, you will enable your API keys:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1063 image-border" src="assets/78f3f58e-76f5-451c-9d65-ac02b116f6fd.png" style="width:29.83em;height:13.25em;"/></p>
+<ol start="5">
+<li>Once this is completed and you have your API keys, head back to the front page to enable the Geolocation API. Click on <span class="packt_screen">APIs</span> in the left-hand side pane:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1064 image-border" src="assets/50eb78d9-6e3d-45c3-829e-4e842689f153.png" style="width:162.50em;height:84.67em;"/></p>
+<ol start="6">
+<li>And then, under <span class="packt_screen">Unused APIs</span>, click <span class="packt_screen">Geolocation API</span>:</li>
+</ol>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1065 image-border" src="assets/f998f931-657d-4ff6-a8e8-86e78e4848b6.png" style="width:23.92em;height:22.33em;"/></p>
+<p>Once all of this is complete, and you have your API keys, pip install Google Maps. That can be done from your command line with <kbd>pip install -U googlemaps</kbd>.</p>
+<p>Let's continue on now with this API in our Jupyter Notebook. We'll import our new mapping API and test it out:</p>
+<pre><strong>import googlemaps 
+ 
+gmaps = googlemaps.Client(key='YOUR_API_KEY_GOES_HERE') 
+ 
+ta = df.loc[3,['address']].values[0] + ' '\ 
++ df.loc[3,['neighborhood']].values[0].split(', ')[-1] 
+ 
+ta</strong> </pre>
+<p>The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1066 image-border" src="assets/5f6b021c-588f-4b4c-b09e-a3f4d93e74a2.png" style="width:26.67em;height:1.33em;"/></p>
+<p>Okay, so essentially, all we did in the final bit of code was to import and initialize our <kbd>googlemaps</kbd> client, as well as use piece together from one of our apartments as usable address. Let's now pass in that address to the Google Maps API:</p>
+<pre><strong>geocode_result = gmaps.geocode(ta) 
+ 
+geocode_result</strong> </pre>
+<p>The preceding code generates the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1067 image-border" src="assets/ab9e809c-61bc-42ad-a4af-86d262f6030e.png" style="width:144.50em;height:57.83em;"/></p>
+<p>Remember, we are looking to extract just the ZIP code here. The ZIP code is embedded in the JSON, but it will take a bit of work to extract due to the formatting of this response JSON object. Let's do that now:</p>
+<pre><strong>for piece in geocode_result[0]['address_components']: 
+    if 'postal_code' in piece['types'] : 
+        print(piece['short_name'])</strong> </pre>
+<p>The preceding code results in the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1068 image-border" src="assets/aee66726-b6b6-4501-ae33-4c65987eb78a.png" style="width:4.33em;height:1.50em;"/></p>
+<p>It looks like we're getting the information we want. There is one caveat, however. Looking deeper into the address column, we can see that occasionally, a full address is not given. This will result in no ZIP code coming back. We'll just have to deal with that later. For now, let's build a function to retrieve the ZIP codes that we can do as follows:</p>
+<pre><strong>import re 
+def get_zip(row): 
+    try: 
+        addy = row['address'] + ' ' + row['neighborhood'].split(', ')[-1] 
+        print(addy) 
+        if re.match('^\d+\s\w', addy): 
+            geocode_result = gmaps.geocode(addy) 
+            for piece in geocode_result[0]['address_components']: 
+                if 'postal_code' in piece['types']: 
+                    return piece['short_name'] 
+                else: 
+                    pass 
+        else: 
+            return np.nan 
+    except: 
+        return np.nan 
+ 
+ 
+ 
+df['zip'] = df.apply(get_zip, axis=1)</strong> </pre>
+<p>There's a fair bit of code in the preceding snippet, so let's talk about what's going on here.</p>
+<p>First, at the bottom, you see that we are running an <kbd>apply</kbd> method on our DataFrame. Because we have set <kbd>axis=1</kbd>, each row of the <kbd>df</kbd> DataFrame will be passed into our function. Within the function, we are piecing together an address to call with the Google Maps Geolocation API. We are using regex to limit our calls to only those that start with a street number. We then iterate over the JSON response to parse out the ZIP code. If we find a ZIP code, we return it, otherwise we return a <kbd>np.nan</kbd>, or null value. Note that this function will take some time to run as we have to make many hundreds of calls and then parse out the response.</p>
+<p>Once that completes, we will have a DataFrame that now has the ZIP code for those properties that had a proper address provided. Let's take a look and see how many that actually is:</p>
+<pre><strong>df[df['zip'].notnull()].count()</strong> </pre>
+<p>The preceding code generated the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1069 image-border" src="assets/c182f5b9-f892-46cf-8c3e-2730e41403fc.png" style="width:13.58em;height:10.92em;"/></p>
+<p>So, we lost quite a bit of our data, but nevertheless, what we have now is more useful in many ways, so we will continue on.</p>
+<p>First, since it takes so long to retrieve all the ZIP code data, let's now store what we have so that we can always retrieve it later if necessary, and not have to make all those API calls again. We do that with the following code:</p>
+<pre><strong>df.to_csv('apts_with_zip.csv')</strong> </pre>
+<p>Let's also store just the data with the ZIP code information in a new DataFrame. We will call that one <kbd>zdf</kbd>:</p>
+<pre><strong>zdf = df[df['zip'].notnull()].copy()</strong> </pre>
+<p>Finally, let's do an aggregation by ZIP code to see what the average rental price is by ZIP:</p>
+<pre><strong>zdf_mean = zdf.groupby('zip')['rent'].mean().to_frame('avg_rent')\ 
+.sort_values(by='avg_rent', ascending=False).reset_index() 
+zdf_mean</strong> </pre>
+<p>The preceding code generates the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1070 image-border" src="assets/bc5c1458-e3e6-4320-adaf-0179894ec839.png" style="width:12.50em;height:26.17em;"/></p>
+<p>We can see this jibes with our earlier finding that the Lincoln Center area had the highest mean rental prices, since 10069 is in the Lincoln Center region.</p>
+<p>Let's now move on to visualizing this information.</p>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Visualizing the data</h1>
+                </header>
+            
+            <article>
+                
+<p>Since this data is based on ZIP codes, the best way to visualize it is with a choropleth. If you're unfamiliar with a choropleth, it's simply a visualization that represents the data according to a color spectrum. Let's create one now using a Python mapping library called <kbd>folium</kbd> at <a href="https://github.com/python-visualization/folium" target="_blank"><span class="URLPACKT">https://github.com/python-visualization/folium</span></a><strong>.</strong> If you don't have folium installed, again, it can be done with pip install on the command line.</p>
+<p>Now we'll go ahead and create our visualization:</p>
+<pre><strong>import folium 
+ 
+m = folium.Map(location=[40.748817, -73.985428], zoom_start=13) 
+ 
+m.choropleth( 
+    geo_data=open('nyc.json').read(), 
+    data=zdf_mean, 
+    columns=['zip', 'avg_rent'], 
+    key_on='feature.properties.postalCode', 
+    fill_color='YlOrRd', fill_opacity=0.7, line_opacity=0.2, 
+    ) 
+ 
+m</strong> </pre>
+<p>There's a lot going on here, so let's take it step by step:</p>
+<ol start="1">
+<li>After importing <kbd>folium</kbd>, we create a <kbd>.Map()</kbd> object. We need to pass in coordinates and a zoom level to center the map. A Google search for the coordinates of the Empire State Building will give us the proper lat and long (flip the sign on the longitude to render it properly). Finally, adjust the zoom to get it centered appropriately for our data.</li>
+<li>The next line requires something called a GeoJSON file. This is an open format for representing geographic attributes. This can be found by searching for NYC GeoJSON files—specifically, ones with ZIP code mappings. Once that is done, we reference the GeoJSON file by inputting its path.</li>
+<li>Next, we reference our DataFrame in the <kbd>data</kbd> parameter. Here, we are using the mean rent by ZIP code we created previously. The <kbd>columns</kbd> parameter references those. The <kbd>key_on</kbd> parameter references the part of our JSON file that we are targeting, in this instance, the <kbd>postalCode</kbd>.</li>
+<li>Finally, the other options determine the color palette and certain other parameters to adjust the legend and coloring.</li>
+</ol>
+<p>When the cell is run, the map should render inline in your Jupyter Notebook, as can be seen in the following diagram:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1071 image-border" src="assets/9d831ef3-59ab-4d65-9bf7-d06ff1c1f525.png" style="width:83.33em;height:50.67em;"/></p>
+<p>With the heat map completed, you can begin to get a sense of which areas have higher or lower rents. This could help when targeting a particular area, but let's take our analysis deeper by using regression modeling.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Modeling the data</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's begin modeling by using our dataset. We're going to examine the effect that the ZIP code and the number of bedrooms have on the rental price. We'll use two packages here: the first, <kbd>statsmodels</kbd>, we introduced in <a href="32e9f384-e739-4a1c-833e-11ee40051ac8.xhtml" target="_blank"/><a href="32e9f384-e739-4a1c-833e-11ee40051ac8.xhtml" target="_blank">Chapter 1</a>, <em>The Python Machine Learning Ecosystem</em>,  but the second, <kbd>patsy</kbd>, <a href="https://patsy.readthedocs.org/en/latest/index.html" target="_blank"><span class="URLPACKT">https://patsy.readthedocs.org/en/latest/index.html</span></a>, is a package that makes working with <kbd>statsmodels</kbd> easier. Patsy allows you to use R-style formulas when running a regression. Let's do that now:</p>
+<pre><strong>import patsy 
+import statsmodels.api as sm 
+ 
+ 
+f = 'rent ~ zip + beds' 
+y, X = patsy.dmatrices(f, zdf, return_type='dataframe') 
+ 
+results = sm.OLS(y, X).fit() 
+results.summary()</strong> </pre>
+<p>The preceding code generates the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1072 image-border" src="assets/f3b6bd1e-72ff-467c-b633-784f63ec3eef.png" style="width:30.08em;height:28.83em;"/></p>
+<p class="mce-root"/>
+<p>Note that the preceding output is truncated.</p>
+<p>With those few lines of code, we have just run our first machine learning algorithm.</p>
+<div class="packt_infobox">While most people don't tend to think of linear regression as machine learning, that's exactly what it is. Linear regression is a type of supervised machine learning. Supervised, in this context, simply means we provide the output values for our training set.</div>
+<p>Let's now unpack what happened there. After our imports, we have two lines that relate to the <kbd>patsy</kbd> module. The first line is the formula we will be using. On the left-hand side (before the tilde) is our response, or dependent, variable, <kbd>rent</kbd>. On the right-hand side, we have our independent, or predictor, variables, <kbd>zip</kbd> and <kbd>beds</kbd>. This formula simply means we want to know how the ZIP code and the number of bedrooms will affect the rental price.</p>
+<p>Our formula is then passed into <kbd>patsy.dmatrices()</kbd> along with our DataFrame containing corresponding column names. Patsy is then set to return a DataFrame with our <kbd>X</kbd> matrix of predictor variables and a <em>y</em> vector with our response variable. These are then passed into <kbd>sm.OLS()</kbd>, on which we also call <kbd>.fit()</kbd> to run our model. Finally, we print out the results of the model.</p>
+<p>As you can see, there is a lot of information provided in the resulting output. Let's begin by looking at the topmost section. We see that the model included <kbd>555</kbd> observations, that it has an adjusted R<sup>2</sup> of <kbd>.367</kbd>, and that it is significant with an <kbd>F-statistic</kbd> probability of <kbd>3.50e-31</kbd>. What is the significance of this? It means that we have created a model that is able to explain about a third of the variance in price using just bedrooms and ZIP code. Is this a good result? In order to better answer that, let's now look at the center section of the output.</p>
+<p>The center section provides us with information on each of the independent variables in our model. From left to right, we see the following: the variable, the variable's coefficient in the model, the standard error, the <em>t</em>-statistic, the <em>p</em>-value for the <em>t</em>-statistic, and a 95% confidence interval.</p>
+<p>What does all of this tell us? If we look at the <em>p</em>-value column, we can determine whether our individual variables are statistically significant. Statistically significant in a regression model means that the relationship between an independent variable and a response variable is unlikely to have occurred by chance. Typically, statisticians use a <em>p</em>-value of <kbd>.05</kbd> when determining this. A <kbd>.05</kbd> <em>p</em>-value means that the results we see would occur by chance only 5% of the time. In terms of our output here, the number of bedrooms is clearly significant. What about the ZIP codes?</p>
+<p class="mce-root"/>
+<p>The first thing to notice here is that our intercept represents the 07302 ZIP code. When modeling a linear regression, an intercept is needed. The intercept is simply where the regression line meets the <em>y</em> axis. Statsmodels will automatically select one of the predictor variables to use as the intercept. Here it decided on Jersey City, 07302, since it organized the ZIP codes in ascending order. We can confirm this by examining the data as follows:</p>
+<pre><strong>X</strong> </pre>
+<p>The preceding code generates the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1073 image-border" src="assets/6fa694ea-2579-4909-b200-2075c06a0d6e.png" style="width:135.08em;height:56.00em;"/></p>
+<p>Notice that they are in ascending order, and if we look at the sorted ZIP code values in our DataFrame, we see the same with the exception of the missing ZIP 07302, which is now our baseline against which all the others will be compared.</p>
+<p>Looking at our results output again, we notice that some ZIP codes are highly significant and others are not. Let's look at our old friend, the Lincoln Center neighborhood, or 10069. If you remember, it was the area with the highest rents in our sample. We would expect that it would be significant and have a large positive coefficient when compared to the baseline of Jersey City, and, in fact, it does. The <em>p</em>-value is 0.000, and the coefficient is 4116. This means that you can expect the rent to be significantly higher near Lincoln Center, compared to an equivalent apartment in Jersey City—no surprise there.</p>
+<p>Let's now use our model to make a number of forecasts.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Forecasting</h1>
+                </header>
+            
+            <article>
+                
+<p>Let's say we've decided from our prior analysis that we are interested in three particular ZIP codes: <kbd>10002</kbd>, <kbd>10003</kbd>, and <kbd>10009</kbd>. How can we use our model to determine what we should pay for a given apartment? Let's now take a look.</p>
+<p>First, we need to know what the inputs into the model looked like so that we know how to enter a new set of values. Let's take a look at our <kbd>X</kbd> matrix:</p>
+<pre><strong>X.head()</strong> </pre>
+<p><span>The preceding code generates the following output:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1074 image-border" src="assets/6ecddbd6-bd84-4377-a099-b82414cb21e8.png" style="width:132.42em;height:29.25em;"/></p>
+<p>What we see is that our input is coded with what are called <strong>dummy variables.</strong> To represent a ZIP code feature, since it is not numerical, dummy coding is used. If the apartment is in 10003, then that column will be coded as <kbd>1</kbd>, while all other ZIP codes are coded as <kbd>0</kbd>. Beds will be coded according to the actual number since they are numerical. So let's now create our own input row to predict:</p>
+<pre><strong>to_pred_idx = X.iloc[0].index 
+to_pred_zeros = np.zeros(len(to_pred_idx)) 
+tpdf = pd.DataFrame(to_pred_zeros, index=to_pred_idx, columns=['value']) 
+ 
+tpdf</strong> </pre>
+<p><span>The preceding code generates the following output:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1075 image-border" src="assets/7bdb87fb-ee6f-4d97-b81c-e70471996391.png" style="width:10.58em;height:26.50em;"/></p>
+<p>We have just used the index from the <kbd>X</kbd> matrix and filled in the data with all zeros. Let's now fill in our values. We are going to price a one-bedroom apartment in the <kbd>10009</kbd> area code:</p>
+<pre><strong>tpdf.loc['Intercept'] = 1 
+tpdf.loc['beds'] = 1 
+tpdf.loc['zip[T.10009]'] = 1 
+ 
+tpdf</strong> </pre>
+<div class="packt_infobox">The intercept value for a linear regression must always be set to <kbd>1</kbd> for the model in order to return accurate statistical values.</div>
+<p><span>The preceding code generates the following output:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1078 image-border" src="assets/a3a0c802-ddb2-4516-acd2-a2227ade41e8.png" style="width:10.33em;height:25.92em;"/></p>
+<p>We have set our features to the appropriate values, so let's now use our model to return a prediction. We'll need to convert it to a DataFrame and transpose it in order to get the correct format. We do this as follows:</p>
+<pre><strong>results.predict(tpdf['value'].to_frame().T)</strong> </pre>
+<p><span>The preceding code generates the following output:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1079 image-border" src="assets/0d362192-3996-4c4d-9e57-e5395eb12744.png" style="width:14.25em;height:2.75em;"/></p>
+<p>You will recall that <kbd>results</kbd> was the variable name we saved our model to. That model object has a <kbd>.predict()</kbd> method, which we call with our input values. And, as you can see, the model returns a predicted value.</p>
+<p class="mce-root"/>
+<p class="mce-root"/>
+<p>What if we want to add another bedroom? We can do it as follows:</p>
+<ol>
+<li>Let's change our inputs and see:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>tpdf['value'] = 0 
+tpdf.loc['Intercept'] = 1 
+tpdf.loc['beds'] = 2 
+tpdf.loc['zip[T.10009]'] = 1</strong> </pre>
+<ol start="2">
+<li>Then we'll run the prediction again:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>results.predict(tpdf['value'].to_frame().T)</strong> </pre>
+<p style="padding-left: 60px"><span>The preceding code generates the following output:</span></p>
+<p class="CDPAlignCenter CDPAlign"><img src="assets/ebd4fa95-44eb-44f5-9924-a0e47df69849.png" style="width:15.00em;height:3.42em;"/></p>
+<ol start="3">
+<li>It looks like that extra bedroom will cost us about $800 more a month. But what if we choose <kbd>10069</kbd> instead? Lets change our input and see:</li>
+</ol>
+<pre style="padding-left: 60px"><strong>tpdf['value'] = 0 
+tpdf.loc['Intercept'] = 1 
+tpdf.loc['beds'] = 2 
+tpdf.loc['zip[T.10069]'] = 1 
+ 
+results.predict(tpdf['value'].to_frame().T)</strong> </pre>
+<p style="padding-left: 60px">The preceding code generates the following output:</p>
+<p class="CDPAlignCenter CDPAlign"><img class="alignnone size-full wp-image-1082 image-border" src="assets/6bf9e978-fcc7-4f1f-ae05-b3fb976d051e.png" style="width:11.17em;height:2.75em;"/></p>
+<p>According to our model, two bedrooms in the Lincoln Center area is going to cost a pretty penny compared to the East Village.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Extending the model</h1>
+                </header>
+            
+            <article>
+                
+<p>At this point, we have only examined the relationship between the ZIP code, bedrooms, and rental price. And while our model had some explanatory benefit, we had a minimal dataset and far too few features to adequately examine the complex world of real estate valuation.</p>
+<p>Fortunately, however, if we were to add more data and features to the model, we could use the exact same framework to expand our analysis.</p>
+<p>Some possible future extensions to explore would be utilizing data for restaurants and bars available from APIs such as Foursquare or Yelp, or walkability and transportation-proximity measures from providers such as Walk Score.</p>
+<p>There are a number of ways to extend the model, and I suggest if you do pursue working on a project such as this that you explore a variety of measures. More data is released every day and, with it, models can only improve.</p>
+
+
+            </article>
+
+            
+        </section>
+    
+
+        <section>
+
+                            <header>
+                    <h1 class="header-title">Summary</h1>
+                </header>
+            
+            <article>
+                
+<p>In this chapter, we learned how to acquire data on real estate listings, how to utilize the functionality of pandas to manipulate and sanitize that data, how to inspect the data visually with choropleths, and finally, how to build and use regression modeling to price out an apartment.</p>
+<p>At this point, we have just touched the surface of machine learning. In the chapters that follow, we'll go further into how to evaluate the quality of our model, and we'll also learn how to turn them into full-scale solutions.</p>
+
+
+            </article>
+
+            
+        </section>
+    </body></html>

@@ -1,0 +1,592 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;2.&#xA0;Linear Regression"><div class="titlepage"><div><div><h1 class="title"><a id="ch02"/>Chapter 2. Linear Regression</h1></div></div></div><p>In this chapter you will learn how to use linear models in regression problems. First, we will examine simple linear regression, which models the relationship between a response variable and single explanatory variable. Next, we will discuss multiple linear regression, a generalization of simple linear regression that can support more than one explanatory variable. Then, we will discuss polynomial regression, a special case of multiple linear regression that can effectively model nonlinear relationships. Finally, we will discuss how to train our models by finding the values of their parameters that minimize a cost function. We will work through a toy problem to learn how the models and learning algorithms work before discussing an application with a larger dataset.</p><div class="section" title="Simple linear regression"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec21"/>Simple linear regression</h1></div></div></div><p>In the <a class="indexterm" id="id51"/>previous chapter you learned that training <a class="indexterm" id="id52"/>data is used to estimate the parameters of a model in supervised learning problems. Past observations of explanatory variables and their corresponding response variables comprise the training data. The model can be used to predict the value of the response variable for values of the explanatory variable that have not been previously observed. Recall that the goal in regression problems is to predict the value of a continuous response variable. In this chapter, we will examine several example linear regression models. We will discuss the training data, model, learning algorithm, and evaluation metrics for each approach. To start, let's consider <span class="strong"><strong>simple linear regression</strong></span>. Simple linear regression can be used to model a linear relationship between one response variable and one explanatory variable. Linear regression has been applied to many important scientific and social problems; the example that we will consider is probably not one of them.</p><p>Suppose you wish to know the price of a pizza. You might simply look at a menu. This, however, is a machine learning book, so we will use simple linear regression instead to predict the price of a pizza based on an attribute of the pizza that we can observe. Let's model the relationship between the size of a pizza and its price. First, we will write a program with scikit-learn that can predict the price of a pizza given its size. Then, we will discuss how simple linear regression works and how it can be generalized to work with other types of problems. Let's assume that you have recorded the diameters and prices of pizzas that you have previously <a class="indexterm" id="id53"/>eaten in your pizza journal. These observations comprise our training data:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Training instance</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Diameter (in inches)</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Price (in dollars)</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>6</p>
+</td><td style="text-align: left" valign="top">
+<p>7</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>8</p>
+</td><td style="text-align: left" valign="top">
+<p>9</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>3</p>
+</td><td style="text-align: left" valign="top">
+<p>10</p>
+</td><td style="text-align: left" valign="top">
+<p>13</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>4</p>
+</td><td style="text-align: left" valign="top">
+<p>14</p>
+</td><td style="text-align: left" valign="top">
+<p>17.5</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>5</p>
+</td><td style="text-align: left" valign="top">
+<p>18</p>
+</td><td style="text-align: left" valign="top">
+<p>18</p>
+</td></tr></tbody></table></div><p>We can <a class="indexterm" id="id54"/>visualize our training data by plotting it on a graph using <code class="literal">matplotlib</code>:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import matplotlib.pyplot as plt
+&gt;&gt;&gt; X = [[6], [8], [10], [14],   [18]]
+&gt;&gt;&gt; y = [[7], [9], [13], [17.5], [18]]
+&gt;&gt;&gt; plt.figure()
+&gt;&gt;&gt; plt.title('Pizza price plotted against diameter')
+&gt;&gt;&gt; plt.xlabel('Diameter in inches')
+&gt;&gt;&gt; plt.ylabel('Price in dollars')
+&gt;&gt;&gt; plt.plot(X, y, 'k.')
+&gt;&gt;&gt; plt.axis([0, 25, 0, 25])
+&gt;&gt;&gt; plt.grid(True)
+&gt;&gt;&gt; plt.show()</pre></div><p>The preceding script produces the following graph. The diameters of the pizzas are plotted on the <span class="emphasis"><em>x</em></span> axis and the prices are plotted on the <span class="emphasis"><em>y</em></span> axis.</p><div class="mediaobject"><img alt="Simple linear regression" src="graphics/8365OS_02_01.jpg"/></div><p>We can see from the graph of the training data that there is a positive relationship between the diameter of a pizza and its price, which should be corroborated by our own pizza-eating experience. As <a class="indexterm" id="id55"/>the diameter of a pizza increases, its <a class="indexterm" id="id56"/>price generally increases too. The following pizza-price predictor program models this relationship using linear regression. Let's review the following program and discuss how linear regression works:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; from sklearn.linear_model import LinearRegression
+&gt;&gt;&gt; # Training data
+&gt;&gt;&gt; X = [[6], [8], [10], [14],   [18]]
+&gt;&gt;&gt; y = [[7], [9], [13], [17.5], [18]]
+&gt;&gt;&gt; # Create and fit the model
+&gt;&gt;&gt; model = LinearRegression()
+&gt;&gt;&gt; model.fit(X, y)
+&gt;&gt;&gt; print 'A 12" pizza should cost: $%.2f' % model.predict([12])[0]
+A 12" pizza should cost: $13.68</pre></div><p>Simple linear regression assumes that a linear relationship exists between the response variable and explanatory variable; it models this relationship with a linear surface called a hyperplane. A hyperplane is a subspace that has one dimension less than the ambient space that contains it. In simple linear regression, there is one dimension for the response variable and another dimension for the explanatory variable, making a total of two dimensions. The regression hyperplane therefore, has one dimension; a hyperplane with one dimension is a line.</p><p>The <code class="literal">sklearn.linear_model.LinearRegression</code> class is an <span class="strong"><strong>estimator</strong></span>. Estimators predict a value <a class="indexterm" id="id57"/>based on the observed data. In scikit-learn, all estimators implement the <code class="literal">fit()</code> and <code class="literal">predict()</code> methods. The former method is used to learn the parameters of a model, and the latter method is used to predict the value of a response variable for an explanatory variable using the learned parameters. It is easy to experiment with different models using scikit-learn <a class="indexterm" id="id58"/>because all estimators implement the <code class="literal">fit</code> and <code class="literal">predict</code> methods.</p><p>The <code class="literal">fit</code> <a class="indexterm" id="id59"/>method of <code class="literal">LinearRegression</code> learns the parameters of the following model for simple linear regression:</p><div class="mediaobject"><img alt="Simple linear regression" src="graphics/8365OS_02_02.jpg"/></div><p><span class="inlinemediaobject"><img alt="Simple linear regression" src="graphics/8365OS_02_31.jpg"/></span> is the predicted value of the response variable; in this example, it is the predicted price of the pizza. <span class="inlinemediaobject"><img alt="Simple linear regression" src="graphics/8365OS_02_32.jpg"/></span> is the explanatory variable. The intercept term <span class="inlinemediaobject"><img alt="Simple linear regression" src="graphics/8365OS_02_33.jpg"/></span> and coefficient <span class="inlinemediaobject"><img alt="Simple linear regression" src="graphics/8365OS_02_34.jpg"/></span> are parameters of the model that are learned by the learning algorithm. The line plotted in the following figure models the relationship between the size of a pizza and its price. Using this model, we would expect the price of an 8-inch pizza to be about $7.33, and the price of a 20-inch pizza to be $18.75.
+</p><div class="mediaobject"><img alt="Simple linear regression" src="graphics/8365OS_02_03.jpg"/></div><p>Using training data to learn the values of the parameters for simple linear regression that produce the best fitting <a class="indexterm" id="id60"/>model is called <span class="strong"><strong>ordinary least squares</strong></span> or <span class="strong"><strong>linear least </strong></span>
+<a class="indexterm" id="id61"/>
+<span class="strong"><strong>squares</strong></span>. "In this chapter we will discuss methods for approximating the values of the model's parameters and for solving them analytically. First, however, we must define what it means for a model to fit the training data.</p><div class="section" title="Evaluating the fitness of a model with a cost function"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec07"/>Evaluating the fitness of a model with a cost function</h2></div></div></div><p>Regression <a class="indexterm" id="id62"/>lines produced by several <a class="indexterm" id="id63"/>sets of parameter values are plotted in the following figure. How can we assess which parameters produced the best-fitting regression line?</p><div class="mediaobject"><img alt="Evaluating the fitness of a model with a cost function" src="graphics/8365OS_02_04.jpg"/></div><p>A <span class="strong"><strong>cost </strong></span>
+<a class="indexterm" id="id64"/>
+<span class="strong"><strong>function</strong></span>, also <a class="indexterm" id="id65"/>called a <span class="strong"><strong>loss function,</strong></span> is used to define and measure the error of a model. The differences between the <a class="indexterm" id="id66"/>prices predicted by the model and the <a class="indexterm" id="id67"/>observed prices of the pizzas in the training set are called <a class="indexterm" id="id68"/>
+<span class="strong"><strong>residuals</strong></span> or <span class="strong"><strong>training errors</strong></span>. Later, we will evaluate a <a class="indexterm" id="id69"/>model on a separate set of test data; the differences between the predicted and observed values in the test data are called <span class="strong"><strong>prediction </strong></span>
+<a class="indexterm" id="id70"/>
+<span class="strong"><strong>errors</strong></span> or <span class="strong"><strong>test errors</strong></span>. </p><p>The residuals for our model are indicated <a class="indexterm" id="id71"/>by the vertical lines between the points for the training instances and regression hyperplane in the following plot:</p><div class="mediaobject"><img alt="Evaluating the fitness of a model with a cost function" src="graphics/8365OS_02_05.jpg"/></div><p>We can produce the best pizza-price predictor by minimizing the sum of the residuals. That is, our model fits if the values it predicts for the response variable are close to the observed values for all of the training examples. This measure of the model's fitness is called the <span class="strong"><strong>residual </strong></span>
+<a class="indexterm" id="id72"/>
+<span class="strong"><strong>sum of squares</strong></span> cost function. Formally, this <a class="indexterm" id="id73"/>function assesses the fitness of a model <a class="indexterm" id="id74"/>by summing the squared residuals for all of our training examples. The residual sum of squares is calculated with the formula in the following equation, where <span class="inlinemediaobject"><img alt="Evaluating the fitness of a model with a cost function" src="graphics/8365OS_02_35.jpg"/></span> is the observed value and <span class="inlinemediaobject"><img alt="Evaluating the fitness of a model with a cost function" src="graphics/8365OS_02_36.jpg"/></span> is the predicted value:
+</p><div class="mediaobject"><img alt="Evaluating the fitness of a model with a cost function" src="graphics/8365OS_02_06.jpg"/></div><p>Let's compute the residual sum of squares for our model by adding the following two lines to the previous script:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import numpy as np
+&gt;&gt;&gt; print 'Residual sum of squares: %.2f' % np.mean((model.predict(X) - y) ** 2)
+Residual sum of squares: 1.75</pre></div><p>Now that we <a class="indexterm" id="id75"/>have a cost function, we can find the values <a class="indexterm" id="id76"/>of our model's parameters that minimize it.</p></div><div class="section" title="Solving ordinary least squares for simple linear regression"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec08"/>Solving ordinary least squares for simple linear regression</h2></div></div></div><p>In this <a class="indexterm" id="id77"/>section, we will work <a class="indexterm" id="id78"/>through solving ordinary least squares for simple linear regression. Recall that simple linear regression is given by the following equation:</p><div class="mediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_02.jpg"/></div><p>Also, recall that our goal is to solve the values of <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_34.jpg"/></span> and <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_33.jpg"/></span> that minimize the cost function. We will solve <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_34.jpg"/></span> first. To do so, we will calculate the <span class="strong"><strong>variance</strong></span> of <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_32.jpg"/></span> and <span class="strong"><strong>covariance</strong></span> of
+<span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_32.jpg"/></span> and
+<span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_31.jpg"/></span>.</p><p>Variance is a <a class="indexterm" id="id79"/>measure of how far a set of values is spread out. If all of the numbers in the set are equal, the variance of the set is zero. A small variance indicates that the numbers are near the mean of the set, while a set containing numbers that are far from the mean and each other will have a large variance. Variance can be calculated using the following equation: 
+</p><div class="mediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_07.jpg"/></div><p>In the preceding equation, <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_37.jpg"/></span> is the mean of <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_32.jpg"/></span>, <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_38.jpg"/></span> is the value of <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_32.jpg"/></span> for the <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_39.jpg"/></span> training instance, and <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_40.jpg"/></span> is the number of training instances. Let's calculate the variance of the pizza diameters in our training set:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; from __future__ import division
+&gt;&gt;&gt; xbar = (6 + 8 + 10 + 14 + 18) / 5
+&gt;&gt;&gt; variance = ((6 - xbar)**2 + (8 - xbar)**2 + (10 - xbar)**2 + (14 - xbar)**2 + (18 - xbar)**2) / 4
+&gt;&gt;&gt; print variance
+23.2</pre></div><p>NumPy also provides the <code class="literal">var</code> method to calculate variance. The <code class="literal">ddof</code> keyword parameter can be used to set Bessel's correction to calculate the sample variance:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import numpy as np
+&gt;&gt;&gt; print np.var([6, 8, 10, 14, 18], ddof=1)
+23.2</pre></div><p>Covariance is a measure of <a class="indexterm" id="id80"/>how much two variables change together. If the value of the variables increase together, their covariance is positive. If one variable tends to increase while the other decreases, their covariance is negative. If there is no linear relationship between the two variables, their covariance will be equal to zero; the variables are linearly uncorrelated but not necessarily independent. Covariance can be calculated using the following formula:</p><div class="mediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_08.jpg"/></div><p>As with <a class="indexterm" id="id81"/>variance, <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_38.jpg"/></span> is the diameter of the <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_39.jpg"/></span> training instance, <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_37.jpg"/></span> is the mean of the diameters, <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_41.jpg"/></span> is the mean of the prices, <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_35.jpg"/></span> is the price of the <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_39.jpg"/></span> training instance, and <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_40.jpg"/></span> is the <a class="indexterm" id="id82"/>number of training <a class="indexterm" id="id83"/>instances. Let's calculate the covariance of the diameters and prices of the pizzas in the training set:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; xbar = (6 + 8 + 10 + 14 + 18) / 5
+&gt;&gt;&gt; ybar = (7 + 9 + 13 + 17.5 + 18) / 5
+&gt;&gt;&gt; cov = ((6 - xbar) * (7 - ybar) + (8 - xbar) * (9 - ybar) + (10 - xbar) * (13 - ybar) +
+&gt;&gt;&gt;        (14 - xbar) * (17.5 - ybar) + (18 - xbar) * (18 - ybar)) / 4
+&gt;&gt;&gt; print cov
+&gt;&gt;&gt; import numpy as np
+&gt;&gt;&gt; print np.cov([6, 8, 10, 14, 18], [7, 9, 13, 17.5, 18])[0][1]
+22.65
+22.65</pre></div><p>Now that we have calculated the variance of our explanatory variable and the covariance of the response and explanatory variables, we can solve <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_34.jpg"/></span> using the following formula:</p><div class="mediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_09.jpg"/></div><div class="mediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_10.jpg"/></div><p>Having solved <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_34.jpg"/></span>, we can solve <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_33.jpg"/></span> using the following formula:
+</p><div class="mediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_11.jpg"/></div><p>In the preceding formula, <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_41.jpg"/></span> is the mean of <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_31.jpg"/></span> and <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_37.jpg"/></span> is the mean of <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_32.jpg"/></span>. <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_42.jpg"/></span> are the coordinates of the centroid, a point that the model must pass through. We can use the centroid and the value of <span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_34.jpg"/></span> to solve for
+<span class="inlinemediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_33.jpg"/></span> as follows:
+</p><div class="mediaobject"><img alt="Solving ordinary least squares for simple linear regression" src="graphics/8365OS_02_12.jpg"/></div><p>Now <a class="indexterm" id="id84"/>that we have solved the values of the model's parameters that minimize the cost function, we can plug in the <a class="indexterm" id="id85"/>diameters of the pizzas and predict their prices. For instance, an 11-inch pizza is expected to cost around $12.70, and an 18-inch pizza is expected to cost around $19.54. Congratulations! You used simple linear regression to predict the price of a pizza.</p></div></div></div>
+<div class="section" title="Evaluating the model"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec22"/>Evaluating the model</h1></div></div></div><p>We have used a <a class="indexterm" id="id86"/>learning algorithm to estimate a model's parameters from the training data. How can we assess whether our model is a good representation of the real relationship? Let's assume that you have found another page in your pizza journal. We will use the entries on this page as a test set to measure the performance of our model:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Test Instance</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Diameter (in inches)</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Observed price (in dollars)</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Predicted price (in dollars)</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>8</p>
+</td><td style="text-align: left" valign="top">
+<p>11</p>
+</td><td style="text-align: left" valign="top">
+<p>9.7759</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>9</p>
+</td><td style="text-align: left" valign="top">
+<p>8.5</p>
+</td><td style="text-align: left" valign="top">
+<p>10.7522</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>3</p>
+</td><td style="text-align: left" valign="top">
+<p>11</p>
+</td><td style="text-align: left" valign="top">
+<p>15</p>
+</td><td style="text-align: left" valign="top">
+<p>12.7048</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>4</p>
+</td><td style="text-align: left" valign="top">
+<p>16</p>
+</td><td style="text-align: left" valign="top">
+<p>18</p>
+</td><td style="text-align: left" valign="top">
+<p>17.5863</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>5</p>
+</td><td style="text-align: left" valign="top">
+<p>12</p>
+</td><td style="text-align: left" valign="top">
+<p>11</p>
+</td><td style="text-align: left" valign="top">
+<p>13.6811</p>
+</td></tr></tbody></table></div><p>Several measures can be used to assess our model's predictive capabilities. We will evaluate our pizza-price predictor <a class="indexterm" id="id87"/>using <span class="strong"><strong>r-squared</strong></span>. R-squared measures how well the observed values of the response variables are predicted by the model. More concretely, r-squared is the proportion of the variance in the response variable that is explained by the model. An r-squared score of one indicates that the response variable can be predicted without any error using the model. An r-squared score of one half indicates that half of the variance in the response variable can be predicted using the model. There are several methods to calculate r-squared. In the case of simple linear regression, r-squared is equal to the square of the Pearson product moment correlation coefficient, or Pearson's <span class="emphasis"><em>r</em></span>. </p><p>Using this method, r-squared must be a positive number between zero and one. This method is intuitive; if r-squared describes the proportion of variance in the response variable explained by the model, it cannot be greater than one or less than zero. Other methods, including the method used by scikit-learn, do not calculate r-squared as the square of Pearson's <span class="emphasis"><em>r</em></span>, and can return a negative r-squared if the model performs extremely poorly. We will follow the method used by scikit-learn to calculate r-squared for our pizza-price predictor.</p><p>First, we must measure <a class="indexterm" id="id88"/>the total sum of the squares. <span class="inlinemediaobject"><img alt="Evaluating the model" src="graphics/8365OS_02_35.jpg"/></span> is the observed value of the response variable for the <span class="inlinemediaobject"><img alt="Evaluating the model" src="graphics/8365OS_02_39.jpg"/></span> test instance, and <span class="inlinemediaobject"><img alt="Evaluating the model" src="graphics/8365OS_02_41.jpg"/></span> is the mean of the observed values of the response variable
+</p><div class="mediaobject"><img alt="Evaluating the model" src="graphics/8365OS_02_13.jpg"/></div><div class="mediaobject"><img alt="Evaluating the model" src="graphics/8365OS_02_14.jpg"/></div><p>Next, we must find the residual sum of the squares. Recall that this is also our cost function.</p><div class="mediaobject"><img alt="Evaluating the model" src="graphics/8365OS_02_06.jpg"/></div><div class="mediaobject"><img alt="Evaluating the model" src="graphics/8365OS_02_15.jpg"/></div><p>Finally, we can find r-squared using the following formula:</p><div class="mediaobject"><img alt="Evaluating the model" src="graphics/8365OS_02_16.jpg"/></div><div class="mediaobject"><img alt="Evaluating the model" src="graphics/8365OS_02_17.jpg"/></div><p>An r-squared score of <span class="strong"><strong>0.6620</strong></span> indicates that a large proportion of the variance in the test instances' prices is explained by the model. Now, let's confirm our calculation <a class="indexterm" id="id89"/>using scikit-learn. The <code class="literal">score</code> method of <code class="literal">LinearRegression</code> returns the model's r-squared value, as seen in the following example:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; from sklearn.linear_model import LinearRegression
+&gt;&gt;&gt; X = [[6], [8], [10], [14],   [18]]
+&gt;&gt;&gt; y = [[7], [9], [13], [17.5], [18]]
+&gt;&gt;&gt; X_test = [[8],  [9],   [11], [16], [12]]
+&gt;&gt;&gt; y_test = [[11], [8.5], [15], [18], [11]]
+&gt;&gt;&gt; model = LinearRegression()
+&gt;&gt;&gt; model.fit(X, y)
+&gt;&gt;&gt; print 'R-squared: %.4f' % model.score(X_test, y_test)
+R-squared: 0.6620</pre></div></div>
+<div class="section" title="Multiple linear regression"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec23"/>Multiple linear regression</h1></div></div></div><p>We have trained and evaluated a model to predict the price of a pizza. While you are eager to demonstrate <a class="indexterm" id="id90"/>the pizza-price predictor to your friends and co-workers, you are concerned by the model's imperfect r-squared score and the <a class="indexterm" id="id91"/>embarrassment its predictions could cause you. How can we improve the model?</p><p>Recalling your personal pizza-eating experience, you might have some intuitions about the other attributes of a pizza that are related to its price. For instance, the price often depends on the number of toppings on the pizza. Fortunately, your pizza journal describes toppings in detail; let's add the number of toppings to our training data as a second explanatory variable. We cannot proceed with simple linear regression, but we can use a generalization of simple linear regression that can use multiple explanatory variables called multiple linear regression. Formally, multiple linear regression is the following model:</p><div class="mediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_18.jpg"/></div><p>this edit makes no sense. change to "Where simple linear regression uses a single explanatory variable with a single coefficient, multiple linear regression uses a coefficient for each of an arbitrary number of explanatory variables.</p><div class="mediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_19.jpg"/></div><p>For simple linear regression, this is equivalent to the following:</p><div class="mediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_20.jpg"/></div><p><span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_43.jpg"/></span>
+ is a column vector of the values of the response variables for the training examples. <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_34.jpg"/></span> is a column vector of the values of the model's parameters. <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_44.jpg"/></span>, called the design matrix, is an <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_45.jpg"/></span> dimensional matrix of the values of the explanatory variables for the training examples. <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_46.jpg"/></span> is the number <a class="indexterm" id="id92"/>of training examples and <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_40.jpg"/></span> is the number of explanatory variables. Let's update our pizza training data to include the <a class="indexterm" id="id93"/>number of toppings with the following values: 
+</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Training Example</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Diameter (in inches)</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Number of toppings</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Price (in dollars)</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>6</p>
+</td><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>7</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>8</p>
+</td><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>9</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>3</p>
+</td><td style="text-align: left" valign="top">
+<p>10</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>13</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>4</p>
+</td><td style="text-align: left" valign="top">
+<p>14</p>
+</td><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>17.5</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>5</p>
+</td><td style="text-align: left" valign="top">
+<p>18</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>18</p>
+</td></tr></tbody></table></div><p>We must also update our test data to include the second explanatory variable, as follows:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Test Instance</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Diameter (in inches)</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Number of toppings</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Price (in dollars)</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>8</p>
+</td><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>11</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>9</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>8.5</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>3</p>
+</td><td style="text-align: left" valign="top">
+<p>11</p>
+</td><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>15</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>4</p>
+</td><td style="text-align: left" valign="top">
+<p>16</p>
+</td><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>18</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>5</p>
+</td><td style="text-align: left" valign="top">
+<p>12</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>11</p>
+</td></tr></tbody></table></div><p>Our learning algorithm must estimate the values of three parameters: the coefficients for the two features and the intercept term. While one might be tempted to solve <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_34.jpg"/></span> by dividing each side of the equation by <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_44.jpg"/></span>, division by a matrix is impossible. Just as dividing a number by an integer is equivalent to multiplying by the inverse of the same integer, we can multiply <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_34.jpg"/></span> by the inverse of <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_44.jpg"/></span> to avoid matrix division. Matrix inversion is denoted with a superscript -1. Only square matrices can be inverted. <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_44.jpg"/></span> is not likely to be a square; the number of training instances will have to be equal to the number of features for it to be so. We will multiply <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_44.jpg"/></span> by its transpose to yield a <a class="indexterm" id="id94"/>square matrix that can be inverted. Denoted with a superscript <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_47.jpg"/></span>, the transpose of a matrix is formed by turning the rows of the matrix into columns and vice versa, as follows:
+</p><div class="mediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_51.jpg"/></div><p>To recap, our model is given by the following formula:</p><div class="mediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_19.jpg"/></div><p>We know the values of <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_43.jpg"/></span> and <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_44.jpg"/></span> from our training data. We must find the values of <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_34.jpg"/></span>, which minimize the <a class="indexterm" id="id95"/>cost function. We can solve <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_34.jpg"/></span> as follows:
+</p><div class="mediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_21.jpg"/></div><p>We can solve <span class="inlinemediaobject"><img alt="Multiple linear regression" src="graphics/8365OS_02_34.jpg"/></span> using NumPy, as follows:
+</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; from numpy.linalg import inv
+&gt;&gt;&gt; from numpy import dot, transpose
+&gt;&gt;&gt; X = [[1, 6, 2], [1, 8, 1], [1, 10, 0], [1, 14, 2], [1, 18, 0]]
+&gt;&gt;&gt; y = [[7], [9], [13], [17.5], [18]]
+&gt;&gt;&gt; print dot(inv(dot(transpose(X), X)), dot(transpose(X), y))
+[[ 1.1875    ]
+ [ 1.01041667]
+ [ 0.39583333]]</pre></div><p>NumPy also provides a least squares function that can solve the values of the parameters more compactly:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; from numpy.linalg import lstsq
+&gt;&gt;&gt; X = [[1, 6, 2], [1, 8, 1], [1, 10, 0], [1, 14, 2], [1, 18, 0]]
+&gt;&gt;&gt; y = [[7],    [9],    [13],    [17.5],  [18]]
+&gt;&gt;&gt; print lstsq(X, y)[0]
+[[ 1.1875    ]
+ [ 1.01041667]
+ [ 0.39583333]]</pre></div><p>Let's update our <a class="indexterm" id="id96"/>pizza-price predictor program to use <a class="indexterm" id="id97"/>the second explanatory variable, and compare its performance on the test set to that of the simple linear regression model:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; from sklearn.linear_model import LinearRegression
+&gt;&gt;&gt; X = [[6, 2], [8, 1], [10, 0], [14, 2], [18, 0]]
+&gt;&gt;&gt; y = [[7],    [9],    [13],    [17.5],  [18]]
+&gt;&gt;&gt; model = LinearRegression()
+&gt;&gt;&gt; model.fit(X, y)
+&gt;&gt;&gt; X_test = [[8, 2], [9, 0], [11, 2], [16, 2], [12, 0]]
+&gt;&gt;&gt; y_test = [[11],   [8.5],  [15],    [18],    [11]]
+&gt;&gt;&gt; predictions = model.predict(X_test)
+&gt;&gt;&gt; for i, prediction in enumerate(predictions):
+&gt;&gt;&gt;     print 'Predicted: %s, Target: %s' % (prediction, y_test[i])
+&gt;&gt;&gt; print 'R-squared: %.2f' % model.score(X_test, y_test)
+Predicted: [ 10.0625], Target: [11]
+Predicted: [ 10.28125], Target: [8.5]
+Predicted: [ 13.09375], Target: [15]
+Predicted: [ 18.14583333], Target: [18]
+Predicted: [ 13.3125], Target: [11]
+R-squared: 0.77</pre></div><p>It appears that adding the number of toppings as an explanatory variable has improved the performance of our model. In later sections, we will discuss why evaluating a model on a single test set can provide inaccurate estimates of the model's performance, and how we can estimate its performance more accurately by training and testing on many partitions of the data. For now, however, we can accept that the multiple linear regression model performs significantly better than the simple linear regression model. There may be other attributes of pizzas that can be used to explain their prices. What if the relationship between these explanatory variables and the response variable is not linear in the real world? In the <a class="indexterm" id="id98"/>next section, we will examine a special case <a class="indexterm" id="id99"/>of multiple linear regression that can be used to model nonlinear relationships.</p></div>
+<div class="section" title="Polynomial regression"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec24"/>Polynomial regression</h1></div></div></div><p>In the previous examples, we assumed that the real relationship between the explanatory variables and the response variable is linear. This assumption is not always true. In this section, we will use <span class="strong"><strong>polynomial regression</strong></span>, a special case of multiple linear regression that adds terms with degrees <a class="indexterm" id="id100"/>greater than one to the model. The real-world curvilinear relationship is captured when you transform the training data by adding polynomial terms, which are then fit in the same manner as in multiple linear regression. For ease of visualization, we will again use only one explanatory variable, the pizza's diameter. Let's compare linear regression with polynomial regression using the following datasets:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Training Instance</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Diameter (in inches)</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Price (in dollars)</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>6</p>
+</td><td style="text-align: left" valign="top">
+<p>7</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>8</p>
+</td><td style="text-align: left" valign="top">
+<p>9</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>3</p>
+</td><td style="text-align: left" valign="top">
+<p>10</p>
+</td><td style="text-align: left" valign="top">
+<p>13</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>4</p>
+</td><td style="text-align: left" valign="top">
+<p>14</p>
+</td><td style="text-align: left" valign="top">
+<p>17.5</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>5</p>
+</td><td style="text-align: left" valign="top">
+<p>18</p>
+</td><td style="text-align: left" valign="top">
+<p>18</p>
+</td></tr></tbody></table></div><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Testing Instance</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Diameter (in inches)</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Price (in dollars)</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>1</p>
+</td><td style="text-align: left" valign="top">
+<p>6</p>
+</td><td style="text-align: left" valign="top">
+<p>7</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>8</p>
+</td><td style="text-align: left" valign="top">
+<p>9</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>3</p>
+</td><td style="text-align: left" valign="top">
+<p>10</p>
+</td><td style="text-align: left" valign="top">
+<p>13</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>4</p>
+</td><td style="text-align: left" valign="top">
+<p>14</p>
+</td><td style="text-align: left" valign="top">
+<p>17.5</p>
+</td></tr></tbody></table></div><p>
+<span class="strong"><strong>Quadratic regression</strong></span>, or regression with a second order polynomial, is given by the following formula:</p><div class="mediaobject"><img alt="Polynomial regression" src="graphics/8365OS_02_22.jpg"/></div><p>We are using only one explanatory variable, but the model now has three terms instead of two. The explanatory variable has been transformed and added as a third term to the model to capture the curvilinear relationship. Also, note that the equation for polynomial regression is the same as <a class="indexterm" id="id101"/>the equation for multiple linear regression in vector notation. The <code class="literal">PolynomialFeatures</code> transformer can be used to easily add polynomial features to a feature representation. Let's fit a model to these features, and compare it to the simple linear regression model:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import numpy as np
+&gt;&gt;&gt; import matplotlib.pyplot as plt
+&gt;&gt;&gt; from sklearn.linear_model import LinearRegression
+&gt;&gt;&gt; from sklearn.preprocessing import PolynomialFeatures
+
+&gt;&gt;&gt; X_train = [[6], [8], [10], [14],   [18]]
+&gt;&gt;&gt; y_train = [[7], [9], [13], [17.5], [18]]
+&gt;&gt;&gt; X_test = [[6],  [8],   [11], [16]]
+&gt;&gt;&gt; y_test = [[8], [12], [15], [18]]
+
+&gt;&gt;&gt; regressor = LinearRegression()
+&gt;&gt;&gt; regressor.fit(X_train, y_train)
+&gt;&gt;&gt; xx = np.linspace(0, 26, 100)
+&gt;&gt;&gt; yy = regressor.predict(xx.reshape(xx.shape[0], 1))
+&gt;&gt;&gt; plt.plot(xx, yy)
+
+&gt;&gt;&gt; quadratic_featurizer = PolynomialFeatures(degree=2)
+&gt;&gt;&gt; X_train_quadratic = quadratic_featurizer.fit_transform(X_train)
+&gt;&gt;&gt; X_test_quadratic = quadratic_featurizer.transform(X_test)
+
+&gt;&gt;&gt; regressor_quadratic = LinearRegression()
+&gt;&gt;&gt; regressor_quadratic.fit(X_train_quadratic, y_train)
+&gt;&gt;&gt; xx_quadratic = quadratic_featurizer.transform(xx.reshape(xx.shape[0], 1))
+
+&gt;&gt;&gt; plt.plot(xx, regressor_quadratic.predict(xx_quadratic), c='r', linestyle='--')
+&gt;&gt;&gt; plt.title('Pizza price regressed on diameter')
+&gt;&gt;&gt; plt.xlabel('Diameter in inches')
+&gt;&gt;&gt; plt.ylabel('Price in dollars')
+&gt;&gt;&gt; plt.axis([0, 25, 0, 25])
+&gt;&gt;&gt; plt.grid(True)
+&gt;&gt;&gt; plt.scatter(X_train, y_train)
+&gt;&gt;&gt; plt.show()
+
+&gt;&gt;&gt; print X_train
+&gt;&gt;&gt; print X_train_quadratic
+&gt;&gt;&gt; print X_test
+&gt;&gt;&gt; print X_test_quadratic
+&gt;&gt;&gt; print 'Simple linear regression r-squared', regressor.score(X_test, y_test)
+&gt;&gt;&gt; print 'Quadratic regression r-squared', regressor_quadratic.score(X_test_quadratic, y_test)</pre></div><p>The following is the output of the preceding script:</p><div class="informalexample"><pre class="programlisting">[[6], [8], [10], [14], [18]]
+[[  1   6  36]
+ [  1   8  64]
+ [  1  10 100]
+ [  1  14 196]
+ [  1  18 324]]
+[[6], [8], [11], [16]]
+[[  1   6  36]
+ [  1   8  64]
+ [  1  11 121]
+ [  1  16 256]]
+Simple linear regression r-squared 0.809726797708
+Quadratic regression r-squared 0.867544365635</pre></div><p>The simple linear regression <a class="indexterm" id="id102"/>model is plotted with the solid line in the following figure. Plotted with a dashed line, the quadratic regression model visibly fits the training data better.</p><div class="mediaobject"><img alt="Polynomial regression" src="graphics/8365OS_02_23.jpg"/></div><p>The r-squared score of the simple linear regression model is 0.81; the quadratic regression model's r-squared <a class="indexterm" id="id103"/>score is an improvement at 0.87. While quadratic and cubic regression models are the most common, we can add polynomials of any degree. The following figure plots the quadratic and cubic models:</p><div class="mediaobject"><img alt="Polynomial regression" src="graphics/8365OS_02_24.jpg"/></div><p>Now, let's try an even <a class="indexterm" id="id104"/>higher-order polynomial. The plot in the following figure shows a regression curve created by a ninth-degree polynomial:</p><div class="mediaobject"><img alt="Polynomial regression" src="graphics/8365OS_02_25.jpg"/></div><p>The ninth-degree polynomial regression model fits the training data almost exactly! The model's r-squared score, however, is -0.09. We created an extremely complex model that fits the training data exactly, but fails to approximate the real relationship. This problem is called <a class="indexterm" id="id105"/>
+<span class="strong"><strong>over-fitting</strong></span>. The model should induce a general rule to map inputs to outputs; instead, it has memorized the inputs and outputs from the training data. As a result, the <a class="indexterm" id="id106"/>model performs poorly on test data. It predicts that a 16 inch pizza should cost less than $10, and an 18 inch pizza should cost more than $30. This model exactly fits the training data, but fails to learn the real relationship between size and price.</p></div>
+<div class="section" title="Regularization"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec25"/>Regularization</h1></div></div></div><p>
+<span class="strong"><strong>Regularization</strong></span> is a <a class="indexterm" id="id107"/>collection of techniques that can be used to prevent over-fitting. Regularization adds information to a problem, often in the form of a penalty against complexity, to a problem. Occam's razor states that a hypothesis with the fewest assumptions is the best. Accordingly, regularization attempts to find the simplest model that explains the data.</p><p>scikit-learn provides <a class="indexterm" id="id108"/>several regularized linear regression models. <span class="strong"><strong>Ridge regression</strong></span>, also known as <a class="indexterm" id="id109"/>
+<span class="strong"><strong>Tikhonov regularization</strong></span>, penalizes model parameters that become too large. Ridge regression modifies the residual sum of the squares cost function by adding the L2 norm of the coefficients, as follows:</p><div class="mediaobject"><img alt="Regularization" src="graphics/8365OS_02_26.jpg"/></div><p><span class="inlinemediaobject"><img alt="Regularization" src="graphics/8365OS_02_48.jpg"/></span>
+ is a hyperparameter that controls <a class="indexterm" id="id110"/>the strength of the penalty. <span class="strong"><strong>Hyperparameters</strong></span> are parameters of the model that are not learned automatically and must be set manually. As <span class="inlinemediaobject"><img alt="Regularization" src="graphics/8365OS_02_48.jpg"/></span> increases, the penalty increases, and the value of the cost function increases. When <span class="inlinemediaobject"><img alt="Regularization" src="graphics/8365OS_02_48.jpg"/></span> is equal to zero, ridge regression is equal to linear regression.</p><p>scikit-learn also provides an implementation of the <span class="strong"><strong>Least Absolute Shrinkage and Selection Operator</strong></span> (<span class="strong"><strong>LASSO</strong></span>). LASSO <a class="indexterm" id="id111"/>penalizes the coefficients by adding their L1 norm to the cost function, as follows:</p><div class="mediaobject"><img alt="Regularization" src="graphics/8365OS_02_27.jpg"/></div><p>The LASSO produces sparse parameters; most of the coefficients will become zero, and the model will depend on a small subset of the features. In contrast, ridge regression produces models in which most parameters are small but nonzero. When explanatory variables are correlated, the LASSO will shrink the coefficients of one variable toward zero. Ridge regression will shrink them more uniformly. Finally, scikit-learn provides an implementation of <span class="strong"><strong>elastic net</strong></span> <a class="indexterm" id="id112"/>regularization, which linearly combines the L1 and L2 penalties used by the LASSO and ridge regression. That is, the LASSO and ridge regression are both special cases of the elastic net method in which the hyperparameter for either the L1 or L2 penalty is equal to zero.</p></div>
+<div class="section" title="Applying linear regression"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec26"/>Applying linear regression</h1></div></div></div><p>We have worked <a class="indexterm" id="id113"/>through a toy problem to learn how linear regression models relationships between explanatory and response variables. Now we'll use a real data set and apply linear regression to an important task. Assume that you are at a party, and that you wish to drink the best wine that is available. You could ask your friends for recommendations, but you suspect that they will drink any wine, regardless of its provenance. Fortunately, you have brought pH test strips and other tools to measure various physicochemical properties of wine—it is, after all, a party. We will use machine learning to predict the quality of the wine based on its physicochemical attributes.</p><p>The UCI Machine Learning Repository's Wine data set measures eleven physicochemical attributes, including the pH and alcohol content, of 1,599 different red wines. Each wine's quality has been scored by human judges. The scores range from zero to ten; zero is the worst quality and ten is <a class="indexterm" id="id114"/>the best quality. The data set can be downloaded from <a class="ulink" href="https://archive.ics.uci.edu/ml/datasets/Wine">https://archive.ics.uci.edu/ml/datasets/Wine</a>. We will approach this problem as a regression task and regress the wine's quality onto one or more physicochemical attributes. The response <a class="indexterm" id="id115"/>variable in this problem takes only integer values between 0 and 10; we could view these as discrete values and approach the problem as a multiclass classification task. In this chapter, however, we will view the response variable as a continuous value.</p><div class="section" title="Exploring the data"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec09"/>Exploring the data</h2></div></div></div><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>Fixed acidity</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Volatile acidity</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Citric acidity</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Residual sugar</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Chlorides</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Free sulfur dioxide</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Total sulfur dioxide</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Density</p>
+</th><th style="text-align: left" valign="bottom">
+<p>pH</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Sulphates</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Alcohol</p>
+</th><th style="text-align: left" valign="bottom">
+<p>Quality</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>7.4</p>
+</td><td style="text-align: left" valign="top">
+<p>0.7</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>1.9</p>
+</td><td style="text-align: left" valign="top">
+<p>0.076</p>
+</td><td style="text-align: left" valign="top">
+<p>11</p>
+</td><td style="text-align: left" valign="top">
+<p>34</p>
+</td><td style="text-align: left" valign="top">
+<p>0.9978</p>
+</td><td style="text-align: left" valign="top">
+<p>3.51</p>
+</td><td style="text-align: left" valign="top">
+<p>0.56</p>
+</td><td style="text-align: left" valign="top">
+<p>9.4</p>
+</td><td style="text-align: left" valign="top">
+<p>5</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>7.8</p>
+</td><td style="text-align: left" valign="top">
+<p>0.88</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>2.6</p>
+</td><td style="text-align: left" valign="top">
+<p>0.098</p>
+</td><td style="text-align: left" valign="top">
+<p>25</p>
+</td><td style="text-align: left" valign="top">
+<p>67</p>
+</td><td style="text-align: left" valign="top">
+<p>0.9968</p>
+</td><td style="text-align: left" valign="top">
+<p>3.2</p>
+</td><td style="text-align: left" valign="top">
+<p>0.68</p>
+</td><td style="text-align: left" valign="top">
+<p>9.8</p>
+</td><td style="text-align: left" valign="top">
+<p>5</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>7.8</p>
+</td><td style="text-align: left" valign="top">
+<p>0.76</p>
+</td><td style="text-align: left" valign="top">
+<p>0.04</p>
+</td><td style="text-align: left" valign="top">
+<p>2.3</p>
+</td><td style="text-align: left" valign="top">
+<p>0.092</p>
+</td><td style="text-align: left" valign="top">
+<p>15</p>
+</td><td style="text-align: left" valign="top">
+<p>54</p>
+</td><td style="text-align: left" valign="top">
+<p>0.997</p>
+</td><td style="text-align: left" valign="top">
+<p>3.26</p>
+</td><td style="text-align: left" valign="top">
+<p>0.65</p>
+</td><td style="text-align: left" valign="top">
+<p>9.8</p>
+</td><td style="text-align: left" valign="top">
+<p>5</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>11.2</p>
+</td><td style="text-align: left" valign="top">
+<p>0.28</p>
+</td><td style="text-align: left" valign="top">
+<p>0.56</p>
+</td><td style="text-align: left" valign="top">
+<p>1.9</p>
+</td><td style="text-align: left" valign="top">
+<p>0.075</p>
+</td><td style="text-align: left" valign="top">
+<p>17</p>
+</td><td style="text-align: left" valign="top">
+<p>60</p>
+</td><td style="text-align: left" valign="top">
+<p>0.998</p>
+</td><td style="text-align: left" valign="top">
+<p>3.16</p>
+</td><td style="text-align: left" valign="top">
+<p>0.58</p>
+</td><td style="text-align: left" valign="top">
+<p>9.8</p>
+</td><td style="text-align: left" valign="top">
+<p>6</p>
+</td></tr></tbody></table></div><p>scikit-learn is intended to be a tool to build machine learning systems; its capabilities to explore data are impoverished <a class="indexterm" id="id116"/>compared to those of packages such as SPSS Statistics or the R language. We will use pandas, an open source data analysis library for Python, to generate descriptive statistics from the data; we will use these statistics to inform some of the design decisions of our model. pandas introduces Python to some concepts from R such as the dataframe, a two-dimensional, tabular, and heterogeneous data structure. Using pandas for data analysis is the topic of several books; we will use only a few basic methods in the following examples.</p><p>First, we will load the data set <a class="indexterm" id="id117"/>and review some basic summary statistics for the variables. The data is provided as a <code class="literal">.csv</code> file. Note that the fields are separated by semicolons rather than commas):</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import pandas as pd
+&gt;&gt;&gt; df = pd.read_csv('winequality-red.csv', sep=';')
+&gt;&gt;&gt; df.describe()
+
+                pH    sulphates      alcohol      quality
+count  1599.000000  1599.000000  1599.000000  1599.000000
+mean      3.311113     0.658149    10.422983     5.636023
+std       0.154386     0.169507     1.065668     0.807569
+min       2.740000     0.330000     8.400000     3.000000
+25%       3.210000     0.550000     9.500000     5.000000
+50%       3.310000     0.620000    10.200000     6.000000
+75%       3.400000     0.730000    11.100000     6.000000
+max       4.010000     2.000000    14.900000     8.000000</pre></div><p>The <code class="literal">pd.read_csv()</code> function is <a class="indexterm" id="id118"/>a convenience utility that loads the <code class="literal">.csv</code> file into a dataframe. The <code class="literal">Dataframe.describe()</code> method calculates summary <a class="indexterm" id="id119"/>statistics for each column of the dataframe. The preceding code sample shows the summary statistics for only the last four columns of the dataframe. Note the summary for the quality variable; most of the wines scored five or six. Visualizing the data can help indicate if relationships exist between the response variable and the explanatory variables. Let's use <code class="literal">matplotlib</code> to create some scatter plots. Consider the following code snippet:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import matplotlib.pylab as plt
+&gt;&gt;&gt; plt.scatter(df['alcohol'], df['quality'])
+&gt;&gt;&gt; plt.xlabel('Alcohol')
+&gt;&gt;&gt; plt.ylabel('Quality')
+&gt;&gt;&gt; plt.title('Alcohol Against Quality')
+&gt;&gt;&gt; plt.show()</pre></div><p>The output of the preceding code snippet is shown in the following figure:</p><div class="mediaobject"><img alt="Exploring the data" src="graphics/8365OS_02_28.jpg"/></div><p>A weak positive relationship between the alcohol content and quality is visible in the scatter plot in the preceding <a class="indexterm" id="id120"/>figure; wines that have high alcohol <a class="indexterm" id="id121"/>content are often high in quality. The following figure reveals a negative relationship between volatile acidity and quality:</p><div class="mediaobject"><img alt="Exploring the data" src="graphics/8365OS_02_29.jpg"/></div><p>These plots suggest that the response variable depends on multiple explanatory variables; let's model the relationship with multiple linear regression. How can we decide which explanatory variables to include in the model? <code class="literal">Dataframe.corr()</code> calculates a pairwise correlation matrix. The correlation matrix confirms that the strongest positive correlation is between the alcohol and quality, and that quality is negatively <a class="indexterm" id="id122"/>correlated with volatile acidity, an attribute <a class="indexterm" id="id123"/>that can cause wine to taste like vinegar. To summarize, we have hypothesized that good wines have high alcohol content and do not taste like vinegar. This hypothesis seems sensible, though it suggests that wine aficionados may have less sophisticated palates than they claim.</p></div><div class="section" title="Fitting and evaluating the model"><div class="titlepage"><div><div><h2 class="title"><a id="ch02lvl2sec10"/>Fitting and evaluating the model</h2></div></div></div><p>Now we will split <a class="indexterm" id="id124"/>the data into training and testing sets, train the regressor, and <a class="indexterm" id="id125"/>evaluate its predictions:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; from sklearn.linear_model import LinearRegression
+&gt;&gt;&gt; import pandas as pd
+&gt;&gt;&gt; import matplotlib.pylab as plt
+&gt;&gt;&gt; from sklearn.cross_validation import train_test_split
+
+&gt;&gt;&gt; df = pd.read_csv('wine/winequality-red.csv', sep=';')
+&gt;&gt;&gt; X = df[list(df.columns)[:-1]]
+&gt;&gt;&gt; y = df['quality']
+&gt;&gt;&gt; X_train, X_test, y_train, y_test = train_test_split(X, y)
+
+&gt;&gt;&gt; regressor = LinearRegression()
+&gt;&gt;&gt; regressor.fit(X_train, y_train)
+&gt;&gt;&gt; y_predictions = regressor.predict(X_test)
+&gt;&gt;&gt; print 'R-squared:', regressor.score(X_test, y_test)
+0.345622479617</pre></div><p>First, we loaded the data using pandas and separated the response variable from the explanatory variables. Next, we used the <code class="literal">train_test_split</code> function to randomly partition the data into training and test sets. The proportions of the data for both partitions can be specified using keyword arguments. By default, 25 percent of the data is assigned to the test set. Finally, we trained the model and evaluated it on the test set. </p><p>The r-squared score of 0.35 indicates that 35 <a class="indexterm" id="id126"/>percent of the variance in the test set is explained by the model. The performance might change if a different 75 percent of the data is partitioned to the <a class="indexterm" id="id127"/>training set. We can use cross-validation to produce a better estimate of the estimator's performance. Recall from chapter one that each cross-validation round trains and tests different partitions of the data to reduce variability:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import pandas as pd
+&gt;&gt;&gt; from sklearn. cross_validation import cross_val_score
+&gt;&gt;&gt; from sklearn.linear_model import LinearRegression
+&gt;&gt;&gt; df = pd.read_csv('data/winequality-red.csv', sep=';')
+&gt;&gt;&gt; X = df[list(df.columns)[:-1]]
+&gt;&gt;&gt; y = df['quality']
+&gt;&gt;&gt; regressor = LinearRegression()
+&gt;&gt;&gt; scores = cross_val_score(regressor, X, y, cv=5)
+&gt;&gt;&gt; print scores.mean(), scores
+0.290041628842 [ 0.13200871  0.31858135  0.34955348  0.369145    0.2809196 ]</pre></div><p>The <code class="literal">cross_val_score</code> helper <a class="indexterm" id="id128"/>function allows us to easily perform cross-validation using the provided data and estimator. We specified a five-fold cross validation using the <code class="literal">cv</code> keyword argument, that is, each instance will be randomly assigned to one of the five partitions. Each partition will be used to train and test the model. <code class="literal">cross_val_score </code>returns the value of the estimator's <code class="literal">score </code>method for each round. The r-squared scores range from 0.13 to 0.36! The mean of the scores, 0.29, is a better estimate of the estimator's predictive power than the r-squared score produced from a single train / test split.</p><p>Let's inspect some of the model's predictions and plot the true quality scores against the predicted scores:</p><div class="informalexample"><pre class="programlisting">Predicted: 4.89907499467 True: 4
+Predicted: 5.60701048317 True: 6
+Predicted: 5.92154439575 True: 6
+Predicted: 5.54405696963 True: 5
+Predicted: 6.07869910663 True: 7
+Predicted: 6.036656327 True: 6
+Predicted: 6.43923020473 True: 7
+Predicted: 5.80270760407 True: 6
+Predicted: 5.92425033278 True: 5
+Predicted: 5.31809822449 True: 6
+Predicted: 6.34837585295 True: 6</pre></div><p>The following figure shows the output of the preceding code:</p><div class="mediaobject"><img alt="Fitting and evaluating the model" src="graphics/8365OS_02_30.jpg"/></div><p>As expected, few predictions <a class="indexterm" id="id129"/>exactly match the true values of the response variable. The model <a class="indexterm" id="id130"/>is also better at predicting the qualities of average wines, since most of the training data is for average wines.</p></div></div>
+<div class="section" title="Fitting models with gradient descent"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec27"/>Fitting models with gradient descent</h1></div></div></div><p>In the examples <a class="indexterm" id="id131"/>in this chapter, we analytically <a class="indexterm" id="id132"/>solved the values of the model's parameters that minimize the cost function with the following equation:</p><div class="mediaobject"><img alt="Fitting models with gradient descent" src="graphics/8365OS_02_21.jpg"/></div><p>Recall that <span class="inlinemediaobject"><img alt="Fitting models with gradient descent" src="graphics/8365OS_02_44.jpg"/></span> is the matrix of the values of the explanatory variables for each training example. The dot product of <span class="inlinemediaobject"><img alt="Fitting models with gradient descent" src="graphics/8365OS_02_49.jpg"/></span> results in a square matrix with dimensions <span class="inlinemediaobject"><img alt="Fitting models with gradient descent" src="graphics/8365OS_02_50.jpg"/></span>, where <span class="inlinemediaobject"><img alt="Fitting models with gradient descent" src="graphics/8365OS_02_40.jpg"/></span> is equal to the number of explanatory variables. The computational complexity of inverting this square matrix is nearly cubic in the number of explanatory variables. While the number of explanatory variables has been small in this chapter's examples, this inversion can be prohibitively costly for problems with tens of thousands of explanatory variables, which we will encounter in the following chapters. Furthermore, <span class="inlinemediaobject"><img alt="Fitting models with gradient descent" src="graphics/8365OS_02_49.jpg"/></span> cannot be inverted if its determinant is equal to zero. In this section, we will discuss another method to efficiently estimate the optimal values of the model's parameters called <span class="strong"><strong>gradient descent</strong></span>. Note <a class="indexterm" id="id133"/>that our definition of a good fit has not changed; we will still use gradient descent to estimate the values of the model's parameters that minimize the value of the cost function.</p><p>Gradient descent is sometimes described by the analogy of a blindfolded man who is trying to find his way from somewhere on a mountainside to the lowest point of the valley. He cannot see the topography, so he takes a step in the direction with the steepest decline. He then takes <a class="indexterm" id="id134"/>another step, again in the direction with the steepest decline. The sizes of his steps are proportional to the steepness of the terrain at his current position. He takes big steps when the terrain is steep, as he is confident that he is still near the peak and that he will not overshoot the valley's lowest point. The man takes smaller steps as the terrain becomes less steep. If he were to continue taking large steps, he may accidentally step over the valley's lowest point. He would then need to change direction and step toward the lowest point of the valley again. By taking decreasingly large steps, he can avoid stepping back and forth over the valley's lowest point. The blindfolded man continues to walk until he cannot take a step that will decrease his altitude; at this point, he has found the bottom of the valley.</p><p>Formally, gradient descent is an optimization algorithm that can be used to estimate the local minimum of a function. Recall that we are using the residual sum of squares cost function, which is given by the following equation:</p><div class="mediaobject"><img alt="Fitting models with gradient descent" src="graphics/8365OS_02_06.jpg"/></div><p>We can use gradient descent to find the values of the model's parameters that minimize the value of the cost function. Gradient descent iteratively updates the values of the model's parameters by calculating the partial derivative of the cost function at each step. The calculus required to compute the partial derivative of the cost function is beyond the scope of this book, and is also not required to work with scikit-learn. However, having an intuition for how gradient descent works can help you use it effectively.</p><p>It is important to note that gradient descent estimates the local minimum of a function. A three-dimensional plot of the values of a convex cost function for all possible values of the parameters looks like a bowl. The bottom of the bowl is the sole local minimum. Non-convex cost functions can have many local minima, that is, the plots of the values of their cost functions can have many peaks and valleys. Gradient descent is only guaranteed to find the local minimum; it will find a valley, but will not necessarily find the lowest valley. Fortunately, the residual sum of the squares cost function is convex.</p><p>An important hyperparameter of gradient descent is the learning rate, which controls the size of the blindfolded man's steps. If the learning rate is small enough, the cost function will decrease with each iteration until gradient descent has converged on the optimal parameters. As the learning rate decreases, however, the time required for gradient descent to converge <a class="indexterm" id="id135"/>increases; the blindfolded man will take longer to reach the valley if he takes small steps than if he takes large steps. If the learning rate is too large, the man may repeatedly overstep the bottom of the valley, that is, gradient descent could oscillate around the optimal values of the parameters.</p><p>There are two varieties of gradient descent that are distinguished by the number of training instances that are <a class="indexterm" id="id136"/>used to update the model parameters in <a class="indexterm" id="id137"/>each training iteration. <span class="strong"><strong>Batch gradient descent</strong></span>, which is sometimes called only gradient descent, uses all of the training instances to update the model parameters in each iteration. <span class="strong"><strong>Stochastic Gradient Descent</strong></span> (<span class="strong"><strong>SGD</strong></span>), in contrast, updates the parameters using only a single training instance in each iteration. The <a class="indexterm" id="id138"/>training instance is usually selected randomly. Stochastic gradient descent is often preferred to optimize cost functions when there are hundreds of thousands of training instances or more, as it will converge more quickly than batch gradient descent. Batch gradient descent is a deterministic algorithm, and will produce the same parameter values given the same training set. As a stochastic algorithm, SGD can produce different parameter estimates each time it is run. SGD may not minimize the cost function as well as gradient descent because it uses only single training instances to update the weights. Its approximation is often close enough, particularly for convex cost functions such as residual sum of squares.</p><p>Let's use stochastic gradient descent to estimate the parameters of a model with scikit-learn. <code class="literal">SGDRegressor</code> is an implementation of SGD that can be used even for regression problems with hundreds of thousands or more features. It can be used to optimize different cost functions to fit different linear models; by default, it will optimize the residual sum of squares. In this example, we will predict the prices of houses in the Boston Housing data set from 13 explanatory variables:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import numpy as np
+&gt;&gt;&gt; from sklearn.datasets import load_boston
+&gt;&gt;&gt; from sklearn.linear_model import SGDRegressor
+&gt;&gt;&gt; from sklearn.cross_validation import cross_val_score
+&gt;&gt;&gt; from sklearn.preprocessing import StandardScaler
+&gt;&gt;&gt; from sklearn.cross_validation import train_test_split
+&gt;&gt;&gt; data = load_boston()
+&gt;&gt;&gt; X_train, X_test, y_train, y_test = train_test_split(data.data, data.target)</pre></div><p>scikit-learn provides a convenience function for loading the data set. First, we split the data into training and testing sets using <code class="literal">train_test_split</code>:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; X_scaler = StandardScaler()
+&gt;&gt;&gt; y_scaler = StandardScaler()
+&gt;&gt;&gt; X_train = X_scaler.fit_transform(X_train)
+&gt;&gt;&gt; y_train = y_scaler.fit_transform(y_train)
+&gt;&gt;&gt; X_test = X_scaler.transform(X_test)
+&gt;&gt;&gt; y_test = y_scaler.transform(y_test)</pre></div><p>Next, we scaled the <a class="indexterm" id="id139"/>features using <code class="literal">StandardScaler</code>, which <a class="indexterm" id="id140"/>we will describe in detail in the next chapter:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; regressor = SGDRegressor(loss='squared_loss')
+&gt;&gt;&gt; scores = cross_val_score(regressor, X_train, y_train, cv=5)
+&gt;&gt;&gt; print 'Cross validation r-squared scores:', scores
+&gt;&gt;&gt; print 'Average cross validation r-squared score:', np.mean(scores)
+&gt;&gt;&gt; regressor.fit_transform(X_train, y_train)
+&gt;&gt;&gt; print 'Test set r-squared score', regressor.score(X_test, y_test)</pre></div><p>Finally, we trained the estimator, and evaluated it using cross validation and the test set. The following is the output of the script:</p><div class="informalexample"><pre class="programlisting">Cross validation r-squared scores: [ 0.73428974  0.80517755  0.58608421  0.83274059  0.69279604]
+Average cross validation r-squared score: 0.730217627242
+Test set r-squared score 0.653188093125</pre></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch02lvl1sec28"/>Summary</h1></div></div></div><p>In this chapter we discussed three cases of linear regression. We worked through an example of simple linear regression, which models the relationship between a single explanatory variable and a response variable using a line. We then discussed multiple linear regression, which generalizes simple linear regression to model the relationship between multiple explanatory variables and a response variable. Finally, we described polynomial regression, a special case of multiple linear regression that models non-linear relationships between explanatory variables and a response variable. These three models can be viewed as special cases of the generalized linear model, a framework for model linear relationships, which we will discuss in more detail in <a class="link" href="ch04.html" title="Chapter 4. From Linear Regression to Logistic Regression">Chapter 4</a>, <span class="emphasis"><em>From Linear Regression to Logistic Regression</em></span>.</p><p>We assessed the fitness of models using the residual sum of squares cost function and discussed two methods to learn the values of a model's parameters that minimize the cost function. First, we solved the values of the model's parameters analytically. We then discussed gradient descent, a method that can efficiently estimate the optimal values of the model's parameters even when the model has a large number of features. The features in this chapter's examples were simple measurements of their explanatory variables; it was easy to use them in our models. In the next chapter, you will learn to create features for different types of explanatory variables, including categorical variables, text, and images.</p></div></body></html>

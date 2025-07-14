@@ -1,0 +1,191 @@
+<html><head></head><body><div class="chapter" title="Chapter&#xA0;7.&#xA0;Dimensionality Reduction with PCA"><div class="titlepage"><div><div><h1 class="title"><a id="ch07"/>Chapter 7. Dimensionality Reduction with PCA</h1></div></div></div><p>In this chapter, we will discuss a technique for reducing the dimensions of data called <span class="strong"><strong>Principal Component Analysis</strong></span> (<span class="strong"><strong>PCA</strong></span>). Dimensionality reduction is motivated by several problems. First, it can be used to mitigate problems caused by the curse of dimensionality. Second, dimensionality reduction can be used to compress data while minimizing the amount of information that is lost. Third, understanding the structure of data with hundreds of dimensions can be difficult; data with only two or three dimensions can be visualized easily. We will use PCA to visualize a high-dimensional dataset in two dimensions, and build a face recognition system.</p><div class="section" title="An overview of PCA"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec52"/>An overview of PCA</h1></div></div></div><p>Recall from <a class="link" href="ch03.html" title="Chapter 3. Feature Extraction and Preprocessing">Chapter 3</a>, <span class="emphasis"><em>Feature Extraction and Preprocessing</em></span>, that problems involving high-dimensional data can be <a class="indexterm" id="id380"/>affected by the curse of dimensionality. As the dimensions of a data set increases, the number of samples required for an estimator to generalize increases exponentially. Acquiring such large data may be infeasible in some applications, and learning from large data sets requires more memory and processing power. Furthermore, the sparseness of data often increases with its dimensions. It can become more difficult to detect similar instances in high-dimensional space as all of the instances are similarly sparse.</p><p>Principal Component Analysis, also known as the Karhunen-Loeve Transform, is a technique used to search for patterns in high-dimensional data. PCA is commonly used to explore and visualize high-dimensional data sets. It can also be used to compress data, and process data before it is used by another estimator. PCA reduces a set of possibly-correlated, high-dimensional variables to a lower-dimensional <a class="indexterm" id="id381"/>set of linearly uncorrelated synthetic variables called <span class="strong"><strong>principal components</strong></span>. The lower-dimensional data will preserve as much of the variance of the original data as possible.</p><p>PCA reduces the dimensions of a data set by projecting the data onto a lower-dimensional subspace. For example, a two dimensional data set could be reduced by projecting the points onto a line; each instance in the data set would then be represented by a single value rather than a pair of values. A three-dimensional dataset could be reduced to two dimensions by projecting the <a class="indexterm" id="id382"/>variables onto a plane. In general, an <span class="emphasis"><em>n</em></span>-dimensional dataset can be reduced by projecting the dataset onto a <span class="emphasis"><em>k</em></span>-dimensional subspace, where <span class="emphasis"><em>k</em></span> is less than <span class="emphasis"><em>n</em></span>. More formally, PCA can be used to find a set of vectors that span a subspace, which minimizes the sum of the squared errors of the projected data. This projection will retain the greatest proportion of the original data set's variance.</p><p>Imagine that you are a photographer for a gardening supply catalog, and that you are tasked with photographing a watering can. The watering can is three-dimensional, but the photograph is two-dimensional; you must create a two-dimensional representation that describes as much of the watering can as possible. The following are four possible pictures that you could use:</p><div class="mediaobject"><img alt="An overview of PCA" src="graphics/8365OS_07_01.jpg"/></div><p>In the first photograph, the back of the watering can is visible, but the front cannot be seen. The second picture is angled to look directly down the spout of the watering can; this picture provides information about the front of the can that was not visible in the first photograph, but now the handle cannot be seen. The height of the watering can cannot be discerned from the bird's eye view of the third picture. The fourth picture is the obvious choice for the catalog; the watering can's height, top, spout, and handle are all discernible in this image. </p><p>The motivation of <a class="indexterm" id="id383"/>PCA is similar; it can project data in a high-dimensional space to a lower-dimensional space that retains as much of the variance as possible. PCA rotates the data set to align with its principal components to maximize the variance contained within the first several principal components. Assume that we have the data set that is plotted in the following figure:</p><div class="mediaobject"><img alt="An overview of PCA" src="graphics/8365OS_07_02.jpg"/></div><p>The instances approximately form a long, thin ellipse stretching from the origin to the top right of the plot. To reduce the dimensions of this data set, we must project the points onto a line. The following are <a class="indexterm" id="id384"/>two lines that the data could be projected onto. Along which line do the instances vary the most?</p><div class="mediaobject"><img alt="An overview of PCA" src="graphics/8365OS_07_03.jpg"/></div><p>The instances vary more along the dashed line than the dotted line. In fact, the dashed line is the first principal component. The second principal component must be orthogonal to the first principal component; that is, the second principal component must be statistically independent, and will appear to be perpendicular to the first principal component when it is plotted, as shown in the following figure:</p><div class="mediaobject"><img alt="An overview of PCA" src="graphics/8365OS_07_04.jpg"/></div><p>Each subsequent principal component preserves the maximum amount of the remaining variance; the only constraint is that each must be orthogonal to the other principal components.</p><p>Now assume that the data set is <a class="indexterm" id="id385"/>three dimensional. The scatter plot of the points looks like a flat disc that has been rotated slightly about one of the axes.</p><div class="mediaobject"><img alt="An overview of PCA" src="graphics/8365OS_07_05.jpg"/></div><p>The points can be rotated and translated such that the tilted disk lies almost exactly in two dimensions. The points now form an ellipse; the third dimension contains almost no variance and can be discarded.</p><p>PCA is most useful when the variance in a data set is distributed unevenly across the dimensions. Consider a three-dimensional data set with a spherical convex hull. PCA cannot be used effectively with this data set because there is equal variance in each dimension; none of the dimensions <a class="indexterm" id="id386"/>can be discarded without losing a significant amount of information.</p><p>It is easy to visually identify the principal components of data sets with only two or three dimensions. In the next section, we will discuss how to calculate the principal components of high-dimensional data.</p></div></div>
+<div class="section" title="Performing Principal Component Analysis"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec53"/>Performing Principal Component Analysis</h1></div></div></div><p>There are several terms <a class="indexterm" id="id387"/>that we must define before discussing how principal component analysis works.</p><div class="section" title="Variance, Covariance, and Covariance Matrices"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec30"/>Variance, Covariance, and Covariance Matrices</h2></div></div></div><p>Recall that <span class="strong"><strong>variance</strong></span> is a <a class="indexterm" id="id388"/>measure of how a set of values are spread out. Variance is calculated as <a class="indexterm" id="id389"/>the average of the squared differences of the values and mean of the values, as per the following equation:</p><div class="mediaobject"><img alt="Variance, Covariance, and Covariance Matrices" src="graphics/8365OS_07_06.jpg"/></div><p>
+<span class="strong"><strong>Covariance</strong></span> is a measure <a class="indexterm" id="id390"/>of how much two variables change together; it is a measure of the strength of the correlation between two sets of variables. If the <a class="indexterm" id="id391"/>covariance of two variables is zero, the variables are uncorrelated. Note that uncorrelated variables are not necessarily independent, as correlation is only a measure of linear dependence. The covariance of two variables is calculated using the following equation:</p><div class="mediaobject"><img alt="Variance, Covariance, and Covariance Matrices" src="graphics/8365OS_07_07.jpg"/></div><p>If the covariance is nonzero, the sign indicates whether the variables are positively or negatively correlated. When two variables are positively correlated, one increases as the other increases. When variables are negatively correlated, one variable decreases relative to its mean as the other <a class="indexterm" id="id392"/>variable increases relative to its mean. A <span class="strong"><strong>covariance </strong></span>
+<a class="indexterm" id="id393"/>
+<span class="strong"><strong>matrix</strong></span> describes the covariance values between each pair of dimensions in a data set. The element <span class="inlinemediaobject"><img alt="Variance, Covariance, and Covariance Matrices" src="graphics/8365OS_07_33.jpg"/></span> indicates the covariance of the <span class="inlinemediaobject"><img alt="Variance, Covariance, and Covariance Matrices" src="graphics/8365OS_07_34.jpg"/></span> and <span class="inlinemediaobject"><img alt="Variance, Covariance, and Covariance Matrices" src="graphics/8365OS_07_35.jpg"/></span> dimensions of the data. For example, a covariance matrix for a three-dimensional data is given by the following matrix:</p><div class="mediaobject"><img alt="Variance, Covariance, and Covariance Matrices" src="graphics/8365OS_07_08.jpg"/></div><p>Let's calculate the covariance matrix for the following data set:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/><col style="text-align: left"/></colgroup><tbody><tr><td style="text-align: left" valign="top">
+<p>2</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>−1.4</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2.2</p>
+</td><td style="text-align: left" valign="top">
+<p>0.2</p>
+</td><td style="text-align: left" valign="top">
+<p>−1.5</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2.4</p>
+</td><td style="text-align: left" valign="top">
+<p>0.1</p>
+</td><td style="text-align: left" valign="top">
+<p>−1</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>1.9</p>
+</td><td style="text-align: left" valign="top">
+<p>0</p>
+</td><td style="text-align: left" valign="top">
+<p>−1.2</p>
+</td></tr></tbody></table></div><p>The means of the variables are 2.125, 0.075, and -1.275. We can then calculate the covariances of each <a class="indexterm" id="id394"/>pair of variables to produce the following <a class="indexterm" id="id395"/>covariance matrix:</p><div class="mediaobject"><img alt="Variance, Covariance, and Covariance Matrices" src="graphics/8365OS_07_09.jpg"/></div><p>We can verify our calculations using NumPy:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import numpy as np
+&gt;&gt;&gt; X = [[2, 0, -1.4],
+&gt;&gt;&gt;     [2.2, 0.2, -1.5],
+&gt;&gt;&gt;     [2.4, 0.1, -1],
+&gt;&gt;&gt;     [1.9, 0, -1.2]]
+&gt;&gt;&gt; print np.cov(np.array(X).T)
+[[ 0.04916667  0.01416667  0.01916667]
+ [ 0.01416667  0.00916667 -0.00583333]
+ [ 0.01916667 -0.00583333  0.04916667]]</pre></div></div><div class="section" title="Eigenvectors and eigenvalues"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec31"/>Eigenvectors and eigenvalues</h2></div></div></div><p>A vector is described by a <span class="strong"><strong>direction</strong></span> and <span class="strong"><strong>magnitude</strong></span>, or length. An <span class="strong"><strong>eigenvector</strong></span> of a <a class="indexterm" id="id396"/>matrix is a non-zero vector that satisfies the <a class="indexterm" id="id397"/>following equation:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_10.jpg"/></div><p>In the preceding <a class="indexterm" id="id398"/>equation, <span class="inlinemediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_30.jpg"/></span> is an eigenvector, <span class="emphasis"><em>A</em></span> is a square matrix, and <span class="inlinemediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_31.jpg"/></span> is a scalar called an <span class="strong"><strong>eigenvalue</strong></span>. The <a class="indexterm" id="id399"/>direction of an eigenvector remains the same after it has been transformed by <span class="emphasis"><em>A</em></span>; only its magnitude has changed, as indicated by the eigenvalue; that is, multiplying a matrix by one of its eigenvectors is equal to scaling the eigenvector. The prefix <span class="emphasis"><em>eigen</em></span> is the German word for <span class="emphasis"><em>belonging to</em></span> or <span class="emphasis"><em>peculiar to</em></span>; the eigenvectors of a matrix are the vectors that <span class="emphasis"><em>belong</em></span> to and characterize the structure of the data.</p><p>Eigenvectors and eigenvalues can only be derived from square matrices, and not all square matrices have eigenvectors or eigenvalues. If a matrix does have eigenvectors and eigenvalues, it will have a pair for each of its dimensions. The principal components of a matrix are the eigenvectors of its covariance matrix, ordered by their corresponding eigenvalues. The <a class="indexterm" id="id400"/>eigenvector with the greatest eigenvalue is the first principal component; the second principal component is the eigenvector with the second <a class="indexterm" id="id401"/>greatest eigenvalue, and so on.</p><p>Let's calculate the <a class="indexterm" id="id402"/>eigenvectors and eigenvalues of the following matrix:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_11.jpg"/></div><p>Recall that the product of <span class="emphasis"><em>A</em></span> and any eigenvector of <span class="emphasis"><em>A</em></span> must be equal to the eigenvector multiplied by its eigenvalue. We will begin by finding the eigenvalues, which we can find using the following <a class="indexterm" id="id403"/>characteristic equations:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_12.jpg"/></div><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_13.jpg"/></div><p>The characteristic equation states that the determinant of the matrix, that is, the difference between the data matrix and the product of the identity matrix and an eigenvalue is zero:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_14.jpg"/></div><p>Both of the eigenvalues for this matrix are equal to <span class="strong"><strong>-1</strong></span>. We can now use the eigenvalues to solve the eigenvectors:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_10.jpg"/></div><p>First, we set the equation equal to zero:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_12.jpg"/></div><p>Substituting our values <a class="indexterm" id="id404"/>for <span class="emphasis"><em>A</em></span> produces the following:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_15.jpg"/></div><p>We can then substitute <a class="indexterm" id="id405"/>the first eigenvalue in our first eigenvalue to <a class="indexterm" id="id406"/>solve the eigenvectors.</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_36.jpg"/></div><p>The preceding equation can be <a class="indexterm" id="id407"/>rewritten as a system of equations:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_16.jpg"/></div><p>Any non-zero vector that satisfies the preceding equations, such as the following, can be used as an eigenvector:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_17.jpg"/></div><p>PCA requires unit eigenvectors, or eigenvectors that have a length equal to <span class="strong"><strong>1</strong></span>. We can normalize an eigenvector by dividing it by its norm, which is given by the following equation:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_18.jpg"/></div><p>The norm of our vector is <a class="indexterm" id="id408"/>equal to the following:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_19.jpg"/></div><p>This produces the following <a class="indexterm" id="id409"/>unit eigenvector:</p><div class="mediaobject"><img alt="Eigenvectors and eigenvalues" src="graphics/8365OS_07_20.jpg"/></div><p>We can verify that our solutions <a class="indexterm" id="id410"/>for the eigenvectors are correct using NumPy. The <a class="indexterm" id="id411"/>
+<code class="literal">eig</code> function returns a tuple of the eigenvalues and eigenvectors:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import numpy as np
+&gt;&gt;&gt; w, v = np.linalg.eig(np.array([[1, -2], [2, -3]]))
+&gt;&gt;&gt; w; v
+array([-0.99999998, -1.00000002])
+array([[ 0.70710678,  0.70710678],</pre></div></div><div class="section" title="Dimensionality reduction with Principal Component Analysis"><div class="titlepage"><div><div><h2 class="title"><a id="ch07lvl2sec32"/>Dimensionality reduction with Principal Component Analysis</h2></div></div></div><p>Let's use principal <a class="indexterm" id="id412"/>component analysis to reduce the <a class="indexterm" id="id413"/>following two-dimensional data set to one dimension:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>x1</p>
+</th><th style="text-align: left" valign="bottom">
+<p>x2</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>0.9</p>
+</td><td style="text-align: left" valign="top">
+<p>1</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2.4</p>
+</td><td style="text-align: left" valign="top">
+<p>2.6</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>1.2</p>
+</td><td style="text-align: left" valign="top">
+<p>1.7</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>0.5</p>
+</td><td style="text-align: left" valign="top">
+<p>0.7</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>0.3</p>
+</td><td style="text-align: left" valign="top">
+<p>0.7</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>1.8</p>
+</td><td style="text-align: left" valign="top">
+<p>1.4</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>0.5</p>
+</td><td style="text-align: left" valign="top">
+<p>0.6</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>0.3</p>
+</td><td style="text-align: left" valign="top">
+<p>0.6</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2.5</p>
+</td><td style="text-align: left" valign="top">
+<p>2.6</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>1.3</p>
+</td><td style="text-align: left" valign="top">
+<p>1.1</p>
+</td></tr></tbody></table></div><p>The first step of PCA is to <a class="indexterm" id="id414"/>subtract the mean of each <a class="indexterm" id="id415"/>explanatory variable from each observation:</p><div class="informaltable"><table border="1"><colgroup><col style="text-align: left"/><col style="text-align: left"/></colgroup><thead><tr><th style="text-align: left" valign="bottom">
+<p>x1</p>
+</th><th style="text-align: left" valign="bottom">
+<p>x2</p>
+</th></tr></thead><tbody><tr><td style="text-align: left" valign="top">
+<p>0.9 - 1.17 = -0.27</p>
+</td><td style="text-align: left" valign="top">
+<p>1 - 1.3 = -0.3</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2.4 - 1.17 = 1.23</p>
+</td><td style="text-align: left" valign="top">
+<p>2.6 - 1.3 = 1.3</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>1.2 - 1.17 = 0.03</p>
+</td><td style="text-align: left" valign="top">
+<p>1.7 - 1.3 = 0.4</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>0.5 - 1.17 = -0.67</p>
+</td><td style="text-align: left" valign="top">
+<p>-0.7 - 1.3 = 0.6</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>0.3 - 1.17 = -0.87</p>
+</td><td style="text-align: left" valign="top">
+<p>-0.7 - 1.3 = 0.6</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>1.8 - 1.17 = 0.63</p>
+</td><td style="text-align: left" valign="top">
+<p>1.4 - 1.3 = 0.1</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>0.5 - 1.17 = -0.67</p>
+</td><td style="text-align: left" valign="top">
+<p>0.6 - 1.3 = -0.7</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>0.3 - 1.17 = -0.87</p>
+</td><td style="text-align: left" valign="top">
+<p>0.6 - 1.3 = -0.7</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>2.5 - 1.17 = 1.33</p>
+</td><td style="text-align: left" valign="top">
+<p>2.6 - 1.3 = 1.3</p>
+</td></tr><tr><td style="text-align: left" valign="top">
+<p>1.3 - 1.17 = 0.13</p>
+</td><td style="text-align: left" valign="top">
+<p>1.1 - 1.3 = -0.2</p>
+</td></tr></tbody></table></div><p>Next, we must calculate the principal components of the data. Recall that the principal components are the eigenvectors of the data's covariance matrix ordered by their eigenvalues. The principal components can be found using two different techniques. The first technique requires calculating the covariance matrix of the data. Since the covariance matrix will be square, we can calculate the eigenvectors and eigenvalues using the approach described in the previous section. The second technique uses singular value decomposition of the data matrix to find the eigenvectors and square roots of the eigenvalues of the covariance matrix. We will work through an example using the first technique, and then describe the second technique that is used by scikit-learn's implementation of PCA.</p><p>The following matrix is <a class="indexterm" id="id416"/>the covariance matrix for the data:</p><div class="mediaobject"><img alt="Dimensionality reduction with Principal Component Analysis" src="graphics/8365OS_07_21.jpg"/></div><p>Using the technique described in the previous section, the eigenvalues are 1.250 and 0.034. The following are <a class="indexterm" id="id417"/>the unit eigenvectors:</p><div class="mediaobject"><img alt="Dimensionality reduction with Principal Component Analysis" src="graphics/8365OS_07_22.jpg"/></div><p>Next, we will project the data onto the principal components. The first eigenvector has the greatest eigenvalue and is the first principal component. We will build a transformation matrix in which each column of the matrix is the eigenvector for a principal component. If we were reducing a five-dimensional data set to three dimensions, we would build a matrix with three columns. In this example, we will project our two-dimensional data set onto one dimension, so we will use only the eigenvector for the first principal component. Finally, we will find the dot product of the data matrix and transformation matrix. The following is the result of projecting our data onto the first principal component:</p><div class="mediaobject"><img alt="Dimensionality reduction with Principal Component Analysis" src="graphics/8365OS_07_23.jpg"/></div><p>Many implementations of PCA, including the one of scikit-learn, use singular value decomposition to calculate the eigenvectors and eigenvalues. SVD is given by the following equation:</p><div class="mediaobject"><img alt="Dimensionality reduction with Principal Component Analysis" src="graphics/8365OS_07_24.jpg"/></div><p>The columns of <span class="inlinemediaobject"><img alt="Dimensionality reduction with Principal Component Analysis" src="graphics/8365OS_07_27.jpg"/></span> are called left singular vectors of the data matrix, the columns of <span class="inlinemediaobject"><img alt="Dimensionality reduction with Principal Component Analysis" src="graphics/8365OS_07_28.jpg"/></span> are its right singular vectors, and the diagonal entries of <span class="inlinemediaobject"><img alt="Dimensionality reduction with Principal Component Analysis" src="graphics/8365OS_07_29.jpg"/></span> are its singular values. While the singular vectors and values of a matrix are useful in some applications of signal processing and statistics, we are only interested in them as they relate to the eigenvectors and eigenvalues of the data matrix. Specifically, the left singular vectors are the eigenvectors of the <a class="indexterm" id="id418"/>covariance matrix and the diagonal elements of <span class="inlinemediaobject"><img alt="Dimensionality reduction with Principal Component Analysis" src="graphics/8365OS_07_29.jpg"/></span> are the square roots of the eigenvalues of the covariance matrix. Calculating SVD is <a class="indexterm" id="id419"/>beyond the scope of this chapter; however, eigenvectors found using SVD should be similar to those derived from a covariance matrix.</p></div></div>
+<div class="section" title="Using PCA to visualize high-dimensional data"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec54"/>Using PCA to visualize high-dimensional data</h1></div></div></div><p>It is easy to <a class="indexterm" id="id420"/>discover patterns by visualizing data <a class="indexterm" id="id421"/>with two or three dimensions. A high-dimensional dataset cannot be represented graphically, but we can still gain some insights into its structure by reducing it to two or three principal components.</p><p>Collected in 1936, Fisher's Iris data set is a collection of fifty samples from each of the three species of Iris: Iris setosa, Iris virginica, and Iris versicolor. The explanatory variables are measurements of the length and width of the petals and sepals of the flowers. The Iris dataset is commonly used to test classification models, and is included with scikit-learn. Let's reduce the <code class="literal">iris</code> dataset's four dimensions so that we can visualize it in two dimensions:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; import matplotlib.pyplot as plt
+&gt;&gt;&gt; from sklearn.decomposition import PCA
+&gt;&gt;&gt; from sklearn.datasets import load_iris</pre></div><p>First, we load the built-in iris data set and instantiate a <code class="literal">PCA</code> estimator. The <code class="literal">PCA</code> class takes a number of principal components to retain as a hyperparameter. Like the other estimators, <code class="literal">PCA</code> exposes a <code class="literal">fit_transform()</code> method that returns the reduced data matrix:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; data = load_iris()
+&gt;&gt;&gt; y = data.target
+&gt;&gt;&gt; X = data.data
+&gt;&gt;&gt; pca = PCA(n_components=2)
+&gt;&gt;&gt; reduced_X = pca.fit_transform(X)</pre></div><p>Finally, we <a class="indexterm" id="id422"/>assemble and plot the reduced data:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; red_x, red_y = [], []
+&gt;&gt;&gt; blue_x, blue_y = [], []
+&gt;&gt;&gt; green_x, green_y = [], []
+&gt;&gt;&gt; for i in range(len(reduced_X)):
+&gt;&gt;&gt;     if y[i] == 0:
+&gt;&gt;&gt;         red_x.append(reduced_X[i][0])
+&gt;&gt;&gt;         red_y.append(reduced_X[i][1])
+&gt;&gt;&gt;     elif y[i] == 1:
+&gt;&gt;&gt;         blue_x.append(reduced_X[i][0])
+&gt;&gt;&gt;         blue_y.append(reduced_X[i][1])
+&gt;&gt;&gt;     else:
+&gt;&gt;&gt;         green_x.append(reduced_X[i][0])
+&gt;&gt;&gt;         green_y.append(reduced_X[i][1])
+&gt;&gt;&gt; plt.scatter(red_x, red_y, c='r', marker='x')
+&gt;&gt;&gt; plt.scatter(blue_x, blue_y, c='b', marker='D')
+&gt;&gt;&gt; plt.scatter(green_x, green_y, c='g', marker='.')
+&gt;&gt;&gt; plt.show()</pre></div><p>The reduced instances are plotted in the following figure. Each of the dataset's three classes is indicated by its own marker style. From this two-dimensional view of the data, it is clear that one <a class="indexterm" id="id423"/>of the classes can be easily separated from the other two overlapping classes. It would be difficult to notice <a class="indexterm" id="id424"/>this structure without a graphical <a class="indexterm" id="id425"/>representation. This insight can inform our choice of classification model.</p><div class="mediaobject"><img alt="Using PCA to visualize high-dimensional data" src="graphics/8365OS_07_25.jpg"/></div></div>
+<div class="section" title="Face recognition with PCA"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec55"/>Face recognition with PCA</h1></div></div></div><p>Now let's apply <a class="indexterm" id="id426"/>PCA to a face-recognition problem. Face recognition is the supervised classification task of identifying a person from an image of his or her face. In <a class="indexterm" id="id427"/>this example, we will use a data set called <span class="emphasis"><em>Our Database of Faces</em></span> from AT&amp;T Laboratories, Cambridge. The data set contains ten images each of forty people. The images were created under different lighting conditions, and the subjects varied their facial expressions. The images are gray scale and 92 x 112 pixels in dimension. The following is an example image:</p><div class="mediaobject"><img alt="Face recognition with PCA" src="graphics/8365OS_07_26.jpg"/></div><p>While these images are small, a feature vector that encodes the intensity of every pixel will have 10,304 dimensions. Training from such high-dimensional data could require many samples to avoid over-fitting. Instead, we will use PCA to compactly represent the images in terms of a small number of principal components.</p><p>We can reshape the matrix of pixel intensities for an image into a vector, and create a matrix of these <a class="indexterm" id="id428"/>vectors for all of the training images. Each image is a linear combination of <a class="indexterm" id="id429"/>this data set's principal components. In the context of face recognition, these principal components are called <span class="strong"><strong>eigenfaces</strong></span>. The <a class="indexterm" id="id430"/>eigenfaces can be thought of as standardized components of faces. Each face in the data set can be expressed as some combination of the eigenfaces, and can be approximated as a combination of the most important eigenfaces:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; from os import walk, path
+&gt;&gt;&gt; import numpy as np
+&gt;&gt;&gt; import mahotas as mh
+&gt;&gt;&gt; from sklearn.cross_validation import train_test_split
+&gt;&gt;&gt; from sklearn.cross_validation import cross_val_score
+&gt;&gt;&gt; from sklearn.preprocessing import scale
+&gt;&gt;&gt; from sklearn.decomposition import PCA
+&gt;&gt;&gt; from sklearn.linear_model import LogisticRegression
+&gt;&gt;&gt; from sklearn.metrics import classification_report
+&gt;&gt;&gt; X = []
+&gt;&gt;&gt; y = []</pre></div><p>We begin by loading the images into <code class="literal">NumPy</code> arrays, and reshaping their matrices into vectors:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; for dir_path, dir_names, file_names in walk('data/att-faces/orl_faces'):
+&gt;&gt;&gt;     for fn in file_names:
+&gt;&gt;&gt;         if fn[-3:] == 'pgm':
+&gt;&gt;&gt;             image_filename = path.join(dir_path, fn)
+&gt;&gt;&gt;             X.append(scale(mh.imread(image_filename, as_grey=True).reshape(10304).astype('float32')))
+&gt;&gt;&gt;             y.append(dir_path)
+&gt;&gt;&gt; X = np.array(X)</pre></div><p>We then randomly split the images into training and test sets, and fit the <code class="literal">PCA</code> object on the training set:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; X_train, X_test, y_train, y_test = train_test_split(X, y)
+&gt;&gt;&gt; pca = PCA(n_components=150)</pre></div><p>We reduce all of the instances to 150 dimensions and train a logistic regression classifier. The data set contains forty classes; scikit-learn automatically creates binary classifiers using the one versus all strategy behind the scenes:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; X_train_reduced = pca.fit_transform(X_train)
+&gt;&gt;&gt; X_test_reduced = pca.transform(X_test)
+&gt;&gt;&gt; print 'The original dimensions of the training data were', X_train.shape
+&gt;&gt;&gt; print 'The reduced dimensions of the training data are', X_train_reduced.shape
+&gt;&gt;&gt; classifier = LogisticRegression()
+&gt;&gt;&gt; accuracies = cross_val_score(classifier, X_train_reduced, y_train)</pre></div><p>Finally, we evaluate the performance of the classifier using cross-validation and a test set. The average per-class F1 score of the classifier trained on the full data was 0.94, but required significantly more <a class="indexterm" id="id431"/>time to train and could be prohibitively slow in an application with more training instances:</p><div class="informalexample"><pre class="programlisting">&gt;&gt;&gt; print 'Cross validation accuracy:', np.mean(accuracies), accuracies
+&gt;&gt;&gt; classifier.fit(X_train_reduced, y_train)
+&gt;&gt;&gt; predictions = classifier.predict(X_test_reduced)
+&gt;&gt;&gt; print classification_report(y_test, predictions)</pre></div><p>The following is the <a class="indexterm" id="id432"/>output of the script:</p><div class="informalexample"><pre class="programlisting">The original dimensions of the training data were (300, 10304)
+The reduced dimensions of the training data are (300, 150)
+Cross validation accuracy: 0.833841819347 [ 0.82882883  0.83        0.84269663]
+             precision    recall  f1-score   support
+
+data/att-faces/orl_faces/s1       1.00      1.00      1.00         2
+data/att-faces/orl_faces/s10       1.00      1.00      1.00         2
+data/att-faces/orl_faces/s11       1.00      0.60      0.75         5
+...
+data/att-faces/orl_faces/s9       1.00      1.00      1.00         2
+
+avg / total       0.92      0.89      0.89       100</pre></div></div>
+<div class="section" title="Summary"><div class="titlepage"><div><div><h1 class="title"><a id="ch07lvl1sec56"/>Summary</h1></div></div></div><p>In this chapter, we examined the problem of dimensionality reduction. High-dimensional data cannot be visualized easily. High-dimensional data sets may also suffer from the curse of dimensionality; estimators require many samples to learn to generalize from high-dimensional data. We mitigated these problems using a technique called principal component analysis, which reduces a high-dimensional, possibly-correlated data set to a lower-dimensional set of uncorrelated principal components by projecting the data onto a lower-dimensional subspace. We used principal component analysis to visualize the four-dimensional Iris data set in two dimensions, and build a face-recognition system. In the next chapter, we will return to supervised learning. We will discuss an early classification algorithm called the perceptron, which will prepare us to discuss more advanced models in the last few chapters.</p></div></body></html>
