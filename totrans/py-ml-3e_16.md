@@ -1,0 +1,587 @@
+# 16
+
+# Modeling Sequential Data Using Recurrent Neural Networks
+
+In the previous chapter, we focused on **convolutional neural networks** (**CNNs**). We covered the building blocks of CNN architectures and how to implement deep CNNs in TensorFlow. Finally, you learned how to use CNNs for image classification. In this chapter, we will explore **recurrent neural networks** (**RNNs**) and see their application in modeling sequential data.
+
+We will cover the following topics:
+
+*   Introducing sequential data
+*   RNNs for modeling sequences
+*   Long short-term memory (LSTM)
+*   Truncated backpropagation through time (TBPTT)
+*   Implementing a multilayer RNN for sequence modeling in TensorFlow
+*   Project one: RNN sentiment analysis of the IMDb movie review dataset
+*   Project two: RNN character-level language modeling with LSTM cells, using text data from Jules Verne's *The Mysterious Island*
+*   Using gradient clipping to avoid exploding gradients
+*   Introducing the *Transformer* model and understanding the *self-attention mechanism*
+
+# Introducing sequential data
+
+Let's begin our discussion of RNNs by looking at the nature of sequential data, which is more commonly known as sequence data or **sequences**. We will take a look at the unique properties of sequences that make them different to other kinds of data. We will then see how we can represent sequential data and explore the various categories of models for sequential data, which are based on the input and output of a model. This will help us to explore the relationship between RNNs and sequences in this chapter.
+
+## Modeling sequential data – order matters
+
+What makes sequences unique, compared to other types of data, is that elements in a sequence appear in a certain order and are not independent of each other. Typical machine learning algorithms for supervised learning assume that the input is **independent and identically distributed** (**IID**) data, which means that the training examples are *mutually independent* and have the same underlying distribution. In this regard, based on the mutual independence assumption, the order in which the training examples are given to the model is irrelevant. For example, if we have a sample consisting of *n* training examples, ![](img/B13208_16_001.png), the order in which we use the data for training our machine learning algorithm does not matter. An example of this scenario would be the Iris dataset that we previously worked with. In the Iris dataset, each flower has been measured independently, and the measurements of one flower do not influence the measurements of another flower.
+
+However, this assumption is not valid when we deal with sequences—by definition, order matters. Predicting the market value of a particular stock would be an example of this scenario. For instance, assume we have a sample of *n* training examples, where each training example represents the market value of a certain stock on a particular day. If our task is to predict the stock market value for the next three days, it would make sense to consider the previous stock prices in a date-sorted order to derive trends rather than utilize these training examples in a randomized order.
+
+**Sequential data versus time-series data**
+
+Time-series data is a special type of sequential data, where each example is associated with a dimension for time. In time-series data, samples are taken at successive time stamps, and therefore, the time dimension determines the order among the data points. For example, stock prices and voice or speech records are time-series data.
+
+On the other hand, not all sequential data has the time dimension, for example, text data or DNA sequences, where the examples are ordered but they do not qualify as time-series data. As you will see, in this chapter, we will cover some examples of natural language processing (NLP) and text modeling that are not time-series data, but note that RNNs can also be used for time-series data.
+
+## Representing sequences
+
+We've established that order among data points is important in sequential data, so we next need to find a way to leverage this ordering information in a machine learning model. Throughout this chapter, we will represent sequences as ![](img/B13208_16_002.png). The superscript indices indicate the order of the instances, and the length of the sequence is *T*. For a sensible example of sequences, consider time-series data, where each example point, ![](img/B13208_16_003.png), belongs to a particular time, *t*. The following figure shows an example of time-series data where both the input features (*x*'s) and the target labels (*y*'s) naturally follow the order according to their time axis; therefore, both the *x*'s and *y*'s are sequences:
+
+![](img/B13208_16_01.png)
+
+As we have already mentioned, the standard neural network (NN) models that we have covered so far, such as multilayer perceptron (MLP) and CNNs for image data, assume that the training examples are independent of each other and thus do not incorporate *ordering information*. We can say that such models do not have a *memory* of previously seen training examples. For instance, the samples are passed through the feedforward and backpropagation steps, and the weights are updated independently of the order in which the training examples are processed.
+
+RNNs, by contrast, are designed for modeling sequences and are capable of remembering past information and processing new events accordingly, which is a clear advantage when working with sequence data.
+
+## The different categories of sequence modeling
+
+Sequence modeling has many fascinating applications, such as language translation (for example, translating text from English to German), image captioning, and text generation. However, in order to choose an appropriate architecture and approach, we have to understand and be able to distinguish between these different sequence modeling tasks. The following figure, based on the explanations in the excellent article *The Unreasonable Effectiveness of Recurrent Neural Networks*, by *Andrej Karpathy* ([http://karpathy.github.io/2015/05/21/rnn-effectiveness/](http://karpathy.github.io/2015/05/21/rnn-effectiveness/)), summarizes the most common sequence modeling tasks, which depend on the relationship categories of input and output data:
+
+![](img/B13208_16_02.png)
+
+Let's discuss the different relationship categories between input and output data, which were depicted in the previous figure, in more detail. If neither the input nor output data represents sequences, then we are dealing with standard data, and we could simply use a multilayer perceptron (or another classification model previously covered in this book) to model such data. However, if either the input or output is a sequence, the modeling task likely falls into one of these categories:
+
+*   **Many-to-one**: The input data is a sequence, but the output is a fixed-size vector or scalar, not a sequence. For example, in sentiment analysis, the input is text-based (for example, a movie review) and the output is a class label (for example, a label denoting whether a reviewer liked the movie).
+*   **One-to-many**: The input data is in standard format and not a sequence, but the output is a sequence. An example of this category is image captioning—the input is an image and the output is an English phrase summarizing the content of that image.
+*   **Many-to-many**: Both the input and output arrays are sequences. This category can be further divided based on whether the input and output are synchronized. An example of a synchronized many-to-many modeling task is video classification, where each frame in a video is labeled. An example of a *delayed* many-to-many modeling task would be translating one language into another. For instance, an entire English sentence must be read and processed by a machine before its translation into German is produced.
+
+Now, after summarizing the three broad categories of sequence modeling, we can move forward to discussing the structure of an RNN.
+
+# RNNs for modeling sequences
+
+In this section, before we start implementing RNNs in TensorFlow, we will discuss the main concepts of RNNs. We will begin by looking at the typical structure of an RNN, which includes a recursive component to model sequence data. Then, we will examine how the neuron activations are computed in a typical RNN. This will create a context for us to discuss the common challenges in training RNNs, and we will then discuss solutions to these challenges, such as LSTM and gated recurrent units (GRUs).
+
+## Understanding the RNN looping mechanism
+
+Let's start with the architecture of an RNN. The following figure shows a standard feedforward NN and an RNN side by side for comparison:
+
+![](img/B13208_16_03.png)
+
+Both of these networks have only one hidden layer. In this representation, the units are not displayed, but we assume that the input layer (*x*), hidden layer (*h*), and output layer (*o*) are vectors that contain many units.
+
+**Determining the type of output from an RNN**
+
+This generic RNN architecture could correspond to the two sequence modeling categories where the input is a sequence. Typically, a recurrent layer can return a sequence as output, ![](img/B13208_16_004.png), or simply return the last output (at *t* = *T*, that is, ![](img/B13208_16_005.png)). Thus, it could be either many-to-many, or it could be many-to-one if, for example, we only use the last element, ![](img/B13208_16_006.png), as the final output.
+
+As you will see later, in the TensorFlow Keras API, the behavior of a recurrent layer with respect to returning a sequence as output or simply using the last output can be specified by setting the argument `return_sequences` to `True` or `False`, respectively.
+
+In a standard feedforward network, information flows from the input to the hidden layer, and then from the hidden layer to the output layer. On the other hand, in an RNN, the hidden layer receives its input from both the input layer of the current time step and the hidden layer from the previous time step.
+
+The flow of information in adjacent time steps in the hidden layer allows the network to have a memory of past events. This flow of information is usually displayed as a loop, also known as a **recurrent edge** in graph notation, which is how this general RNN architecture got its name.
+
+Similar to multilayer perceptrons, RNNs can consist of multiple hidden layers. Note that it's a common convention to refer to RNNs with one hidden layer as a *single-layer RNN*, which is not to be confused with single-layer NNs without a hidden layer, such as Adaline or logistic regression. The following figure illustrates an RNN with one hidden layer (top) and an RNN with two hidden layers (bottom):
+
+![](img/B13208_16_04.png)
+
+In order to examine the architecture of RNNs and the flow of information, a compact representation with a recurrent edge can be unfolded, which you can see in the preceding figure.
+
+As we know, each hidden unit in a standard NN receives only one input—the net preactivation associated with the input layer. In contrast, each hidden unit in an RNN receives two *distinct* sets of input—the preactivation from the input layer and the activation of the same hidden layer from the previous time step, *t* – 1.
+
+At the first time step, *t* = 0, the hidden units are initialized to zeros or small random values. Then, at a time step where *t* > 0, the hidden units receive their input from the data point at the current time, ![](img/B13208_16_007.png), and the previous values of hidden units at *t* – 1, indicated as ![](img/B13208_16_008.png).
+
+Similarly, in the case of a multilayer RNN, we can summarize the information flow as follows:
+
+*   *layer* = 1: Here, the hidden layer is represented as ![](img/B13208_16_009.png) and it receives its input from the data point, ![](img/B13208_16_010.png), and the hidden values in the same layer, but at the previous time step, ![](img/B13208_16_011.png).
+*   *layer* = 2: The second hidden layer, ![](img/B13208_16_012.png), receives its inputs from the outputs of the layer below at the current time step (![](img/B13208_16_013.png)) and its own hidden values from the previous time step, ![](img/B13208_16_014.png).
+
+Since, in this case, each recurrent layer must receive a sequence as input, all the recurrent layers except the last one must *return a sequence as output* (that is, `return_sequences=True`). The behavior of the last recurrent layer depends on the type of problem.
+
+## Computing activations in an RNN
+
+Now that you understand the structure and general flow of information in an RNN, let's get more specific and compute the actual activations of the hidden layers, as well as the output layer. For simplicity, we will consider just a single hidden layer; however, the same concept applies to multilayer RNNs.
+
+Each directed edge (the connections between boxes) in the representation of an RNN that we just looked at is associated with a weight matrix. Those weights do not depend on time, *t*; therefore, they are shared across the time axis. The different weight matrices in a single-layer RNN are as follows:
+
+*   ![](img/B13208_16_015.png): The weight matrix between the input, ![](img/B13208_16_016.png), and the hidden layer, *h*
+*   ![](img/B13208_16_017.png): The weight matrix associated with the recurrent edge
+*   ![](img/B13208_16_018.png): The weight matrix between the hidden layer and output layer
+
+These weight matrices are depicted in the following figure:
+
+![](img/B13208_16_05.png)
+
+In certain implementations, you may observe that the weight matrices, ![](img/B13208_16_019.png) and ![](img/B13208_16_020.png), are concatenated to a combined matrix, ![](img/B13208_16_021.png). Later in this section, we will make use of this notation as well.
+
+Computing the activations is very similar to standard multilayer perceptrons and other types of feedforward NNs. For the hidden layer, the net input, ![](img/B13208_16_022.png) (preactivation), is computed through a linear combination, that is, we compute the sum of the multiplications of the weight matrices with the corresponding vectors and add the bias unit:
+
+![](img/B13208_16_023.png)
+
+Then, the activations of the hidden units at the time step, *t*, are calculated as follows:
+
+![](img/B13208_16_024.png)
+
+Here, ![](img/B13208_16_025.png) is the bias vector for the hidden units and ![](img/B13208_16_026.png) is the activation function of the hidden layer.
+
+In case you want to use the concatenated weight matrix, ![](img/B13208_16_027.png), the formula for computing hidden units will change, as follows:
+
+![](img/B13208_16_028.png)
+
+Once the activations of the hidden units at the current time step are computed, then the activations of the output units will be computed, as follows:
+
+![](img/B13208_16_029.png)
+
+To help clarify this further, the following figure shows the process of computing these activations with both formulations:
+
+![](img/B13208_16_06.png)
+
+**Training RNNs using backpropogation through time (BPTT)**
+
+The learning algorithm for RNNs was introduced in 1990: *Backpropagation Through Time: What It Does and How to Do It* (*Paul Werbos*, *Proceedings of IEEE*, 78(10): 1550-1560, *1990*).
+
+The derivation of the gradients might be a bit complicated, but the basic idea is that the overall loss, *L*, is the sum of all the loss functions at times *t* = 1 to *t* = *T*:
+
+![](img/B13208_16_030.png)
+
+Since the loss at time *t* is dependent on the hidden units at all previous time steps 1 : *t*, the gradient will be computed as follows:
+
+![](img/B13208_16_031.png)
+
+Here, ![](img/B13208_16_032.png) is computed as a multiplication of adjacent time steps:
+
+![](img/B13208_16_033.png)
+
+## Hidden-recurrence versus output-recurrence
+
+So far, you have seen recurrent networks in which the hidden layer has the recurrent property. However, note that there is an alternative model in which the recurrent connection comes from the output layer. In this case, the net activations from the output layer at the previous time step, ![](img/B13208_16_034.png), can be added in one of two ways:
+
+*   To the hidden layer at the current time step, ![](img/B13208_16_035.png) (shown in the following figure as output-to-hidden recurrence)
+*   To the output layer at the current time step, ![](img/B13208_16_036.png) (shown in the following figure as output-to-output recurrence)
+
+![](img/B13208_16_07.png)
+
+As shown in the previous figure, the differences between these architectures can be clearly seen in the recurring connections. Following our notation, the weights associated with the recurrent connection will be denoted for the hidden-to-hidden recurrence by ![](img/B13208_16_037.png), for the output-to-hidden recurrence by ![](img/B13208_16_038.png), and for the output-to-output recurrence by ![](img/B13208_16_039.png). In some articles in literature, the weights associated with the recurrent connections are also denoted by ![](img/B13208_16_040.png).
+
+To see how this works in practice, let's manually compute the forward pass for one of these recurrent types. Using the TensorFlow Keras API, a recurrent layer can be defined via `SimpleRNN`, which is similar to the output-to-output recurrence. In the following code, we will create a recurrent layer from `SimpleRNN` and perform a forward pass on an input sequence of length 3 to compute the output. We will also manually compute the forward pass and compare the results with those of `SimpleRNN`. First, let's create the layer and assign the weights for our manual computations:
+
+[PRE0]
+
+The input shape for this layer is `(None, None, 5)`, where the first dimension is the batch dimension (using `None` for variable batch size), the second dimension corresponds to the sequence (using `None` for the variable sequence length), and the last dimension corresponds to the features. Notice that we set `return_sequences=True`, which, for an input sequence of length 3, will result in the output sequence ![](img/B13208_16_041.png). Otherwise, it would only return the final output, ![](img/B13208_16_042.png).
+
+Now, we will call the forward pass on the `rnn_layer` and manually compute the outputs at each time step and compare them:
+
+[PRE1]
+
+In our manual forward computation, we used the hyperbolic tangent (tanh) activation function, since it is also used in `SimpleRNN` (the default activation). As you can see from the printed results, the outputs from the manual forward computations exactly match the output of the `SimpleRNN` layer at each time step. Hopefully, this hands-on task has enlightened you on the mysteries of recurrent networks.
+
+## The challenges of learning long-range interactions
+
+BPTT, which was briefly mentioned earlier, introduces some new challenges. Because of the multiplicative factor, ![](img/B13208_16_043.png), in computing the gradients of a loss function, the so-called **vanishing** and **exploding** gradient problems arise. These problems are explained by the examples in the following figure, which shows an RNN with only one hidden unit for simplicity:
+
+![](img/B13208_16_08.png)
+
+Basically, ![](img/B13208_16_0431.png) has *t* – *k* multiplications; therefore, multiplying the weight, *w,* by itself *t* – *k* times results in a factor, ![](img/B13208_16_045.png). As a result, if ![](img/B13208_16_046.png), this factor becomes very small when *t* – *k* is large. On the other hand, if the weight of the recurrent edge is ![](img/B13208_16_047.png), then ![](img/B13208_16_048.png) becomes very large when *t* – *k* is large. Note that large *t* – *k* refers to long-range dependencies. We can see that a naive solution to avoid vanishing or exploding gradients can be reached by ensuring ![](img/B13208_16_049.png). If you are interested and would like to investigate this in more detail, read *On the difficulty of training recurrent neural networks*, by *R. Pascanu*, *T. Mikolov*, and *Y. Bengio*, *2012* ([https://arxiv.org/pdf/1211.5063.pdf](https://arxiv.org/pdf/1211.5063.pdf)).
+
+In practice, there are at least three solutions to this problem:
+
+*   Gradient clipping
+*   TBPTT
+*   LSTM
+
+Using gradient clipping, we specify a cut-off or threshold value for the gradients, and we assign this cut-off value to gradient values that exceed this value. In contrast, TBPTT simply limits the number of time steps that the signal can backpropagate after each forward pass. For example, even if the sequence has 100 elements or steps, we may only backpropagate the most recent 20 time steps.
+
+While both gradient clipping and TBPTT can solve the exploding gradient problem, the truncation limits the number of steps that the gradient can effectively flow back and properly update the weights. On the other hand, LSTM, designed in 1997 by Sepp Hochreiter and Jürgen Schmidhuber, has been more successful in vanishing and exploding gradient problems while modeling long-range dependencies through the use of memory cells. Let's discuss LSTM in more detail.
+
+## Long short-term memory cells
+
+As stated previously, LSTMs were first introduced to overcome the vanishing gradient problem (*Long Short-Term Memory*, *S. Hochreiter* and *J. Schmidhuber*, *Neural Computation*, 9(8): 1735-1780, *1997*). The building block of an LSTM is a **memory cell**, which essentially represents or replaces the hidden layer of standard RNNs.
+
+In each memory cell, there is a recurrent edge that has the desirable weight, *w* = 1, as we discussed, to overcome the vanishing and exploding gradient problems. The values associated with this recurrent edge are collectively called the **cell state**. The unfolded structure of a modern LSTM cell is shown in the following figure:
+
+![](img/B13208_16_09.png)
+
+Notice that the cell state from the previous time step, ![](img/B13208_16_050.png), is modified to get the cell state at the current time step, ![](img/B13208_16_051.png), without being multiplied directly with any weight factor. The flow of information in this memory cell is controlled by several computation units (often called *gates*) that will be described here. In the previous figure, ![](img/B13208_16_052.png) refers to the **element-wise product** (element-wise multiplication) and ![](img/B13208_16_053.png) means **element-wise summation** (element-wise addition). Furthermore, ![](img/B13208_16_054.png) refers to the input data at time *t*, and ![](img/B13208_16_055.png) indicates the hidden units at time *t* – 1\. Four boxes are indicated with an activation function, either the sigmoid function (![](img/B13208_16_056.png)) or tanh, and a set of weights; these boxes apply a linear combination by performing matrix-vector multiplications on their inputs (which are ![](img/B13208_16_057.png) and ![](img/B13208_16_058.png)). These units of computation with sigmoid activation functions, whose output units are passed through ![](img/B13208_16_059.png), are called gates.
+
+In an LSTM cell, there are three different types of gates, which are known as the forget gate, the input gate, and the output gate:
+
+*   The **forget gate** ( ![](img/B13208_16_060.png)) allows the memory cell to reset the cell state without growing indefinitely. In fact, the forget gate decides which information is allowed to go through and which information to suppress. Now, ![](img/B13208_16_0601.png) is computed as follows:![](img/B13208_16_062.png)
+
+    Note that the forget gate was not part of the original LSTM cell; it was added a few years later to improve the original model (*Learning to Forget: Continual Prediction with LSTM*, *F. Gers*, *J. Schmidhuber*, and *F. Cummins*, *Neural Computation 12*, 2451-2471, *2000*).
+
+*   The **input gate** (![](img/B13208_16_063.png)) and **candidate value** (![](img/B13208_16_064.png)) are responsible for updating the cell state. They are computed as follows:![](img/B13208_16_065.png)![](img/B13208_16_066.png)
+
+    The cell state at time *t* is computed as follows:
+
+    ![](img/B13208_16_067.png)
+*   The **output gate** (![](img/B13208_16_068.png)) decides how to update the values of hidden units:![](img/B13208_16_069.png)
+
+    Given this, the hidden units at the current time step are computed as follows:
+
+    ![](img/B13208_16_070.png)
+
+The structure of an LSTM cell and its underlying computations might seem very complex and hard to implement. However, the good news is that TensorFlow has already implemented everything in optimized wrapper functions, which allows us to define our LSTM cells easily and efficiently. We will apply RNNs and LSTMs to real-world datasets later in this chapter.
+
+**Other advanced RNN models**
+
+LSTMs provide a basic approach for modeling long-range dependencies in sequences. Yet, it is important to note that there are many variations of LSTMs described in literature (*An Empirical Exploration of Recurrent Network Architectures*, *Rafal Jozefowicz*, *Wojciech Zaremba*, and *Ilya Sutskever*, *Proceedings of ICML*, 2342-2350, *2015*). Also worth noting is a more recent approach, Gated Recurrent Unit (GRU), which was proposed in 2014\. GRUs have a simpler architecture than LSTMs; therefore, they are computationally more efficient, while their performance in some tasks, such as polyphonic music modeling, is comparable to LSTMs. If you are interested in learning more about these modern RNN architectures, refer to the paper, *Empirical Evaluation of Gated Recurrent Neural Networks on Sequence Modeling*, by *Junyoung Chung* and others, *2014* ([https://arxiv.org/pdf/1412.3555v1.pdf](https://arxiv.org/pdf/1412.3555v1.pdf)).
+
+# Implementing RNNs for sequence modeling in TensorFlow
+
+Now that we have covered the underlying theory behind RNNs, we are ready to move on to the more practical portion of this chapter: implementing RNNs in TensorFlow. During the rest of this chapter, we will apply RNNs to two common problem tasks:
+
+1.  Sentiment analysis
+2.  Language modeling
+
+These two projects, which we will walk through together in the following pages, are both fascinating but also quite involved. Thus, instead of providing the code all at once, we will break the implementation up into several steps and discuss the code in detail. If you like to have a big picture overview and want to see all the code at once before diving into the discussion, take a look at the code implementation first, which you can view at [https://github.com/rasbt/python-machine-learning-book-3rd-edition/tree/master/ch16](https://github.com/rasbt/python-machine-learning-book-3rd-edition/tree/master/ch16).
+
+## Project one – predicting the sentiment of IMDb movie reviews
+
+You may recall from *Chapter 8*, *Applying Machine Learning to Sentiment Analysis*, that sentiment analysis is concerned with analyzing the expressed opinion of a sentence or a text document. In this section and the following subsections, we will implement a multilayer RNN for sentiment analysis using a many-to-one architecture.
+
+In the next section, we will implement a many-to-many RNN for an application of language modeling. While the chosen examples are purposefully simple to introduce the main concepts of RNNs, language modeling has a wide range of interesting applications, such as building chatbots—giving computers the ability to directly talk and interact with humans.
+
+### Preparing the movie review data
+
+In the preprocessing steps in *Chapter 8*, we created a clean dataset named `movie_data.csv`, which we will use again now. First, we will import the necessary modules and read the data into a pandas `DataFrame`, as follows:
+
+[PRE2]
+
+Remember that this data frame, `df`, consists of two columns, namely `'review'` and `'sentiment'`, where `'review'` contains the text of movie reviews (the input features), and `'sentiment'` represents the target label we want to predict (`0` refers to negative sentiment and `1` refers to positive sentiment). The text component of these movie reviews is sequences of words, and the RNN model classifies each sequence as a positive (`1`) or negative (`0`) review.
+
+However, before we can feed the data into an RNN model, we need to apply several preprocessing steps:
+
+1.  Create a TensorFlow dataset object and split it into separate training, testing, and validation partitions.
+2.  Identify the unique words in the training dataset.
+3.  Map each unique word to a unique integer and encode the review text into encoded integers (an index of each unique word).
+4.  Divide the dataset into mini-batches as input to the model.
+
+Let's proceed with the first step: creating a TensorFlow dataset from this data frame:
+
+[PRE3]
+
+Now, we can split it into training, testing, and validation datasets. The entire dataset contains 50,000 examples. We will keep the first 25,000 examples for evaluation (hold-out testing dataset), and then 20,000 examples will be used for training and 5,000 for validation. The code is as follows:
+
+[PRE4]
+
+To prepare the data for input to a NN, we need to encode it into numeric values, as was mentioned in steps 2 and 3\. To do this, we will first find the unique words (tokens) in the training dataset. While finding unique tokens is a process for which we can use Python datasets, it can be more efficient to use the `Counter` class from the `collections` package, which is part of Python's standard library.
+
+In the following code, we will instantiate a new `Counter` object (`token_counts`) that will collect the unique word frequencies. Note that in this particular application (and in contrast to the bag-of-words model), we are only interested in the set of unique words and won't require the word counts, which are created as a side product. To split the text into words (or tokens), the `tensorflow_datasets` package provides a `Tokenizer` class.
+
+The code for collecting unique tokens is as follows:
+
+[PRE5]
+
+If you want to learn more about `Counter`, refer to its documentation at [https://docs.python.org/3/library/collections.html#collections.Counter](https://docs.python.org/3/library/collections.html#collections.Counter).
+
+Next, we are going to map each unique word to a unique integer. This can be done manually using a Python dictionary, where the keys are the unique tokens (words) and the value associated with each key is a unique integer. However, the `tensorflow_datasets` package already provides a class, `TokenTextEncoder`, which we can use to create such a mapping and encode the entire dataset. First, we will create an `encoder` object from the `TokenTextEncoder` class by passing the unique tokens (`token_counts` contains the tokens and their counts, although here, their counts are not needed, so they will be ignored). Calling the `encoder.encode()` method will then convert its input text into a list of integer values:
+
+[PRE6]
+
+Note that there might be some tokens in the validation or testing data that are not present in the training data and are thus not included in the mapping. If we have *q* tokens (that is the size of `token_counts` passed to the `TokenTextEncoder`, which in this case is 87,007), then all tokens that haven't been seen before, and are thus not included in `token_counts`, will be assigned the integer *q* + 1 (which will be 87,008 in our case). In other words, the index *q* + 1 is reserved for unknown words. Another reserved value is the integer 0, which serves as a placeholder for adjusting the sequence length. Later, when we are building an RNN model in TensorFlow, we will consider these two placeholders, 0 and *q* + 1, in more detail.
+
+We can use the `map()` method of the dataset objects to transform each text in the dataset accordingly, just like we would apply any other transformation to a dataset. However, there is a small problem: here, the text data is enclosed in tensor objects, which we can access by calling the `numpy()` method on a tensor in the eager execution mode. But during transformations by the `map()` method, the eager execution will be disabled. To solve this problem, we can define two functions. The first function will treat the input tensors as if the eager execution mode is enabled:
+
+[PRE7]
+
+In the second function, we will wrap the first function using `tf.py_function` to convert it into a TensorFlow operator, which can then be used via its `map()` method. This process of encoding text into a list of integers can be carried out using the following code:
+
+[PRE8]
+
+So far, we've converted sequences of words into sequences of integers. However, there is one issue that we still need to resolve—the sequences currently have different lengths (as shown in the result of executing the previous code for five randomly chosen examples). Although, in general, RNNs can handle sequences with different lengths, we still need to make sure that all the sequences in a mini-batch have the same length to store them efficiently in a tensor.
+
+To divide a dataset that has elements with different shapes into mini-batches, TensorFlow provides a different method, `padded_batch()` (instead of `batch()`), which will automatically pad the consecutive elements that are to be combined into a batch with placeholder values (0s) so that all sequences within a batch will have the same shape. To illustrate this with a practical example, let's take a small subset of size 8 from the training dataset, `ds_train`, and apply the `padded_batch()` method to this subset with `batch_size=4`. We will also print the sizes of the individual elements before combining these into mini-batches, as well as the dimensions of the resulting mini-batches:
+
+[PRE9]
+
+As you can observe from the printed tensor shapes, the number of columns (that is, `.shape[1]`) in the first batch is 688, which resulted from combining the first four examples into a single batch and using the maximum size of these examples. That means that the other three examples in this batch are padded as much as necessary to match this size. Similarly, the second batch keeps the maximum size of its individual four examples, which is 453, and pads the other examples so that their length is smaller than the maximum length.
+
+Let's divide all three datasets into mini-batches with a batch size of 32:
+
+[PRE10]
+
+Now, the data is in a suitable format for an RNN model, which we are going to implement in the following subsections. In the next subsection, however, we will first discuss feature **embedding**, which is an optional but highly recommended preprocessing step that is used for reducing the dimensionality of the word vectors.
+
+### Embedding layers for sentence encoding
+
+During the data preparation in the previous step, we generated sequences of the same length. The elements of these sequences were integer numbers that corresponded to the *indices* of unique words. These word indices can be converted into input features in several different ways. One naive way is to apply one-hot encoding to convert the indices into vectors of zeros and ones. Then, each word will be mapped to a vector whose size is the number of unique words in the entire dataset. Given that the number of unique words (the size of the vocabulary) can be in the order of ![](img/B13208_16_071.png), which will also be the number of our input features, a model trained on such features may suffer from the **curse of dimensionality**. Furthermore, these features are very sparse, since all are zero except one.
+
+A more elegant approach is to map each word to a vector of a fixed size with real-valued elements (not necessarily integers). In contrast to the one-hot encoded vectors, we can use finite-sized vectors to represent an infinite number of real numbers. (In theory, we can extract infinite real numbers from a given interval, for example [–1, 1].)
+
+This is the idea behind embedding, which is a feature-learning technique that we can utilize here to automatically learn the salient features to represent the words in our dataset. Given the number of unique words, ![](img/B13208_16_072.png), we can select the size of the embedding vectors (a.k.a., embedding dimension) to be much smaller than the number of unique words (![](img/B13208_16_073.png)) to represent the entire vocabulary as input features.
+
+The advantages of embedding over one-hot encoding are as follows:
+
+*   A reduction in the dimensionality of the feature space to decrease the effect of the curse of dimensionality
+*   The extraction of salient features since the embedding layer in an NN can be optimized (or learned)
+
+The following schematic representation shows how embedding works by mapping token indices to a trainable embedding matrix:
+
+![](img/B13208_16_10.png)
+
+Given a set of tokens of size *n* + 2 (*n* is the size of the token set, plus index 0 is reserved for the padding placeholder, and *n* + 1 is for the words not present in the token set), an embedding matrix of size ![](img/B13208_16_074.png) will be created where each row of this matrix represents numeric features associated with a token. Therefore, when an integer index, *i*, is given as input to the embedding, it will look up the corresponding row of the matrix at index *i* and return the numeric features. The embedding matrix serves as the input layer to our NN models. In practice, creating an embedding layer can simply be done using `tf.keras.layers.Embedding`. Let's see an example where we will create a model and add an embedding layer, as follows:
+
+[PRE11]
+
+The input to this model (embedding layer) must have rank 2 with dimensionality ![](img/B13208_16_075.png), where ![](img/B13208_16_076.png) is the length of sequences (here, set to 20 via the `input_length` argument). For example, an input sequence in the mini-batch could be ![](img/B13208_16_077.png), where each element of this sequence is the index of the unique words. The output will have dimensionality ![](img/B13208_16_078.png), where ![](img/B13208_16_079.png) is the size of the embedding features (here, set to 6 via `output_dim`). The other argument provided to the embedding layer, `input_dim,` corresponds to the unique integer values that the model will receive as input (for instance, *n* + 2, set here to 100). Therefore, the embedding matrix in this case has the size ![](img/B13208_16_080.png).
+
+**Dealing with variable sequence lengths**
+
+Note that the `input_length` argument is not required, and we can use `None` for cases where the lengths of input sequences vary. You can find more information about this function in the official documentation at [https://www.tensorflow.org/versions/r2.0/api_docs/python/tf/keras/layers/Embedding](https://www.tensorflow.org/versions/r2.0/api_docs/python/tf/keras/layers/Embedding).
+
+### Building an RNN model
+
+Now we're ready to build an RNN model. Using the Keras `Sequential` class, we can combine the embedding layer, the recurrent layers of the RNN, and the fully connected non-recurrent layers. For the recurrent layers, we can use any of the following implementations:
+
+*   `SimpleRNN`: a regular RNN layer, that is, a fully connected recurrent layer
+*   `LSTM`: a long short-term memory RNN, which is useful for capturing the long-term dependencies
+*   `GRU`: a recurrent layer with a gated recurrent unit, as proposed in *Learning Phrase Representations Using RNN Encoder–Decoder for Statistical Machine Translation* ([https://arxiv.org/abs/1406.1078v3](https://arxiv.org/abs/1406.1078v3)), as an alternative to LSTMs
+
+To see how a multilayer RNN model can be built using one of these recurrent layers, in the following example, we will create an RNN model, starting with an embedding layer with `input_dim=1000` and `output_dim=32`. Then, two recurrent layers of type `SimpleRNN` will be added. Finally, we will add a non-recurrent fully connected layer as the output layer, which will return a single output value as the prediction:
+
+[PRE12]
+
+As you can see, building an RNN model using these recurrent layers is pretty straightforward. In the next subsection, we will go back to our sentiment analysis task and build an RNN model to solve that.
+
+### Building an RNN model for the sentiment analysis task
+
+Since we have very long sequences, we are going to use an LSTM layer to account for long-term effects. In addition, we will put the LSTM layer inside a `Bidirectional` wrapper, which will make the recurrent layers pass through the input sequences from both directions, start to end, as well as the reverse direction:
+
+[PRE13]
+
+After training this model for 10 epochs, evaluation on the test data shows 85 percent accuracy. (Note that this result is not the best when compared to the state-of-the-art methods used on the IMDb dataset. The goal was simply to show how RNN works.)
+
+**More on the bidirectional RNN**
+
+The `Bidirectional` wrapper makes two passes over each input sequence: a forward pass and a reverse or backward pass (note that this is not to be confused with the forward and backward passes in the context of backpropagation). The results of these forward and backward passes will be concatenated by default. But if you want to change this behavior, you can set the argument `merge_mode` to `'sum'` (for summation), `'mul'` (for multiplying the results of the two passes), `'ave'` (for taking the average of the two), `'concat'` (which is the default), or `None`, which returns the two tensors in a list. For more information about the `Bidirectional` wrapper, feel free to look at the official documentation at [https://www.tensorflow.org/versions/r2.0/api_docs/python/tf/keras/layers/Bidirectional](https://www.tensorflow.org/versions/r2.0/api_docs/python/tf/keras/layers/Bidirectional).
+
+We can also try other types of recurrent layers, such as `SimpleRNN`. However, as it turns out, a model built with regular recurrent layers won't be able to reach a good predictive performance (even on the training data). For example, if you try replacing the bidirectional LSTM layer in the previous code with a unidirectional `SimpleRNN` layer and train the model on full-length sequences, you may observe that the loss will not even decrease during training. The reason is that the sequences in this dataset are too long, so a model with a `SimpleRNN` layer cannot learn the long-term dependencies and may suffer from vanishing or exploding gradient problems.
+
+In order to obtain reasonable predictive performance on this dataset using a `SimpleRNN`, we can truncate the sequences. Also, utilizing our "domain knowledge," we may hypothesize that the last paragraphs of a movie review may contain most of the information about its sentiment. Hence, we can focus only on the last portion of each review. To do this, we will define a helper function, `preprocess_datasets()`, to combine the preprocessing steps 2-4\. An optional argument to this function is `max_seq_length`, which determines how many tokens from each review should be used. For example, if we set `max_seq_length=100` and a review has more than 100 tokens, only the last 100 tokens will be used. If `max_seq_length` is set to `None`, then full-length sequences will be used as before. Trying different values for `max_seq_length` will give us more insights on the capability of different RNN models to handle long sequences.
+
+The code for the `preprocess_datasets()` function is as follows:
+
+[PRE14]
+
+Next, we will define another helper function, `build_rnn_model()`, for building models with different architectures more conveniently:
+
+[PRE15]
+
+Now, using these two fairly general, but convenient, helper functions, we can readily compare different RNN models with different input sequence lengths. As an example, in the following code, we will try a model with a single recurrent layer of type `SimpleRNN` while truncating the sequences to a maximum length of 100 tokens:
+
+[PRE16]
+
+For instance, truncating the sequences to 100 tokens and using a bidirectional `SimpleRNN` layer resulted in 80 percent classification accuracy. Although the prediction is slightly lower when compared to the previous bidirectional LSTM model (85.15 percent accuracy on the test dataset), the performance on these truncated sequences is much better than the performance we could achieve with a `SimpleRNN` on full-length movie reviews. As an optional exercise, you can verify this by using the two helper functions we have already defined. Try it with `max_seq_length=None` and set the `bidirectional` argument inside the `build_rnn_model()` helper function to `False`. (For your convenience, this code is available in the online materials of this book.)
+
+## Project two – character-level language modeling in TensorFlow
+
+Language modeling is a fascinating application that enables machines to perform human language-related tasks, such as generating English sentences. One of the interesting studies in this area is *Generating Text with Recurrent Neural Networks*, *Ilya Sutskever*, *James Martens*, and *Geoffrey E. Hinton*, *Proceedings of the 28th International Conference on Machine Learning (ICML-11)*, *2011*, [https://pdfs.semanticscholar.org/93c2/0e38c85b69fc2d2eb314b3c1217913f7db11.pdf](https://pdfs.semanticscholar.org/93c2/0e38c85b69fc2d2eb314b3c1217913f7db11.pdf)).
+
+In the model that we will build now, the input is a text document, and our goal is to develop a model that can generate new text that is similar in style to the input document. Examples of such an input are a book or a computer program in a specific programming language.
+
+In character-level language modeling, the input is broken down into a sequence of characters that are fed into our network one character at a time. The network will process each new character in conjunction with the memory of the previously seen characters to predict the next one. The following figure shows an example of character-level language modeling (note that EOS stands for "end of sequence"):
+
+![](img/B13208_16_11.png)
+
+We can break this implementation down into three separate steps: preparing the data, building the RNN model, and performing next-character prediction and sampling to generate new text.
+
+### Preprocessing the dataset
+
+In this section, we will prepare the data for character-level language modeling.
+
+To obtain the input data, visit the Project Gutenberg website at [https://www.gutenberg.org/](https://www.gutenberg.org/), which provides thousands of free e-books. For our example, you can download the book *The Mysterious Island*, by Jules Verne (published in 1874) in plain text format from [http://www.gutenberg.org/files/1268/1268-0.txt](http://www.gutenberg.org/files/1268/1268-0.txt).
+
+Note that this link will take you directly to the download page. If you are using macOS or a Linux operating system, you can download the file with the following command in the terminal:
+
+[PRE17]
+
+If this resource becomes unavailable in the future, a copy of this text is also included in this chapter's code directory in the book's code repository at [https://github.com/rasbt/python-machine-learning-book-3rd-edition/code/ch16](https://github.com/rasbt/python-machine-learning-book-3rd-edition/code/ch16).
+
+Once we have downloaded the dataset, we can read it into a Python session as plain text. Using the following code, we will read the text directly from the downloaded file and remove portions from the beginning and the end (these contain certain descriptions of the Gutenberg project). Then, we will create a Python variable, `char_set`, that represents the set of *unique* characters observed in this text:
+
+[PRE18]
+
+After downloading and preprocessing the text, we have a sequence consisting of 1,112,350 characters in total and 80 unique characters. However, most NN libraries and RNN implementations cannot deal with input data in string format, which is why we have to convert the text into a numeric format. To do this, we will create a simple Python dictionary that maps each character to an integer, `char2int`. We will also need a reverse mapping to convert the results of our model back to text. Although the reverse can be done using a dictionary that associates integer keys with character values, using a NumPy array and indexing the array to map indices to those unique characters is more efficient. The following figure shows an example of converting characters into integers and the reverse for the words `"Hello"` and `"world"`:
+
+![](img/B13208_16_12.png)
+
+Building the dictionary to map characters to integers, and reverse mapping via indexing a NumPy array, as was shown in the previous figure, is as follows:
+
+[PRE19]
+
+The NumPy array `text_encoded` contains the encoded values for all the characters in the text. Now, we will create a TensorFlow dataset from this array:
+
+[PRE20]
+
+So far, we have created an iterable `Dataset` object for obtaining characters in the order they appear in the text. Now, let's step back and look at the big picture of what we are trying to do. For the text generation task, we can formulate the problem as a classification task.
+
+Suppose we have a set of sequences of text characters that are incomplete, as shown in the following figure:
+
+![](img/B13208_16_13.png)
+
+In the previous figure, we can consider the sequences shown in the left-hand box to be the input. In order to generate new text, our goal is to design a model that can predict the next character of a given input sequence, where the input sequence represents an incomplete text. For example, after seeing *"Deep Learn"*, the model should predict *"i"* as the next character. Given that we have 80 unique characters, this problem becomes a multiclass classification task.
+
+Starting with a sequence of length 1 (that is, one single letter), we can iteratively generate new text based on this multiclass classification approach, as illustrated in the following figure:
+
+![](img/B13208_16_14.png)
+
+To implement the text generation task in TensorFlow, let's first clip the sequence length to 40\. This means that the input tensor, *x*, consists of 40 tokens. In practice, the sequence length impacts the quality of the generated text. Longer sequences can result in more meaningful sentences. For shorter sequences, however, the model might focus on capturing individual words correctly, while ignoring the context for the most part. Although longer sequences usually result in more meaningful sentences, as mentioned, for long sequences, the RNN model will have problems capturing long-term dependencies. Thus, in practice, finding a sweet spot and good value for the sequence length is a hyperparameter optimization problem, which we have to evaluate empirically. Here, we are going to choose 40, as it offers a good tradeoff.
+
+As you can see in the previous figure, the inputs, *x*, and targets, *y*, are offset by one character. Hence, we will split the text into chunks of size 41: the first 40 characters will form the input sequence, *x*, and the last 40 elements will form the target sequence, *y*.
+
+We have already stored the entire encoded text in its original order in a `Dataset` object, `ds_text_encoded`. Using the techniques concerning transforming datasets that we already covered in this chapter (in the section *Preparing the movie review data*), can you think of a way to obtain the input, *x*, and target, *y*, as it was shown in the previous figure? The answer is very simple: we will first use the `batch()` method to create text chunks consisting of 41 characters each. This means that we will set `batch_size=41`. We will further get rid of the last batch if it is shorter than 41 characters. As a result, the new chunked dataset, named `ds_chunks`, will always contain sequences of size 41\. The 41-character chunks will then be used to construct the sequence *x* (that is, the input), as well as the sequence *y* (that is, the target), both of which will have 40 elements. For instance, sequence *x* will consist of the elements with indices [0, 1, …, 39]. Furthermore, since sequence *y* will be shifted by one position with respect to *x*, its corresponding indices will be [1, 2, …, 40]. Then, we will apply a transformation function using the `map()` method to separate the *x* and *y* sequences accordingly:
+
+[PRE21]
+
+Let's take a look at some example sequences from this transformed dataset:
+
+[PRE22]
+
+Finally, the last step in preparing the dataset is to divide this dataset into mini-batches. During the first preprocessing step to divide the dataset into batches, we created chunks of sentences. Each chunk represents one sentence, which corresponds to one training example. Now, we will shuffle the training examples and divide the inputs into mini-batches again; however, this time, each batch will contain multiple training examples:
+
+[PRE23]
+
+### Building a character-level RNN model
+
+Now that the dataset is ready, building the model will be relatively straightforward. For code reusability, we will write a function, `build_model`, that defines an RNN model using the Keras `Sequential` class. Then, we can specify the training parameters and call that function to obtain an RNN model:
+
+[PRE24]
+
+Notice that the LSTM layer in this model has the output shape `(None, None, 512)`, which means the output of LSTM is rank 3\. The first dimension stands for the number of batches, the second dimension for the output sequence length, and the last dimension corresponds to the number of hidden units. The reason for having rank-3 output from the LSTM layer is because we have specified `return_sequences=True` when defining our LSTM layer. A fully connected layer (`Dense`) receives the output from the LSTM cell and computes the logits for each element of the output sequences. As a result, the final output of the model will be a rank-3 tensor as well.
+
+Furthermore, we specified `activation=None` for the final fully connected layer. The reason for this is that we will need to have the logits as outputs of the model so that we can sample from the model predictions in order to generate new text. We will get to this sampling part later. For now, let's train the model:
+
+[PRE25]
+
+Now, we can evaluate the model to generate new text, starting with a given short string. In the next section, we will define a function to evaluate the trained model.
+
+### Evaluation phase – generating new text passages
+
+The RNN model we trained in the previous section returns the logits of size 80 for each unique character. These logits can be readily converted to probabilities, via the softmax function, that a particular character will be encountered as the next character. To predict the next character in the sequence, we can simply select the element with the maximum logit value, which is equivalent to selecting the character with the highest probability. However, instead of always selecting the character with the highest likelihood, we want to (randomly) *sample* from the outputs; otherwise, the model will always produce the same text. TensorFlow already provides a function, `tf.random.categorical()`, which we can use to draw random samples from a categorical distribution. To see how this works, let's generate some random samples from three categories [0, 1, 2], with input logits [1, 1, 1].
+
+[PRE26]
+
+As you can see, with the given logits, the categories have the same probabilities (that is, equiprobable categories). Therefore, if we use a large sample size (![](img/B13208_16_081.png)), we would expect the number of occurrences of each category to reach ![](img/B13208_16_082.png) of the sample size. If we change the logits to [1, 1, 3], then we would expect to observe more occurrences for category 2 (when a very large number of examples are drawn from this distribution):
+
+[PRE27]
+
+Using `tf.random.categorical`, we can generate examples based on the logits computed by our model. We define a function, `sample()`, that receives a short starting string, `starting_str`, and generate a new string, `generated_str`, which is initially set to the input string. Then, a string of size `max_input_length` is taken from the end of `generated_str` and encoded to a sequence of integers, `encoded_input`. The `encoded_input` is passed to the RNN model to compute the logits. Note that the output from the RNN model is a sequence of logits with the same length as the input sequence, since we specified `return_sequences=True` for the last recurrent layer of our RNN model. Therefore, each element in the output of the RNN model represents the logits (here, a vector of size 80, which is the total number of characters) for the next character after observing the input sequence by the model.
+
+Here, we only use the last element of the output `logits` (that is, ![](img/B13208_16_083.png)), which is passed to the `tf.random.categorical()` function to generate a new sample. This new sample is converted to a character, which is then appended to the end of the generated string, `generated_text`, increasing its length by 1\. Then, this process is repeated, taking the last `max_input_length` number of characters from the end of the `generated_str`, and using that to generate a new character until the length of the generated string reaches the desired value. The process of consuming the generated sequence as input for generating new elements is called *auto-regression*.
+
+**Returning sequences as output**
+
+You may wonder why we use `return_sequences=True` when we only use the last character to sample a new character and ignore the rest of the output. While this question makes perfect sense, you should not forget that we used the entire output sequence for training. The loss is computed based on each prediction in the output and not just the last one.
+
+The code for the `sample()` function is as follows:
+
+[PRE28]
+
+Let's now generate some new text:
+
+[PRE29]
+
+As you can see, the model generates mostly correct words, and, in some cases, the sentences are partially meaningful. You can further tune the training parameters, such as the length of input sequences for training, the model architecture, and sampling parameters (such as `max_input_length`).
+
+Furthermore, in order to control the predictability of the generated samples (that is, generating text following the learned patterns from the training text versus adding more randomness), the logits computed by the RNN model can be scaled before being passed to `tf.random.categorical()` for sampling. The scaling factor, ![](img/B13208_16_084.png), can be interpreted as the inverse of the temperature in physics. Higher temperatures result in more randomness versus more predictable behavior at lower temperatures. By scaling the logits with ![](img/B13208_16_085.png), the probabilities computed by the softmax function become more uniform, as shown in the following code:
+
+[PRE30]
+
+As you can see, scaling the logits by ![](img/B13208_16_086.png) results in near-uniform probabilities [0.31, 0.31, 0.38]. Now, we can compare the generated text with ![](img/B13208_16_087.png) and ![](img/B13208_16_088.png), as shown in the following points:
+
+*   ![](img/B13208_16_089.png)
+
+    [PRE31]
+
+*   ![](img/B13208_16_090.png)
+
+    [PRE32]
+
+The results show that scaling the logits with ![](img/B13208_16_091.png) (increasing the temperature) generates more random text. There is a tradeoff between the novelty of the generated text and its correctness.
+
+In this section, we worked with character-level text generation, which is a sequence-to-sequence (seq2seq) modeling task. While this example may not be very useful by itself, it is easy to think of several useful applications for these types of models; for example, a similar RNN model can be trained as a chatbot to assist users with simple queries.
+
+# Understanding language with the Transformer model
+
+In this chapter, we solved two sequence modeling problems using RNN-based NNs. However, a new architecture has recently emerged that has been shown to outperform the RNN-based seq2seq models in several NLP tasks.
+
+It is called the**Transformer** architecture, capable of modeling global dependencies between input and output sequences, and was introduced in 2017 by Ashish Vaswani, et. al., in the NeurIPS paper *Attention Is All You Need* (available online at [http://papers.nips.cc/paper/7181-attention-is-all-you-need](http://papers.nips.cc/paper/7181-attention-is-all-you-need)). The Transformer architecture is based on a concept called **attention**, and more specifically, the **self-attention mechanism**. Let's consider the sentiment analysis task that we covered earlier in this chapter. In this case, using the attention mechanism would mean that our model would be able to learn to focus on the parts of an input sequence that are more relevant to the sentiment.
+
+## Understanding the self-attention mechanism
+
+This section will explain the *self-attention mechanism* and how it helps a Transformer model to focus on important parts of a sequence for NLP. The first subsection will cover a very basic form of self-attention to illustrate the overall idea behind learning text representations. Then, we will add different weight parameters so that we arrive at the self-attention mechanism that is commonly used in Transformer models.
+
+### A basic version of self-attention
+
+To introduce the basic idea behind self-attention, let's assume we have an input sequence of length *T*, ![](img/B13208_16_092.png), as well as an output sequence, ![](img/B13208_16_093.png). Each element of these sequences, ![](img/B13208_16_094.png) and ![](img/B13208_16_095.png), are vectors of size *d* (that is, ![](img/B13208_16_096.png)). Then, for a seq2seq task, the goal of self-attention is to model the dependencies of each element in the output sequence to the input elements. In order to achieve this, attention mechanisms are composed of three stages. Firstly, we derive importance weights based on the similarity between the current element and all other elements in the sequence. Secondly, we normalize the weights, which usually involves the use of the already familiar softmax function. Thirdly, we use these weights in combination with the corresponding sequence elements in order to compute the attention value.
+
+More formally, the output of self-attention is the weighted sum of all input sequences. For instance, for the *i*th input element, the corresponding output value is computed as follows:
+
+![](img/B13208_16_097.png)
+
+Here, the weights, ![](img/B13208_16_098.png), are computed based on the similarity between the current input element, ![](img/B13208_16_099.png), and all other elements in the input sequence. More concretely, this similarity is computed as the dot product between the current input element, ![](img/B13208_16_0991.png), and another element in the input sequence, ![](img/B13208_16_101.png):
+
+![](img/B13208_16_102.png)
+
+After computing these similarity-based weights for the *i*th input and all inputs in the sequence (![](img/B13208_16_103.png) to ![](img/B13208_16_104.png)), the "raw" weights (![](img/B13208_16_105.png) to ![](img/B13208_16_106.png)) are then normalized using the familiar softmax function, as follows:
+
+![](img/B13208_16_107.png)
+
+Notice that as a consequence of applying the softmax function, the weights will sum to 1 after this normalization, that is,
+
+![](img/B13208_16_108.png)
+
+To recap, let's summarize the three main steps behind the self-attention operation:
+
+1.  For a given input element, ![](img/B13208_16_109.png), and each *j*th element in the range [0, *T*], compute the dot product, ![](img/B13208_16_110.png)
+2.  Obtain the weight, ![](img/B13208_16_111.png), by normalizing the dot products using the softmax function
+3.  Compute the output, ![](img/B13208_16_112.png), as the weighted sum over the entire input sequence: ![](img/B13208_16_113.png)
+
+These steps are further illustrated in the following figure:
+
+![](img/B13208_16_15.png)
+
+### Parameterizing the self-attention mechanism with query, key, and value weights
+
+Now that you have been introduced to the basic concept behind self-attention, this subsection summarizes the more advanced self-attention mechanism that is used in the Transformer model. Note that in the previous subsection, we didn't involve any learnable parameters when computing the outputs. Hence, if we want to learn a language model and want to change the attention values to optimize an objective, such as minimizing the classification error, we will need to change the word embeddings (that is, input vectors) that underlie each input element, ![](img/B13208_16_114.png). In other words, using the previously introduced basic self-attention mechanism, the Transformer model is rather limited with regard to how it can update or change the attention values during model optimization for a given sequence. To make the self-attention mechanism more flexible and amenable to model optimization, we will introduce three additional weight matrices that can be fit as model parameters during model training. We denote these three weight matrices as ![](img/B13208_16_115.png), ![](img/B13208_16_116.png), and ![](img/B13208_16_117.png). They are used to project the inputs into *query*, *key*, and *value* sequence elements:
+
+*   Query sequence: ![](img/B13208_16_118.png) for ![](img/B13208_16_119.png),
+*   Key sequence: ![](img/B13208_16_120.png) for ![](img/B13208_16_121.png),
+*   Value sequence: ![](img/B13208_16_122.png) for ![](img/B13208_16_123.png)
+
+Here, both ![](img/B13208_16_124.png) and ![](img/B13208_16_125.png) are vectors of size ![](img/B13208_16_126.png). Therefore, the projection matrices ![](img/B13208_16_127.png) and ![](img/B13208_16_128.png) have the shape ![](img/B13208_16_129.png), while ![](img/B13208_16_130.png) has the shape ![](img/B13208_16_131.png). For simplicity, we can design these vectors to have the same shape, for example, using ![](img/B13208_16_132.png). Now, instead of computing the unnormalized weight as the pairwise dot product between the given input sequence element, ![](img/B13208_16_133.png), and the *j*th sequence element, ![](img/B13208_16_134.png), we can compute the dot product between the query and key:
+
+![](img/B13208_16_135.png)
+
+We can then further use *m*, or, more precisely, ![](img/B13208_16_136.png), to scale ![](img/B13208_16_137.png) before normalizing it via the softmax function, as follows:
+
+![](img/B13208_16_138.png)
+
+Note that scaling ![](img/B13208_16_139.png) by ![](img/B13208_16_140.png) will ensure that the Euclidean length of the weight vectors will be approximately in the same range.
+
+## Multi-head attention and the Transformer block
+
+Another trick that greatly improves the discriminatory power of the self-attention mechanism is **multi-head attention** (**MHA**), which combines multiple self-attention operations together. In this case, each self-attention mechanism is called a *head*, which can be computed in parallel. Using *r* parallel heads, each head results in a vector, *h*, of size *m*. These vectors are then concatenated to obtain a vector, *z*, with the shape ![](img/B13208_16_141.png). Finally, the concatenated vector is projected using the output matrix ![](img/B13208_16_142.png) to obtain the final output, as follows:
+
+![](img/B13208_16_143.png)
+
+The architecture of a Transformer block is shown in the following figure:
+
+![](img/B13208_16_16.png)
+
+Notice that in the Transformer architecture shown in the previous figure, we added two additional components that we haven't discussed yet. One of these components is the *residual connection*, which adds the output from a layer (or even a group of layers) to its input, that is, *x* + *layer*(*x*). The block consisting of a layer (or multiple layers) with such a residual connection is called a *residual block*. The Transformer block shown in the previous figure has two residual blocks.
+
+The other new component is *layer normalization*, which is denoted in the previous figure as "Layer norm." There is a family of normalization layers including batch normalization, which we will cover in *Chapter 17*, *Generative Adversarial Networks for Synthesizing New Data*. For now, you can think of layer normalization as a fancy or more advanced way of normalizing or scaling the NN inputs and activations in each layer.
+
+Returning to the illustration of the Transformer model in the previous figure, let's now discuss how this model works. First, the input sequence is passed to the MHA layers, which is based on the self-attention mechanism that we discussed earlier. In addition, the input sequences are added to the output of the MHA layers via the residual connections—this ensures that the earlier layers will receive sufficient gradient signals during training, which is a common trick that is used to improve training speed and convergence. If you are interested, you can read more about the concept behind residual connections in the research article *Deep Residual Learning for Image Recognition,* by *Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun*, which is freely available at [http://openaccess.thecvf.com/content_cvpr_2016/html/He_Deep_Residual_Learning_CVPR_2016_paper.html](http://openaccess.thecvf.com/content_cvpr_2016/html/He_Deep_Residual_Learning_CVPR_2016_paper.html).
+
+After the input sequences are added to the output of the MHA layers, the outputs are normalized via layer normalization. These normalized signals then go through a series of MLP (that is, fully connected) layers, which also have a residual connection. Finally, the output from the residual block is normalized again and returned as the output sequence, which can be used for sequence classification or sequence generation.
+
+Instructions for implementing and training Transformer models were omitted to conserve space. However, the interested reader can find an excellent implementation and walk-through in the official TensorFlow documentation at
+
+[https://www.tensorflow.org/tutorials/text/transformer](https://www.tensorflow.org/tutorials/text/transformer).
+
+# Summary
+
+In this chapter, you first learned about the properties of sequences that make them different to other types of data, such as structured data or images. We then covered the foundations of RNNs for sequence modeling. You learned how a basic RNN model works and discussed its limitations with regard to capturing long-term dependencies in sequence data. Next, we covered LSTM cells, which consist of a gating mechanism to reduce the effect of exploding and vanishing gradient problems, which are common in basic RNN models.
+
+After discussing the main concepts behind RNNs, we implemented several RNN models with different recurrent layers using the Keras API. In particular, we implemented an RNN model for sentiment analysis, as well as an RNN model for generating text. Finally, we covered the Transformer model, which leverages the self-attention mechanism in order to focus on the relevant parts of a sequence.
+
+In the next chapter, you will learn about generative models and, in particular, **generative adversarial networks** (**GANs**), which have shown remarkable results in the computer vision community for various vision tasks.
