@@ -12,6 +12,7 @@
 +   [Python 时间序列的机器学习](docs/ml-ts-py/README.md)
 +   [机器学习研讨会](docs/ml-ws/README.md)
 +   [精通 Sklearn 机器学习](docs/ms-ml-skl/README.md)
++   [Python 机器学习第三版](docs/py-ml-3e/README.md)
 +   [Python 机器学习蓝图第二版](docs/py-ml-bp-2e/README.md)
 +   [Python 机器学习示例第四版](docs/py-ml-ex-4e/README.md)
 +   [Sklearn 秘籍第二版](docs/skl-cb-2e/README.md)
